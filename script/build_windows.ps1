@@ -1,15 +1,19 @@
 # Local Windows x64 build, same steps as .github/workflows/build.yml. Output: deployment\windows-amd64.
+# -Debugger builds the GUI for a debugger and never for shipping. Output: build-debug, with the core copied from deployment\windows-amd64.
 param(
     [switch]$Core,
     [switch]$Gui,
+    [switch]$Debugger,
     [string]$Toolchain = (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'toolchain')
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Debugger) { $Gui = $true }
 if (-not $Core -and -not $Gui) { $Core = $true; $Gui = $true }
 
 $root = Split-Path $PSScriptRoot -Parent
 $dest = Join-Path $root 'deployment\windows-amd64'
+$build = if ($Debugger) { 'build-debug' } else { 'build' }
 $cmakeHome = (Get-ChildItem "$Toolchain\cmake" -Directory | Select-Object -First 1).FullName
 
 $env:GOPATH = "$Toolchain\gopath"
@@ -67,20 +71,28 @@ try {
             if ($name) { Set-Item "env:$name" $value }
         }
 
-        New-Item -ItemType Directory -Force build | Out-Null
-        if (-not (Test-Path build\srslist.h)) {
-            Invoke-Checked { curl.exe -fLso build\srslist.h https://raw.githubusercontent.com/throneproj/routeprofiles/rule-set/srslist.h }
+        New-Item -ItemType Directory -Force $build | Out-Null
+        if (-not (Test-Path $build\srslist.h)) {
+            Invoke-Checked { curl.exe -fLso $build\srslist.h https://raw.githubusercontent.com/throneproj/routeprofiles/rule-set/srslist.h }
         }
 
         $env:CMAKE_PREFIX_PATH = "$Toolchain\Qt\lib\cmake"
         $env:OPENSSL_ROOT_DIR = "$Toolchain\openssl"
-        Invoke-Checked { cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo }
-        Invoke-Checked { ninja -C build -j $jobs }
+        Invoke-Checked { cmake -S . -B $build -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo "-DPOROS_DEBUGGER_BUILD=$Debugger" }
+        Invoke-Checked { ninja -C $build -j $jobs }
 
-        New-Item -ItemType Directory -Force $dest | Out-Null
-        Copy-Item build\Poros.exe, build\Poros.pdb $dest -Force
+        if ($Debugger) {
+            # The core refuses a Poros.exe outside its own folder. It outlives a killed Poros for a moment, so an unchanged copy stays untouched.
+            Get-Item "$dest\PorosCore.exe", "$dest\libcronet.dll" |
+                Where-Object { $_.LastWriteTimeUtc -ne (Get-Item (Join-Path $build $_.Name) -ErrorAction Ignore).LastWriteTimeUtc } |
+                Copy-Item -Destination $build -Force
+        }
+        else {
+            New-Item -ItemType Directory -Force $dest | Out-Null
+            Copy-Item build\Poros.exe, build\Poros.pdb $dest -Force
+        }
     }
-    Test-ShippedIdentity $dest
+    if (-not $Debugger) { Test-ShippedIdentity $dest }
 }
 finally {
     Pop-Location

@@ -6,6 +6,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# The toolchain's Qt has no debug libraries, so a debugger gets RelWithDebInfo with the optimizer off.
+option(POROS_DEBUGGER_BUILD "Build for a debugger: no optimization and full source paths, never for shipping" OFF)
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
@@ -13,7 +15,8 @@ if(MSVC)
 endif()
 
 #### No local paths in shipped binaries ####
-if (MSVC)
+# The debugger binds breakpoints by full source path.
+if (MSVC AND NOT POROS_DEBUGGER_BUILD)
     add_compile_options("/d1trimfile:${CMAKE_SOURCE_DIR}/" "/d1trimfile:${CMAKE_BINARY_DIR}/")
     add_link_options(/PDBALTPATH:%_PDB%)
 endif ()
@@ -92,6 +95,12 @@ if (NKR_DESKTOP_EXEC)
 endif ()
 
 include("cmake/myproto.cmake")
+
+# After simple-protobuf: it builds with /WX, and unoptimized code raises warnings there.
+if (MSVC AND POROS_DEBUGGER_BUILD)
+    string(REPLACE "/O2 /Ob1" "/Od /Ob0" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+    string(REPLACE "/O2 /Ob1" "/Od /Ob0" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+endif ()
 list(APPEND NKR_EXTERNAL_TARGETS myproto)
 
 # Sources

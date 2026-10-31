@@ -16,6 +16,8 @@ script\build_windows.ps1
 
 The output goes to `deployment\windows-amd64`. The build fails if a shipped file's name or properties mention a VPN or Throne, or if a binary contains a local path.
 
+`script\build_windows.ps1 -Debugger` builds the GUI into `build-debug` for a debugger, with optimization off and full source paths. It copies the core from `deployment\windows-amd64`, so it needs a normal build first, and its output is never shipped.
+
 ## Interface
 
 Poros opens in one of two modes, and the app menu switches between them at any time without dropping the connection.
