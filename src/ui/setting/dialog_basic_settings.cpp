@@ -12,6 +12,7 @@
 #include "include/database/entities/Group.h"
 #include "include/engine/services/AssetUpdates.h"
 #include "include/engine/services/BackupArchive.h"
+#include "include/engine/services/ReleaseUpdates.h"
 #include "include/ui/utils/ValidationForm.h"
 
 #include <QFileDialog>
@@ -206,7 +207,8 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
     ui->speedtest_mode->setCurrentIndex(Configs::dataManager->settingsRepo->speed_test_mode);
     ui->test_timeout->setText(Int2String(Configs::dataManager->settingsRepo->speed_test_timeout_ms));
     ui->simple_down_url->setText(Configs::dataManager->settingsRepo->simple_dl_url);
-    ui->allow_beta->setChecked(Configs::dataManager->settingsRepo->allow_beta_update);
+    D_LOAD_BOOL(auto_update_app)
+    ui->auto_update_app->setEnabled(Engine::ReleaseUpdates::Available());
     ui->disable_mixed_inbound->setChecked(Configs::dataManager->settingsRepo->disable_mixed_inbound);
     D_LOAD_BOOL(inbound_auth)
     D_LOAD_STRING(inbound_user)
@@ -267,7 +269,11 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
     D_LOAD_BOOL(start_minimal)
     ui->skip_delete_confirm->setChecked(Configs::dataManager->settingsRepo->skip_delete_confirmation);
     D_LOAD_BOOL(show_config_security)
-    ui->language->setCurrentIndex(Configs::dataManager->settingsRepo->language);
+    // The stored number is upstream's: 0 follows the system, 1 is English, 4 is Russian.
+    ui->language->setItemData(0, 0);
+    ui->language->setItemData(1, 1);
+    ui->language->setItemData(2, 4);
+    ui->language->setCurrentIndex(qMax(0, ui->language->findData(Configs::dataManager->settingsRepo->language)));
     connect(ui->language, &QComboBox::currentIndexChanged, this, [=,this](int index) {
         CACHE.needRestart = true;
     });
@@ -578,7 +584,7 @@ void DialogBasicSettings::accept() {
     Configs::dataManager->settingsRepo->simple_dl_url = ui->simple_down_url->text().trimmed();
     Configs::dataManager->settingsRepo->url_test_timeout_ms = ui->url_timeout->text().trimmed().toInt();
     Configs::dataManager->settingsRepo->speed_test_timeout_ms = ui->test_timeout->text().trimmed().toInt();
-    Configs::dataManager->settingsRepo->allow_beta_update = ui->allow_beta->isChecked();
+    D_SAVE_BOOL(auto_update_app)
     Configs::dataManager->settingsRepo->disable_mixed_inbound = ui->disable_mixed_inbound->isChecked();
     Configs::dataManager->settingsRepo->reset_proxy_on_disable_sp = ui->reset_proxy_on_disable_sp->isChecked();
     D_SAVE_BOOL(inbound_auth)
@@ -607,7 +613,7 @@ void DialogBasicSettings::accept() {
 
     Configs::dataManager->settingsRepo->enable_stats = ui->connection_statistics->isChecked();
     Configs::dataManager->settingsRepo->disable_traffic_aggregation = ui->disable_traffic_aggregation->isChecked();
-    Configs::dataManager->settingsRepo->language = ui->language->currentIndex();
+    Configs::dataManager->settingsRepo->language = ui->language->currentData().toInt();
     auto oldUseCustomIcon = Configs::dataManager->settingsRepo->use_custom_icons;
     Configs::dataManager->settingsRepo->use_custom_icons = ui->enable_custom_icon->isChecked();
     if (oldUseCustomIcon != Configs::dataManager->settingsRepo->use_custom_icons) CACHE.updateTrayIcon = true;

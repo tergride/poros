@@ -26,6 +26,7 @@
 #include "include/engine/EngineHost.h"
 #include "include/engine/connection/ConnectionManager.h"
 #include "include/engine/services/BackupArchive.h"
+#include "include/engine/services/ReleaseUpdates.h"
 #include "include/engine/services/SettingsRegistry.h"
 #include "include/global/Configs.hpp"
 #include "include/sys/AutoRun.hpp"
@@ -433,8 +434,6 @@ QWidget *SimpleSettings::buildAppearance() {
     language->addItem(tr("As in Windows"), 0);
     language->addItem(QStringLiteral("Русский"), 4);
     language->addItem(QStringLiteral("English"), 1);
-    language->addItem(QStringLiteral("中文"), 2);
-    language->addItem(QStringLiteral("فارسی"), 3);
     connect(language, &QComboBox::activated, this, [this, language] {
         simpleSettingsRepo()->language = language->currentData().toInt();
         simpleSettingsRepo()->Save();
@@ -526,11 +525,22 @@ QWidget *SimpleSettings::buildHelp() {
         auto *widget = new QPushButton(PorosTheme::Icon(icon), button);
         connect(widget, &QPushButton::clicked, this, run);
         simpleSettingsRow(card, title, hint, widget);
+        return widget;
     };
     action(QStringLiteral("bolt"), tr("Run"), tr("Quick setup"), tr("Go through the first-launch steps again."), [this] { m_hooks.runWizard(); });
     action(QStringLiteral("log"), tr("Open"), tr("Log"), tr("Useful when you write to support."), [this] { m_hooks.showLog(); });
     action(QStringLiteral("refresh"), tr("Reset"), tr("Reset the connection"), tr("Restarts the core if TUN stopped working."), [this] { m_hooks.resetCore(); });
-    action(QStringLiteral("download"), tr("Check"), tr("Updates"), tr("Current version: %1").arg(QStringLiteral(NKR_VERSION)), [this] { m_hooks.checkForUpdates(); });
+    const bool updates = Engine::ReleaseUpdates::Available();
+    action(QStringLiteral("download"), tr("Check"), tr("Updates"), updates ? tr("Current version: %1").arg(QStringLiteral(NKR_VERSION)) : tr("Updates are off in this build."),
+           [this] { m_hooks.checkForUpdates(); })->setEnabled(updates);
+    auto *autoUpdate = simpleSettingsSwitch();
+    autoUpdate->setEnabled(updates);
+    connect(autoUpdate, &QCheckBox::clicked, this, [](bool on) {
+        simpleSettingsRepo()->auto_update_app = on;
+        simpleSettingsRepo()->Save();
+    });
+    simpleSettingsRow(card, tr("Update automatically"), tr("Looks for a new version at launch and every four hours, and downloads it. When off, Poros updates only when you press Check."), autoUpdate);
     column->addStretch();
+    m_reloaders << [=] { autoUpdate->setChecked(simpleSettingsRepo()->auto_update_app); };
     return page;
 }

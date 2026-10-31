@@ -239,6 +239,7 @@ set(PROJECT_SOURCES
         src/ui/mainWindow/mainwindow_policy.cpp
         src/ui/mainWindow/mainwindow_shell.cpp
         src/ui/mainWindow/mainwindow_simple.cpp
+        src/ui/mainWindow/mainwindow_updates.cpp
         include/ui/mainWindow/MainWindowInternal.h
         include/ui/mainwindow.h
         include/ui/mainwindow.ui
@@ -756,6 +757,8 @@ set(ENGINE_SOURCES
         src/engine/services/WebDavBackup.cpp
         include/engine/services/AssetUpdates.h
         src/engine/services/AssetUpdates.cpp
+        include/engine/services/ReleaseUpdates.h
+        src/engine/services/ReleaseUpdates.cpp
         include/engine/services/StatsService.h
         src/engine/services/StatsService.cpp
         include/engine/tests/TestObserver.h
@@ -904,6 +907,8 @@ set(LUPDATE_OPTIONS
 # lupdate sees only the target's include paths; without the repo root it cannot resolve EngineTr.h, and files the
 # MainWindowTr::tr strings under a MainWindowTr context instead of MainWindow.
 target_include_directories(Poros PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+# Poros ships Russian, and English from the sources.
+list(FILTER TS_FILES INCLUDE REGEX "ru_RU")
 qt_add_lupdate(Poros TS_FILES ${TS_FILES} OPTIONS ${LUPDATE_OPTIONS})
 qt_add_lrelease(Poros TS_FILES ${TS_FILES} QM_FILES_OUTPUT_VARIABLE QM_FILES)
 

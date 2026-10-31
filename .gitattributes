@@ -1,3 +1,0 @@
-# Rewritten for Poros: upstream's changes to these are not merged. The driver is set by script/merge_upstream.ps1.
-README.md merge=ours
-res/translations/*.ts merge=ours

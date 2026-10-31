@@ -145,7 +145,7 @@ namespace Configs {
         int speed_test_mode = TestConfig::FULL;
         int speed_test_timeout_ms = 5000;
         QString simple_dl_url = "http://cachefly.cachefly.net/1mb.test";
-        bool allow_beta_update = false;
+        bool auto_update_app = true;
         bool use_custom_icons = false;
         bool follow_status_in_taskbar = true;
         bool skip_delete_confirmation = false;

@@ -11,6 +11,7 @@ namespace Configs_network {
         QString error;
         QByteArray data;
         QList<QPair<QByteArray, QByteArray>> header;
+        int status = 0;
     };
 
     struct DownloadProgressReport

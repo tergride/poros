@@ -8,10 +8,10 @@ Project Poros is a modified version of [Throne](https://github.com/throneproj/Th
 
 ## Build
 
-Needs the VS 2022 Build Tools C++ workload and a `toolchain` folder next to the repository (Go, Qt, OpenSSL, CMake, Ninja, protoc).
+Needs the VS 2022 Build Tools C++ workload, Go, static Qt 6, OpenSSL, CMake, Ninja and protoc. The script takes the tools from one folder:
 
 ```powershell
-script\build_windows.ps1
+script\build_windows.ps1 -Toolchain <folder>
 ```
 
 The output goes to `deployment\windows-amd64`. The build fails if a shipped file's name or properties mention a VPN or Throne, or if a binary contains a local path.
@@ -47,6 +47,12 @@ Poros has no installer: put the folder anywhere you can write to and run `Poros.
 
 Windows only offers three features through its own stores, so they exist outside the folder if you turn them on, and stay there if you delete the folder first: Start with system (a Task Scheduler task), and `poros://` links and the Open with entry (`HKCU\Software\Classes`). TUN mode makes Windows install the Wintun driver, and the system proxy setting is restored when Poros stops it.
 
-## Staying close to upstream
+## Updates and releases
 
-`core/` and the engine layers are merged from upstream with `script\merge_upstream.ps1`, so only names the OS or the user can see were changed there. To keep that merge small, parts of upstream that Poros leaves out are filtered in `CMakeLists.txt` rather than cut from its source lists, and settings that left the interface stay as hidden widgets in the settings dialog. The Go module, code identifiers, comments, `THRONE_*` variables and `thronectl` keep their names. `throne://` links and `throne-route-profile` data stay importable.
+Unless automatic updates are turned off in the settings, Poros checks for a new version at launch and every four hours, in `latest.json` of the newest release of this repository. It downloads the archive, verifies its size and SHA-256, and offers to install it. With automatic updates off, this happens only when you press Check. `updater.exe` replaces the program files after Poros exits and starts it again, and the `config` folder is not touched. If the install fails, the old files go back. A local build has no version, so it does not check.
+
+To release, add a section to `CHANGELOG.md` with `<!-- ru -->` and `<!-- en -->` parts, push `main`, and run `script\release_windows.ps1`. It builds the version, uploads the archive and `latest.json` as a draft, and publishes only when both are there. With `-DryRun` it builds and publishes nothing.
+
+## Upstream
+
+Poros does not follow Throne release by release. Fixes for performance, security and the connection itself are ported by hand, while the interface and the feature set are its own. The Go module, code identifiers, comments and `THRONE_*` variables keep their names for now. `throne://` links and `throne-route-profile` data stay importable.

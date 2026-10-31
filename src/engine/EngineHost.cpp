@@ -17,6 +17,7 @@
 #include "include/engine/headless/HeadlessPolicy.h"
 #include "include/engine/services/AssetUpdates.h"
 #include "include/engine/services/ProfileService.h"
+#include "include/engine/services/ReleaseUpdates.h"
 #include "include/engine/services/StatsService.h"
 #include "include/engine/supervisor/CoreSupervisor.h"
 #include "include/engine/tests/TestObserver.h"
@@ -498,6 +499,15 @@ namespace Engine {
                 Configs::dataManager->settingsRepo->Save();
             },
             [] { UI_update_all_remote_routes(true); },
+        });
+        // Not persisted: with the setting on, every launch checks, and then every four hours. Read on every tick, so switching it needs no restart.
+        auto lastReleaseCheck = std::make_shared<qint64>(0);
+        runner->Add({
+            {},
+            [] { return ReleaseUpdates::Available() && Configs::dataManager->settingsRepo->auto_update_app ? 240 : 0; },
+            [lastReleaseCheck] { return *lastReleaseCheck; },
+            [lastReleaseCheck](qint64 t) { *lastReleaseCheck = t; },
+            [] { runOnNewThread([] { ReleaseUpdates::instance()->check(false); }); },
         });
     }
 

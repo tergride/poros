@@ -17,6 +17,7 @@
 #include "include/engine/app/StartupElevation.h"
 #include "include/engine/services/AutoGroupService.h"
 #include "include/engine/services/GroupService.h"
+#include "include/engine/services/ReleaseUpdates.h"
 #include "include/global/Configs.hpp"
 #include "include/ui/utils/ConnectionModeController.h"
 
@@ -301,6 +302,38 @@ private slots:
         QCOMPARE(LockedRules(*copy), locked);
         QVERIFY(routeByKey("except-ru")->IsBuiltin());
         QCOMPARE(ruleSets(routeByKey("except-ru")), QStringList({"geosite-ru", "geoip-ru"}));
+    }
+
+    void newerVersionsCompareAsNumbers() {
+        QVERIFY(Engine::IsNewerVersion("0.10.0", "0.9.0"));
+        QVERIFY(Engine::IsNewerVersion("1.0.0", "0.99.9"));
+        QVERIFY(Engine::IsNewerVersion("1.0.1", "1.0"));
+        QVERIFY(!Engine::IsNewerVersion("0.1.0", "0.1.0"));
+        QVERIFY(!Engine::IsNewerVersion("0.1.0", "0.2.0"));
+    }
+
+    void releaseFeedReadsAPublishedRelease() {
+        const auto feed = Engine::ParseReleaseFeed(R"({"version": "0.2.0", "file": "Poros-0.2.0-windows-amd64.zip", "size": 42,
+            "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "notes": {"ru": "Новое", "en": "New"}})");
+        QVERIFY(feed.has_value());
+        QCOMPARE(feed->version, QString("0.2.0"));
+        QCOMPARE(feed->size, 42);
+        QCOMPARE(feed->notesRu, QString("Новое"));
+    }
+
+    void releaseFeedRefusesWhatWouldReachAPath_data() {
+        QTest::addColumn<QByteArray>("json");
+        const QByteArray sha = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        QTest::newRow("not json") << QByteArray("<html>");
+        QTest::newRow("file leaves the folder") << QByteArray(R"({"version": "0.2.0", "file": "../../Poros.exe", "size": 1, "sha256": ")" + sha + R"("})");
+        QTest::newRow("version shapes the url") << QByteArray(R"({"version": "0.2.0/../x", "file": "Poros-0.2.0-windows-amd64.zip", "size": 1, "sha256": ")" + sha + R"("})");
+        QTest::newRow("no checksum") << QByteArray(R"({"version": "0.2.0", "file": "Poros-0.2.0-windows-amd64.zip", "size": 1})");
+        QTest::newRow("no size") << QByteArray(R"({"version": "0.2.0", "file": "Poros-0.2.0-windows-amd64.zip", "sha256": ")" + sha + R"("})");
+    }
+
+    void releaseFeedRefusesWhatWouldReachAPath() {
+        QFETCH(QByteArray, json);
+        QVERIFY(!Engine::ParseReleaseFeed(json).has_value());
     }
 
     void cleanStartIsSimple() {

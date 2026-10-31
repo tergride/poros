@@ -184,17 +184,12 @@ namespace GuiStartup {
         switch (Configs::dataManager->settingsRepo->language) {
             case 1: // English
                 break;
-            case 2:
-                locale = "zh_CN";
-                break;
-            case 3:
-                locale = "fa_IR";
-                break;
             case 4:
                 locale = "ru_RU";
                 break;
             default:
-                locale = QLocale().name();
+                // Any Russian locale gets the one translation; another language has no file and stays in English, with its own formats.
+                locale = QLocale().language() == QLocale::Russian ? QStringLiteral("ru_RU") : QLocale().name();
         }
         QGuiApplication::tr("QT_LAYOUT_DIRECTION");
         guiStartupLoadTranslate(locale);

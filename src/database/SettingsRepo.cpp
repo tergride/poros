@@ -58,7 +58,7 @@ namespace Configs {
             {"use_mozilla_certs",             &use_mozilla_certs},
             {"kill_switch",                   &kill_switch},
             {"onboarding_done",               &onboarding_done},
-            {"allow_beta_update",             &allow_beta_update},
+            {"auto_update_app",               &auto_update_app},
             {"adblock_enable",                &adblock_enable},
             {"use_custom_icons",              &use_custom_icons},
             {"follow_status_in_taskbar",           &follow_status_in_taskbar},

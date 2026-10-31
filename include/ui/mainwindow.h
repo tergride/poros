@@ -322,7 +322,6 @@ private:
     // Set by request_unattended_exit: no dialog during the teardown, and a restart stays in the tray when the window was hidden.
     bool m_exitUnattended = false;
     bool m_exitKeepTray = false;
-    QMutex mu_download_update;
     QMutex mu_download_dashboard;
     class ConnectionsTreeModel *connectionsModel = nullptr;
     class ConnectionsTreeFilterProxyModel *connectionsFilterModel = nullptr;
@@ -560,6 +559,15 @@ private:
     QPointer<DialogVpnAuth> m_vpnAuthDialog;
 
     void CheckUpdate();
+
+    void setupReleaseUpdates();
+
+    void showReleaseUpdate();
+
+    void showReleaseNotes();
+
+    // The version the banner already announced by itself.
+    QString m_announcedUpdate;
 
     void setupConnectionList();
 
