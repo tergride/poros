@@ -5,7 +5,7 @@
 
 // Wire protocol v1, specified in spec/protocol.md of throneproj/Throne-api.
 namespace RemoteApi {
-    constexpr quint16 kDefaultPort = 9095;
+    constexpr quint16 kDefaultPort = 9195;
     constexpr char kProtocolVersion = 0x01;
     constexpr int kRandomSize = 16;
     constexpr int kServerHelloSize = kRandomSize;

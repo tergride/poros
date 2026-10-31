@@ -46,19 +46,6 @@ namespace Configs {
                 updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
             )
         )");
-        // Migrate existing databases created before type_sort_by was added.
-        if (!groupsColumnExists("type_sort_by"))
-            db.exec("ALTER TABLE groups ADD COLUMN type_sort_by INTEGER NOT NULL DEFAULT 0");
-        if (!groupsColumnExists("sub_options_json"))
-            db.exec("ALTER TABLE groups ADD COLUMN sub_options_json TEXT NOT NULL DEFAULT '{}'");
-        if (!groupsColumnExists("sub_metadata_json"))
-            db.exec("ALTER TABLE groups ADD COLUMN sub_metadata_json TEXT NOT NULL DEFAULT '{}'");
-        if (!groupsColumnExists("endpoint_json"))
-            db.exec("ALTER TABLE groups ADD COLUMN endpoint_json TEXT NOT NULL DEFAULT '{}'");
-        if (!groupsColumnExists("sort_method"))
-            db.exec("ALTER TABLE groups ADD COLUMN sort_method INTEGER NOT NULL DEFAULT 0");
-        if (!groupsColumnExists("sort_descending"))
-            db.exec("ALTER TABLE groups ADD COLUMN sort_descending INTEGER NOT NULL DEFAULT 0");
 
         db.exec(R"(
             CREATE TABLE IF NOT EXISTS groups_order (
@@ -66,15 +53,6 @@ namespace Configs {
                 display_order INTEGER NOT NULL
             )
         )");
-    }
-
-    bool GroupsRepo::groupsColumnExists(const char* columnName) const {
-        auto pragma = db.query("PRAGMA table_info(groups)");
-        if (!pragma) return false;
-        while (pragma->executeStep()) {
-            if (pragma->getColumn(1).getText() == std::string(columnName)) return true;
-        }
-        return false;
     }
 
     QJsonObject GroupsRepo::groupToJson(const Group* group) const {
@@ -295,6 +273,16 @@ namespace Configs {
             group->id,
             maxOrder + 1
         );
+        return true;
+    }
+
+    bool GroupsRepo::AddHiddenGroup(std::shared_ptr<Group>& group) {
+        QMutexLocker locker(&mutex);
+        if (group->id >= 0) return false;
+        int newId = NewGroupID();
+        group->id = newId;
+        memMap[newId] = group;
+        saveToDatabase(group.get(), group->id);
         return true;
     }
 

@@ -2,14 +2,146 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="ru_RU">
 <context>
-    <name>CommandPalette</name>
+    <name>AddSubscriptionDialog</name>
     <message>
-        <source>Search Commands and Settings</source>
-        <translation>Поиск команд и настроек</translation>
+        <source>Add subscription</source>
+        <translation>Добавить подписку</translation>
     </message>
     <message>
-        <source>Search commands and settings</source>
-        <translation>Поиск команд и настроек</translation>
+        <source>Link</source>
+        <translation>Ссылка</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Вставить</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Название</translation>
+    </message>
+    <message>
+        <source>Taken from the subscription</source>
+        <translation>Возьмём из подписки</translation>
+    </message>
+    <message>
+        <source>The subscription appears on the main screen as a separate group.</source>
+        <translation>Подписка появится на главном экране отдельной группой.</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>Добавить</translation>
+    </message>
+    <message>
+        <source>This link is one server, not a subscription. &lt;a href=&quot;advanced&quot;&gt;You can add it in the advanced mode.&lt;/a&gt;</source>
+        <translation>Это ссылка на один сервер, а не подписка. &lt;a href=&quot;advanced&quot;&gt;Добавить его можно в расширенном режиме.&lt;/a&gt;</translation>
+    </message>
+    <message>
+        <source>This does not look like a subscription link.</source>
+        <translation>Это не похоже на ссылку подписки.</translation>
+    </message>
+    <message>
+        <source>Checking the link…</source>
+        <translation>Проверяем ссылку…</translation>
+    </message>
+    <message>
+        <source>No servers were found at this link.</source>
+        <translation>По этой ссылке серверы не найдены.</translation>
+    </message>
+</context>
+<context>
+    <name>AdminPromptDialog</name>
+    <message>
+        <source>Kill switch needs administrator rights</source>
+        <translation>Для Kill switch нужны права администратора</translation>
+    </message>
+    <message>
+        <source>TLS spoofing needs administrator rights</source>
+        <translation>Для подмены TLS нужны права администратора</translation>
+    </message>
+    <message>
+        <source>TUN needs administrator rights</source>
+        <translation>Для TUN нужны права администратора</translation>
+    </message>
+    <message>
+        <source>The kill switch adds rules to the Windows firewall, so that traffic leaves only through Poros. Without rights the rules may not apply.</source>
+        <translation>Kill switch добавляет правила в брандмауэр Windows, чтобы трафик выходил только через Poros. Без прав правила могут не примениться.</translation>
+    </message>
+    <message>
+        <source>Spoofing works through the WinDivert driver, which Windows loads only for an administrator.</source>
+        <translation>Подмена работает через драйвер WinDivert, который Windows загружает только администратору.</translation>
+    </message>
+    <message>
+        <source>TUN creates a network adapter in Windows, which only an administrator may do. Poros will restart and connect to the server by itself.</source>
+        <translation>TUN создаёт в Windows сетевой адаптер, а это разрешено только администратору. Poros перезапустится и сразу подключится к серверу.</translation>
+    </message>
+    <message>
+        <source>System works without rights. &lt;a href=&quot;system&quot;&gt;Switch to System&lt;/a&gt;</source>
+        <translation>Без прав работает режим System. &lt;a href=&quot;system&quot;&gt;Переключиться на System&lt;/a&gt;</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>Try without rights</source>
+        <translation>Попробовать без прав</translation>
+    </message>
+    <message>
+        <source>Restart with rights</source>
+        <translation>Перезапустить с правами</translation>
+    </message>
+</context>
+<context>
+    <name>AdvancedPage</name>
+    <message>
+        <source>Profiles</source>
+        <translation>Профили</translation>
+    </message>
+    <message>
+        <source>Connections</source>
+        <translation>Соединения</translation>
+    </message>
+    <message>
+        <source>Routing</source>
+        <translation>Маршрутизация</translation>
+    </message>
+    <message>
+        <source>Logs</source>
+        <translation>Журнал</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>Статистика</translation>
+    </message>
+    <message>
+        <source>Tools</source>
+        <translation>Инструменты</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Настройки</translation>
+    </message>
+</context>
+<context>
+    <name>AutoGroupService</name>
+    <message>
+        <source>Auto</source>
+        <translation>Авто</translation>
+    </message>
+</context>
+<context>
+    <name>CommandPalette</name>
+    <message>
+        <source>Search Settings</source>
+        <translation>Поиск настроек</translation>
+    </message>
+    <message>
+        <source>Search settings</source>
+        <translation>Поиск настроек</translation>
     </message>
     <message>
         <source>↑↓ move · Enter run · Esc close · &gt; commands only · @ settings only</source>
@@ -34,6 +166,48 @@
     <message>
         <source> (off)</source>
         <translation> (выкл.)</translation>
+    </message>
+</context>
+<context>
+    <name>ConnectionBar</name>
+    <message>
+        <source>Routing profile</source>
+        <translation>Профиль маршрутизации</translation>
+    </message>
+    <message>
+        <source>Manage…</source>
+        <translation>Управление…</translation>
+    </message>
+</context>
+<context>
+    <name>ConnectionChoiceDialog</name>
+    <message>
+        <source>How should Poros connect?</source>
+        <translation>Как Poros будет подключаться?</translation>
+    </message>
+    <message>
+        <source>Poros remembers the answer, and you can change it next to the Start button.</source>
+        <translation>Poros запомнит ответ. Изменить его можно рядом с кнопкой «Старт».</translation>
+    </message>
+    <message>
+        <source>All the traffic of the computer, games and programs included.</source>
+        <translation>Весь трафик компьютера, включая игры и программы.</translation>
+    </message>
+    <message>
+        <source>Needs administrator rights</source>
+        <translation>Нужны права администратора</translation>
+    </message>
+    <message>
+        <source>Browsers and the programs that use the system proxy.</source>
+        <translation>Браузеры и программы, которые используют системный прокси.</translation>
+    </message>
+    <message>
+        <source>Works without administrator rights</source>
+        <translation>Работает без прав администратора</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>
@@ -144,69 +318,6 @@ Outbound: %4</translation>
     <message>
         <source>Click to sort by speed; right-click to choose total/down/up</source>
         <translation>Нажмите, чтобы отсортировать по скорости; ПКМ — выбор: всего/скачивание/отдача</translation>
-    </message>
-</context>
-<context>
-    <name>DiagnosticsTab</name>
-    <message>
-        <source>Performance profile</source>
-        <translation>Профилирование</translation>
-    </message>
-    <message>
-        <source>Profiles the Core using pprof. The profile itself does not contain any information about your configs, but if you include the logs too, there will be information about your configs in them.</source>
-        <translation>Профилирует ядро с помощью pprof. Сам профиль не содержит сведений о ваших конфигурациях, но если добавить логи, такие сведения будут в них.</translation>
-    </message>
-    <message>
-        <source>Records where goroutines wait on locks and channels.</source>
-        <translation>Записывает, где горутины ждут блокировок и каналов.</translation>
-    </message>
-    <message>
-        <source>Lock contention</source>
-        <translation>Конфликт блокировок (Lock contention)</translation>
-    </message>
-    <message>
-        <source>Execution trace (larger file)</source>
-        <translation>Трассировка выполнения (файл большего размера)</translation>
-    </message>
-    <message>
-        <source>Logs contain visited domains and server addresses.</source>
-        <translation>Логи содержат данные о посещённых доменах и адресах серверов.</translation>
-    </message>
-    <message>
-        <source>Include Poros logs</source>
-        <translation>Добавить логи Poros</translation>
-    </message>
-    <message>
-        <source>Start</source>
-        <translation>Запустить</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation>Остановить</translation>
-    </message>
-    <message>
-        <source>Show in folder</source>
-        <translation>Показать в папке</translation>
-    </message>
-    <message>
-        <source>Open folder</source>
-        <translation>Открыть папку</translation>
-    </message>
-    <message>
-        <source>Saved %1 (%2)</source>
-        <translation>Сохранено: %1 (%2)</translation>
-    </message>
-    <message>
-        <source>The core is not running.</source>
-        <translation>Ядро не запущено.</translation>
-    </message>
-    <message>
-        <source>Finishing…</source>
-        <translation>Завершение…</translation>
-    </message>
-    <message>
-        <source>Recording… %1 left</source>
-        <translation>Запись… Осталось %1</translation>
     </message>
 </context>
 <context>
@@ -573,6 +684,26 @@ It stays a preference, not a lock: if that profile stops working the selector st
     <message>
         <source>Restore from Backup...</source>
         <translation>Восстановить из копии</translation>
+    </message>
+    <message>
+        <source>WebDAV</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Keep backups on a WebDAV server such as Nextcloud, a NAS or Yandex Disk. Uploads include the parts checked under Create Backup.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>WebDAV Settings...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Upload to WebDAV</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore from WebDAV...</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Security</source>
@@ -1095,10 +1226,6 @@ Select which parts to restore:</source>
         <translation>127.0.0.1 (по умолчанию)</translation>
     </message>
     <message>
-        <source>Diagnostics</source>
-        <translation>Диагностика</translation>
-    </message>
-    <message>
         <source>Speed test timeout</source>
         <translation>Таймаут теста скорости</translation>
     </message>
@@ -1155,6 +1282,170 @@ Select which parts to restore:</source>
         <translation>Загрузка geo-файла Xray: %1</translation>
     </message>
     <message>
+        <source>Enter your WebDAV server in WebDAV Settings first.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>WebDAV Settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Server URL</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Username</source>
+        <translation type="unfinished">Имя пользователя</translation>
+    </message>
+    <message>
+        <source>Password</source>
+        <translation type="unfinished">Пароль</translation>
+    </message>
+    <message>
+        <source>Folder</source>
+        <translation type="unfinished">Папка</translation>
+    </message>
+    <message>
+        <source>Device name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connect through the proxy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Test</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Testing the connection...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connected. The backup folder is ready.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connection failed:
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The server URL must start with http:// or https://.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Uploading the backup...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Upload failed:
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Backup uploaded:
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Backup uploaded, but the backup list could not be updated: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore from WebDAV</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loading the backup list...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not list the backups:
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The backup list could not be read: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There are no backups in the WebDAV folder yet.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Created</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Device</source>
+        <translation type="unfinished">Устройство</translation>
+    </message>
+    <message>
+        <source>Platform</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Version</source>
+        <translation type="unfinished">Версия</translation>
+    </message>
+    <message>
+        <source>Parts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation type="unfinished">Размер</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+    <message>
+        <source>Unknown device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 (this device)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation type="unfinished">Неизвестно</translation>
+    </message>
+    <message>
+        <source>Downloading the backup...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not download the backup:
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete Backup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete this backup from the WebDAV server? This cannot be undone.
+
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deleting the backup...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not delete the backup:
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Backup deleted, but the backup list could not be updated: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Failed to create database snapshot: %1</source>
         <translation>Не удалось создать снимок базы данных: %1</translation>
     </message>
@@ -1197,6 +1488,10 @@ This backup may have been created with a newer version of the application.</sour
     <message>
         <source>This backup file does not contain any restorable data.</source>
         <translation>Этот файл резервной копии не содержит восстанавливаемых данных.</translation>
+    </message>
+    <message>
+        <source>Created by: %1</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Each selected part replaces the current data. This cannot be undone.
@@ -1528,203 +1823,6 @@ Poros will restart to complete the restore.</source>
     </message>
 </context>
 <context>
-    <name>DialogEditIpList</name>
-    <message>
-        <source>Edit IP list</source>
-        <translation>Редактирование списка IP</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Название</translation>
-    </message>
-    <message>
-        <source>Source</source>
-        <translation>Источник</translation>
-    </message>
-    <message>
-        <source>Manual</source>
-        <translation>Вручную</translation>
-    </message>
-    <message>
-        <source>URL</source>
-        <translation>URL</translation>
-    </message>
-    <message>
-        <source>Rule-set</source>
-        <translation>Набор правил</translation>
-    </message>
-    <message>
-        <source>Auto update</source>
-        <translation>Автообновление</translation>
-    </message>
-    <message>
-        <source>Enable</source>
-        <translation>Включить</translation>
-    </message>
-    <message>
-        <source>Every</source>
-        <translation>Каждые</translation>
-    </message>
-    <message>
-        <source>minutes</source>
-        <translation>мин.</translation>
-    </message>
-    <message>
-        <source>Entries</source>
-        <translation>Записи</translation>
-    </message>
-    <message>
-        <source>Fetch now</source>
-        <translation>Загрузить сейчас</translation>
-    </message>
-    <message>
-        <source>One entry per line: 1.2.3.4, 1.2.3.0/24, 1.2.3.4:443, [2606:4700::1]:443, 1.2.3.0/24 443 or 1.2.3.1-1.2.3.9</source>
-        <translation>По одной записи в строке: 1.2.3.4, 1.2.3.0/24, 1.2.3.4:443, [2606:4700::1]:443, 1.2.3.0/24 443 или 1.2.3.1-1.2.3.9</translation>
-    </message>
-    <message numerus="yes">
-        <source>%Ln unreadable</source>
-        <translation>
-            <numerusform>%Ln нераспознанная</numerusform>
-            <numerusform>%Ln нераспознанные</numerusform>
-            <numerusform>%Ln нераспознанных</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Must be from %1 to %2 minutes.</source>
-        <translation>Должно быть от %1 до %2 минут.</translation>
-    </message>
-    <message>
-        <source>New IP list</source>
-        <translation>Новый список IP</translation>
-    </message>
-    <message>
-        <source>Enter an http(s) URL.</source>
-        <translation>Введите URL http(s).</translation>
-    </message>
-    <message>
-        <source>Choose a rule-set.</source>
-        <translation>Выберите набор правил.</translation>
-    </message>
-    <message>
-        <source>Unknown rule-set &quot;%1&quot;. Pick a geoip-* name from the list or enter a rule-set URL.</source>
-        <translation>Неизвестный набор правил &quot;%1&quot;. Выберите имя geoip-* из списка или введите URL набора правил.</translation>
-    </message>
-    <message>
-        <source>IP list</source>
-        <translation>Список IP</translation>
-    </message>
-    <message>
-        <source>This list no longer exists.</source>
-        <translation>Этот список больше не существует.</translation>
-    </message>
-    <message>
-        <source>Managed by a scan that no longer exists.</source>
-        <translation>Управляется сканированием, которое больше не существует.</translation>
-    </message>
-    <message>
-        <source>Managed by scan %1</source>
-        <translation>Управляется сканированием %1</translation>
-    </message>
-    <message>
-        <source>geoip-ir, or a rule-set URL</source>
-        <translation>geoip-ir или URL набора правил</translation>
-    </message>
-    <message>
-        <source>Fetching…</source>
-        <translation>Загрузка…</translation>
-    </message>
-    <message>
-        <source>No entries yet.</source>
-        <translation>Записей пока нет.</translation>
-    </message>
-    <message numerus="yes">
-        <source>%Ln lines</source>
-        <translation>
-            <numerusform>%Ln строка</numerusform>
-            <numerusform>%Ln строки</numerusform>
-            <numerusform>%Ln строк</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>%Ln entries</source>
-        <translation>
-            <numerusform>%Ln запись</numerusform>
-            <numerusform>%Ln записи</numerusform>
-            <numerusform>%Ln записей</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>%Ln duplicates</source>
-        <translation>
-            <numerusform>%Ln дубликат</numerusform>
-            <numerusform>%Ln дубликата</numerusform>
-            <numerusform>%Ln дубликатов</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>Fetched %Ln entries</source>
-        <translation>
-            <numerusform>Загружена %Ln запись</numerusform>
-            <numerusform>Загружено %Ln записи</numerusform>
-            <numerusform>Загружено %Ln записей</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>showing the first %Ln</source>
-        <translation>
-            <numerusform>показана первая %Ln</numerusform>
-            <numerusform>показаны первые %Ln</numerusform>
-            <numerusform>показаны первые %Ln</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>The entries are fetched when you press Fetch now or OK.</source>
-        <translation>Записи загружаются при нажатии «Загрузить сейчас» или OK.</translation>
-    </message>
-    <message>
-        <source>updated %1</source>
-        <translation>обновлено %1</translation>
-    </message>
-    <message>
-        <source>last update failed: %1</source>
-        <translation>последнее обновление не удалось: %1</translation>
-    </message>
-    <message>
-        <source>Fetch failed: %1</source>
-        <translation>Ошибка загрузки: %1</translation>
-    </message>
-    <message>
-        <source>Could not fetch the list:
-%1</source>
-        <translation>Не удалось загрузить список:
-%1</translation>
-    </message>
-    <message>
-        <source>This list is being refreshed. Save again when the refresh has finished.</source>
-        <translation>Этот список сейчас обновляется. Сохраните его снова, когда обновление завершится.</translation>
-    </message>
-    <message numerus="yes">
-        <source>%Ln entries could not be read and will be dropped.</source>
-        <translation>
-            <numerusform>%Ln запись не удалось распознать, она будет удалена.</numerusform>
-            <numerusform>%Ln записи не удалось распознать, они будут удалены.</numerusform>
-            <numerusform>%Ln записей не удалось распознать, они будут удалены.</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>For example: %1</source>
-        <translation>Например: %1</translation>
-    </message>
-    <message>
-        <source>Save the list without them?</source>
-        <translation>Сохранить список без них?</translation>
-    </message>
-    <message>
-        <source>Failed to store the IP list.</source>
-        <translation>Не удалось сохранить список IP.</translation>
-    </message>
-</context>
-<context>
     <name>DialogEditOtp</name>
     <message>
         <source>OTP Profile</source>
@@ -1910,20 +2008,20 @@ Poros will restart to complete the restore.</source>
         <translation>Выкл.</translation>
     </message>
     <message>
-        <source>Brutal Download Speed</source>
-        <translation>Скорость скачивания (Brutal)</translation>
-    </message>
-    <message>
-        <source>Brutal Upload Speed</source>
-        <translation>Скорость отдачи (Brutal)</translation>
-    </message>
-    <message>
         <source>Advanced Settings</source>
         <translation>Доп. настройки</translation>
     </message>
     <message>
         <source>Finalmask</source>
         <translation>Finalmask</translation>
+    </message>
+    <message>
+        <source>Custom</source>
+        <translation>Свой</translation>
+    </message>
+    <message>
+        <source>Configure</source>
+        <translation>Настроить</translation>
     </message>
     <message>
         <source>Network Settings (%1)</source>
@@ -2264,22 +2362,6 @@ Poros will restart to complete the restore.</source>
     <message>
         <source>Already set</source>
         <translation>Уже задано</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Overrides mux to On&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Принудительно включает мультиплексирование&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>Enable TCP Brutal</source>
-        <translation>Включить TCP Brutal</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Server to Client TCP Brutal Speed&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Скорость TCP Brutal от сервера к клиенту&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>Mb/s</source>
-        <translation>Мбит/с</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -2919,181 +3001,6 @@ Poros will restart to complete the restore.</source>
     </message>
 </context>
 <context>
-    <name>DialogIpLists</name>
-    <message>
-        <source>IP Lists</source>
-        <translation>Списки IP</translation>
-    </message>
-    <message>
-        <source>New</source>
-        <translation>Создать</translation>
-    </message>
-    <message>
-        <source>Import</source>
-        <translation>Импорт</translation>
-    </message>
-    <message>
-        <source>Duplicate</source>
-        <translation>Дублировать</translation>
-    </message>
-    <message>
-        <source>Export</source>
-        <translation>Экспорт</translation>
-    </message>
-    <message numerus="yes">
-        <source>…and %Ln more</source>
-        <translation>
-            <numerusform>…и еще %Ln</numerusform>
-            <numerusform>…и еще %Ln</numerusform>
-            <numerusform>…и еще %Ln</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>From text…</source>
-        <translation>Из текста…</translation>
-    </message>
-    <message>
-        <source>From file…</source>
-        <translation>Из файла…</translation>
-    </message>
-    <message>
-        <source>From URL…</source>
-        <translation>По URL…</translation>
-    </message>
-    <message>
-        <source>From rule-set…</source>
-        <translation>Из набора правил…</translation>
-    </message>
-    <message>
-        <source>Add default lists</source>
-        <translation>Добавить списки по умолчанию</translation>
-    </message>
-    <message>
-        <source>Every default list is already present.</source>
-        <translation>Все списки по умолчанию уже добавлены.</translation>
-    </message>
-    <message>
-        <source>Importing…</source>
-        <translation>Импорт…</translation>
-    </message>
-    <message>
-        <source>Delete IP list</source>
-        <translation>Удалить список IP</translation>
-    </message>
-    <message>
-        <source>&quot;%1&quot; is being refreshed. Delete it when the refresh has finished.</source>
-        <translation>Список &quot;%1&quot; сейчас обновляется. Удалите его, когда обновление завершится.</translation>
-    </message>
-    <message>
-        <source>Delete the IP list &quot;%1&quot;?</source>
-        <translation>Удалить список IP &quot;%1&quot;?</translation>
-    </message>
-    <message>
-        <source>Scan &quot;%1&quot; is running and stores its results in this list. Pause it first.</source>
-        <translation>Сканирование &quot;%1&quot; выполняется и сохраняет результаты в этот список. Сначала приостановите его.</translation>
-    </message>
-    <message>
-        <source>It holds the results of scan &quot;%1&quot;, which creates a new result list the next time it runs.</source>
-        <translation>В нем хранятся результаты сканирования &quot;%1&quot;, которое при следующем запуске создаст новый список результатов.</translation>
-    </message>
-    <message>
-        <source>These scans use it as their targets: %1</source>
-        <translation>Этот список используется как цели в сканированиях: %1</translation>
-    </message>
-    <message>
-        <source>%1 copy</source>
-        <translation>%1 (копия)</translation>
-    </message>
-    <message>
-        <source>Duplicate IP list</source>
-        <translation>Дублировать список IP</translation>
-    </message>
-    <message>
-        <source>Name of the copy:</source>
-        <translation>Название копии:</translation>
-    </message>
-    <message>
-        <source>Failed to copy the IP list.</source>
-        <translation>Не удалось скопировать список IP.</translation>
-    </message>
-    <message>
-        <source>Export IP list</source>
-        <translation>Экспорт списка IP</translation>
-    </message>
-    <message>
-        <source>Text files (*.txt);;All files (*)</source>
-        <translation>Текстовые файлы (*.txt);;Все файлы (*)</translation>
-    </message>
-    <message>
-        <source>Cannot write to: %1</source>
-        <translation>Не удается записать файл: %1</translation>
-    </message>
-    <message numerus="yes">
-        <source>Exported %Ln entries to:
-%1</source>
-        <translation>
-            <numerusform>Экспортирована %Ln запись в:
-%1</numerusform>
-            <numerusform>Экспортировано %Ln записи в:
-%1</numerusform>
-            <numerusform>Экспортировано %Ln записей в:
-%1</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Import IP lists</source>
-        <translation>Импорт списков IP</translation>
-    </message>
-    <message>
-        <source>All files (*);;Text and CSV (*.txt *.csv *.lst *.list);;sing-box rule-sets (*.srs *.json)</source>
-        <translation>Все файлы (*);;Текст и CSV (*.txt *.csv *.lst *.list);;Наборы правил sing-box (*.srs *.json)</translation>
-    </message>
-    <message>
-        <source>%1: cannot be opened</source>
-        <translation>%1: не удается открыть</translation>
-    </message>
-    <message>
-        <source>%1: larger than 50 MB, skipped</source>
-        <translation>%1: размер превышает 50 МБ, пропущено</translation>
-    </message>
-    <message>
-        <source>%1: no addresses found</source>
-        <translation>%1: адреса не найдены</translation>
-    </message>
-    <message>
-        <source>%1: could not be stored</source>
-        <translation>%1: не удалось сохранить</translation>
-    </message>
-    <message numerus="yes">
-        <source>%1: %Ln unreadable entries skipped</source>
-        <translation>
-            <numerusform>%1: пропущена %Ln нераспознанная запись</numerusform>
-            <numerusform>%1: пропущены %Ln нераспознанные записи</numerusform>
-            <numerusform>%1: пропущено %Ln нераспознанных записей</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Nothing could be imported:</source>
-        <translation>Ничего не удалось импортировать:</translation>
-    </message>
-    <message numerus="yes">
-        <source>Imported %Ln list(s)</source>
-        <translation>
-            <numerusform>Импортирован %Ln список</numerusform>
-            <numerusform>Импортировано %Ln списка</numerusform>
-            <numerusform>Импортировано %Ln списков</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>with %Ln entries.</source>
-        <translation>
-            <numerusform>с %Ln записью.</numerusform>
-            <numerusform>с %Ln записями.</numerusform>
-            <numerusform>с %Ln записями.</numerusform>
-        </translation>
-    </message>
-</context>
-<context>
     <name>DialogManageGroups</name>
     <message>
         <source>Groups</source>
@@ -3603,6 +3510,10 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>Добавить удалённые профили маршрутизации</translation>
     </message>
     <message>
+        <source>It uses its own DNS servers: remote %1, direct %2.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Use an IP address, for example 223.5.5.5 or tls://1.1.1.1: this server resolves the names of the others.</source>
         <translation>Укажите IP-адрес, например 223.5.5.5 или tls://1.1.1.1: этот сервер разрешает имена остальных.</translation>
     </message>
@@ -3645,6 +3556,10 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>The core raises values below 1024 to 1024.</source>
         <translation>Значения меньше 1024 ядро увеличивает до 1024.</translation>
+    </message>
+    <message>
+        <source>Built-in presets cannot be changed. Clone one to make your own.</source>
+        <translation>Встроенные пресеты не меняются. Склонируйте пресет, чтобы сделать свой.</translation>
     </message>
     <message>
         <source>It is on but empty: click Edit DNS Object to write one, or turn it off.</source>
@@ -3729,41 +3644,6 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>Add these remote routing profiles?</source>
         <translation>Добавить эти удалённые профили маршрутизации?</translation>
-    </message>
-</context>
-<context>
-    <name>DialogNewScan</name>
-    <message>
-        <source>Scan %1</source>
-        <translation>Сканирование %1</translation>
-    </message>
-    <message>
-        <source>New scan</source>
-        <translation>Новое сканирование</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Название</translation>
-    </message>
-    <message>
-        <source>Generic scan</source>
-        <translation>Обычное сканирование</translation>
-    </message>
-    <message>
-        <source>WARP scan</source>
-        <translation>Сканирование WARP</translation>
-    </message>
-    <message>
-        <source>Probe addresses with ping, TCP, TLS or HTTP, and optionally test them through one of your profiles.</source>
-        <translation>Проверяет адреса с помощью ping, TCP, TLS или HTTP и при необходимости тестирует их через один из ваших профилей.</translation>
-    </message>
-    <message>
-        <source>Find Cloudflare WARP endpoints that complete a WireGuard, AmneziaWG or MASQUE connection.</source>
-        <translation>Находит конечные точки Cloudflare WARP, через которые удается установить подключение WireGuard, AmneziaWG или MASQUE.</translation>
-    </message>
-    <message>
-        <source>Failed to store the scan.</source>
-        <translation>Не удалось сохранить сканирование.</translation>
     </message>
 </context>
 <context>
@@ -3946,10 +3826,6 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>Мультиплексирование</translation>
     </message>
     <message>
-        <source>Protocol</source>
-        <translation>Протокол</translation>
-    </message>
-    <message>
         <source>Concurrency</source>
         <translation>Кол-во потоков</translation>
     </message>
@@ -4076,658 +3952,6 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>Disable Path MTU Discovery</source>
         <translation>Отключить Path MTU Discovery</translation>
-    </message>
-</context>
-<context>
-    <name>DialogScanInstance</name>
-    <message>
-        <source>IP Scanner</source>
-        <translation>IP-сканер</translation>
-    </message>
-    <message>
-        <source>Name</source>
-        <translation>Название</translation>
-    </message>
-    <message>
-        <source>Targets</source>
-        <translation>Цели</translation>
-    </message>
-    <message>
-        <source>Base IP list</source>
-        <translation>Исходный список IP</translation>
-    </message>
-    <message>
-        <source>Manage</source>
-        <translation>Управление</translation>
-    </message>
-    <message>
-        <source>Use built-in WARP ranges</source>
-        <translation>Использовать встроенные диапазоны WARP</translation>
-    </message>
-    <message>
-        <source>Ports</source>
-        <translation>Порты</translation>
-    </message>
-    <message>
-        <source>Ports to scan. Targets left without any port are probed on port 443 (80 for plain HTTP).</source>
-        <translation>Порты для сканирования. Цели без порта проверяются на порту 443 (80 для обычного HTTP).</translation>
-    </message>
-    <message>
-        <source>Fill in the ports Cloudflare&apos;s WARP endpoints listen on</source>
-        <translation>Подставить порты, которые слушают конечные точки Cloudflare WARP</translation>
-    </message>
-    <message>
-        <source>WARP ports</source>
-        <translation>Порты WARP</translation>
-    </message>
-    <message>
-        <source>How these ports combine with the ports stored in the IP list.</source>
-        <translation>Как эти порты сочетаются с портами, сохраненными в списке IP.</translation>
-    </message>
-    <message>
-        <source>Shuffle the target order</source>
-        <translation>Перемешивать порядок целей</translation>
-    </message>
-    <message>
-        <source>Off: IPv6 ranges in the list are skipped.</source>
-        <translation>Выключено: диапазоны IPv6 из списка пропускаются.</translation>
-    </message>
-    <message>
-        <source>Scan IPv6 addresses</source>
-        <translation>Сканировать адреса IPv6</translation>
-    </message>
-    <message>
-        <source>Stop after (results)</source>
-        <translation>Лимит результатов</translation>
-    </message>
-    <message>
-        <source>The scan completes once its result list holds this many entries. Empty or 0: no limit.</source>
-        <translation>Сканирование завершается, когда в его списке результатов наберется столько записей. Пусто или 0: без ограничения.</translation>
-    </message>
-    <message>
-        <source>Concurrency</source>
-        <translation>Кол-во потоков</translation>
-    </message>
-    <message>
-        <source>Targets probed or tested at the same time, in every phase.</source>
-        <translation>Число целей, проверяемых или тестируемых одновременно, на каждом этапе.</translation>
-    </message>
-    <message>
-        <source>Spawn interval (ms)</source>
-        <translation>Интервал запуска (мс)</translation>
-    </message>
-    <message>
-        <source>Delay between starting two probes.</source>
-        <translation>Задержка между запусками двух проверок.</translation>
-    </message>
-    <message>
-        <source>Phases</source>
-        <translation>Этапы</translation>
-    </message>
-    <message>
-        <source>Results</source>
-        <translation>Результаты</translation>
-    </message>
-    <message>
-        <source>Save as IP list</source>
-        <translation>Сохранить как список IP</translation>
-    </message>
-    <message>
-        <source>Copies the selected entries, or every entry when none is selected.</source>
-        <translation>Копирует выбранные записи или все записи, если ничего не выбрано.</translation>
-    </message>
-    <message>
-        <source>Copy</source>
-        <translation>Копировать</translation>
-    </message>
-    <message>
-        <source>Export</source>
-        <translation>Экспорт</translation>
-    </message>
-    <message>
-        <source>Remove selected</source>
-        <translation>Удалить выбранные</translation>
-    </message>
-    <message>
-        <source>Start</source>
-        <translation>Запустить</translation>
-    </message>
-    <message>
-        <source>Pause</source>
-        <translation>Приостановить</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation>ОК</translation>
-    </message>
-    <message>
-        <source>Ignore the list&apos;s ports</source>
-        <translation>Игнорировать порты списка</translation>
-    </message>
-    <message>
-        <source>Merge with the list&apos;s ports</source>
-        <translation>Объединить с портами списка</translation>
-    </message>
-    <message>
-        <source>Only the list&apos;s ports</source>
-        <translation>Только порты списка</translation>
-    </message>
-    <message>
-        <source>Your ports are ignored; entries without a port are probed on port 443 (80 for plain HTTP).</source>
-        <translation>Ваши порты игнорируются; записи без порта проверяются на порту 443 (80 для обычного HTTP).</translation>
-    </message>
-    <message>
-        <source>No limit</source>
-        <translation>Без ограничения</translation>
-    </message>
-    <message>
-        <source>Selects an IP list of Cloudflare&apos;s WARP ranges for the chosen mode, creating it when missing, and sets the matching ports.</source>
-        <translation>Выбирает список IP с диапазонами Cloudflare WARP для выбранного режима (создает его, если его нет) и подставляет соответствующие порты.</translation>
-    </message>
-    <message>
-        <source>ICMP (ping)</source>
-        <translation>ICMP (ping)</translation>
-    </message>
-    <message>
-        <source>Timeout (ms)</source>
-        <translation>Таймаут (мс)</translation>
-    </message>
-    <message>
-        <source>Echo requests</source>
-        <translation>Число эхо-запросов</translation>
-    </message>
-    <message>
-        <source>TCP connect</source>
-        <translation>TCP-подключение</translation>
-    </message>
-    <message>
-        <source>Attempts</source>
-        <translation>Число попыток</translation>
-    </message>
-    <message>
-        <source>TLS / HTTP</source>
-        <translation>TLS / HTTP</translation>
-    </message>
-    <message>
-        <source>Use TLS</source>
-        <translation>Использовать TLS</translation>
-    </message>
-    <message>
-        <source>The target address</source>
-        <translation>Адрес цели</translation>
-    </message>
-    <message>
-        <source>SNI</source>
-        <translation>SNI</translation>
-    </message>
-    <message>
-        <source>The SNI, or the target address</source>
-        <translation>SNI или адрес цели</translation>
-    </message>
-    <message>
-        <source>Host header</source>
-        <translation>Заголовок Host</translation>
-    </message>
-    <message>
-        <source>Path</source>
-        <translation>Path</translation>
-    </message>
-    <message>
-        <source>None (TLS handshake only)</source>
-        <translation>Нет (только хендшейк TLS)</translation>
-    </message>
-    <message>
-        <source>A request passes only when the answer is 200 OK.</source>
-        <translation>Запрос считается успешным, только если получен ответ 200 OK.</translation>
-    </message>
-    <message>
-        <source>Method</source>
-        <translation>Метод</translation>
-    </message>
-    <message>
-        <source>HTTP version</source>
-        <translation>Версия HTTP</translation>
-    </message>
-    <message>
-        <source>From the HTTP version</source>
-        <translation>По версии HTTP</translation>
-    </message>
-    <message>
-        <source>ALPN</source>
-        <translation>ALPN</translation>
-    </message>
-    <message>
-        <source>Default</source>
-        <translation>По умолчанию</translation>
-    </message>
-    <message>
-        <source>Minimum TLS version</source>
-        <translation>Минимальная версия TLS</translation>
-    </message>
-    <message>
-        <source>Maximum TLS version</source>
-        <translation>Максимальная версия TLS</translation>
-    </message>
-    <message>
-        <source>uTLS fingerprint</source>
-        <translation>uTLS fingerprint</translation>
-    </message>
-    <message>
-        <source>Allow insecure certificates</source>
-        <translation>Allow insecure</translation>
-    </message>
-    <message>
-        <source>Disable SNI</source>
-        <translation>Отключить SNI</translation>
-    </message>
-    <message>
-        <source>Fragment the TLS handshake</source>
-        <translation>Фрагментировать хендшейк TLS</translation>
-    </message>
-    <message>
-        <source>Fragment fallback delay (ms)</source>
-        <translation>Резервная задержка фрагментации (мс)</translation>
-    </message>
-    <message>
-        <source>Fragment TLS records</source>
-        <translation>Фрагментировать записи TLS</translation>
-    </message>
-    <message>
-        <source>Mixed-case SNI</source>
-        <translation>SNI в смешанном регистре</translation>
-    </message>
-    <message>
-        <source>Config test</source>
-        <translation>Тест конфигурации</translation>
-    </message>
-    <message>
-        <source>Candidates that pass the probes are tested through a copy of this profile pointed at each of them.</source>
-        <translation>Кандидаты, прошедшие проверки, тестируются через копию этого профиля, направленную на каждый из них.</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation>Профиль</translation>
-    </message>
-    <message>
-        <source>Test URL</source>
-        <translation>URL проверки</translation>
-    </message>
-    <message>
-        <source>Report warm latency (two requests per target)</source>
-        <translation>Измерять задержку на прогретом соединении (два запроса на цель)</translation>
-    </message>
-    <message>
-        <source>WARP test</source>
-        <translation>Тест WARP</translation>
-    </message>
-    <message>
-        <source>Candidates that pass the probes are tested by connecting to WARP through them.</source>
-        <translation>Кандидаты, прошедшие проверки, тестируются подключением к WARP через них.</translation>
-    </message>
-    <message>
-        <source>Mode</source>
-        <translation>Режим</translation>
-    </message>
-    <message>
-        <source>HTTP/3, falling back to HTTP/2</source>
-        <translation>HTTP/3 с откатом на HTTP/2</translation>
-    </message>
-    <message>
-        <source>HTTP/3 only</source>
-        <translation>Только HTTP/3</translation>
-    </message>
-    <message>
-        <source>HTTP/2 only</source>
-        <translation>Только HTTP/2</translation>
-    </message>
-    <message>
-        <source>MASQUE transport</source>
-        <translation>Транспорт MASQUE</translation>
-    </message>
-    <message>
-        <source>Dedicated for this scan (recommended)</source>
-        <translation>Отдельный для этого сканирования (рекомендуется)</translation>
-    </message>
-    <message>
-        <source>From a profile</source>
-        <translation>Из профиля</translation>
-    </message>
-    <message>
-        <source>Built-in WARP settings</source>
-        <translation>Встроенные настройки WARP</translation>
-    </message>
-    <message>
-        <source>Identity</source>
-        <translation>Идентификатор</translation>
-    </message>
-    <message>
-        <source>Register</source>
-        <translation>Зарегистрировать</translation>
-    </message>
-    <message>
-        <source>Device</source>
-        <translation>Устройство</translation>
-    </message>
-    <message>
-        <source>MTU</source>
-        <translation>MTU</translation>
-    </message>
-    <message>
-        <source>Junk packets (Jc)</source>
-        <translation>Junk packets (Jc)</translation>
-    </message>
-    <message>
-        <source>Junk minimum size (Jmin)</source>
-        <translation>Junk minimum size (Jmin)</translation>
-    </message>
-    <message>
-        <source>Junk maximum size (Jmax)</source>
-        <translation>Junk maximum size (Jmax)</translation>
-    </message>
-    <message>
-        <source>Jmin must not be larger than Jmax.</source>
-        <translation>Jmin не может быть больше Jmax.</translation>
-    </message>
-    <message>
-        <source>WARP scan</source>
-        <translation>Сканирование WARP</translation>
-    </message>
-    <message>
-        <source>Generic scan</source>
-        <translation>Обычное сканирование</translation>
-    </message>
-    <message>
-        <source>%1 - IP Scanner</source>
-        <translation>%1 - IP-сканер</translation>
-    </message>
-    <message>
-        <source>Enter a name for the scan.</source>
-        <translation>Введите название сканирования.</translation>
-    </message>
-    <message>
-        <source>&quot;%1&quot; is not a valid port (1-65535).</source>
-        <translation>&quot;%1&quot; — недопустимый порт (1-65535).</translation>
-    </message>
-    <message>
-        <source>Must be from %1 to %2.</source>
-        <translation>Должно быть от %1 до %2.</translation>
-    </message>
-    <message>
-        <source>Must not contain control characters.</source>
-        <translation>Не должно содержать управляющих символов.</translation>
-    </message>
-    <message>
-        <source>Use % only in an escape such as %20 (write a literal % as %25), for example /generate_204.</source>
-        <translation>Используйте % только в escape-последовательностях вроде %20 (сам знак % записывается как %25). Пример: /generate_204.</translation>
-    </message>
-    <message>
-        <source>The minimum TLS version is higher than the maximum, so every handshake would fail.</source>
-        <translation>Минимальная версия TLS выше максимальной, поэтому любой хендшейк завершится ошибкой.</translation>
-    </message>
-    <message>
-        <source>HTTP/2 needs &quot;h2&quot; in the ALPN list; add it or leave ALPN empty.</source>
-        <translation>Для HTTP/2 нужен &quot;h2&quot; в списке ALPN; добавьте его или оставьте ALPN пустым.</translation>
-    </message>
-    <message>
-        <source>The method &quot;None&quot; only checks the TLS handshake, so it needs TLS.</source>
-        <translation>Метод &quot;Нет&quot; проверяет только хендшейк TLS, поэтому требует TLS.</translation>
-    </message>
-    <message>
-        <source>HTTP/3 needs TLS.</source>
-        <translation>HTTP/3 требует TLS.</translation>
-    </message>
-    <message>
-        <source>Stop after must be between %1 and %2 results; leave it empty for no limit.</source>
-        <translation>Лимит результатов должен быть от %1 до %2; оставьте поле пустым, чтобы снять ограничение.</translation>
-    </message>
-    <message>
-        <source>Concurrency must be between %1 and %2.</source>
-        <translation>Кол-во потоков должно быть от %1 до %2.</translation>
-    </message>
-    <message>
-        <source>Spawn interval must be between %1 and %2 ms.</source>
-        <translation>Интервал запуска должен быть от %1 до %2 мс.</translation>
-    </message>
-    <message>
-        <source>ICMP (ping): the timeout must be between %1 and %2 ms.</source>
-        <translation>ICMP (ping): таймаут должен быть от %1 до %2 мс.</translation>
-    </message>
-    <message>
-        <source>ICMP (ping): echo requests must be between %1 and %2.</source>
-        <translation>ICMP (ping): число эхо-запросов должно быть от %1 до %2.</translation>
-    </message>
-    <message>
-        <source>TCP connect: the timeout must be between %1 and %2 ms.</source>
-        <translation>TCP-подключение: таймаут должен быть от %1 до %2 мс.</translation>
-    </message>
-    <message>
-        <source>TCP connect: attempts must be between %1 and %2.</source>
-        <translation>TCP-подключение: число попыток должно быть от %1 до %2.</translation>
-    </message>
-    <message>
-        <source>TLS / HTTP: the fragment fallback delay must be between %1 and %2 ms.</source>
-        <translation>TLS / HTTP: резервная задержка фрагментации должна быть от %1 до %2 мс.</translation>
-    </message>
-    <message>
-        <source>TLS / HTTP: the timeout must be between %1 and %2 ms.</source>
-        <translation>TLS / HTTP: таймаут должен быть от %1 до %2 мс.</translation>
-    </message>
-    <message>
-        <source>Config test: the timeout must be between %1 and %2 ms.</source>
-        <translation>Тест конфигурации: таймаут должен быть от %1 до %2 мс.</translation>
-    </message>
-    <message>
-        <source>WARP test: the MTU must be between %1 and %2.</source>
-        <translation>Тест WARP: MTU должен быть от %1 до %2.</translation>
-    </message>
-    <message>
-        <source>WARP test: Jc must be between %1 and %2.</source>
-        <translation>Тест WARP: Jc должен быть от %1 до %2.</translation>
-    </message>
-    <message>
-        <source>WARP test: Jmin must be between %1 and %2.</source>
-        <translation>Тест WARP: Jmin должен быть от %1 до %2.</translation>
-    </message>
-    <message>
-        <source>WARP test: Jmax must be between %1 and %2.</source>
-        <translation>Тест WARP: Jmax должен быть от %1 до %2.</translation>
-    </message>
-    <message>
-        <source>WARP test: the timeout must be between %1 and %2 ms.</source>
-        <translation>Тест WARP: таймаут должен быть от %1 до %2 мс.</translation>
-    </message>
-    <message>
-        <source>WARP test: Jmin must not be larger than Jmax.</source>
-        <translation>Тест WARP: Jmin не может быть больше Jmax.</translation>
-    </message>
-    <message>
-        <source>Pause the scan before changing its settings.</source>
-        <translation>Приостановите сканирование, прежде чем менять его настройки.</translation>
-    </message>
-    <message>
-        <source>The scan no longer exists.</source>
-        <translation>Сканирование больше не существует.</translation>
-    </message>
-    <message>
-        <source>Failed to store the scan.</source>
-        <translation>Не удалось сохранить сканирование.</translation>
-    </message>
-    <message>
-        <source>The settings could not be saved:
-%1
-
-Close without saving?</source>
-        <translation>Не удалось сохранить настройки:
-%1
-
-Закрыть без сохранения?</translation>
-    </message>
-    <message>
-        <source>Select an IP list…</source>
-        <translation>Выберите список IP…</translation>
-    </message>
-    <message numerus="yes">
-        <source>%1 (%n entries)</source>
-        <translation>
-            <numerusform>%1 (%n запись)</numerusform>
-            <numerusform>%1 (%n записи)</numerusform>
-            <numerusform>%1 (%n записей)</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>None</source>
-        <translation>Нет</translation>
-    </message>
-    <message>
-        <source>Select a profile…</source>
-        <translation>Выберите профиль…</translation>
-    </message>
-    <message>
-        <source>Registering a WARP device…</source>
-        <translation>Регистрация устройства WARP…</translation>
-    </message>
-    <message>
-        <source>No device is registered for this scan yet.</source>
-        <translation>Для этого сканирования еще не зарегистрировано устройство.</translation>
-    </message>
-    <message>
-        <source>The registered device is for %1; register a new one for this mode.</source>
-        <translation>Зарегистрированное устройство предназначено для %1; зарегистрируйте новое для этого режима.</translation>
-    </message>
-    <message>
-        <source>A WARP device is registered for this scan.</source>
-        <translation>Для этого сканирования зарегистрировано устройство WARP.</translation>
-    </message>
-    <message>
-        <source>Register again</source>
-        <translation>Зарегистрировать заново</translation>
-    </message>
-    <message>
-        <source>Failed to store the IP list.</source>
-        <translation>Не удалось сохранить список IP.</translation>
-    </message>
-    <message>
-        <source>MASQUE: %1</source>
-        <translation>MASQUE: %1</translation>
-    </message>
-    <message>
-        <source>WireGuard: %1</source>
-        <translation>WireGuard: %1</translation>
-    </message>
-    <message numerus="yes">
-        <source>WireGuard, all %n known ports</source>
-        <translation>
-            <numerusform>WireGuard, все известные порты (%n)</numerusform>
-            <numerusform>WireGuard, все известные порты (%n)</numerusform>
-            <numerusform>WireGuard, все известные порты (%n)</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>WARP registration failed</source>
-        <translation>Не удалось зарегистрировать устройство WARP</translation>
-    </message>
-    <message>
-        <source>Unknown error</source>
-        <translation>Неизвестная ошибка</translation>
-    </message>
-    <message>
-        <source>Resume</source>
-        <translation>Продолжить</translation>
-    </message>
-    <message>
-        <source>No results yet.</source>
-        <translation>Результатов пока нет.</translation>
-    </message>
-    <message>
-        <source>Showing the first %1 of %2 results</source>
-        <translation>Показаны первые результаты: %1 из %2</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n result(s)</source>
-        <translation>
-            <numerusform>%n результат</numerusform>
-            <numerusform>%n результата</numerusform>
-            <numerusform>%n результатов</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Name of the new IP list:</source>
-        <translation>Название нового списка IP:</translation>
-    </message>
-    <message>
-        <source>%1 results</source>
-        <translation>Результаты %1</translation>
-    </message>
-    <message numerus="yes">
-        <source>Saved %n entries to the IP list &quot;%1&quot;.</source>
-        <translation>
-            <numerusform>Сохранена %n запись в список IP &quot;%1&quot;.</numerusform>
-            <numerusform>Сохранено %n записи в список IP &quot;%1&quot;.</numerusform>
-            <numerusform>Сохранено %n записей в список IP &quot;%1&quot;.</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>Copied %n entries</source>
-        <translation>
-            <numerusform>Скопирована %n запись</numerusform>
-            <numerusform>Скопировано %n записи</numerusform>
-            <numerusform>Скопировано %n записей</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Export results</source>
-        <translation>Экспорт результатов</translation>
-    </message>
-    <message>
-        <source>Text files (*.txt);;All files (*)</source>
-        <translation>Текстовые файлы (*.txt);;Все файлы (*)</translation>
-    </message>
-    <message>
-        <source>Cannot write to: %1</source>
-        <translation>Невозможно записать в: %1</translation>
-    </message>
-    <message>
-        <source>Scan from the beginning</source>
-        <translation>Сканировать с начала</translation>
-    </message>
-    <message>
-        <source>Rescan current results</source>
-        <translation>Перепроверить текущие результаты</translation>
-    </message>
-</context>
-<context>
-    <name>DialogScanner</name>
-    <message>
-        <source>IP Scanner</source>
-        <translation>IP-сканер</translation>
-    </message>
-    <message>
-        <source>No scans yet. Create one with &quot;New scan&quot;.</source>
-        <translation>Сканирований пока нет. Создайте первое кнопкой &quot;Новое сканирование&quot;.</translation>
-    </message>
-    <message>
-        <source>New scan</source>
-        <translation>Новое сканирование</translation>
-    </message>
-    <message>
-        <source>IP Lists</source>
-        <translation>Списки IP</translation>
-    </message>
-    <message>
-        <source>Pause the scan first.</source>
-        <translation>Сначала приостановите сканирование.</translation>
-    </message>
-    <message>
-        <source>Confirmation</source>
-        <translation>Подтверждение</translation>
-    </message>
-    <message>
-        <source>Delete the scan &quot;%1&quot;?</source>
-        <translation>Удалить сканирование &quot;%1&quot;?</translation>
-    </message>
-    <message>
-        <source>Also delete its result list</source>
-        <translation>Также удалить его список результатов</translation>
     </message>
 </context>
 <context>
@@ -8098,10 +7322,17 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
 </context>
 <context>
+    <name>EmbeddedDialog</name>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+</context>
+<context>
     <name>Engine::ConnectionManager</name>
     <message>
-        <source>A background Poros (PID %1) owns Tun on this computer; stop it or use thronectl.</source>
-        <translation>Tun на этом компьютере занят фоновым Poros (PID %1); остановите его или используйте thronectl.</translation>
+        <source>A background Poros (PID %1) owns Tun on this computer; stop it first.</source>
+        <translation>Фоновый Poros (PID %1) занял TUN на этом компьютере. Сначала остановите его.</translation>
     </message>
 </context>
 <context>
@@ -8136,14 +7367,6 @@ Improves hole-punching reliability. Requires IPv4.</source>
     <message>
         <source>&quot;%1&quot; already uses it.</source>
         <translation>Уже используется для &quot;%1&quot;.</translation>
-    </message>
-    <message>
-        <source>KDE&apos;s shortcut service failed: %1</source>
-        <translation>Сбой службы горячих клавиш KDE: %1</translation>
-    </message>
-    <message>
-        <source>Registration failed: X error %1</source>
-        <translation>Не удалось зарегистрировать: ошибка X %1</translation>
     </message>
     <message>
         <source>Registration failed: %1</source>
@@ -8202,120 +7425,25 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
 </context>
 <context>
+    <name>GroupPane</name>
+    <message>
+        <source>Groups</source>
+        <translation>Группы</translation>
+    </message>
+    <message>
+        <source>Add new Group</source>
+        <translation>Добавить группу</translation>
+    </message>
+</context>
+<context>
     <name>GuiStartup</name>
+    <message>
+        <source>A background Poros (PID %1) is running on this computer (data directory: %2). Tun mode is unavailable here while it runs; stop it first.</source>
+        <translation>На этом компьютере работает фоновый Poros (PID %1, папка данных: %2). Пока он работает, TUN здесь недоступен. Сначала остановите его.</translation>
+    </message>
     <message>
         <source>Poros is running in the background</source>
         <translation>Poros работает в фоновом режиме</translation>
-    </message>
-    <message>
-        <source>A background Poros (PID %1) is running on this computer (data directory: %2). Tun mode is unavailable here while it runs; stop it or use thronectl.</source>
-        <translation>На этом компьютере работает фоновый Poros (PID %1, каталог данных: %2). Пока он работает, режим Tun здесь недоступен; остановите его или используйте thronectl.</translation>
-    </message>
-</context>
-<context>
-    <name>IpEntriesModel</name>
-    <message>
-        <source>%1 ms</source>
-        <translation>%1 мс</translation>
-    </message>
-    <message>
-        <source>Address</source>
-        <translation>Адрес</translation>
-    </message>
-    <message>
-        <source>Port</source>
-        <translation>Порт</translation>
-    </message>
-    <message>
-        <source>Latency</source>
-        <translation>Задержка</translation>
-    </message>
-</context>
-<context>
-    <name>IpListItem</name>
-    <message>
-        <source>%1 d</source>
-        <translation>%1 д.</translation>
-    </message>
-    <message>
-        <source>%1 h</source>
-        <translation>%1 ч.</translation>
-    </message>
-    <message>
-        <source>%1 min</source>
-        <translation>%1 мин.</translation>
-    </message>
-    <message>
-        <source>updated just now</source>
-        <translation>обновлено только что</translation>
-    </message>
-    <message>
-        <source>updated %1 min ago</source>
-        <translation>обновлено %1 мин. назад</translation>
-    </message>
-    <message>
-        <source>updated %1 h ago</source>
-        <translation>обновлено %1 ч. назад</translation>
-    </message>
-    <message>
-        <source>updated %1 d ago</source>
-        <translation>обновлено %1 д. назад</translation>
-    </message>
-    <message>
-        <source>URL %1</source>
-        <translation>URL %1</translation>
-    </message>
-    <message>
-        <source>Rule-set %1</source>
-        <translation>Набор правил %1</translation>
-    </message>
-    <message>
-        <source>Refreshing…</source>
-        <translation>Обновление…</translation>
-    </message>
-    <message>
-        <source>Refresh now</source>
-        <translation>Обновить сейчас</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>Удалить</translation>
-    </message>
-    <message>
-        <source>Edit</source>
-        <translation>Редактировать</translation>
-    </message>
-    <message>
-        <source>View</source>
-        <translation>Просмотреть</translation>
-    </message>
-    <message numerus="yes">
-        <source>%Ln entries</source>
-        <translation>
-            <numerusform>%Ln запись</numerusform>
-            <numerusform>%Ln записи</numerusform>
-            <numerusform>%Ln записей</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Result of a deleted scan</source>
-        <translation>Результат удаленного сканирования</translation>
-    </message>
-    <message>
-        <source>Result of scan %1</source>
-        <translation>Результат сканирования %1</translation>
-    </message>
-    <message>
-        <source>auto-update every %1</source>
-        <translation>автообновление раз в %1</translation>
-    </message>
-    <message>
-        <source>never updated</source>
-        <translation>не обновлялся</translation>
-    </message>
-    <message>
-        <source>Last update failed: %1</source>
-        <translation>Последнее обновление не удалось: %1</translation>
     </message>
 </context>
 <context>
@@ -8752,16 +7880,188 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <translation>Перезапустите режим TUN, чтобы изменения вступили в силу.</translation>
     </message>
     <message>
+        <source>Copy for support</source>
+        <translation>Скопировать для поддержки</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Обновить</translation>
+    </message>
+    <message>
+        <source>Test servers</source>
+        <translation>Проверить серверы</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>Скопировать ссылку</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Переименовать</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Название</translation>
+    </message>
+    <message>
+        <source>Delete subscription</source>
+        <translation>Удалить подписку</translation>
+    </message>
+    <message>
         <source>Confirmation</source>
         <translation>Подтверждение</translation>
+    </message>
+    <message>
+        <source>Connecting…</source>
+        <translation>Подключаемся…</translation>
+    </message>
+    <message>
+        <source>Stopping…</source>
+        <translation>Отключаемся…</translation>
+    </message>
+    <message>
+        <source>Connected · %1</source>
+        <translation>Подключено · %1</translation>
+    </message>
+    <message>
+        <source>Not connected</source>
+        <translation>Не подключено</translation>
+    </message>
+    <message>
+        <source>No server selected</source>
+        <translation>Сервер не выбран</translation>
+    </message>
+    <message>
+        <source>Add a subscription to begin</source>
+        <translation>Добавьте подписку, чтобы начать</translation>
+    </message>
+    <message>
+        <source>%1 ms</source>
+        <translation>%1 мс</translation>
+    </message>
+    <message>
+        <source>/s</source>
+        <translation>/с</translation>
+    </message>
+    <message>
+        <source>All the traffic of the computer goes through the server, games and programs included.</source>
+        <translation>Через сервер идёт весь трафик компьютера, включая игры и программы.</translation>
+    </message>
+    <message>
+        <source>Browsers and the programs that use the system proxy go through the server.</source>
+        <translation>Через сервер идут браузеры и программы, которые используют системный прокси.</translation>
+    </message>
+    <message>
+        <source>Choose how to connect, or Poros will ask at the first start.</source>
+        <translation>Выберите способ подключения, или Poros спросит при первом старте.</translation>
     </message>
     <message>
         <source>Type</source>
         <translation>Типу</translation>
     </message>
     <message>
+        <source>Add</source>
+        <translation>Добавить</translation>
+    </message>
+    <message>
+        <source>Tests</source>
+        <translation>Проверки</translation>
+    </message>
+    <message>
+        <source>Traffic</source>
+        <translation>Трафик</translation>
+    </message>
+    <message>
+        <source>Auto selector</source>
+        <translation>Автовыбор</translation>
+    </message>
+    <message>
+        <source>More</source>
+        <translation>Ещё</translation>
+    </message>
+    <message>
+        <source>OTP</source>
+        <translation>OTP</translation>
+    </message>
+    <message>
+        <source>Other</source>
+        <translation>Прочее</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>Основное</translation>
+    </message>
+    <message>
+        <source>Appearance</source>
+        <translation>Внешний вид</translation>
+    </message>
+    <message>
+        <source>Subscriptions</source>
+        <translation>Подписки</translation>
+    </message>
+    <message>
+        <source>Core</source>
+        <translation>Ядро</translation>
+    </message>
+    <message>
+        <source>Network</source>
+        <translation>Сеть</translation>
+    </message>
+    <message>
+        <source>Backups</source>
+        <translation>Резервные копии</translation>
+    </message>
+    <message>
         <source>Security</source>
         <translation>Безопасности</translation>
+    </message>
+    <message>
+        <source>Protocols and bypass</source>
+        <translation>Протоколы и обход</translation>
+    </message>
+    <message>
+        <source>Hotkeys</source>
+        <translation>Горячие клавиши</translation>
+    </message>
+    <message>
+        <source>Shortcuts</source>
+        <translation>Сочетания клавиш</translation>
+    </message>
+    <message>
+        <source>Simple mode</source>
+        <translation>Простой режим</translation>
+    </message>
+    <message>
+        <source>Advanced mode</source>
+        <translation>Расширенный режим</translation>
+    </message>
+    <message>
+        <source>Add subscription…</source>
+        <translation>Добавить подписку…</translation>
+    </message>
+    <message>
+        <source>Log</source>
+        <translation>Журнал</translation>
+    </message>
+    <message>
+        <source>Protection</source>
+        <translation>Безопасность</translation>
+    </message>
+    <message>
+        <source>Quick setup…</source>
+        <translation>Быстрая настройка…</translation>
+    </message>
+    <message>
+        <source>Interface mode</source>
+        <translation>Режим интерфейса</translation>
+    </message>
+    <message>
+        <source>Simple</source>
+        <translation>Простой</translation>
+    </message>
+    <message>
+        <source>Advanced</source>
+        <translation>Расширенный</translation>
     </message>
     <message>
         <source>Update all subscriptions?</source>
@@ -9106,6 +8406,34 @@ Error: %1</source>
         <translation>Запустить снова</translation>
     </message>
     <message>
+        <source>Restart with rights</source>
+        <translation>Перезапустить с правами</translation>
+    </message>
+    <message>
+        <source>TUN did not start without administrator rights.</source>
+        <translation>TUN не запустился без прав администратора.</translation>
+    </message>
+    <message>
+        <source>Use System</source>
+        <translation>Использовать System</translation>
+    </message>
+    <message>
+        <source>The kill switch did not turn on without administrator rights.</source>
+        <translation>Kill switch не включился без прав администратора.</translation>
+    </message>
+    <message>
+        <source>TLS spoofing did not work without administrator rights.</source>
+        <translation>Подмена TLS не заработала без прав администратора.</translation>
+    </message>
+    <message>
+        <source>Use %1</source>
+        <translation>Использовать «%1»</translation>
+    </message>
+    <message>
+        <source>Could not download the site lists this preset needs. Check the connection, or use a preset that does not need them.</source>
+        <translation>Не удалось скачать списки сайтов для этого пресета. Проверьте подключение или выберите пресет без них.</translation>
+    </message>
+    <message>
         <source>Add new Group</source>
         <translation>Добавить новую группу</translation>
     </message>
@@ -9238,6 +8566,18 @@ Error: %1</source>
         <translation>Удалить %1 небезопасных конфигураций?</translation>
     </message>
     <message>
+        <source>Failed to resolve domains: %1</source>
+        <translation>Не удалось определить домены: %1</translation>
+    </message>
+    <message>
+        <source>the core did not answer</source>
+        <translation>ядро не ответило</translation>
+    </message>
+    <message>
+        <source>Failed to resolve %1: %2</source>
+        <translation>Не удалось определить %1: %2</translation>
+    </message>
+    <message>
         <source>Replace domain server addresses with their resolved IPs?</source>
         <translation>Заменить домены в адресах серверов на их разрешённые IP-адреса?</translation>
     </message>
@@ -9304,22 +8644,6 @@ Error: %1</source>
     <message>
         <source>[Kill switch] Restarting the core so that its own traffic passes the kill switch...</source>
         <translation>[Kill switch] Перезапуск ядра, чтобы его собственный трафик проходил через kill switch...</translation>
-    </message>
-    <message>
-        <source>The sing-box API is disabled. Set a listen port in Preferences &gt; Basic Settings &gt; Core.</source>
-        <translation>API sing-box отключен. Укажите прослушиваемый порт в разделе Настройки &gt; Основные настройки &gt; Ядро.</translation>
-    </message>
-    <message>
-        <source>Start a profile first; the dashboard is served by the running core.</source>
-        <translation>Сначала запустите профиль; веб-панель обслуживается запущенным ядром.</translation>
-    </message>
-    <message>
-        <source>Web dashboard</source>
-        <translation>Веб-панель</translation>
-    </message>
-    <message>
-        <source>The dashboard is not installed yet. Download it now?</source>
-        <translation>Веб-панель ещё не установлена. Загрузить сейчас?</translation>
     </message>
     <message>
         <source>Settings</source>
@@ -9406,18 +8730,6 @@ Please try again.</source>
         <translation>Невозможно запустить</translation>
     </message>
     <message>
-        <source>A dashboard download is already running</source>
-        <translation>Загрузка веб-панели уже выполняется</translation>
-    </message>
-    <message>
-        <source>The core did not answer.</source>
-        <translation>Ядро не ответило.</translation>
-    </message>
-    <message>
-        <source>Failed to install the dashboard</source>
-        <translation>Не удалось установить веб-панель</translation>
-    </message>
-    <message>
         <source>Last download request has not finished yet</source>
         <translation>Предыдущая загрузка ещё не завершилась</translation>
     </message>
@@ -9464,10 +8776,6 @@ Please try again.</source>
     <message>
         <source>Unable to capture screen</source>
         <translation>Невозможно захватить экран</translation>
-    </message>
-    <message>
-        <source>Please run Poros as admin</source>
-        <translation>Пожалуйста, запустите Poros от имени администратора</translation>
     </message>
     <message>
         <source>Add profile from File(s)</source>
@@ -9810,8 +9118,8 @@ Name: %1</source>
         <translation>Kill switch блокирует трафик</translation>
     </message>
     <message>
-        <source>Search Commands and Settings</source>
-        <translation>Поиск команд и настроек</translation>
+        <source>Search Settings</source>
+        <translation>Поиск настроек</translation>
     </message>
     <message>
         <source>close the open settings window first</source>
@@ -9820,6 +9128,219 @@ Name: %1</source>
     <message>
         <source>close &quot;%1&quot; first</source>
         <translation>сначала закройте «%1»</translation>
+    </message>
+</context>
+<context>
+    <name>MuxSettingsWidget</name>
+    <message>
+        <source>Protocol</source>
+        <translation>Протокол</translation>
+    </message>
+    <message>
+        <source>Max Streams</source>
+        <translation>Максимум потоков</translation>
+    </message>
+    <message>
+        <source>Max Connections</source>
+        <translation>Максимум соединений</translation>
+    </message>
+    <message>
+        <source>Mode</source>
+        <translation>Режим</translation>
+    </message>
+    <message>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Max Streams&lt;/b&gt;: reuse a connection until it carries this many streams, then open another.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Max Connections&lt;/b&gt;: keep at most this many connections, and open a new one only while the least busy connection already carries Min Streams streams.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Min Streams</source>
+        <translation>Минимум потоков</translation>
+    </message>
+    <message>
+        <source>Padding</source>
+        <translation>Заполнение</translation>
+    </message>
+    <message>
+        <source>TCP Brutal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;TCP Brutal congestion control at the speeds below; the server must support it. Every stream then shares one connection, so the mode is ignored.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Upload (Mb/s)</source>
+        <translation>Отдача (Мбит/с)</translation>
+    </message>
+    <message>
+        <source>Download (Mb/s)</source>
+        <translation>Загрузка (Мбит/с)</translation>
+    </message>
+    <message>
+        <source>Custom Multiplex</source>
+        <translation>Свой мультиплекс</translation>
+    </message>
+</context>
+<context>
+    <name>NavRail</name>
+    <message>
+        <source>Search</source>
+        <translation>Поиск</translation>
+    </message>
+</context>
+<context>
+    <name>OnboardingPage</name>
+    <message>
+        <source>Subscription</source>
+        <translation>Подписка</translation>
+    </message>
+    <message>
+        <source>Launch</source>
+        <translation>Запуск</translation>
+    </message>
+    <message>
+        <source>Mode</source>
+        <translation>Режим</translation>
+    </message>
+    <message>
+        <source>Add a subscription</source>
+        <translation>Добавьте подписку</translation>
+    </message>
+    <message>
+        <source>Paste the link from your provider and Poros will load the server list. It usually comes in an email or a bot after payment.</source>
+        <translation>Вставьте ссылку от вашего провайдера, и Poros загрузит список серверов. Обычно её присылают в письме или боте после оплаты.</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Вставить</translation>
+    </message>
+    <message>
+        <source>Scan a QR code on the screen</source>
+        <translation>Сканировать QR-код с экрана</translation>
+    </message>
+    <message>
+        <source>How to start Poros</source>
+        <translation>Как запускать Poros</translation>
+    </message>
+    <message>
+        <source>Start with Windows</source>
+        <translation>Запускать вместе с Windows</translation>
+    </message>
+    <message>
+        <source>Poros opens when you sign in.</source>
+        <translation>Poros откроется при входе в систему.</translation>
+    </message>
+    <message>
+        <source>Connect to the last profile</source>
+        <translation>Подключаться к последнему профилю</translation>
+    </message>
+    <message>
+        <source>After starting, Poros connects to the server that worked last time.</source>
+        <translation>После запуска Poros сразу подключится к серверу, который работал в прошлый раз.</translation>
+    </message>
+    <message>
+        <source>Accept poros:// links</source>
+        <translation>Принимать ссылки poros://</translation>
+    </message>
+    <message>
+        <source>A link from a site or a messenger opens right in Poros.</source>
+        <translation>Ссылка с сайта или из мессенджера сразу откроется в Poros.</translation>
+    </message>
+    <message>
+        <source>Windows keeps the autostart and the links outside the Poros folder. You can turn them off in the settings.</source>
+        <translation>Автозапуск и ссылки Windows хранит вне папки Poros. Отключить их можно в настройках.</translation>
+    </message>
+    <message>
+        <source>Choose the interface mode</source>
+        <translation>Выберите режим интерфейса</translation>
+    </message>
+    <message>
+        <source>Simple</source>
+        <translation>Простой</translation>
+    </message>
+    <message>
+        <source>The server list and a Start button</source>
+        <translation>Список серверов и кнопка «Старт»</translation>
+    </message>
+    <message>
+        <source>Subscriptions as groups</source>
+        <translation>Подписки по группам</translation>
+    </message>
+    <message>
+        <source>Ready presets and your own copies</source>
+        <translation>Готовые пресеты и свои копии</translation>
+    </message>
+    <message>
+        <source>Only the settings you need</source>
+        <translation>Только нужные настройки</translation>
+    </message>
+    <message>
+        <source>Advanced</source>
+        <translation>Расширенный</translation>
+    </message>
+    <message>
+        <source>Everything from the simple mode</source>
+        <translation>Всё из простого режима</translation>
+    </message>
+    <message>
+        <source>Your own groups and manual profiles</source>
+        <translation>Свои группы и ручные профили</translation>
+    </message>
+    <message>
+        <source>Routing rules, DNS, WARP</source>
+        <translation>Правила маршрутизации, DNS, WARP</translation>
+    </message>
+    <message>
+        <source>Logs, connections, tools</source>
+        <translation>Журнал, соединения, инструменты</translation>
+    </message>
+    <message>
+        <source>You can change the mode at any time in the app menu.</source>
+        <translation>Режим можно сменить в любой момент в меню приложения.</translation>
+    </message>
+    <message>
+        <source>Skip</source>
+        <translation>Пропустить</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Готово</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>Далее</translation>
+    </message>
+    <message>
+        <source>This link is one server, not a subscription. Manual servers are added in the advanced mode, which you can choose at step 3.</source>
+        <translation>Это ссылка на один сервер, а не подписка. Серверы вручную добавляются в расширенном режиме, его можно выбрать на шаге 3.</translation>
+    </message>
+    <message>
+        <source>This does not look like a subscription link.</source>
+        <translation>Это не похоже на ссылку подписки.</translation>
+    </message>
+    <message>
+        <source>Checking the link…</source>
+        <translation>Проверяем ссылку…</translation>
+    </message>
+    <message>
+        <source>No servers were found at this link.</source>
+        <translation>По этой ссылке серверы не найдены.</translation>
+    </message>
+    <message numerus="yes">
+        <source>Subscription found: %n server(s)</source>
+        <translation>
+            <numerusform>Подписка найдена: %n сервер</numerusform>
+            <numerusform>Подписка найдена: %n сервера</numerusform>
+            <numerusform>Подписка найдена: %n серверов</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Quick setup takes less than a minute.</source>
+        <translation>Быстрая настройка займёт меньше минуты.</translation>
     </message>
 </context>
 <context>
@@ -9843,6 +9364,135 @@ Name: %1</source>
     <message>
         <source>%1s</source>
         <translation>%1 сек.</translation>
+    </message>
+</context>
+<context>
+    <name>PortalPanel</name>
+    <message>
+        <source>Download</source>
+        <translation>Загрузка</translation>
+    </message>
+    <message>
+        <source>Upload</source>
+        <translation>Отдача</translation>
+    </message>
+    <message>
+        <source>Exit</source>
+        <translation>Выход</translation>
+    </message>
+    <message>
+        <source>Preset: %1</source>
+        <translation>Пресет: %1</translation>
+    </message>
+</context>
+<context>
+    <name>PresetCatalog</name>
+    <message>
+        <source>All traffic</source>
+        <translation>Весь трафик</translation>
+    </message>
+    <message>
+        <source>Except Russian sites</source>
+        <translation>Кроме российских сайтов</translation>
+    </message>
+    <message>
+        <source>Blocked sites only</source>
+        <translation>Только заблокированное</translation>
+    </message>
+    <message>
+        <source>Hardened bypass</source>
+        <translation>Усиленный обход</translation>
+    </message>
+    <message>
+        <source>Everything goes through the server, local networks stay direct.</source>
+        <translation>Всё идёт через сервер, локальная сеть напрямую.</translation>
+    </message>
+    <message>
+        <source>Russian sites open directly, everything else goes through the server.</source>
+        <translation>Российские сайты и сервисы открываются напрямую, остальное через сервер.</translation>
+    </message>
+    <message>
+        <source>Only blocked sites go through the server, everything else stays direct.</source>
+        <translation>Через сервер идут только сайты из списка, остальное напрямую.</translation>
+    </message>
+    <message>
+        <source>Like All traffic, with TLS fragmentation. Try it when the connection keeps breaking.</source>
+        <translation>Как «Весь трафик», плюс фрагментация TLS. Помогает, когда соединение обрывается.</translation>
+    </message>
+</context>
+<context>
+    <name>PresetEditor</name>
+    <message>
+        <source>As in the preset</source>
+        <translation>Как в пресете</translation>
+    </message>
+    <message>
+        <source>Yandex</source>
+        <translation>Яндекс</translation>
+    </message>
+    <message>
+        <source>Custom…</source>
+        <translation>Свои…</translation>
+    </message>
+    <message>
+        <source>Through the server</source>
+        <translation>Через сервер</translation>
+    </message>
+    <message>
+        <source>Direct</source>
+        <translation>Напрямую</translation>
+    </message>
+    <message>
+        <source>Block</source>
+        <translation>Блокировать</translation>
+    </message>
+    <message>
+        <source>Presets</source>
+        <translation>Пресеты</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Название</translation>
+    </message>
+    <message>
+        <source>Sites and IPs</source>
+        <translation>Сайты и IP</translation>
+    </message>
+    <message>
+        <source>Site, IP or subnet</source>
+        <translation>Сайт, IP или подсеть</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>Добавить</translation>
+    </message>
+    <message>
+        <source>Programs</source>
+        <translation>Приложения</translation>
+    </message>
+    <message>
+        <source>File name, for example steam.exe</source>
+        <translation>Имя файла, например steam.exe</translation>
+    </message>
+    <message>
+        <source>DNS</source>
+        <translation>DNS</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>Save and apply</source>
+        <translation>Сохранить и применить</translation>
+    </message>
+    <message>
+        <source>Copy of the preset “%1”</source>
+        <translation>Копия пресета «%1»</translation>
+    </message>
+    <message>
+        <source>Give the preset a name.</source>
+        <translation>Укажите название пресета.</translation>
     </message>
 </context>
 <context>
@@ -9929,6 +9579,10 @@ Name: %1</source>
     <message>
         <source>Request with proxy but no profile started.</source>
         <translation>Запрос через прокси, но профиль не запущен.</translation>
+    </message>
+    <message>
+        <source>Request with proxy but the mixed inbound is disabled and Tun Mode is off.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Response larger than %1 MB</source>
@@ -10241,6 +9895,22 @@ Release note:
         <translation>Недопустимый адрес DNS &quot;%1&quot;: %2</translation>
     </message>
     <message>
+        <source>Chain &quot;%1&quot; has a hop (profile id %2) that no longer exists, edit the chain to remove it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Group &quot;%1&quot; has a front proxy that has been deleted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Group &quot;%1&quot; has a landing proxy that has been deleted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>A proxy in the chain can no longer be found.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>The profile no longer exists</source>
         <translation>Профиль больше не существует</translation>
     </message>
@@ -10413,6 +10083,13 @@ Release note:
     <message>
         <source>Weak Cipher</source>
         <translation>Слабый шифр</translation>
+    </message>
+    <message>
+        <source>Poros keeps all its data in its own folder, but cannot write to:
+%1
+
+Move the Poros folder somewhere you can write to.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Poros is running in the background (PID %1). Stop the service or use thronectl.</source>
@@ -11260,6 +10937,90 @@ Release note:
         <source>This group no longer exists.</source>
         <translation>Этой группы больше не существует.</translation>
     </message>
+    <message>
+        <source>Enter the WebDAV server URL in the WebDAV settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The WebDAV server URL must start with http:// or https://.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The server sent more than %1 MB.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not write the downloaded backup: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The server did not answer in time.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The server could not be reached.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The server answered with a redirect (HTTP %1); check the server URL.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The server redirected to %1; check the server URL.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Wrong username or password.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Permission denied.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not found.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Server error (HTTP %1).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>HTTP %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The server&apos;s folder listing could not be read.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not create the folder on the server: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The backup list kept changing while it was being updated.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not read the backup file: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unknown device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The backup&apos;s file name is not safe to use.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not create a temporary file: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The downloaded backup does not match the backup list; it may have been replaced or damaged.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>QPlatformTheme</name>
@@ -11274,6 +11035,14 @@ Release note:
     <message>
         <source>Yes</source>
         <translation>Да</translation>
+    </message>
+    <message>
+        <source>&amp;Yes</source>
+        <translation>&amp;Да</translation>
+    </message>
+    <message>
+        <source>&amp;No</source>
+        <translation>&amp;Нет</translation>
     </message>
     <message>
         <source>No</source>
@@ -11300,6 +11069,14 @@ Release note:
     <message>
         <source>Name</source>
         <translation>Название</translation>
+    </message>
+    <message>
+        <source>Route</source>
+        <translation>Маршрут</translation>
+    </message>
+    <message>
+        <source>DNS</source>
+        <translation>DNS</translation>
     </message>
     <message>
         <source>Use the route object exactly as written (outbound ids are still resolved to tags).
@@ -11468,6 +11245,77 @@ outbound и другие функции Poros могут не работать. 
     </message>
 </context>
 <context>
+    <name>RouteDnsEditor</name>
+    <message>
+        <source>Use the global DNS settings</source>
+        <translation>Использовать общие настройки DNS</translation>
+    </message>
+    <message>
+        <source>The servers set in Routing Settings &gt; DNS.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use custom DNS settings</source>
+        <translation>Свои настройки DNS</translation>
+    </message>
+    <message>
+        <source>These servers replace the global ones while this routing profile is in use.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Routing Settings use a custom DNS object, so that object applies instead of the values below.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;examples:&lt;br/&gt;tls://8.8.8.8&lt;br/&gt;https://domain/path&lt;/p&gt;&lt;p&gt;tcp://8.8.8.8:1234&lt;/p&gt;&lt;p&gt;dhcp://auto&lt;/p&gt;&lt;p&gt;h3://domain/path&lt;/p&gt;&lt;p&gt;quic://domain:4632&lt;/p&gt;&lt;p&gt;localhost&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remote DNS</source>
+        <translation>Удалённый DNS</translation>
+    </message>
+    <message>
+        <source>Disable IPv6</source>
+        <translation>Отключить IPv6</translation>
+    </message>
+    <message>
+        <source>Answer AAAA queries sent to this server with an empty result.</source>
+        <translation type="unfinished">Отвечать на запросы AAAA, отправленные на этот сервер, пустым результатом.</translation>
+    </message>
+    <message>
+        <source>Direct DNS</source>
+        <translation>Прямой DNS</translation>
+    </message>
+    <message>
+        <source>Default DNS server</source>
+        <translation>DNS-сервер по умолчанию</translation>
+    </message>
+    <message>
+        <source>Enable DNS Routing</source>
+        <translation>Маршрутизация DNS</translation>
+    </message>
+    <message>
+        <source>Domains this profile sends direct are resolved with the direct DNS too.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable FakeIP</source>
+        <translation>Включить FakeIP</translation>
+    </message>
+    <message>
+        <source>FakeIP Disable IPv6</source>
+        <translation>FakeIP без IPv6</translation>
+    </message>
+    <message>
+        <source>Hand out no fake IPv6 addresses; AAAA queries are answered empty.</source>
+        <translation type="unfinished">Не выдавать FakeIP-адреса IPv6; на запросы AAAA даются пустые ответы.</translation>
+    </message>
+    <message>
+        <source>Local Override, the hosts file, predefined answers and the advanced DNS settings always come from Routing Settings &gt; DNS.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>RouteItem</name>
     <message>
         <source>Route Profile</source>
@@ -11606,6 +11454,10 @@ Your local edits are overwritten on each update.</source>
         <translation>Инструкция по простым правилам</translation>
     </message>
     <message>
+        <source>DNS</source>
+        <translation>DNS</translation>
+    </message>
+    <message>
         <source>Profile #%1 — deleted, dropped when you save</source>
         <translation>Профиль #%1 — удалён, будет убран при сохранении</translation>
     </message>
@@ -11698,6 +11550,10 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>Fetch from remote</source>
         <translation>Загрузить</translation>
+    </message>
+    <message>
+        <source>Disabled: kept in the profile but left out of the generated config.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Invalid URL</source>
@@ -11853,121 +11709,6 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>State</source>
         <translation>Состояние</translation>
-    </message>
-</context>
-<context>
-    <name>ScanItem</name>
-    <message numerus="yes">
-        <source>Starting over clears the %n result(s) this scan has found. Continue?</source>
-        <translation>
-            <numerusform>Перезапуск с начала удалит %n результат, найденный этим сканированием. Продолжить?</numerusform>
-            <numerusform>Перезапуск с начала удалит %n результата, найденных этим сканированием. Продолжить?</numerusform>
-            <numerusform>Перезапуск с начала удалит %n результатов, найденных этим сканированием. Продолжить?</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>This scan was paused partway. Starting over discards its progress and clears its %n result(s). Continue?</source>
-        <translation>
-            <numerusform>Это сканирование было приостановлено на полпути. Перезапуск с начала сбросит его прогресс и удалит %n результат. Продолжить?</numerusform>
-            <numerusform>Это сканирование было приостановлено на полпути. Перезапуск с начала сбросит его прогресс и удалит %n результата. Продолжить?</numerusform>
-            <numerusform>Это сканирование было приостановлено на полпути. Перезапуск с начала сбросит его прогресс и удалит %n результатов. Продолжить?</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>This scan was paused partway. Starting over discards its progress. Continue?</source>
-        <translation>Сканирование было приостановлено. Если начать заново, его прогресс будет потерян. Продолжить?</translation>
-    </message>
-    <message>
-        <source>IP Scanner</source>
-        <translation>IP-сканер</translation>
-    </message>
-    <message numerus="yes">
-        <source>The targets changed since this scan was paused, so it cannot resume. Start over from the beginning and clear its %n result(s)?</source>
-        <translation>
-            <numerusform>Цели изменились после приостановки сканирования, поэтому продолжить его нельзя. Начать заново и удалить %n результат?</numerusform>
-            <numerusform>Цели изменились после приостановки сканирования, поэтому продолжить его нельзя. Начать заново и удалить %n результата?</numerusform>
-            <numerusform>Цели изменились после приостановки сканирования, поэтому продолжить его нельзя. Начать заново и удалить %n результатов?</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>The targets changed since this scan was paused, so it cannot resume. Start over from the beginning?</source>
-        <translation>Цели изменились после приостановки сканирования, поэтому продолжить его нельзя. Начать заново?</translation>
-    </message>
-    <message>
-        <source>The scan could not be started.</source>
-        <translation>Не удалось запустить сканирование.</translation>
-    </message>
-    <message>
-        <source>Pausing…</source>
-        <translation>Приостановка…</translation>
-    </message>
-    <message>
-        <source>Running</source>
-        <translation>Выполняется</translation>
-    </message>
-    <message>
-        <source>Idle</source>
-        <translation>Не запускалось</translation>
-    </message>
-    <message>
-        <source>Paused</source>
-        <translation>Приостановлено</translation>
-    </message>
-    <message>
-        <source>Completed</source>
-        <translation>Завершено</translation>
-    </message>
-    <message>
-        <source>Failed</source>
-        <translation>Ошибка</translation>
-    </message>
-    <message>
-        <source>%1 / %2 (%3%)</source>
-        <translation>%1 / %2 (%3%)</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n found</source>
-        <translation>
-            <numerusform>найден %n</numerusform>
-            <numerusform>найдено %n</numerusform>
-            <numerusform>найдено %n</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>%n removed</source>
-        <translation>
-            <numerusform>удален %n</numerusform>
-            <numerusform>удалено %n</numerusform>
-            <numerusform>удалено %n</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>WARP</source>
-        <translation>WARP</translation>
-    </message>
-    <message>
-        <source>Generic</source>
-        <translation>Обычное</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>Открыть</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>Удалить</translation>
-    </message>
-    <message>
-        <source>Pause</source>
-        <translation>Приостановить</translation>
-    </message>
-    <message>
-        <source>Resume</source>
-        <translation>Продолжить</translation>
-    </message>
-    <message>
-        <source>Start</source>
-        <translation>Запустить</translation>
     </message>
 </context>
 <context>
@@ -12293,6 +12034,421 @@ Remove that endpoint from this routing profile as well?</source>
     </message>
 </context>
 <context>
+    <name>ServerTreeModel</name>
+    <message>
+        <source>not updated yet</source>
+        <translation>ещё не обновлена</translation>
+    </message>
+    <message>
+        <source>updated just now</source>
+        <translation>обновлена только что</translation>
+    </message>
+    <message>
+        <source>updated %1 ago</source>
+        <translation>обновлена %1 назад</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n server(s)</source>
+        <translation>
+            <numerusform>%n сервер</numerusform>
+            <numerusform>%n сервера</numerusform>
+            <numerusform>%n серверов</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>%1 of %2</source>
+        <translation>%1 из %2</translation>
+    </message>
+    <message>
+        <source>Auto</source>
+        <translation>Авто</translation>
+    </message>
+    <message>
+        <source>the fastest, switches by itself on failure</source>
+        <translation>самый быстрый, при сбое переключится сам</translation>
+    </message>
+    <message>
+        <source>%1 ms</source>
+        <translation>%1 мс</translation>
+    </message>
+    <message>
+        <source>no response</source>
+        <translation>нет ответа</translation>
+    </message>
+    <message>
+        <source>Add another subscription</source>
+        <translation>Добавить другую подписку</translation>
+    </message>
+</context>
+<context>
+    <name>SimpleHome</name>
+    <message>
+        <source>No servers yet</source>
+        <translation>Пока нет серверов</translation>
+    </message>
+    <message>
+        <source>Paste a subscription link and the servers will appear here.</source>
+        <translation>Вставьте ссылку на подписку, и здесь появится список серверов.</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>Добавить</translation>
+    </message>
+    <message>
+        <source>Run quick setup</source>
+        <translation>Запустить быструю настройку</translation>
+    </message>
+    <message>
+        <source>Find a server</source>
+        <translation>Найти сервер</translation>
+    </message>
+    <message>
+        <source>Test servers</source>
+        <translation>Проверить серверы</translation>
+    </message>
+    <message>
+        <source>Subscription</source>
+        <translation>Подписка</translation>
+    </message>
+</context>
+<context>
+    <name>SimpleSettings</name>
+    <message>
+        <source>To the servers</source>
+        <translation>К серверам</translation>
+    </message>
+    <message>
+        <source>Presets</source>
+        <translation>Пресеты</translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation>Подключение</translation>
+    </message>
+    <message>
+        <source>Subscriptions</source>
+        <translation>Подписки</translation>
+    </message>
+    <message>
+        <source>Launch</source>
+        <translation>Запуск</translation>
+    </message>
+    <message>
+        <source>Appearance</source>
+        <translation>Внешний вид</translation>
+    </message>
+    <message>
+        <source>Backup</source>
+        <translation>Резервная копия</translation>
+    </message>
+    <message>
+        <source>Help</source>
+        <translation>Помощь</translation>
+    </message>
+    <message>
+        <source>A preset decides which traffic goes through the server and which goes direct. Built-in presets do not change: to add your own settings, make a copy.</source>
+        <translation>Пресет решает, какой трафик идёт через сервер, а какой напрямую. Встроенные пресеты не меняются: чтобы добавить свои настройки, создайте копию.</translation>
+    </message>
+    <message>
+        <source>Built-in</source>
+        <translation>Встроенные</translation>
+    </message>
+    <message>
+        <source>My presets</source>
+        <translation>Мои пресеты</translation>
+    </message>
+    <message>
+        <source>Import from clipboard</source>
+        <translation>Импорт из буфера обмена</translation>
+    </message>
+    <message>
+        <source>Copy current as a link</source>
+        <translation>Скопировать текущий как ссылку</translation>
+    </message>
+    <message>
+        <source>Based on “%1”</source>
+        <translation>На основе «%1»</translation>
+    </message>
+    <message>
+        <source>Make a copy</source>
+        <translation>Создать копию</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Изменить</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+    <message>
+        <source>Make a copy of a built-in preset to add your own sites and programs.</source>
+        <translation>Создайте копию встроенного пресета, чтобы добавить свои сайты и приложения.</translation>
+    </message>
+    <message>
+        <source>%1 (copy)</source>
+        <translation>%1 (копия)</translation>
+    </message>
+    <message>
+        <source>Remove %1?</source>
+        <translation>Удалить %1?</translation>
+    </message>
+    <message>
+        <source>The clipboard holds no preset: %1</source>
+        <translation>В буфере обмена нет пресета: %1</translation>
+    </message>
+    <message>
+        <source>How Poros connects and what it does when the connection breaks.</source>
+        <translation>Как Poros подключается и что делает при обрыве.</translation>
+    </message>
+    <message>
+        <source>Kill switch</source>
+        <translation>Kill switch</translation>
+    </message>
+    <message>
+        <source>Block the internet when the connection to the server breaks.</source>
+        <translation>Блокировать интернет, если соединение с сервером оборвалось.</translation>
+    </message>
+    <message>
+        <source>Let other devices connect</source>
+        <translation>Разрешить подключаться другим устройствам</translation>
+    </message>
+    <message>
+        <source>A phone or a TV on this network can go out through Poros.</source>
+        <translation>Телефон или ТВ в этой сети смогут выходить через Poros.</translation>
+    </message>
+    <message>
+        <source>Show the exit IP and country</source>
+        <translation>Показывать IP и страну выхода</translation>
+    </message>
+    <message>
+        <source>After connecting Poros asks an outside service for them.</source>
+        <translation>После подключения Poros спрашивает их у внешнего сервиса.</translation>
+    </message>
+    <message>
+        <source>How the server list stays up to date.</source>
+        <translation>Как обновляется список серверов.</translation>
+    </message>
+    <message>
+        <source>Update automatically</source>
+        <translation>Обновлять автоматически</translation>
+    </message>
+    <message>
+        <source>As the provider advises</source>
+        <translation>Как советует провайдер</translation>
+    </message>
+    <message>
+        <source>Every hour</source>
+        <translation>Каждый час</translation>
+    </message>
+    <message>
+        <source>Every 6 hours</source>
+        <translation>Каждые 6 часов</translation>
+    </message>
+    <message>
+        <source>Once a day</source>
+        <translation>Раз в сутки</translation>
+    </message>
+    <message>
+        <source>How often</source>
+        <translation>Как часто</translation>
+    </message>
+    <message>
+        <source>Update through the connection</source>
+        <translation>Обновлять через подключение</translation>
+    </message>
+    <message>
+        <source>Helps when the provider&apos;s site cannot be reached directly.</source>
+        <translation>Помогает, если сайт провайдера недоступен напрямую.</translation>
+    </message>
+    <message>
+        <source>Show changes</source>
+        <translation>Показывать изменения</translation>
+    </message>
+    <message>
+        <source>After a manual update Poros shows which servers came and went.</source>
+        <translation>После ручного обновления покажем, какие серверы добавились и пропали.</translation>
+    </message>
+    <message>
+        <source>Send device data</source>
+        <translation>Отправлять данные об устройстве</translation>
+    </message>
+    <message>
+        <source>Needed by providers that limit the number of devices.</source>
+        <translation>Нужно провайдерам, которые ограничивают число устройств.</translation>
+    </message>
+    <message>
+        <source>The same as the second step of the quick setup.</source>
+        <translation>То же, что на втором шаге быстрой настройки.</translation>
+    </message>
+    <message>
+        <source>Start with Windows</source>
+        <translation>Запускать вместе с Windows</translation>
+    </message>
+    <message>
+        <source>Connect to the last profile</source>
+        <translation>Подключаться к последнему профилю</translation>
+    </message>
+    <message>
+        <source>Accept poros:// links</source>
+        <translation>Принимать ссылки poros://</translation>
+    </message>
+    <message>
+        <source>Start minimized</source>
+        <translation>Запускать свёрнутым</translation>
+    </message>
+    <message>
+        <source>The window does not open and Poros stays in the tray.</source>
+        <translation>Окно не откроется, Poros останется в трее.</translation>
+    </message>
+    <message>
+        <source>Minimize to the tray on close</source>
+        <translation>Сворачивать в трей при закрытии</translation>
+    </message>
+    <message>
+        <source>If off, the close button quits Poros.</source>
+        <translation>Если выключить, крестик завершит Poros.</translation>
+    </message>
+    <message>
+        <source>The language and the size of the interface.</source>
+        <translation>Язык и размер интерфейса.</translation>
+    </message>
+    <message>
+        <source>As in Windows</source>
+        <translation>Как в Windows</translation>
+    </message>
+    <message>
+        <source>Language</source>
+        <translation>Язык</translation>
+    </message>
+    <message>
+        <source>The language changes after a restart. Restart now?</source>
+        <translation>Язык сменится после перезапуска. Перезапустить сейчас?</translation>
+    </message>
+    <message>
+        <source>Regular</source>
+        <translation>Обычный</translation>
+    </message>
+    <message>
+        <source>Large</source>
+        <translation>Крупный</translation>
+    </message>
+    <message>
+        <source>Text size</source>
+        <translation>Размер текста</translation>
+    </message>
+    <message>
+        <source>Subscriptions, presets and settings in one file.</source>
+        <translation>Подписки, пресеты и настройки в одном файле.</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Создать</translation>
+    </message>
+    <message>
+        <source>Create a backup</source>
+        <translation>Создать копию</translation>
+    </message>
+    <message>
+        <source>The file can be moved to another computer.</source>
+        <translation>Файл можно перенести на другой компьютер.</translation>
+    </message>
+    <message>
+        <source>Choose a file</source>
+        <translation>Выбрать файл</translation>
+    </message>
+    <message>
+        <source>Restore from a backup</source>
+        <translation>Восстановить из копии</translation>
+    </message>
+    <message>
+        <source>The current data will be replaced and Poros will restart.</source>
+        <translation>Текущие данные будут заменены, Poros перезапустится.</translation>
+    </message>
+    <message>
+        <source>Poros Backup (*.thrbackup)</source>
+        <translation>Резервная копия Poros (*.thrbackup)</translation>
+    </message>
+    <message>
+        <source>The backup is saved:
+%1</source>
+        <translation>Копия сохранена:
+%1</translation>
+    </message>
+    <message>
+        <source>Replace the current data and restart Poros?</source>
+        <translation>Заменить текущие данные и перезапустить Poros?</translation>
+    </message>
+    <message>
+        <source>If something does not work.</source>
+        <translation>Если что-то не работает.</translation>
+    </message>
+    <message>
+        <source>Simple</source>
+        <translation>Простой</translation>
+    </message>
+    <message>
+        <source>Advanced</source>
+        <translation>Расширенный</translation>
+    </message>
+    <message>
+        <source>Interface mode</source>
+        <translation>Режим интерфейса</translation>
+    </message>
+    <message>
+        <source>The advanced mode opens everything Poros can do.</source>
+        <translation>Расширенный режим открывает все возможности Poros.</translation>
+    </message>
+    <message>
+        <source>Run</source>
+        <translation>Запустить</translation>
+    </message>
+    <message>
+        <source>Quick setup</source>
+        <translation>Быстрая настройка</translation>
+    </message>
+    <message>
+        <source>Go through the first-launch steps again.</source>
+        <translation>Пройти шаги первого запуска ещё раз.</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Открыть</translation>
+    </message>
+    <message>
+        <source>Log</source>
+        <translation>Журнал</translation>
+    </message>
+    <message>
+        <source>Useful when you write to support.</source>
+        <translation>Пригодится, если нужно написать в поддержку.</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>Сбросить</translation>
+    </message>
+    <message>
+        <source>Reset the connection</source>
+        <translation>Сбросить подключение</translation>
+    </message>
+    <message>
+        <source>Restarts the core if TUN stopped working.</source>
+        <translation>Перезапустит ядро, если TUN перестал работать.</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
+        <source>Updates</source>
+        <translation>Обновления</translation>
+    </message>
+    <message>
+        <source>Current version: %1</source>
+        <translation>Текущая версия: %1</translation>
+    </message>
+</context>
+<context>
     <name>StartStopButton</name>
     <message>
         <source>Select a profile to start</source>
@@ -12300,19 +12456,19 @@ Remove that endpoint from this routing profile as well?</source>
     </message>
     <message>
         <source>Start</source>
-        <translation>Запустить</translation>
+        <translation>Старт</translation>
     </message>
     <message>
         <source>Connecting…</source>
-        <translation>Подключение…</translation>
+        <translation>Подключаемся…</translation>
     </message>
     <message>
         <source>Stop</source>
-        <translation>Остановить</translation>
+        <translation>Стоп</translation>
     </message>
     <message>
         <source>Stopping…</source>
-        <translation>Отключение…</translation>
+        <translation>Отключаемся…</translation>
     </message>
     <message>
         <source>Kill switch is blocking traffic</source>
@@ -12549,6 +12705,25 @@ Remove that endpoint from this routing profile as well?</source>
     </message>
 </context>
 <context>
+    <name>TitleBar</name>
+    <message>
+        <source>Menu</source>
+        <translation>Меню</translation>
+    </message>
+    <message>
+        <source>Administrator</source>
+        <translation>Администратор</translation>
+    </message>
+    <message>
+        <source>Restore</source>
+        <translation>Восстановить</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>Развернуть</translation>
+    </message>
+</context>
+<context>
     <name>TrafficChartWidget</name>
     <message>
         <source>Download</source>
@@ -12659,12 +12834,8 @@ Remove that endpoint from this routing profile as well?</source>
         <translation>Резолвер для имен серверов Poros выбирает сам.</translation>
     </message>
     <message>
-        <source>A missing, 0 or negative speed is sent as 1 Mbps. Enter your speed in Mbps, for example 100.</source>
-        <translation>Отсутствующая, нулевая или отрицательная скорость отправляется как 1 Мбит/с. Укажите скорость в Мбит/с, например 100.</translation>
-    </message>
-    <message>
-        <source>TCP Brutal only works with multiplex on. Set Multiplex to On.</source>
-        <translation>TCP Brutal работает только с включенным мультиплексированием. Установите для «Мультиплексирование» значение «Вкл.».</translation>
+        <source>TCP Brutal only works with a custom multiplex. Set Multiplex to Custom.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>TCP Brutal needs both speeds; a missing one is sent as 1 Mbps.</source>
@@ -14049,6 +14220,22 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>No importable profile was found in the vpn:// link.</source>
         <translation>В ссылке vpn:// не найден профиль для импорта.</translation>
+    </message>
+    <message>
+        <source>Remote DNS &quot;%1&quot;: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Direct DNS &quot;%1&quot;: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The default DNS server must be remote or direct, not &quot;%1&quot;.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The profile&apos;s own DNS settings were dropped, so it uses the global ones: %1</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1: %2</source>

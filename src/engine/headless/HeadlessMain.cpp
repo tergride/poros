@@ -97,7 +97,7 @@ namespace Engine {
                                                                                             : QStringLiteral("environment");
             if (overlay.enabled.has_value() && !*overlay.enabled) return "off (" + source + ")";
             if (overlay.port.has_value()) return "listener from the " + source;
-            return QStringLiteral("from the settings, else 127.0.0.1:9095");
+            return QStringLiteral("from the settings, else 127.0.0.1:9195");
         }
 
         int headlessMainDbPrimary(const Configs::DbError &error) {
@@ -520,7 +520,7 @@ namespace Engine {
             LOG_WARN("the previous session did not shut down cleanly (a crash, kill -9 or power loss); HEALTH reports previous_crash");
         }
 
-        // Migrations run synchronously in OpenDataDir; the start timeout must not cut them short.
+        // OpenDataDir runs synchronously; the start timeout must not cut it short.
         if (Sys::ServiceManager::NotifyEnabled()) {
             Sys::ServiceManager::NotifyExtendTimeout(120LL * 1000 * 1000);
             // After an exec restart the unit is reloading with its watchdog still armed; nothing has pinged since before execve. A

@@ -27,32 +27,13 @@ namespace Configs {
                 inner_hop_endpoint_ids TEXT NOT NULL DEFAULT '[]',
                 dns_json TEXT NOT NULL DEFAULT '',
                 custom_dns INTEGER NOT NULL DEFAULT 0,
+                builtin_key TEXT NOT NULL DEFAULT '',
+                base_key TEXT NOT NULL DEFAULT '',
+                hardened INTEGER NOT NULL DEFAULT 0,
                 created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
                 updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
             )
         )");
-        if (!routeProfilesColumnExists("is_raw"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN is_raw INTEGER NOT NULL DEFAULT 0");
-        if (!routeProfilesColumnExists("raw_route"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN raw_route TEXT NOT NULL DEFAULT ''");
-        if (!routeProfilesColumnExists("prevent_modifications"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN prevent_modifications INTEGER NOT NULL DEFAULT 0");
-        if (!routeProfilesColumnExists("is_remote"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN is_remote INTEGER NOT NULL DEFAULT 0");
-        if (!routeProfilesColumnExists("remote_url"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN remote_url TEXT NOT NULL DEFAULT ''");
-        if (!routeProfilesColumnExists("auto_update"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN auto_update INTEGER NOT NULL DEFAULT 0");
-        if (!routeProfilesColumnExists("remote_last_update"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN remote_last_update INTEGER NOT NULL DEFAULT 0");
-        if (!routeProfilesColumnExists("endpoint_profile_ids"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN endpoint_profile_ids TEXT NOT NULL DEFAULT '[]'");
-        if (!routeProfilesColumnExists("inner_hop_endpoint_ids"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN inner_hop_endpoint_ids TEXT NOT NULL DEFAULT '[]'");
-        if (!routeProfilesColumnExists("dns_json"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN dns_json TEXT NOT NULL DEFAULT ''");
-        if (!routeProfilesColumnExists("custom_dns"))
-            db.exec("ALTER TABLE route_profiles ADD COLUMN custom_dns INTEGER NOT NULL DEFAULT 0");
 
         db.exec(R"(
             CREATE TABLE IF NOT EXISTS route_rules (
@@ -103,42 +84,6 @@ namespace Configs {
                 FOREIGN KEY(route_profile_id) REFERENCES route_profiles(id) ON DELETE CASCADE
             )
         )");
-        if (!routeRulesColumnExists("wifi_ssid_json"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN wifi_ssid_json TEXT");
-        if (!routeRulesColumnExists("wifi_bssid_json"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN wifi_bssid_json TEXT");
-        if (!routeRulesColumnExists("tls_spoof"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN tls_spoof TEXT");
-        if (!routeRulesColumnExists("tls_spoof_method"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN tls_spoof_method TEXT");
-        if (!routeRulesColumnExists("package_name_json"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN package_name_json TEXT");
-        if (!routeRulesColumnExists("tls_fragment"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN tls_fragment INTEGER NOT NULL DEFAULT 0");
-        if (!routeRulesColumnExists("tls_fragment_fallback_delay"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN tls_fragment_fallback_delay TEXT");
-        if (!routeRulesColumnExists("tls_record_fragment"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN tls_record_fragment INTEGER NOT NULL DEFAULT 0");
-        if (!routeRulesColumnExists("disabled"))
-            db.exec("ALTER TABLE route_rules ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0");
-    }
-
-    bool RoutesRepo::routeRulesColumnExists(const char* columnName) const {
-        auto pragma = db.query("PRAGMA table_info(route_rules)");
-        if (!pragma) return false;
-        while (pragma->executeStep()) {
-            if (pragma->getColumn(1).getText() == std::string(columnName)) return true;
-        }
-        return false;
-    }
-
-    bool RoutesRepo::routeProfilesColumnExists(const char* columnName) const {
-        auto pragma = db.query("PRAGMA table_info(route_profiles)");
-        if (!pragma) return false;
-        while (pragma->executeStep()) {
-            if (pragma->getColumn(1).getText() == std::string(columnName)) return true;
-        }
-        return false;
     }
 
     QJsonObject RoutesRepo::routeRuleToJson(const RouteRule* rule) const {
@@ -260,6 +205,9 @@ namespace Configs {
         json["innerHopEndpointIDs"] = innerHopsArray;
         json["customDns"] = routeProfile->customDns;
         if (routeProfile->dns) json["dns"] = routeProfile->dns->ToJson();
+        json["builtinKey"] = routeProfile->builtinKey;
+        json["baseKey"] = routeProfile->baseKey;
+        json["hardened"] = routeProfile->hardened;
 
         QJsonArray rulesArray;
         for (const auto& rule : routeProfile->Rules) {
@@ -291,6 +239,9 @@ namespace Configs {
         }
         if (json["dns"].isObject()) routeProfile->dns = RouteDns::FromJson(json["dns"].toObject());
         routeProfile->customDns = json["customDns"].toBool() && routeProfile->dns.has_value();
+        routeProfile->builtinKey = json["builtinKey"].toString();
+        routeProfile->baseKey = json["baseKey"].toString();
+        routeProfile->hardened = json["hardened"].toBool();
 
         if (json.contains("rules") && json["rules"].isArray()) {
             QJsonArray rulesArray = json["rules"].toArray();
@@ -327,8 +278,8 @@ namespace Configs {
         db.execThrow(R"(
             INSERT INTO route_profiles (id, name, default_outbound_id, is_raw, raw_route, prevent_modifications,
                 is_remote, remote_url, auto_update, remote_last_update, endpoint_profile_ids,
-                inner_hop_endpoint_ids, dns_json, custom_dns)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                inner_hop_endpoint_ids, dns_json, custom_dns, builtin_key, base_key, hardened)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name, default_outbound_id = excluded.default_outbound_id,
                 is_raw = excluded.is_raw, raw_route = excluded.raw_route,
@@ -338,6 +289,7 @@ namespace Configs {
                 endpoint_profile_ids = excluded.endpoint_profile_ids,
                 inner_hop_endpoint_ids = excluded.inner_hop_endpoint_ids,
                 dns_json = excluded.dns_json, custom_dns = excluded.custom_dns,
+                builtin_key = excluded.builtin_key, base_key = excluded.base_key, hardened = excluded.hardened,
                 updated_at = strftime('%s', 'now')
         )",
             id,
@@ -353,7 +305,10 @@ namespace Configs {
             endpointsJson.toStdString(),
             innerHopsJson.toStdString(),
             dnsJson.toStdString(),
-            routeProfile->customDns ? 1 : 0
+            routeProfile->customDns ? 1 : 0,
+            routeProfile->builtinKey.toStdString(),
+            routeProfile->baseKey.toStdString(),
+            routeProfile->hardened ? 1 : 0
         );
 
         db.execThrow("DELETE FROM route_rules WHERE route_profile_id = ?", id);
@@ -530,6 +485,9 @@ namespace Configs {
         if (const auto dnsDoc = QJsonDocument::fromJson(QString::fromStdString(stmt.getColumn(12).getText()).toUtf8()); dnsDoc.isObject())
             json["dns"] = dnsDoc.object();
         json["customDns"] = stmt.getColumn(13).getInt() != 0;
+        json["builtinKey"] = QString::fromStdString(stmt.getColumn(14).getText());
+        json["baseKey"] = QString::fromStdString(stmt.getColumn(15).getText());
+        json["hardened"] = stmt.getColumn(16).getInt() != 0;
         json["rules"] = QJsonArray();
         return routeProfileFromJson(json);
     }
@@ -567,7 +525,7 @@ namespace Configs {
         auto profileQuery = db.query(R"(
             SELECT id, name, default_outbound_id, is_raw, raw_route, prevent_modifications,
                    is_remote, remote_url, auto_update, remote_last_update, endpoint_profile_ids,
-                   inner_hop_endpoint_ids, dns_json, custom_dns
+                   inner_hop_endpoint_ids, dns_json, custom_dns, builtin_key, base_key, hardened
             FROM route_profiles WHERE id = ?
         )", id);
         if (!profileQuery || !profileQuery->executeStep()) {
@@ -635,6 +593,15 @@ namespace Configs {
         return RouteDns::FromJson(doc.object());
     }
 
+    bool RoutesRepo::IsHardened(int id) const {
+        QMutexLocker locker(&mutex);
+        if (auto it = identityMap.find(id); it != identityMap.end()) {
+            if (auto shared = it->second.lock()) return shared->hardened;
+        }
+        auto query = db.query("SELECT hardened FROM route_profiles WHERE id = ?", id);
+        return query && query->executeStep() && query->getColumn(0).getInt() != 0;
+    }
+
     void RoutesRepo::DeleteRouteProfile(int id) {
         QMutexLocker locker(&mutex);
         identityMap.erase(id);
@@ -691,7 +658,7 @@ namespace Configs {
         QList<int> idsInOrder;
         QSet<int> cachedProfiles;
 
-        auto profileQuery = db.query("SELECT id, name, default_outbound_id, is_raw, raw_route, prevent_modifications, is_remote, remote_url, auto_update, remote_last_update, endpoint_profile_ids, inner_hop_endpoint_ids, dns_json, custom_dns FROM route_profiles ORDER BY id");
+        auto profileQuery = db.query("SELECT id, name, default_outbound_id, is_raw, raw_route, prevent_modifications, is_remote, remote_url, auto_update, remote_last_update, endpoint_profile_ids, inner_hop_endpoint_ids, dns_json, custom_dns, builtin_key, base_key, hardened FROM route_profiles ORDER BY id");
         if (!profileQuery) return routeProfiles;
 
         QMutexLocker locker(&mutex);

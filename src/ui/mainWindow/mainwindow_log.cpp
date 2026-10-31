@@ -92,7 +92,6 @@ void MainWindow::setupLogView() {
         if (m_logFollow) bar->setValue(max);
     });
 
-    // Both sit in the stats tab corner, which setupConnectionFilter() builds.
     logJumpLatestButton = new QToolButton(this);
     logJumpLatestButton->setToolTip(tr("New logs are held while the view is scrolled up"));
     connect(logJumpLatestButton, &QToolButton::clicked, this, [this] { releaseHeldLogs(); });
@@ -100,6 +99,8 @@ void MainWindow::setupLogView() {
     logFilterButton->setIcon(QIcon(":/icon/filter.png"));
     logFilterButton->setCheckable(true);
     connect(logFilterButton, &QToolButton::toggled, this, &MainWindow::setLogFilterVisible);
+    m_logActions->addWidget(logJumpLatestButton);
+    m_logActions->addWidget(logFilterButton);
     for (auto *w : ui->logToolbar->findChildren<QWidget*>()) w->installEventFilter(this);
 
     m_logSearchDebounce = new QTimer(this);

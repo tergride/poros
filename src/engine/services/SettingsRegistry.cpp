@@ -248,12 +248,12 @@ namespace Engine::SettingsRegistryImpl {
             list << boolKey(QStringLiteral("tun_ipv6"), &Settings::vpn_ipv6, Restart::Tun, ApplyKillSwitch);
             auto tunIpv4Cidr = stringKey(QStringLiteral("tun_ipv4_cidr"), &Settings::vpn_tun_ipv4_cidr, Restart::Tun,
                                          [](const QString &text) { return Validation::Cidr(text, Validation::Family::V4).isEmpty(); },
-                                         QStringLiteral("must be an IPv4 address with a prefix length, such as 172.19.0.1/24"));
+                                         QStringLiteral("must be an IPv4 address with a prefix length, such as 172.19.1.1/24"));
             tunIpv4Cidr.effects = ApplyKillSwitch;
             list << tunIpv4Cidr;
             auto tunIpv6Cidr = stringKey(QStringLiteral("tun_ipv6_cidr"), &Settings::vpn_tun_ipv6_cidr, Restart::Tun,
                                          [](const QString &text) { return Validation::Cidr(text, Validation::Family::V6).isEmpty(); },
-                                         QStringLiteral("must be an IPv6 address with a prefix length, such as fdfe:dcba:9876::1/96"));
+                                         QStringLiteral("must be an IPv6 address with a prefix length, such as fdfe:dcba:9877::1/96"));
             tunIpv6Cidr.effects = ApplyKillSwitch;
             list << tunIpv6Cidr;
 

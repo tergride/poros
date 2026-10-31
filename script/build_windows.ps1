@@ -16,6 +16,13 @@ $env:GOPATH = "$Toolchain\gopath"
 $env:GOCACHE = "$Toolchain\gocache"
 $env:PATH = "$Toolchain\go\go\bin;$Toolchain\gopath\bin;$Toolchain\protoc\bin;$Toolchain\ninja;$cmakeHome\bin;$env:PATH"
 
+# A build must not freeze the machine. Every child inherits both limits, which -j alone cannot give: the compilers are not all the load.
+$jobs = [int][Math]::Max(1, [Math]::Floor([Environment]::ProcessorCount * 0.9))
+$shell = Get-Process -Id $PID
+$shellPriority, $shellAffinity = $shell.PriorityClass, $shell.ProcessorAffinity
+$shell.PriorityClass = 'BelowNormal'
+$shell.ProcessorAffinity = [IntPtr]((1L -shl $jobs) - 1)
+
 function Invoke-Checked([scriptblock]$Command) {
     & $Command
     if ($LASTEXITCODE -ne 0) { throw "failed with exit code ${LASTEXITCODE}: $Command" }
@@ -60,7 +67,6 @@ try {
             if ($name) { Set-Item "env:$name" $value }
         }
 
-        Get-ChildItem "$Toolchain\dashboard-src" -Force | Where-Object Name -ne '.git' | Copy-Item -Destination res\dashboard -Recurse -Force
         New-Item -ItemType Directory -Force build | Out-Null
         if (-not (Test-Path build\srslist.h)) {
             Invoke-Checked { curl.exe -fLso build\srslist.h https://raw.githubusercontent.com/throneproj/routeprofiles/rule-set/srslist.h }
@@ -69,7 +75,7 @@ try {
         $env:CMAKE_PREFIX_PATH = "$Toolchain\Qt\lib\cmake"
         $env:OPENSSL_ROOT_DIR = "$Toolchain\openssl"
         Invoke-Checked { cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo }
-        Invoke-Checked { ninja -C build }
+        Invoke-Checked { ninja -C build -j $jobs }
 
         New-Item -ItemType Directory -Force $dest | Out-Null
         Copy-Item build\Poros.exe, build\Poros.pdb $dest -Force
@@ -78,4 +84,6 @@ try {
 }
 finally {
     Pop-Location
+    $shell.PriorityClass = $shellPriority
+    $shell.ProcessorAffinity = $shellAffinity
 }

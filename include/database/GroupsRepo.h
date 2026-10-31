@@ -29,8 +29,6 @@ namespace Configs {
         
         void createTables() const;
 
-        bool groupsColumnExists(const char* columnName) const;
-
         int NewGroupID() const;
     public:
         explicit GroupsRepo(Database& database);
@@ -39,6 +37,9 @@ namespace Configs {
         [[nodiscard]] static std::shared_ptr<Group> NewGroup();
         
         bool AddGroup(std::shared_ptr<Group>& group);
+
+        // Left out of the tab order, so no list of groups shows it.
+        bool AddHiddenGroup(std::shared_ptr<Group>& group);
         
         std::shared_ptr<Group> GetGroup(int id) const;
         

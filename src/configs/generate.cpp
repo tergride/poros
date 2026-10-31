@@ -2195,35 +2195,32 @@ namespace Configs {
 
         // --------------------------------------------------------------- route
 
-        QJsonArray buildRuleSetArray(const BuildContext &ctx) {
+        // overProxy: a profile whose default path is direct would fetch them over the very line that blocks them, and a
+        // rule set that fails its first download stops the core from starting at all.
+        QJsonArray buildRuleSetArray(const BuildContext &ctx, bool overProxy) {
+            const auto remoteRuleSet = [overProxy](const QString &tag, const QString &url) {
+                QJsonObject ruleSet{
+                    {"type", "remote"},
+                    {"tag", tag},
+                    {"format", "binary"},
+                    {"url", url},
+                };
+                if (overProxy) ruleSet["http_client"] = QJsonObject{{"detour", tags::proxy}};
+                return ruleSet;
+            };
             QJsonArray ruleSetArray;
             for (const auto &item: ctx.prerequisites.routing.neededRuleSets) {
                 if (auto url = QUrl(item); url.isValid() && url.fileName().contains(".srs")) {
-                    ruleSetArray += QJsonObject{
-                                {"type", "remote"},
-                                {"tag", get_rule_set_name(item)},
-                                {"format", "binary"},
-                                {"url", item},
-                            };
+                    ruleSetArray += remoteRuleSet(get_rule_set_name(item), item);
                 }
                 else
                     if (auto url = ruleSetUrl(item.toStdString()); !url.empty()) {
-                        ruleSetArray += QJsonObject{
-                                    {"type", "remote"},
-                                    {"tag", item},
-                                    {"format", "binary"},
-                                    {"url", get_jsdelivr_link(QString::fromUtf8(url.data(), url.size()))},
-                                };
+                        ruleSetArray += remoteRuleSet(item, get_jsdelivr_link(QString::fromUtf8(url.data(), url.size())));
                     }
             }
 
             if (dataManager->settingsRepo->adblock_enable) {
-                ruleSetArray += QJsonObject{
-                            {"type", "remote"},
-                            {"tag", tags::adblockRuleSet},
-                            {"format", "binary"},
-                            {"url", get_jsdelivr_link("https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblocksingbox.srs")},
-                        };
+                ruleSetArray += remoteRuleSet(tags::adblockRuleSet, get_jsdelivr_link("https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblocksingbox.srs"));
             }
 
             if (const auto &tun = ctx.prerequisites.tun; tun.privateRangesAsRuleSet) {
@@ -2322,7 +2319,7 @@ namespace Configs {
                 };
             }
 
-            auto ruleSetArray = buildRuleSetArray(ctx);
+            auto ruleSetArray = buildRuleSetArray(ctx, !ctx.forTest && !routeChain->isRaw && routeChain->defaultOutboundID == directID);
 
             if (auto mismatch = bridgeIngressMismatch(ctx); !mismatch.isEmpty()) {
                 ctx.error = mismatch;

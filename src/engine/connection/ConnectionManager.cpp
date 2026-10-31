@@ -146,6 +146,12 @@ namespace Engine {
         // Ranking must run before the config is built and it blocks, so hop off the UI thread.
         if (m_autoSelector->rankBeforeStart(ent, resolved.interactive, [=, this] { start(resolved); })) return;
 
+        if (resolved.interactive && !tunPrivileged() && ent->outbound->HasTLS() && ent->outbound->GetTLS()->enabled &&
+            ent->outbound->GetTLS()->SpoofEffectivelyOn() && policy()->requestCorePrivileges(PrivilegeReason::TlsSpoof) != PrivilegeDecision::TryWithout) {
+            emit startFinished(resolved.serial, ent->id, StartOutcome::StartFailed, {});
+            return;
+        }
+
         const auto result = Configs::BuildSingBoxConfig(ent);
         if (!result->error.isEmpty()) {
             failStart(resolved, StartOutcome::BuildFailed, MainWindowTr::tr("BuildConfig return error"), result->error);

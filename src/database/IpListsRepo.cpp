@@ -69,15 +69,6 @@ namespace Configs {
             ) WITHOUT ROWID
         )";
 
-        bool ipListsRepoHasColumn(Database &db, const char *table, const char *column) {
-            auto pragma = db.query(std::string("PRAGMA table_info(") + table + ")");
-            if (!pragma) return false;
-            while (pragma->executeStep()) {
-                if (pragma->getColumn(1).getText() == std::string(column)) return true;
-            }
-            return false;
-        }
-
         std::string ipListsRepoInsertSql(int rows) {
             std::string sql =
                 "INSERT OR IGNORE INTO ip_list_entries (ip_list_id, generation, entry_order, cidr, port, latency_ms) VALUES ";
@@ -376,25 +367,9 @@ namespace Configs {
                 updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
             )
         )");
-        if (!ipListsColumnExists("entries_generation"))
-            db.exec("ALTER TABLE ip_lists ADD COLUMN entries_generation INTEGER NOT NULL DEFAULT 0");
         db.exec(kIpListsRepoCreateEntries);
-        if (!ipListsRepoHasColumn(db, "ip_list_entries", "generation")) {
-            db.transaction("IpListsRepo::createTables", [&] {
-                db.execThrow("ALTER TABLE ip_list_entries RENAME TO ip_list_entries_legacy");
-                db.execThrow(kIpListsRepoCreateEntries);
-                db.execThrow("INSERT INTO ip_list_entries (ip_list_id, generation, entry_order, cidr, port, latency_ms) "
-                             "SELECT ip_list_id, 0, entry_order, cidr, port, latency_ms FROM ip_list_entries_legacy");
-                db.execThrow("DROP TABLE ip_list_entries_legacy");
-                return true;
-            });
-        }
         db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_ip_list_entries_target ON ip_list_entries(ip_list_id, generation, cidr, port)");
         ipListsRepoPurgeLeftovers(db);
-    }
-
-    bool IpListsRepo::ipListsColumnExists(const char *columnName) const {
-        return ipListsRepoHasColumn(db, "ip_lists", columnName);
     }
 
     std::shared_ptr<IpList> IpListsRepo::ipListFromRow(SQLite::Statement &stmt) const {

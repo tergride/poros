@@ -45,6 +45,8 @@ namespace {
 
 DialogIntegration::DialogIntegration(QWidget *parent, const QList<QAction*>& actions) : QDialog(parent), ui(new Ui::DialogIntegration) {
     ui->setupUi(this);
+    // The last tab was the Poros API, which is gone.
+    if (auto *tabs = findChild<QTabWidget *>()) tabs->removeTab(tabs->count() - 1);
     form = new Validation::Form(this);
     form->attachStatus(ui->buttonBox);
     ui->show_mainwindow->setKeySequence(Configs::dataManager->settingsRepo->hotkey_mainwindow);

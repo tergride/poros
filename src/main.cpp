@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // Listening before initDB lets a second launch hand off while migrations run; its payload waits in the pending buffers.
+    // Listening before initDB lets a second launch hand off while the database opens; its payload waits in the pending buffers.
     Engine::InstanceServer server(serverName, QLocalServer::WorldAccessOption);
     if (!server.listen()) {
         // Logging::Init has not run yet, so the file log never sees this.

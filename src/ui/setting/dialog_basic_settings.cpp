@@ -14,7 +14,6 @@
 #include "include/engine/services/BackupArchive.h"
 #include "include/ui/utils/ValidationForm.h"
 
-#include <QStyleFactory>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -51,7 +50,6 @@
 
 #include "include/sys/UrlScheme.hpp"
 #include "include/ui/mainwindow.h"
-#include "include/ui/setting/DiagnosticsTab.h"
 #include "include/ui/utils/NativeFileDialog.h"
 
 namespace {
@@ -354,10 +352,6 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
     const int logFontSize = Configs::dataManager->settingsRepo->log_font_size;
     ui->log_font_size->setCurrentText(Int2String(logFontSize > 0 ? logFontSize : qApp->font().pointSize()));
     CACHE.shownLogFontSize = ui->log_font_size->currentText().toInt();
-    ui->theme->addItems(QStyleFactory::keys());
-    ui->theme->addItem("QDarkStyle");
-    // Custom stylesheet themes, not QStyleFactory keys.
-    ui->theme->addItems({"FlatGray", "LightBlue", "SoftPink", "BlackSoft"});
     ui->enable_custom_icon->setChecked(Configs::dataManager->settingsRepo->use_custom_icons);
     ui->follow_status_in_taskbar->setChecked(Configs::dataManager->settingsRepo->follow_status_in_taskbar);
     ui->follow_status_in_taskbar->setEnabled(ui->enable_custom_icon->isChecked());
@@ -386,19 +380,8 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
             }
         }
     });
-    bool ok;
-    auto themeId = Configs::dataManager->settingsRepo->theme.toInt(&ok);
-    if (ok) {
-        ui->theme->setCurrentIndex(themeId);
-    } else {
-        ui->theme->setCurrentText(Configs::dataManager->settingsRepo->theme);
-    }
-    connect(ui->theme, &QComboBox::currentIndexChanged, this, [=,this](int index) {
-        themeManager()->ApplyTheme(ui->theme->currentText());
-        Configs::dataManager->settingsRepo->theme = ui->theme->currentText().trimmed();
-        Configs::dataManager->settingsRepo->Save();
-        refreshUrlSchemeStatus();
-    });
+    ui->theme->hide();
+    ui->label_8->hide();
 
     ui->user_agent->setText(Configs::dataManager->settingsRepo->user_agent);
     ui->user_agent->setPlaceholderText(Configs::dataManager->settingsRepo->GetUserAgent(true));
@@ -490,7 +473,15 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
 
     D_LOAD_BOOL(skip_cert)
 
-    ui->tabWidget->addTab(new DiagnosticsTab(ui->tabWidget), tr("Diagnostics"));
+    for (QWidget *removed : std::initializer_list<QWidget *>{
+             ui->custom_inbound_edit, ui->disable_mixed_inbound, ui->proxy_scheme, ui->proxy_scheme_l, ui->file_assoc_auto_register, ui->file_assoc_status,
+             ui->file_assoc_install, ui->file_assoc_uninstall, ui->groupBox_4, ui->label_log_font, ui->log_font_family, ui->label_log_font_size, ui->log_font_size,
+             ui->enable_custom_icon, ui->select_custom_icon, ui->follow_status_in_taskbar, ui->sub_clear, ui->clash_api_box, ui->api_service_box, ui->mozilla_cert,
+             ui->groupBox_backup_webdav, ui->backup_inc_icons, ui->backup_inc_ip_lists}) {
+        removed->hide();
+    }
+    ui->backup_inc_icons->setChecked(false);
+    ui->backup_inc_ip_lists->setChecked(false);
     bindValidation();
 
     // The .ui geometry underruns real font metrics/translations and Qt then overlaps the rows (#1671).

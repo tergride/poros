@@ -15,8 +15,6 @@ static const QString kClasses = "HKEY_CURRENT_USER\\Software\\Classes";
 static const QString kProgId = "Poros.Config";
 
 static const QStringList kConfigExtensions = {".json", ".conf", ".yaml", ".yml"};
-// Claimed before 1.3; never registered again, only taken back.
-static const QStringList kRetiredExtensions = {".ini", ".txt"};
 
 static QString openCommand() {
     return "\"" + QDir::toNativeSeparators(QApplication::applicationFilePath()) + "\" \"%1\"";
@@ -77,9 +75,6 @@ static void applyConfigFiles(const QString &command) {
     for (const QString &ext : kConfigExtensions) {
         QSettings(kClasses + "\\" + ext + "\\OpenWithProgids", QSettings::NativeFormat).setValue(kProgId, "");
     }
-    for (const QString &ext : kRetiredExtensions) {
-        QSettings(kClasses + "\\" + ext + "\\OpenWithProgids", QSettings::NativeFormat).remove(kProgId);
-    }
 
     // Applications\<exe> is what "Open with > Choose another app" reads, the only route for an extensionless file.
     QSettings app(kClasses + "\\Applications\\" + exeName(), QSettings::NativeFormat);
@@ -108,7 +103,7 @@ void UrlScheme_Remove(Association a) {
         classes.remove(kProgId);
         classes.remove("Applications/" + exeName());
         // Only our own progid goes; the extension's default was never ours to touch.
-        for (const QString &ext : kConfigExtensions + kRetiredExtensions) {
+        for (const QString &ext : kConfigExtensions) {
             QSettings(kClasses + "\\" + ext + "\\OpenWithProgids", QSettings::NativeFormat).remove(kProgId);
         }
     }

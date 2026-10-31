@@ -42,16 +42,6 @@ bool MainWindow::IsGlobalHotkeySupported() const {
     return globalHotkeys && globalHotkeys->isSupported();
 }
 
-void MainWindow::collectMenuShortcuts(QMenu *menu, QSet<QKeySequence> &out) {
-    for (const auto &action: menu->actions()) {
-        if (auto *sub = action->menu()) {
-            collectMenuShortcuts(sub, out);
-        } else {
-            for (const auto &seq : action->shortcuts()) out.insert(seq);
-        }
-    }
-}
-
 void MainWindow::registerMenuShortcuts(QMenu *menu, QSet<QKeySequence> &claimed) {
     for (const auto &action: menu->actions()) {
         if (auto *sub = action->menu()) {
@@ -77,16 +67,11 @@ void MainWindow::RegisterHiddenMenuShortcuts(bool unregister) {
     // A native menubar keeps its actions' shortcuts live even while hidden, so a second binding makes both ambiguous and kills them.
     if (ui->menubar->isNativeMenuBar()) return;
 
-    // Menus on visible toolButtons already register their actions' shortcuts; seed to avoid duplicates.
+    // The menus only open from the shell, so none of their actions is on a visible widget that would own its shortcut.
     QSet<QKeySequence> claimed;
-    collectMenuShortcuts(ui->menu_program, claimed);
-    collectMenuShortcuts(ui->menu_preferences, claimed);
-    collectMenuShortcuts(ui->menuRouting_Menu, claimed);
-    collectMenuShortcuts(ui->menuTesting, claimed);
-    collectMenuShortcuts(ui->menuTools, claimed);
-
-    registerMenuShortcuts(ui->menuHidden_menu, claimed);
-    registerMenuShortcuts(ui->menu_server, claimed);
+    for (auto *menu : {ui->menu_program, ui->menu_preferences, ui->menuRouting_Menu, ui->menuTesting, ui->menuTools, ui->menuHidden_menu, ui->menu_server}) {
+        registerMenuShortcuts(menu, claimed);
+    }
 }
 
 void MainWindow::setActionsData()

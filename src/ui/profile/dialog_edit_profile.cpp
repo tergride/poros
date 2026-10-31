@@ -238,16 +238,20 @@ void DialogEditProfile::setupTypeList() {
         ui->type->addItem(Configs::dataManager->profilesRepo->NewProfile(t)->outbound->DisplayType(), t);
     };
     for (const auto *t: {"autoselector", "socks", "http", "shadowsocks", "trojan", "vmess", "vless", "xrayvless",
-                         "hysteria", "tuic", "juicity", "naive", "trusttunnel", "anytls", "mieru", "snell",
-                         "shadowtls", "wireguard", "masque", "openvpn", "openconnect", "tailscale", "ssh", "direct"}) {
+                         "hysteria", "tuic", "naive", "trusttunnel", "anytls",
+                         "shadowtls", "wireguard", "masque", "openvpn", "openconnect", "ssh", "direct"}) {
         addType(t);
     }
     ui->type->addItem(tr("Custom (%1 outbound)").arg(software_core_name), Configs::Custom::CustomOutbound);
     ui->type->addItem(tr("Custom (%1 config)").arg(software_core_name), Configs::Custom::CustomFullConfig);
     ui->type->addItem(tr("Custom (Xray outbound)"), Configs::Custom::CustomXrayOutbound);
     ui->type->addItem(tr("Custom (Xray config)"), Configs::Custom::CustomXrayFullConfig);
-    ui->type->addItem(tr("Extra Core"), "extracore");
     addType("chain");
+    ui->type->insertSeparator(ui->type->count());
+    for (const auto *t: {"juicity", "mieru", "snell"}) addType(t);
+    // These can no longer be created, but an old profile of the kind still opens.
+    if (type == QLatin1String("tailscale")) addType(type);
+    if (type == QLatin1String("extracore")) ui->type->addItem(tr("Extra Core"), type);
 
     ui->type->setCurrentIndex(qMax(0, ui->type->findData(type)));
     connect(ui->type, &QComboBox::currentIndexChanged, this, [this](int index) {

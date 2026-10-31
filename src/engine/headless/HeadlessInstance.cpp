@@ -28,6 +28,7 @@
 #include "include/engine/app/ExitCodes.h"
 #include "include/engine/app/InstanceServer.h"
 #include "include/global/Logger.hpp"
+#include "include/global/Utils.hpp"
 #include "include/sys/ServiceManager.hpp"
 
 namespace Engine::HeadlessInstance {

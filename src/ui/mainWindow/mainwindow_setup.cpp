@@ -24,7 +24,6 @@
 #include "include/global/PeriodicRunner.hpp"
 #include "include/global/Logger.hpp"
 #include "include/scanner/IpListUpdater.h"
-#include "include/scanner/ScanManager.h"
 #include "include/ui/stats/dialog_auto_selector.h"
 #include "include/sys/KillSwitch.hpp"
 #include "include/sys/AutoRun.hpp"
@@ -32,11 +31,16 @@
 
 #include "include/ui/setting/ThemeManager.hpp"
 #include "include/ui/setting/Icon.hpp"
+#include "include/ui/advanced/AdvancedPage.h"
+#include "include/ui/advanced/EmbeddedDialog.h"
+#include "include/ui/onboarding/OnboardingPage.h"
+#include "include/ui/simple/ServerTreeModel.h"
 #include "include/ui/stats/dialog_traffic_stats.h"
 #include "include/ui/stats/RuntimeStatsWidget.h"
 #include "include/ui/widget/LiveChart.h"
 #include "include/ui/widget/StartStopButton.hpp"
 
+#include "include/configs/PresetCatalog.h"
 #include "include/configs/generate.h"
 #include "include/database/GroupsRepo.h"
 #include "include/database/ProfilesRepo.h"
@@ -55,15 +59,13 @@
 #endif
 
 #include <QClipboard>
+#include <QStackedWidget>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QDesktopServices>
 #include <QTimer>
 #include <QMessageBox>
 #include <QDir>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-#include <QStyleHints>
-#endif
 #include <QFileDialog>
 #include <QToolButton>
 #include <QTextBrowser>
@@ -74,17 +76,6 @@ MainWindow *UI_InitMainWindow() {
     auto *window = new MainWindow;
     mainwindow = window;
     return window;
-}
-
-static bool themeUsesDarkLog(const QString &theme) {
-    const auto lower = theme.toLower();
-    if (lower.contains("vista") || lower.contains("flatgray") || lower.contains("lightblue") || lower.contains("softpink")) {
-        return false;
-    }
-    if (lower.contains("qdarkstyle") || lower.contains("blacksoft")) {
-        return true;
-    }
-    return isDarkMode();
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -134,7 +125,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     MW_handle_deeplink = [=,this](const QString &url) {
         runOnUiThread([=,this]
         {
-            handle_deeplink_impl(url);
+            if (m_onboarding != nullptr && m_rootStack->currentWidget() == m_onboarding) m_deferredDeeplinks << url;
+            else handle_deeplink_impl(url);
         });
     };
     MW_import_files = [=,this](const QStringList &paths) {
@@ -160,7 +152,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         // Focused on creation, not when the download ends: by then the user may have moved to another tab.
         if (Configs::dataManager->groupsRepo->GetGroupsTabOrder().contains(gid)) ui->tabWidget->setCurrentIndex(groupId2TabIndex(gid));
     });
-    connect(engineEvents, &Engine::EngineEvents::subscriptionFinished, this, [this](int, bool) { refresh_proxy_list({}, true); });
+    connect(engineEvents, &Engine::EngineEvents::subscriptionFinished, this, [this](int, bool) {
+        refresh_proxy_list({}, true);
+        if (m_serverModel != nullptr) m_serverModel->reload();
+    });
     connect(engineEvents, &Engine::EngineEvents::subscriptionDiff, this, [](const QString &title, const QString &body) {
         MessageBoxScrollable(title, body);
     });
@@ -169,9 +164,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
     connect(engineEvents, &Engine::EngineEvents::groupsChanged, this, [this] {
         dialog_message_impl(MwMessage::GroupsChanged, {});
+        if (m_serverModel != nullptr) m_serverModel->reload();
     });
     connect(engineEvents, &Engine::EngineEvents::profilesRemoved, this, [this](const QList<int> &) {
         refresh_proxy_list({}, true, RefreshAnchor::Removal);
+        if (m_serverModel != nullptr) m_serverModel->reload();
     });
     connect(engineEvents, &Engine::EngineEvents::settingsChanged, this, [this, syncSettingsMirrors](const QStringList &) {
         refresh_status();
@@ -179,17 +176,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
 
     AutoRun_FixTaskIfNeeded();
-    AutoRun_MigrateIfNeeded();
 
     UrlScheme_RegisterIfNeeded();
 
-    bool isNum;
-    Configs::dataManager->settingsRepo->theme.toInt(&isNum);
-    if (isNum) {
-        Configs::dataManager->settingsRepo->theme = "System";
-    }
-    themeManager()->ApplyTheme(Configs::dataManager->settingsRepo->theme);
+    // The preset names follow the translator, which loads after the database.
+    Configs::PresetCatalog::Ensure();
+    themeManager()->ApplyTheme();
     ui->setupUi(this);
+    setupShell();
 
     setupCommandPalette();
     setActionsData();
@@ -200,25 +194,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         this->restoreGeometry(geo);
     }
 
-    ui->splitter->restoreState(DecodeB64IfValid(Configs::dataManager->settingsRepo->splitter_state));
-    setLogHighlighter(themeUsesDarkLog(Configs::dataManager->settingsRepo->theme));
+    setLogHighlighter(true);
     setupLogView();
     updateLogFilterFields();
     runOnThread([=, this] {
         log_process_loop();
     }, LogThread);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    connect(qApp->styleHints(), &QStyleHints::colorSchemeChanged, this, [=,this](const Qt::ColorScheme& scheme) {
-        setLogHighlighter(scheme == Qt::ColorScheme::Dark);
-        themeManager()->ApplyTheme(Configs::dataManager->settingsRepo->theme, true);
-    });
-#endif
-    connect(themeManager(), &ThemeManager::themeChanged, this, [=,this](const QString& theme){
-        setLogHighlighter(themeUsesDarkLog(theme));
-        applyLogBrowserFont();
-        scheduleProxyListRefresh();
-    });
     SetUserLogSink([=,this](const QString &log) {
         append_log(log);
         Logging::WriteUserLog(log);
@@ -229,16 +211,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         UpdateDataView(!show);
     });
 
-    if (!Configs::dataManager->settingsRepo->font.isEmpty()) {
-        auto font = qApp->font();
-        font.setFamily(Configs::dataManager->settingsRepo->font);
-        qApp->setFont(font);
-    }
-    if (Configs::dataManager->settingsRepo->font_size != 0) {
-        auto font = qApp->font();
-        font.setPointSize(Configs::dataManager->settingsRepo->font_size);
-        qApp->setFont(font);
-    }
+    QFont appFont(QStringLiteral("Segoe UI"), 10);
+    if (!Configs::dataManager->settingsRepo->font.isEmpty()) appFont.setFamily(Configs::dataManager->settingsRepo->font);
+    if (Configs::dataManager->settingsRepo->font_size != 0) appFont.setPointSize(Configs::dataManager->settingsRepo->font_size);
+    qApp->setFont(appFont);
 
     parallelCoreCallPool->setMaxThreadCount(10);
     ui->menu_start->setShortcuts({QKeySequence(Qt::Key_Return), QKeySequence(Qt::Key_Enter)});
@@ -250,35 +226,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
     ui->toolButton_startstop->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->toolButton_startstop, &QWidget::customContextMenuRequested, this, [this] { show_startstop_menu(); });
-    connect(ui->tabWidget->tabBar(), &QTabBar::tabMoved, this, [=,this](int from, int to) {
-        QList<int> tabOrder;
-        for (int i = 0; i < ui->tabWidget->tabBar()->count(); i++) {
-            tabOrder += ui->tabWidget->tabBar()->tabData(i).toInt();
-        }
-        Configs::dataManager->groupsRepo->SetGroupsTabOrder(tabOrder);
-        on_tabWidget_currentChanged(ui->tabWidget->tabBar()->currentIndex());
-    });
     // Carries profile names and the exit lookup service's answer; as AutoText a tag on the first line renders it all as HTML.
     ui->label_running->setTextFormat(Qt::PlainText);
     ui->label_running->installEventFilter(this);
     ui->label_inbound->installEventFilter(this);
-    ui->splitter->installEventFilter(this);
-    // Never from a mouse-press filter: off Windows Qt synthesizes the context-menu event after the press (#1642).
-    ui->tabWidget->setContextMenuPolicy(Qt::CustomContextMenu);
-    ui->tabWidget->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->tabWidget->tabBar(), &QWidget::customContextMenuRequested, this,
-            [this](const QPoint& pos) { show_group_tab_menu(pos); });
     auto btnFilter = new QToolButton(this);
     btnFilter->setIcon(QIcon(":/icon/filter.png"));
     btnFilter->setToolTip(QString("%1\n%2").arg(tr("Enable Filter"), QKeySequence(QKeySequence::Find).toString(QKeySequence::NativeText)));
     btnFilter->setShortcut(QKeySequence::Find);
     btnFilter->setCheckable(true);
-    // Sits inside the tab strip: an ignored right-click here would propagate to the group menu.
-    btnFilter->setContextMenuPolicy(Qt::PreventContextMenu);
     connect(btnFilter, &QToolButton::toggled, static_cast<ProfilesTableFilterHeader*>(ui->profilesTableView->horizontalHeader()), &ProfilesTableFilterHeader::setFiltersVisible);
     connect(static_cast<ProfilesTableFilterHeader*>(ui->profilesTableView->horizontalHeader()), &ProfilesTableFilterHeader::closeRequested,
             btnFilter, [btnFilter] { btnFilter->setChecked(false); });
-    ui->tabWidget->setCornerWidget(btnFilter, Qt::TopRightCorner);
+    m_profileActions->addWidget(btnFilter);
     RegisterHotkey(false);
     auto last_size = Configs::dataManager->settingsRepo->mw_size.split("x");
     if (last_size.length() == 2) {
@@ -293,42 +253,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QDir().mkdir("icons") ? qDebug("created icons dir") : qDebug("Failed to create icons dir");
     }
 
-    ui->toolButton_program->setMenu(ui->menu_program);
-    ui->toolButton_preferences->setMenu(ui->menu_preferences);
-    ui->toolButton_routing->setMenu(ui->menuRouting_Menu);
     ui->menuRouting_Menu->installEventFilter(this);
-    ui->toolButton_testing->setMenu(ui->menuTesting);
-    ui->toolButton_tools->setMenu(ui->menuTools);
-    ui->toolButton_program->installEventFilter(this);
-
-    designMinimumSize = minimumSize();
-    applyTopBarMetrics();
 
     ui->menubar->setVisible(false);
+    for (auto *removed : {ui->menu_open_dashboard, ui->menu_scanner}) ui->menuTools->removeAction(removed);
     connect(ui->actionRuntime_Stats, &QAction::triggered, this, [=, this]() {
+        m_advancedPage->showSection(AdvancedPage::Statistics);
         ui->stats_widget->setCurrentWidget(ui->runtime_tab);
-        if (ui->splitter->sizes().value(1) < ui->stats_widget->tabBar()->sizeHint().height()) {
-            const auto height = ui->splitter->size().height();
-            ui->splitter->setSizes({height / 2, height / 2});
-        }
     });
     ui->actionTraffic_Stats->setVisible(!Configs::dataManager->settingsRepo->disable_traffic_aggregation);
     connect(ui->actionTraffic_Stats, &QAction::triggered, this, [=, this]() {
-        USE_DIALOG(DialogTrafficStats)
+        showAdvancedSection(AdvancedPage::Statistics);
+        ui->stats_widget->setCurrentWidget(m_trafficPage);
     });
     ui->actionAuto_Selector->setVisible(false);
     connect(ui->actionAuto_Selector, &QAction::triggered, this, [=,this]() {
-        if (m_autoSelectorDialog == nullptr) {
-            m_autoSelectorDialog = new DialogAutoSelector(this);
-            connect(m_autoSelectorDialog, &QDialog::finished, this, [this] {
-                m_autoSelectorDialog->deleteLater();
-                m_autoSelectorDialog = nullptr;
-            });
-        }
-        m_autoSelectorDialog->refresh();
-        m_autoSelectorDialog->show();
-        m_autoSelectorDialog->raise();
-        m_autoSelectorDialog->activateWindow();
+        showAdvancedSection(AdvancedPage::Statistics);
+        ui->stats_widget->setCurrentWidget(m_autoSelectorPage);
     });
     connect(ui->actionCheck_For_Update, &QAction::triggered, this, [=,this] { runOnNewThread([=,this] { CheckUpdate(); }); });
     connect(ui->actionUpdate_Rule_Sets, &QAction::triggered, this, [] {
@@ -598,6 +539,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(Subscription::updater(), &Subscription::GroupUpdater::asyncUpdateCallback, this, [this](int gid) {
         if (gid >= 0) updateTabToolTip(gid);
+        m_serverModel->reload();
     });
 
     this->refresh_groups();
@@ -610,10 +552,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     trayMenu->addSeparator();
 
     trayConnectAction = new QAction(tr("Connect"), trayMenu);
-    connect(trayConnectAction, &QAction::triggered, this, [this]() {
-        if (runningSnapshot() != nullptr) profile_stop(false, false, true);
-        else profile_start();
-    });
+    connect(trayConnectAction, &QAction::triggered, this, [this]() { toggle_connection(); });
     trayMenu->addAction(trayConnectAction);
     trayMenu->addSeparator();
 
@@ -664,7 +603,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(ui->actionHide_window, &QAction::triggered, this, [=, this](){ HideWindow(this); });
     connect(ui->menu_open_config_folder, &QAction::triggered, this, [=,this] { QDesktopServices::openUrl(QUrl::fromLocalFile(QDir::currentPath())); });
-    connect(ui->menu_open_dashboard, &QAction::triggered, this, [=,this] { OpenDashboard(); });
     connect(ui->actionRestart_Proxy, &QAction::triggered, this, [=,this] { supervisor()->resetCore(); });
     connect(ui->actionRestart_Program, &QAction::triggered, this, [=,this] { MW_dialog_message(MwMessage::RestartProgram, {}); });
     connect(ui->actionShow_window, &QAction::triggered, this, [=,this] { ActivateWindow(this); });
@@ -721,7 +659,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
 
     connect(ui->menuTesting, &QMenu::aboutToShow, this, [=,this](){
-        ui->actionDelete_Group->setEnabled(Configs::dataManager->groupsRepo->GetAllGroupIds().size() > 1);
+        ui->actionDelete_Group->setEnabled(Configs::dataManager->groupsRepo->GetGroupsTabOrder().size() > 1);
         if (tests()->isRunning()) {
             ui->menuTesting->addAction(ui->menu_stop_testing);
         } else {
@@ -763,7 +701,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
 
     connect(ui->actionDelete_Group, &QAction::triggered, this, [=,this]{
-        if (Configs::dataManager->groupsRepo->GetAllGroupIds().size() <= 1) return;
+        if (Configs::dataManager->groupsRepo->GetGroupsTabOrder().size() <= 1) return;
         const auto group = Configs::dataManager->groupsRepo->CurrentGroup();
         if (group == nullptr) return;
         if (QMessageBox::question(this, tr("Confirmation"), tr("Remove %1?").arg(group->name)) ==
@@ -963,15 +901,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(host->autoSelector(), &Engine::AutoSelectorController::statusChanged, this, [this] { refresh_auto_selector_view(); });
 
-    auto* scanManager = Scanner::ScanManager::instance();
-    connect(scanManager, &Scanner::ScanManager::progressChanged, this,
-            [this](int) { refreshScannerDataView(); }, Qt::QueuedConnection);
-    connect(scanManager, &Scanner::ScanManager::statusChanged, this,
-            [this](int) { refreshScannerDataView(true); }, Qt::QueuedConnection);
-    connect(scanManager, &Scanner::ScanManager::scansChanged, this, [this] {
-        m_scannerNames.clear();
-        refreshScannerDataView(true);
-    }, Qt::QueuedConnection);
+    // A start into the tray leaves the wizard for the first time someone opens Poros.
+    if (Configs::dataManager->settingsRepo->onboarding_done || Configs::dataManager->settingsRepo->flag_tray) applyUiMode();
+    else showOnboarding();
 
     if (!Configs::dataManager->settingsRepo->flag_tray) show();
     else if (tray->isVisible()) HideWindow(this);
@@ -988,6 +920,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             connection()->clearRestartNeeded();
         }
     });
+
+#ifdef POROS_UI_TOUR
+    for (const auto &argument : QApplication::arguments()) {
+        if (argument.startsWith(QStringLiteral("--ui-tour="))) runUiTour(argument.mid(10));
+    }
+#endif
 }
 
 MainWindow::~MainWindow() {

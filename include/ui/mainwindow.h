@@ -66,8 +66,6 @@ class TrayProfileSelector;
 class TrayOtpCodes;
 class GlobalHotkeys;
 class DialogVpnAuth;
-class DialogScanner;
-class DialogIpLists;
 class CommandPalette;
 
 namespace Qv2ray::ui { class SyntaxHighlighter; }
@@ -104,7 +102,8 @@ public:
 
     void show_group(int gid);
 
-    void show_group_tab_menu(const QPoint &tabBarPos);
+    // gid -1: the empty part of the list.
+    void show_group_menu(int gid, const QPoint &globalPos);
 
     void refresh_groups();
 
@@ -151,11 +150,9 @@ public:
 
     void setDownloadReport(const DownloadProgressReport& report, bool show);
 
-    void showIpListsDialog(int selectListId = -1);
-
-    void showScannerDialog();
-
-    void refreshScannerDataView(bool force = false);
+#ifdef POROS_UI_TOUR
+    void runUiTour(const QString &dir);
+#endif
 
 signals:
 
@@ -180,8 +177,6 @@ private slots:
     void on_menu_preset_settings_triggered();
 
     void on_menu_otp_manager_triggered();
-
-    void on_menu_scanner_triggered();
 
     void on_menu_integration_settings_triggered();
 
@@ -231,10 +226,71 @@ private slots:
 
     void on_tabWidget_currentChanged(int index);
 
-    void on_tabWidget_customContextMenuRequested(const QPoint& p);
-
 private:
     Ui::MainWindow *ui;
+    class TitleBar *m_titleBar = nullptr;
+    class QStackedWidget *m_rootStack = nullptr;
+    class AdvancedPage *m_advancedPage = nullptr;
+    class ConnectionBar *m_connectionBar = nullptr;
+    class GroupPane *m_groupPane = nullptr;
+    class QHBoxLayout *m_profileActions = nullptr;
+    class QHBoxLayout *m_logActions = nullptr;
+    class QHBoxLayout *m_connectionActions = nullptr;
+    QList<class StartStopButton *> m_startButtons;
+    QString m_routeChoiceKey;
+
+    // In mainwindow_shell.cpp.
+    void setupShell();
+    void applyUiMode();
+    void showAppMenu(const QPoint &globalPos);
+    void refreshGroupPane();
+    void refreshRouteChoice();
+    void setUiMode(const QString &mode);
+    void showAdvancedSection(int section);
+    class EmbeddedDialog *m_trafficPage = nullptr;
+    class EmbeddedDialog *m_autoSelectorPage = nullptr;
+    class EmbeddedDialog *m_routingPage = nullptr;
+    class EmbeddedDialog *m_basicSettings = nullptr;
+    class EmbeddedDialog *m_vpnSettings = nullptr;
+    class EmbeddedDialog *m_presetSettings = nullptr;
+    class EmbeddedDialog *m_hotkeySettings = nullptr;
+    class SettingsSection *m_settingsSection = nullptr;
+    class QTabWidget *m_toolTabs = nullptr;
+    class OnboardingPage *m_onboarding = nullptr;
+    QStringList m_deferredDeeplinks;
+    void showOnboarding();
+    void finishOnboarding(const QString &uiMode);
+
+    // The simple mode, in mainwindow_simple.cpp.
+    class SimpleHome *m_simpleHome = nullptr;
+    class ServerTreeModel *m_serverModel = nullptr;
+    class ConnectionModeController *m_modes = nullptr;
+    QElapsedTimer m_simpleSince;
+    void setupSimpleMode();
+    void simplePick(int profileId);
+    int simpleProfileToStart() const;
+    void simpleStart();
+    bool simpleModeShown() const;
+    void showAddSubscription(const QString &link);
+    void showSimpleGroupMenu(int groupId, const QPoint &globalPos);
+    void refreshSimplePortal();
+    class QStackedWidget *m_simpleStack = nullptr;
+    class SimpleSettings *m_simpleSettings = nullptr;
+    class PresetEditor *m_presetEditor = nullptr;
+    void showSimpleSettings(int section);
+    void showSimpleLog();
+
+    // Rights, in mainwindow_policy.cpp.
+    class FailureBanner *m_banner = nullptr;
+    int m_pendingStart = -1;
+    int m_restartProfileId = -1;
+    bool m_killSwitchPromptOpen = false;
+    std::optional<Engine::PrivilegeReason> m_triedWithoutRights;
+    void restartWithRights(Engine::PrivilegeReason reason);
+    void useSystemInsteadOfTun();
+    void showRightsFailure(Engine::PrivilegeReason reason);
+    void showRuleSetFailure();
+
     QElapsedTimer sinceWindowDeactivated;
     ProfilesTableModel *profilesTableModel = nullptr;
 
@@ -445,6 +501,8 @@ private:
 
     void closeEvent(QCloseEvent *event) override;
 
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
+
     void changeEvent(QEvent *event) override;
 
     void showEvent(QShowEvent *event) override;
@@ -459,11 +517,6 @@ private:
 
     void applyLogBrowserFont();
 
-    void applyTopBarMetrics();
-    bool usesTightLabels() const;
-
-    QSize designMinimumSize;
-
     QTimer *m_proxyListRefreshDebounce = nullptr;
     void scheduleProxyListRefresh();
 
@@ -477,7 +530,6 @@ private:
 
     void RegisterHiddenMenuShortcuts(bool unregister = false);
     void registerMenuShortcuts(QMenu *menu, QSet<QKeySequence> &claimed);
-    void collectMenuShortcuts(QMenu *menu, QSet<QKeySequence> &out);
 
     void setActionsData();
 
@@ -506,14 +558,8 @@ private:
     QPointer<QMessageBox> m_killSwitchDialog;
 
     QPointer<DialogVpnAuth> m_vpnAuthDialog;
-    QPointer<DialogScanner> m_scannerDialog;
-    QPointer<DialogIpLists> m_ipListsDialog;
-    QHash<int, QString> m_scannerNames;
-    bool m_scannerPanelShown = false;
 
     void CheckUpdate();
-
-    void OpenDashboard();
 
     void setupConnectionList();
 
@@ -581,7 +627,7 @@ private:
 
     Engine::SlowOperation slowOperation(Engine::SlowOperationKind kind, int delayMs) override;
 
-    bool requestCorePrivileges() override;
+    Engine::PrivilegeDecision requestCorePrivileges(Engine::PrivilegeReason reason) override;
 
     void systemProxyNeedsMixedInbound() override;
 

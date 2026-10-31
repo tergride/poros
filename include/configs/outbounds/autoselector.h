@@ -79,12 +79,7 @@ namespace Configs
         {
             if (object.isEmpty()) return false;
             if (object.contains("name")) name = object["name"].toString();
-            // "gid" is the single-group form older builds wrote, and still read.
-            if (object.contains("gids")) {
-                gids = QJsonArray2QListInt(object["gids"].toArray());
-            } else if (const int gid = object["gid"].toInt(-1); gid >= 0) {
-                gids = {gid};
-            }
+            if (object.contains("gids")) gids = QJsonArray2QListInt(object["gids"].toArray());
             if (object.contains("name_filter")) nameFilter = object["name_filter"].toString();
             if (object.contains("country_filter")) countryFilter = object["country_filter"].toString();
             if (object.contains("exclude_unavailable")) excludeUnavailable = object["exclude_unavailable"].toBool(true);
@@ -122,7 +117,6 @@ namespace Configs
             object["name"] = name;
             object["type"] = "autoselector";
             object["gids"] = QListInt2QJsonArray(gids);
-            object["gid"] = gids.value(0, -1);
             object["name_filter"] = nameFilter;
             object["country_filter"] = countryFilter;
             object["exclude_unavailable"] = excludeUnavailable;

@@ -9,7 +9,9 @@
 
 #include "include/configs/sub/GroupUpdater.hpp"
 #include "include/database/GroupsRepo.h"
+#include "include/engine/services/AutoGroupService.h"
 #include "include/engine/services/GroupService.h"
+#include "include/ui/advanced/GroupPane.h"
 #include "include/ui/group/dialog_edit_group.h"
 #include "include/ui/mainWindow/MainWindowInternal.h"
 #include "include/engine/tests/TestRunner.h"
@@ -107,6 +109,7 @@ void MainWindow::show_group(int gid) {
     }
 
     updateTabToolTip(gid);
+    m_groupPane->setCurrent(gid);
 
     refresh_proxy_list({}, true);
 
@@ -162,16 +165,11 @@ void MainWindow::refresh_groups() {
     }
 
     Configs::dataManager->settingsRepo->refreshing_group_list = false;
+    refreshGroupPane();
 }
 
-// The strip right of the last tab belongs to the tabWidget, not the tab bar.
-void MainWindow::on_tabWidget_customContextMenuRequested(const QPoint &p) {
-    show_group_tab_menu(ui->tabWidget->tabBar()->mapFrom(ui->tabWidget, p));
-}
-
-void MainWindow::show_group_tab_menu(const QPoint &p) {
-    const int clickedIndex = ui->tabWidget->tabBar()->tabAt(p);
-    if (clickedIndex == -1) {
+void MainWindow::show_group_menu(int clickedGid, const QPoint &globalPos) {
+    if (clickedGid < 0) {
         QMenu menu(this);
         connect(menu.addAction(tr("Add new Group")), &QAction::triggered, this, [=,this]{
             auto ent = Configs::dataManager->groupsRepo->NewGroup();
@@ -185,13 +183,12 @@ void MainWindow::show_group_tab_menu(const QPoint &p) {
             }
         });
 
-        menu.exec(ui->tabWidget->tabBar()->mapToGlobal(p));
+        menu.exec(globalPos);
         return;
     }
 
     // The actions run inside menu.exec(), whose event loop may let the API add or delete groups: each resolves the id again.
-    const int clickedGid = ui->tabWidget->tabBar()->tabData(clickedIndex).toInt();
-    ui->tabWidget->setCurrentIndex(clickedIndex);
+    ui->tabWidget->setCurrentIndex(groupId2TabIndex(clickedGid));
     QMenu menu(this);
 
     const auto clickedGroup = Configs::dataManager->groupsRepo->GetGroup(clickedGid);
@@ -223,7 +220,7 @@ void MainWindow::show_group_tab_menu(const QPoint &p) {
         });
         dialog->show();
     });
-    if (Configs::dataManager->groupsRepo->GetAllGroupIds().size() > 1) {
+    if (Configs::dataManager->groupsRepo->GetGroupsTabOrder().size() > 1) {
         connect(menu.addAction(tr("Delete selected Group")), &QAction::triggered, this, [=,this] {
             const auto group = Configs::dataManager->groupsRepo->GetGroup(clickedGid);
             if (group == nullptr) return;
@@ -253,7 +250,7 @@ void MainWindow::show_group_tab_menu(const QPoint &p) {
         menu.addSeparator();
         menu.addMenu(ui->menu_clean_up);
     }
-    menu.exec(ui->tabWidget->tabBar()->mapToGlobal(p));
+    menu.exec(globalPos);
 }
 
 void MainWindow::delete_group(int gid, const QString &title) {
@@ -262,6 +259,8 @@ void MainWindow::delete_group(int gid, const QString &title) {
         MessageBoxWarning(title, GroupDeleteRefusalText(*refusal));
         return;
     }
-    if (const auto running = runningSnapshot(); running != nullptr && running->gid == gid) profile_stop(false, true, false);
+    if (const auto running = runningSnapshot(); running != nullptr && (running->gid == gid || running->id == Engine::AutoGroupService::Find(gid))) {
+        profile_stop(false, true, false);
+    }
     if (const auto refusal = Engine::GroupService::Delete(gid)) MessageBoxWarning(title, GroupDeleteRefusalText(*refusal));
 }

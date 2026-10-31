@@ -478,6 +478,12 @@ DialogManageRoutes::DialogManageRoutes(QWidget *parent) : QDialog(parent), ui(ne
     connect(ui->route_profiles, &QListWidget::itemDoubleClicked, this, [=,this](const QListWidgetItem* item){
         on_edit_route_clicked();
     });
+    connect(ui->route_profiles, &QListWidget::currentRowChanged, this, [=,this](int row) {
+        const bool builtin = row >= 0 && row < chainList.size() && chainList[row]->IsBuiltin();
+        ui->edit_route->setEnabled(!builtin);
+        ui->delete_route->setEnabled(!builtin);
+        ui->edit_route->setToolTip(builtin ? tr("Built-in presets cannot be changed. Clone one to make your own.") : QString());
+    });
 
     connect(ui->route_prof, &QComboBox::currentIndexChanged, this, &DialogManageRoutes::updateCurrentRouteProfile);
 
@@ -845,13 +851,14 @@ void DialogManageRoutes::on_clone_route_clicked() {
     auto chainCopy = std::make_shared<Configs::RouteProfile>(*chainList[idx]);
     chainCopy->name = chainCopy->name + " clone";
     chainCopy->id = -1;
+    chainCopy->DetachFromBuiltin();
     chainList.append(chainCopy);
     reloadProfileItems();
 }
 
 void DialogManageRoutes::on_edit_route_clicked() {
     auto idx = ui->route_profiles->currentRow();
-    if (idx < 0) return;
+    if (idx < 0 || chainList[idx]->IsBuiltin()) return;
 
     auto onEdited = [=, this](const std::shared_ptr<Configs::RouteProfile>& chain) {
         if (currentRoute == chainList[idx]) currentRoute = chain;
@@ -874,7 +881,7 @@ void DialogManageRoutes::on_edit_route_clicked() {
 
 void DialogManageRoutes::on_delete_route_clicked() {
     auto idx = ui->route_profiles->currentRow();
-    if (idx < 0) return;
+    if (idx < 0 || chainList[idx]->IsBuiltin()) return;
     if (chainList.size() == 1) {
         MessageBoxWarning(tr("Invalid operation"), tr("Routing Profiles cannot be empty, try adding another profile or editing this one"));
         return;

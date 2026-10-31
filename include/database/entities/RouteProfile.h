@@ -80,12 +80,24 @@ namespace Configs {
         // Subset of endpointProfileIDs whose inner endpoint hops are routable too.
         QList<int> innerHopEndpointIDs;
 
+        // Non-empty on a built-in preset, which the interface only reads and copies.
+        QString builtinKey = "";
+        // The built-in preset a copy was made from.
+        QString baseKey = "";
+        // Fragmentation and TLS tricks for the profiles that leave them to the defaults.
+        bool hardened = false;
+
         // Picks between the global DNS settings and dns, which is kept either way once set.
         bool customDns = false;
         std::optional<RouteDns> dns;
 
         // The DNS this profile imposes; nullopt while the global settings apply.
         [[nodiscard]] std::optional<RouteDns> ActiveDns() const { return customDns ? dns : std::nullopt; }
+
+        [[nodiscard]] bool IsBuiltin() const { return !builtinKey.isEmpty(); }
+
+        // Turns a clone of a built-in preset into the user's own profile.
+        void DetachFromBuiltin();
 
         RouteProfile() = default;
 

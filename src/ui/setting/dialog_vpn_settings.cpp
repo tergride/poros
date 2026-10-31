@@ -14,20 +14,12 @@
 #define ADJUST_SIZE runOnThread([=,this] { adjustSize(); adjustPosition(mainwindow); }, this);
 
 namespace {
-    const QString kDefaultTunIPv4CIDR = "172.19.0.1/24";
-    const QString kDefaultTunIPv6CIDR = "fdfe:dcba:9876::1/96";
+    const QString kDefaultTunIPv4CIDR = "172.19.1.1/24";
+    const QString kDefaultTunIPv6CIDR = "fdfe:dcba:9877::1/96";
     constexpr int kVpnMinMtu = 1000;
     constexpr int kVpnMaxMtu = 10000;
     constexpr int kVpnMinIPv6Mtu = 1280;
 
-    // Older builds saved bare addresses, which the core cannot read as a prefix (routeExcludePrefix widens them the same way).
-    QString WithPrefixLength(const QString &saved) {
-        const auto range = saved.trimmed();
-        if (range.contains(u'/')) return range;
-        if (Validation::Ip(range, Validation::Family::V4).isEmpty()) return range + "/32";
-        if (Validation::Ip(range, Validation::Family::V6).isEmpty()) return range + "/128";
-        return range;
-    }
 }
 
 DialogVPNSettings::DialogVPNSettings(QWidget *parent) : QDialog(parent), ui(new Ui::DialogVPNSettings) {
@@ -43,9 +35,7 @@ DialogVPNSettings::DialogVPNSettings(QWidget *parent) : QDialog(parent), ui(new 
     ui->tun_ipv4_cidr->setText(Configs::dataManager->settingsRepo->vpn_tun_ipv4_cidr);
     ui->tun_ipv6_cidr->setText(Configs::dataManager->settingsRepo->vpn_tun_ipv6_cidr);
     ui->privRangeGroupBox->setChecked(!Configs::dataManager->settingsRepo->disable_private_range_bypass);
-    QStringList privateRanges;
-    for (const auto &range : Configs::dataManager->settingsRepo->vpn_private_ranges) privateRanges << WithPrefixLength(range);
-    ui->priv_ranges->setPlainText(privateRanges.join("\n"));
+    ui->priv_ranges->setPlainText(Configs::dataManager->settingsRepo->vpn_private_ranges.join("\n"));
     ui->auto_redirect->setChecked(Configs::dataManager->settingsRepo->vpn_auto_redirect);
     ui->l3_bridge->setChecked(Configs::dataManager->settingsRepo->vpn_l3_bridge);
     for (auto *widget : UnavailableWidgets(ui)) widget->hide();

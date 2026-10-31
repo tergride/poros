@@ -17,6 +17,7 @@ namespace {
 
     // Connections switched to our proxy ("" is the LAN settings), each with the auto-detect/PAC flags the user had there.
     std::map<std::wstring, DWORD> proxiedConnections;
+    std::wstring appliedProxyServer;
 
     // WinINet keeps separate settings for the LAN and for every dial-up/PPPoE/VPN connectoid, and uses the active one's.
     std::vector<std::wstring> proxyConnectionNames(QStringList &errors) {
@@ -67,6 +68,18 @@ namespace {
         return 0;
     }
 
+    // What the connection is set to now; empty when it cannot be read.
+    std::wstring currentProxyServer(std::wstring connection) {
+        INTERNET_PER_CONN_OPTIONW option{};
+        option.dwOption = INTERNET_PER_CONN_PROXY_SERVER;
+        auto list = connectionOptionList(connection, &option, 1);
+        DWORD size = sizeof(list);
+        if (!InternetQueryOptionW(nullptr, INTERNET_OPTION_PER_CONNECTION_OPTION, &list, &size) || option.Value.pszValue == nullptr) return {};
+        std::wstring server = option.Value.pszValue;
+        GlobalFree(option.Value.pszValue);
+        return server;
+    }
+
     void announceProxyChange() {
         InternetSetOptionW(nullptr, INTERNET_OPTION_SETTINGS_CHANGED, nullptr, 0);
         InternetSetOptionW(nullptr, INTERNET_OPTION_PROXY_SETTINGS_CHANGED, nullptr, 0);
@@ -91,6 +104,7 @@ QString SystemProxy_Apply(const QString &host, int port, const QString &windowsF
     QMutexLocker lock(&proxyMutex);
     QStringList errors;
     auto server = proxyServerString(host, port, windowsFormat);
+    appliedProxyServer = server;
     for (const auto &connection : proxyConnectionNames(errors)) {
         // Only the first Apply still sees the user's flags; a later one would record our own.
         if (!proxiedConnections.contains(connection)) proxiedConnections[connection] = userAutoFlags(connection);
@@ -114,6 +128,11 @@ QString SystemProxy_Clear() {
     if (proxiedConnections.empty()) return {};
     QStringList errors;
     for (auto it = proxiedConnections.begin(); it != proxiedConnections.end();) {
+        // Another client took the proxy over since Apply: turning it off now would cut that client's traffic, not ours.
+        if (const auto current = currentProxyServer(it->first); !current.empty() && current != appliedProxyServer) {
+            it = proxiedConnections.erase(it);
+            continue;
+        }
         INTERNET_PER_CONN_OPTIONW option{};
         option.dwOption = INTERNET_PER_CONN_FLAGS;
         option.Value.dwValue = PROXY_TYPE_DIRECT | it->second;

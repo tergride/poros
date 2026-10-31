@@ -16,8 +16,6 @@ namespace Configs {
 
         void createTables() const;
 
-        [[nodiscard]] bool ipScansColumnExists(const char *columnName) const;
-
         [[nodiscard]] std::shared_ptr<IpScan> ipScanFromRow(SQLite::Statement &stmt) const;
 
         [[nodiscard]] int NewIpScanID() const;

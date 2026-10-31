@@ -24,17 +24,6 @@ namespace Configs {
                 updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
             )
         )");
-        if (!otpProfilesColumnExists("sort_order"))
-            db.exec("ALTER TABLE otp_profiles ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
-    }
-
-    bool OtpProfilesRepo::otpProfilesColumnExists(const char *columnName) const {
-        auto pragma = db.query("PRAGMA table_info(otp_profiles)");
-        if (!pragma) return false;
-        while (pragma->executeStep()) {
-            if (pragma->getColumn(1).getText() == std::string(columnName)) return true;
-        }
-        return false;
     }
 
     void OtpProfilesRepo::saveToDatabase(const OtpProfile *profile, int id) const {

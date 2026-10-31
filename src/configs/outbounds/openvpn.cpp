@@ -724,10 +724,7 @@ namespace Configs {
 
         if (object.contains("otp_profile_id")) otp_profile_id = object["otp_profile_id"].toInt();
         if (object.contains("only_advertised_routes")) only_advertised_routes = object["only_advertised_routes"].toBool();
-        // Profiles saved before the mode existed carry the two checkboxes it replaced.
         if (object.contains("tunnel_dns")) tunnel_dns = object["tunnel_dns"].toString();
-        else if (object["block_outside_dns"].toBool()) tunnel_dns = kTunnelDnsStrict;
-        else if (object.contains("use_tunnel_dns") && !object["use_tunnel_dns"].toBool()) tunnel_dns = kTunnelDnsNone;
         return true;
     }
 

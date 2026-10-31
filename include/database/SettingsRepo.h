@@ -60,6 +60,7 @@ namespace Configs {
         bool flag_tray = false;
         bool flag_debug = false;
         bool flag_restart_tun_on = false;
+        int flag_restart_profile = -1;
 
         // Persisted settings.
         QString mainWindowGeometry;
@@ -107,7 +108,7 @@ namespace Configs {
         int h2_max_concurrent_streams = 0;
         int quic_initial_packet_size = 0;
         bool quic_disable_path_mtu_discovery = false;
-        QString theme = "0";
+        QString theme = "poros";
         int language = 0;
         QString font = "";
         int font_size = 0;
@@ -189,7 +190,7 @@ namespace Configs {
         bool remote_api_enable = false;
         bool remote_api_lan = false;
         bool remote_api_admin_lan = false;
-        int remote_api_port = 9095;
+        int remote_api_port = 9195;
         QString remote_api_key = "";
         // CIDRs separated by commas or whitespace; empty allows every LAN address.
         QString remote_api_allow = "";
@@ -211,6 +212,12 @@ namespace Configs {
         bool remember_enable = false;
         bool windows_set_admin = false;
         QMap<QString, QKeySequence> shortcuts;
+
+        // Interface
+        QString ui_mode = "simple"; // simple or advanced
+        bool onboarding_done = false;
+        QString simple_conn_mode = ""; // tun or system; empty until the user picks one
+        int auto_group_id = -1; // the hidden group holding the subscriptions' Auto profiles
 
         // Routing
         int current_route_id = 1;
@@ -246,6 +253,7 @@ namespace Configs {
         // Socks & HTTP Inbound
         bool disable_mixed_inbound = false;
         QString inbound_address = "127.0.0.1";
+        // Ports and Tun addresses stay off Throne's defaults, so that both clients can run at once.
         int inbound_socks_port = 2090; // Mixed, actually
         bool random_inbound_port = false;
         QString custom_inbound = "{\"inbounds\": []}";
@@ -276,8 +284,8 @@ namespace Configs {
         bool disable_private_range_bypass = false;
         QStringList vpn_private_ranges = defaultTunPrivateRanges();
         bool vpn_ipv6 = false;
-        QString vpn_tun_ipv4_cidr = "172.19.0.1/24";
-        QString vpn_tun_ipv6_cidr = "fdfe:dcba:9876::1/96";
+        QString vpn_tun_ipv4_cidr = "172.19.1.1/24";
+        QString vpn_tun_ipv6_cidr = "fdfe:dcba:9877::1/96";
         bool disable_privilege_req = false;
 
         // NTP
@@ -314,14 +322,14 @@ namespace Configs {
         QString hotkey_toggle_tun = "";
 
         // Core
-        int core_box_clash_api = -9090;
+        int core_box_clash_api = -9190;
         QString core_box_clash_listen_addr = "127.0.0.1";
         QString core_box_clash_api_secret = "";
         // Port only publishes the dashboard; the service itself also carries the stats tracker.
-        int core_box_api_port = -9091;
+        int core_box_api_port = -9191;
         QString core_box_api_secret = "";
         QString core_box_underlying_dns = "";
-        int core_dns_in_port = 5533;
+        int core_dns_in_port = 5543;
 
         // Xray
         QString xray_log_level = "warning";

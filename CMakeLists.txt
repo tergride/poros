@@ -40,7 +40,7 @@ if (UNIX AND NOT APPLE)
     set(QT_DBUS_LIBRARY Qt6::DBus)
 endif ()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network LinguistTools ${QT_DBUS_COMPONENT})
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg LinguistTools ${QT_DBUS_COMPONENT})
 
 include("cmake/nkr.cmake")
 
@@ -210,6 +210,8 @@ set(PROJECT_SOURCES
 
         include/ui/setting/ThemeManager.hpp
         src/ui/setting/ThemeManager.cpp
+        include/ui/setting/PorosTheme.h
+        src/ui/setting/PorosTheme.cpp
         src/ui/setting/Icon.cpp
 
         src/ui/mainWindow/mainwindow_setup.cpp
@@ -224,12 +226,57 @@ set(PROJECT_SOURCES
         src/ui/mainWindow/mainwindow_hotkeys.cpp
         src/ui/mainWindow/mainwindow_palette.cpp
         src/ui/mainWindow/mainwindow_profile_lifecycle.cpp
-        src/ui/mainWindow/mainwindow_scanner.cpp
         src/ui/mainWindow/mainwindow_engine_control.cpp
         src/ui/mainWindow/mainwindow_policy.cpp
+        src/ui/mainWindow/mainwindow_shell.cpp
+        src/ui/mainWindow/mainwindow_simple.cpp
         include/ui/mainWindow/MainWindowInternal.h
         include/ui/mainwindow.h
         include/ui/mainwindow.ui
+        include/ui/shell/TitleBar.h
+        src/ui/shell/TitleBar.cpp
+        include/ui/shell/WindowFrame.h
+        src/ui/shell/WindowFrame.cpp
+        include/ui/shell/NavRail.h
+        src/ui/shell/NavRail.cpp
+        include/ui/shell/SegmentSwitch.h
+        src/ui/shell/SegmentSwitch.cpp
+        include/ui/advanced/AdvancedPage.h
+        src/ui/advanced/AdvancedPage.cpp
+        include/ui/advanced/ConnectionBar.h
+        src/ui/advanced/ConnectionBar.cpp
+        include/ui/advanced/EmbeddedDialog.h
+        src/ui/advanced/EmbeddedDialog.cpp
+        include/ui/advanced/SettingsSection.h
+        src/ui/advanced/SettingsSection.cpp
+        include/ui/advanced/GroupPane.h
+        src/ui/advanced/GroupPane.cpp
+        include/ui/simple/ServerTreeModel.h
+        src/ui/simple/ServerTreeModel.cpp
+        include/ui/simple/ServerListView.h
+        src/ui/simple/ServerListView.cpp
+        include/ui/simple/PortalPanel.h
+        src/ui/simple/PortalPanel.cpp
+        include/ui/simple/SimpleHome.h
+        src/ui/simple/SimpleHome.cpp
+        include/ui/simple/SimpleSettings.h
+        src/ui/simple/SimpleSettings.cpp
+        include/ui/simple/SimpleSettingsNav.h
+        include/ui/simple/PresetEditor.h
+        src/ui/simple/PresetEditor.cpp
+        include/ui/simple/AddSubscriptionDialog.h
+        src/ui/simple/AddSubscriptionDialog.cpp
+        include/ui/utils/ConnectionModeController.h
+        src/ui/utils/ConnectionModeController.cpp
+        include/configs/sub/LinkKind.h
+        include/ui/widget/ChoiceCard.h
+        src/ui/widget/ChoiceCard.cpp
+        include/ui/widget/ConnectionChoiceDialog.h
+        src/ui/widget/ConnectionChoiceDialog.cpp
+        include/ui/widget/AdminPromptDialog.h
+        src/ui/widget/AdminPromptDialog.cpp
+        include/ui/onboarding/OnboardingPage.h
+        src/ui/onboarding/OnboardingPage.cpp
         include/ui/widget/StartStopButton.hpp
         src/ui/widget/StartStopButton.cpp
         include/ui/widget/TrayIcon.hpp
@@ -406,10 +453,6 @@ set(PROJECT_SOURCES
         include/ui/setting/dialog_basic_settings.h
         include/ui/setting/dialog_basic_settings.ui
 
-        src/ui/setting/DiagnosticsTab.cpp
-        include/ui/setting/DiagnosticsTab.h
-        include/ui/setting/DiagnosticsTab.ui
-
         src/ui/group/dialog_manage_groups.cpp
         include/ui/group/dialog_manage_groups.h
         include/ui/group/dialog_manage_groups.ui
@@ -443,32 +486,9 @@ set(PROJECT_SOURCES
         include/ui/utils/ReorderListWidget.h
         src/ui/utils/ReorderListWidget.cpp
 
-        src/ui/scanner/dialog_scanner.cpp
-        include/ui/scanner/dialog_scanner.h
-        include/ui/scanner/dialog_scanner.ui
-        src/ui/scanner/ScanItem.cpp
-        include/ui/scanner/ScanItem.h
-        src/ui/scanner/dialog_new_scan.cpp
-        include/ui/scanner/dialog_new_scan.h
-        src/ui/scanner/dialog_scan_instance.cpp
-        include/ui/scanner/dialog_scan_instance.h
-        include/ui/scanner/dialog_scan_instance.ui
-        src/ui/scanner/IpEntriesModel.cpp
-        include/ui/scanner/IpEntriesModel.h
-        src/ui/scanner/dialog_ip_lists.cpp
-        include/ui/scanner/dialog_ip_lists.h
-        include/ui/scanner/dialog_ip_lists.ui
-        src/ui/scanner/IpListItem.cpp
-        include/ui/scanner/IpListItem.h
-        src/ui/scanner/dialog_edit_ip_list.cpp
-        include/ui/scanner/dialog_edit_ip_list.h
-        include/ui/scanner/dialog_edit_ip_list.ui
-
         include/scanner/IpListParse.h
         src/scanner/IpListParse.cpp
         include/scanner/WarpPresets.h
-        include/scanner/DefaultIpLists.h
-        src/scanner/DefaultIpLists.cpp
         include/scanner/ScanProfiles.h
         src/scanner/ScanProfiles.cpp
         include/scanner/IpListUpdater.h
@@ -511,9 +531,8 @@ set(PROJECT_SOURCES
         include/ui/setting/RouteDnsEditor.h
 
         res/Throne.qrc
+        res/Poros.qrc
         ${QV2RAY_RC}
-        res/darkstyle.qrc
-        res/theme/feiyangqingyun/qss.qrc
         src/ui/profile/edit_ssh.cpp
         include/ui/profile/edit_ssh.h
         include/ui/profile/edit_ssh.ui
@@ -590,6 +609,10 @@ set(PROJECT_SOURCES
         src/configs/outbounds/autoselector.cpp
         include/configs/AutoSelectorPlan.h
         src/configs/AutoSelectorPlan.cpp
+        include/configs/PresetRules.h
+        src/configs/PresetRules.cpp
+        include/configs/PresetCatalog.h
+        src/configs/PresetCatalog.cpp
         include/stats/autoselector/AutoSelectorMonitor.hpp
         src/stats/autoselector/AutoSelectorMonitor.cpp
         include/ui/stats/dialog_auto_selector.h
@@ -621,7 +644,6 @@ set(PROJECT_SOURCES
         include/database/IpScansRepo.h
         include/database/SettingsRepo.h
         include/database/TrafficStatsRepo.h
-        include/database/MarkersRepo.h
 
         include/database/entities/Profile.h
         include/database/entities/Group.h
@@ -648,7 +670,6 @@ set(PROJECT_SOURCES
         src/database/IpListsRepo.cpp
         src/database/IpScansRepo.cpp
         src/database/TrafficStatsRepo.cpp
-        src/database/MarkersRepo.cpp
 
         include/database/DatabaseManager.h
         src/database/DatabaseManager.cpp
@@ -670,22 +691,6 @@ if (NOT APPLE AND Qt6_VERSION VERSION_GREATER_EQUAL 6.9.0)
     endif ()
     # rcc's default threshold leaves these TTFs uncompressed.
     set_property(SOURCE res/EmojiFont.qrc res/EmojiFontWin.qrc
-            PROPERTY AUTORCC_OPTIONS "--compress-algo;zlib;--compress;9;--threshold;5")
-endif ()
-
-file(GLOB_RECURSE DASHBOARD_FILES RELATIVE ${CMAKE_SOURCE_DIR}/res/dashboard ${CMAKE_SOURCE_DIR}/res/dashboard/*)
-# Bracket syntax: in a quoted argument "\\." reaches the regex as ".", matching everything.
-list(FILTER DASHBOARD_FILES EXCLUDE REGEX [[(^|/)\.]])
-if (DASHBOARD_FILES)
-    set(DASHBOARD_QRC_ENTRIES "")
-    foreach (DASHBOARD_FILE ${DASHBOARD_FILES})
-        string(APPEND DASHBOARD_QRC_ENTRIES
-                "        <file alias=\"${DASHBOARD_FILE}\">${CMAKE_SOURCE_DIR}/res/dashboard/${DASHBOARD_FILE}</file>\n")
-    endforeach ()
-    file(WRITE ${CMAKE_BINARY_DIR}/dashboard.qrc
-            "<RCC>\n    <qresource prefix=\"/dashboard\">\n${DASHBOARD_QRC_ENTRIES}    </qresource>\n</RCC>\n")
-    list(APPEND PROJECT_SOURCES ${CMAKE_BINARY_DIR}/dashboard.qrc)
-    set_property(SOURCE ${CMAKE_BINARY_DIR}/dashboard.qrc
             PROPERTY AUTORCC_OPTIONS "--compress-algo;zlib;--compress;9;--threshold;5")
 endif ()
 
@@ -711,6 +716,7 @@ set(ENGINE_SOURCES
         src/engine/Lifecycle.cpp
         include/engine/EngineEvents.h
         src/engine/EngineEvents.cpp
+        include/engine/app/StartupElevation.h
         include/engine/app/Bootstrap.h
         src/engine/app/Bootstrap.cpp
         include/engine/app/DataDirLock.h
@@ -729,6 +735,8 @@ set(ENGINE_SOURCES
         src/engine/services/ImportService.cpp
         include/engine/services/GroupService.h
         src/engine/services/GroupService.cpp
+        include/engine/services/AutoGroupService.h
+        src/engine/services/AutoGroupService.cpp
         include/engine/services/ProfileService.h
         src/engine/services/ProfileService.cpp
         include/engine/services/SettingsRegistry.h
@@ -793,6 +801,12 @@ qt_add_executable(Poros
         ${PROJECT_SOURCES}
 )
 
+option(POROS_UI_TOUR "Add --ui-tour=<dir>, which saves every screen as a PNG" OFF)
+if (POROS_UI_TOUR)
+    target_sources(Poros PRIVATE src/ui/mainWindow/mainwindow_tour.cpp)
+    target_compile_definitions(Poros PRIVATE POROS_UI_TOUR)
+endif ()
+
 option(THRONE_ENGINE_LINT "Check the engine/UI boundary on every build" ON)
 if (THRONE_ENGINE_LINT)
     add_custom_target(engine_boundary
@@ -829,6 +843,8 @@ if (WIN32 AND MSVC)
     set_target_properties(Poros PROPERTIES UNITY_BUILD ON)
 endif ()
 set_property(SOURCE "3rdparty/SQLiteCpp/src/sqlite3.c" PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
+# Its <windows.h> macros must not reach the next file of a unity batch.
+set_property(SOURCE "src/ui/shell/WindowFrame.cpp" PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
 set_property(SOURCE "3rdparty/monocypher/monocypher.c" PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
 
 # Verified to link. OMIT_VIRTUALTABLE/VIEW/ANALYZE/CTE/WINDOWFUNC/DECLTYPE all break this build.
@@ -875,10 +891,36 @@ target_sources(Poros PRIVATE ${CMAKE_BINARY_DIR}/translations.qrc)
 # Target Link
 
 target_link_libraries(Poros PRIVATE
-        Qt6::Widgets Qt6::Network ${QT_DBUS_LIBRARY}
+        Qt6::Widgets Qt6::Network Qt6::Svg ${QT_DBUS_LIBRARY}
         Threads::Threads
         ${NKR_EXTERNAL_TARGETS}
         ${PLATFORM_LIBRARIES}
 )
 
 qt_finalize_executable(Poros)
+
+# The app's own sources minus main(), so a test runs the real repositories on a temporary database.
+option(POROS_BUILD_TESTS "Build the poros_unit test executable" OFF)
+if (POROS_BUILD_TESTS)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    enable_testing()
+    set(POROS_UNIT_SOURCES ${PROJECT_SOURCES})
+    list(REMOVE_ITEM POROS_UNIT_SOURCES src/main.cpp)
+    qt_add_executable(poros_unit
+            MANUAL_FINALIZATION
+            ${POROS_UNIT_SOURCES}
+            tests/poros_unit.cpp
+    )
+    set_target_properties(poros_unit PROPERTIES AUTOUIC ON AUTOMOC ON AUTORCC ON WIN32_EXECUTABLE FALSE UNITY_BUILD ${MSVC})
+    set_property(SOURCE tests/poros_unit.cpp PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
+    target_compile_definitions(poros_unit PRIVATE $<TARGET_PROPERTY:Poros,COMPILE_DEFINITIONS>)
+    target_include_directories(poros_unit PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(poros_unit PRIVATE
+            Qt6::Widgets Qt6::Network Qt6::Svg Qt6::Test ${QT_DBUS_LIBRARY}
+            Threads::Threads
+            ${NKR_EXTERNAL_TARGETS}
+            ${PLATFORM_LIBRARIES}
+    )
+    qt_finalize_executable(poros_unit)
+    add_test(NAME poros_unit COMMAND poros_unit)
+endif ()

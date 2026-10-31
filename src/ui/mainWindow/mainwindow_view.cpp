@@ -21,44 +21,12 @@
 #include "include/stats/autoselector/AutoSelectorMonitor.hpp"
 #include "include/sys/KillSwitch.hpp"
 #include "include/ui/setting/Icon.hpp"
+#include "include/ui/simple/ServerTreeModel.h"
 #include "include/ui/stats/dialog_auto_selector.h"
 #include "include/ui/utils/ProfilesTableFilterHeader.h"
 #include "include/ui/utils/ProfilesTableModel.h"
 #include "include/ui/widget/LiveChart.h"
 #include "include/ui/widget/StartStopButton.hpp"
-
-// Mirrors the language switch in main.cpp; QLocale() alone follows the system, not an explicit setting.
-bool MainWindow::usesTightLabels() const {
-    static const QStringList byLanguageSetting = {"", "en", "zh_CN", "fa_IR", "ru_RU"};
-    const int language = Configs::dataManager->settingsRepo->language;
-    const QString locale = language == 0 ? QLocale().name() : byLanguageSetting.value(language);
-    return locale.startsWith("zh") || locale.startsWith("ru");
-}
-
-void MainWindow::applyTopBarMetrics() {
-    const QList<QToolButton*> menuButtons = {
-        ui->toolButton_program, ui->toolButton_preferences, ui->toolButton_testing,
-        ui->toolButton_routing, ui->toolButton_tools,
-    };
-    // Drop the previous run's floor: a stale minimum gets baked into minimumSizeHint() below.
-    for (auto* b : menuButtons) b->setMinimumWidth(0);
-
-    int uniformButtonWidth = 0;
-    for (auto* b : menuButtons) {
-        b->ensurePolished();
-        uniformButtonWidth = qMax(uniformButtonWidth, b->sizeHint().width());
-    }
-
-    // CJK glyphs and long RU labels fill QToolButton's one-space slack and run into the chevron (#1665, #1829).
-    if (usesTightLabels()) {
-        uniformButtonWidth += 2 * fontMetrics().horizontalAdvance(' ');
-    }
-    for (auto* b : menuButtons) b->setMinimumWidth(uniformButtonWidth);
-
-    const QSize contentMin = minimumSizeHint();
-    setMinimumSize(qMax(designMinimumSize.width(), contentMin.width()),
-                   qMax(designMinimumSize.height(), contentMin.height()));
-}
 
 void MainWindow::UpdateDataView(bool force)
 {
@@ -112,6 +80,7 @@ void MainWindow::speedTestProgress(const QString &profileName, const libcore::Sp
 void MainWindow::testedProfilesChanged(const QList<int> &profileIds)
 {
     refresh_proxy_list(profileIds);
+    m_serverModel->refreshProfiles(profileIds);
 }
 
 QString MainWindow::restartReasonText(Engine::RestartReason reason)
@@ -277,14 +246,14 @@ void MainWindow::refresh_status(const QString &traffic_update) {
 
     setWindowTitle(make_title(false));
     if (tray != nullptr) tray->setToolTip(make_title(true));
+    m_titleBar->setAdminVisible(Configs::KnownAdmin().value_or(false));
+    refreshRouteChoice();
+    refreshSimplePortal();
 
     refresh_startstop_button();
 }
 
 void MainWindow::refresh_startstop_button() {
-    auto *btn = ui->toolButton_startstop;
-    if (btn == nullptr) return;
-
     const auto &settings = Configs::dataManager->settingsRepo;
     const auto running = runningSnapshot();
     const auto connState = connection()->connectionState();
@@ -297,15 +266,13 @@ void MainWindow::refresh_startstop_button() {
         else if (settings->spmode_system_proxy) mode = StartStopButton::Mode::SystemProxy;
         else mode = StartStopButton::Mode::Core;
     }
-    btn->setMode(mode);
 
     StartStopButton::State state;
     if (connecting) state = StartStopButton::State::Connecting;
     else if (disconnecting) state = StartStopButton::State::Disconnecting;
     else if (running != nullptr) state = StartStopButton::State::Running;
-    else if (get_profile_to_start() >= 0) state = StartStopButton::State::Idle;
+    else if (get_profile_to_start() >= 0 || simpleProfileToStart() >= 0) state = StartStopButton::State::Idle;
     else state = StartStopButton::State::Disabled;
-    btn->setState(state);
 
     auto lock = StartStopButton::Lock::Hidden;
     if (settings->kill_switch) {
@@ -318,7 +285,11 @@ void MainWindow::refresh_startstop_button() {
             case Sys::KillSwitch::State::Failed: lock = StartStopButton::Lock::Fault; break;
         }
     }
-    btn->setLock(lock);
+    for (auto *btn : m_startButtons) {
+        btn->setMode(mode);
+        btn->setState(state);
+        btn->setLock(lock);
+    }
 
     if (trayConnectAction != nullptr) {
         if (connecting) {
@@ -478,6 +449,7 @@ void MainWindow::refresh_proxy_list_impl(const QList<int>& ids, bool mayNeedRese
     refresh_proxy_list_impl_refresh_data(ids, mayNeedReset);
     refresh_sort_indicator();
     refresh_proxy_list_column_size();
+    if (ids.isEmpty()) refreshGroupPane();
 }
 
 void MainWindow::refresh_sort_indicator() {

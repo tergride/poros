@@ -1,0 +1,11 @@
+{
+  "kind": "poros-route-profile",
+  "v": 1,
+  "name": "Blocked sites only",
+  "default_outbound": "direct",
+  "rules": [
+    {"name": "Route DNS", "type": "custom", "action": "hijack-dns", "protocol": "dns"},
+    {"name": "Local networks", "type": "custom", "action": "route", "outbound": "direct", "ip_is_private": true},
+    {"name": "Blocked sites", "type": "custom", "action": "route", "outbound": "proxy", "rule_set": ["geosite-ru-blocked", "geoip-ru-blocked"]}
+  ]
+}

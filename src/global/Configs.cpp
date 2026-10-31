@@ -13,9 +13,7 @@
 #include <include/api/RPC.h>
 
 #include "include/database/GroupsRepo.h"
-#include "include/database/MarkersRepo.h"
 #include "include/database/RoutesRepo.h"
-#include "include/scanner/DefaultIpLists.h"
 
 
 #ifdef Q_OS_WIN
@@ -28,6 +26,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #endif
+
+#include "include/configs/PresetCatalog.h"
 
 namespace Configs {
     void initDB(const std::string& dbPath) {
@@ -49,11 +49,7 @@ namespace Configs {
             auto defaultRoute = RouteProfile::GetDefaultChain();
             dataManager->routesRepo->AddRouteProfile(defaultRoute);
         }
-        // Once only, so lists the user deleted stay deleted.
-        if (!dataManager->markersRepo->IsMarked(Markers::DefaultIpLists)) {
-            Scanner::DefaultIpLists::EnsureAll();
-            dataManager->markersRepo->Mark(Markers::DefaultIpLists);
-        }
+        PresetCatalog::Ensure();
     }
 
     QString FindCoreRealPath() {

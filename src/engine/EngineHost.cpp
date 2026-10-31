@@ -93,8 +93,8 @@ namespace Engine {
             return target(__func__)->slowOperation(kind, delayMs);
         }
 
-        bool requestCorePrivileges() override {
-            return target(__func__)->requestCorePrivileges();
+        PrivilegeDecision requestCorePrivileges(PrivilegeReason reason) override {
+            return target(__func__)->requestCorePrivileges(reason);
         }
 
         void systemProxyNeedsMixedInbound() override {
@@ -250,10 +250,6 @@ namespace Engine {
             m_tests->queueUrlTests(profileIDs, done, interactive);
         });
 
-        Dashboard::SeedClashUi();
-        // Leaving the dir non-empty marks it user-provided, disabling the core's own updater.
-        Dashboard::SeedApi();
-
         registerPeriodicJobs();
 
         m_router = new RemoteApi::Router(this, this);
@@ -298,9 +294,6 @@ namespace Engine {
             }
         }
 
-        // Bound before the guard's first arm, so it already carries api_port; requests get 503 "starting" until m_apiReady.
-        RemoteApi::Server::instance()->applyAndWait(RemoteApi::EffectiveConfig().config);
-
         // Must precede the first coreStarted, or a remembered profile would start before the guard is even arming.
         Sys::KillSwitch::instance()->apply();
 
@@ -309,7 +302,9 @@ namespace Engine {
             m_coreSupervisor->start(bootStart->profileId);
         } else {
             const auto &startSettings = Configs::dataManager->settingsRepo;
-            m_coreSupervisor->start(startSettings->remember_enable && startSettings->remember_id >= 0 ? startSettings->remember_id : -1);
+            // A relaunch for rights carries on with the start that asked for them.
+            if (startSettings->flag_restart_profile >= 0) m_coreSupervisor->start(startSettings->flag_restart_profile);
+            else m_coreSupervisor->start(startSettings->remember_enable && startSettings->remember_id >= 0 ? startSettings->remember_id : -1);
         }
 
         m_apiReady = true;
@@ -352,7 +347,6 @@ namespace Engine {
         auto suggestRestartProxy = settings->Save();
         Throne::PeriodicRunner::instance()->CheckNow();
         if (changed(MwArg::KillSwitch) || changed(MwArg::Vpn)) Sys::KillSwitch::instance()->apply();
-        if (changed(MwArg::RemoteApi)) RemoteApi::Server::instance()->apply(RemoteApi::EffectiveConfig().config);
         if (changed(MwArg::Route)) {
             settings->Save();
             suggestRestartProxy = true;
@@ -536,13 +530,6 @@ namespace Engine {
                 Configs::dataManager->settingsRepo->Save();
             },
             [] { UI_update_all_remote_routes(true); },
-        });
-        runner->Add({
-            {},
-            [] { return 1; },
-            nullptr,
-            nullptr,
-            [] { Scanner::IpListUpdater::instance()->CheckAutoUpdate(); },
         });
     }
 

@@ -35,25 +35,12 @@ namespace Configs {
                 endpoint_json TEXT NOT NULL DEFAULT '{}',
                 created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
                 updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+                latency_at INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY(gid) REFERENCES groups(id) ON DELETE CASCADE
             )
         )");
 
-        if (!profilesColumnExists("latency_at"))
-            db.exec("ALTER TABLE profiles ADD COLUMN latency_at INTEGER NOT NULL DEFAULT 0");
-        if (!profilesColumnExists("endpoint_json"))
-            db.exec("ALTER TABLE profiles ADD COLUMN endpoint_json TEXT NOT NULL DEFAULT '{}'");
-
         db.exec("CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(name)");
-    }
-
-    bool ProfilesRepo::profilesColumnExists(const char* columnName) const {
-        auto pragma = db.query("PRAGMA table_info(profiles)");
-        if (!pragma) return false;
-        while (pragma->executeStep()) {
-            if (pragma->getColumn(1).getText() == std::string(columnName)) return true;
-        }
-        return false;
     }
 
     std::shared_ptr<Profile> ProfilesRepo::profileFromJson(const QJsonObject& json) const {

@@ -190,6 +190,15 @@ namespace Configs {
         innerHopEndpointIDs = other.innerHopEndpointIDs;
         customDns = other.customDns;
         dns = other.dns;
+        builtinKey = other.builtinKey;
+        baseKey = other.baseKey;
+        hardened = other.hardened;
+    }
+
+    void RouteProfile::DetachFromBuiltin() {
+        if (builtinKey.isEmpty()) return;
+        baseKey = builtinKey;
+        builtinKey.clear();
     }
 
     RouteDns RouteDns::Global() {
@@ -654,6 +663,7 @@ namespace Configs {
         root["kind"] = "poros-route-profile";
         root["v"] = 1;
         root["name"] = name;
+        if (hardened) root["hardened"] = true;
         if (const auto active = ActiveDns()) root["dns"] = active->ToJson();
         QJsonArray endpointsArr;
         if (!endpointProfileIDs.isEmpty()) {
@@ -752,6 +762,7 @@ namespace Configs {
                 QJsonObject routeObj = root.value("route").toObject();
                 routeObj = remapRawOutboundsByName(routeObj, root.value("outbound_names").toObject(), warnings);
                 profile->rawRoute = QJsonObject2QString(routeObj, false);
+                profile->hardened = root.value("hardened").toBool();
                 routeProfileAdoptDns(*profile, root, warnings);
                 return profile;
             }
@@ -788,6 +799,7 @@ namespace Configs {
                 profile->Rules << rule;
             }
             profile->SyncEndpointRules();
+            profile->hardened = root.value("hardened").toBool();
             routeProfileAdoptDns(*profile, root, warnings);
             return profile;
         }

@@ -1,4 +1,7 @@
 #include "include/ui/mainwindow.h"
+
+#include "include/ui/advanced/AdvancedPage.h"
+#include "include/ui/advanced/SettingsSection.h"
 #include "NkrVersion.h"
 
 #include <QApplication>
@@ -49,7 +52,8 @@
 #endif
 
 void MainWindow::on_menu_basic_settings_triggered() {
-    USE_DIALOG(DialogBasicSettings)
+    showAdvancedSection(AdvancedPage::Settings);
+    m_settingsSection->showDialog(m_basicSettings);
 }
 
 void MainWindow::on_menu_manage_groups_triggered() {
@@ -57,14 +61,7 @@ void MainWindow::on_menu_manage_groups_triggered() {
 }
 
 void MainWindow::on_menu_routing_settings_triggered() {
-    if (dialog_is_using) return;
-    dialog_is_using = true;
-    auto dialog = new DialogManageRoutes(this);
-    connect(dialog, &QDialog::finished, this, [=,this] {
-        dialog->deleteLater();
-        dialog_is_using = false;
-    });
-    dialog->show();
+    showAdvancedSection(AdvancedPage::Routing);
 }
 
 void MainWindow::openRouteProfileEditor(int routeId) {
@@ -98,27 +95,23 @@ void MainWindow::openRouteProfileEditor(int routeId) {
 }
 
 void MainWindow::on_menu_vpn_settings_triggered() {
-    USE_DIALOG(DialogVPNSettings)
+    showAdvancedSection(AdvancedPage::Settings);
+    m_settingsSection->showDialog(m_vpnSettings, -1);
 }
 
 void MainWindow::on_menu_preset_settings_triggered() {
-    USE_DIALOG(DialogPresetSettings)
+    showAdvancedSection(AdvancedPage::Settings);
+    m_settingsSection->showDialog(m_presetSettings, -1);
 }
 
 void MainWindow::on_menu_otp_manager_triggered() {
-    USE_DIALOG(DialogOtpManager)
+    showAdvancedSection(AdvancedPage::Tools);
+    m_toolTabs->setCurrentIndex(0);
 }
 
 void MainWindow::on_menu_integration_settings_triggered() {
-    if (dialog_is_using) return;
-    dialog_is_using = true;
-    auto dialog = new DialogIntegration(this, getActionsForShortcut());
-    connect(dialog, &QDialog::finished, this, [=,this]
-    {
-        dialog->deleteLater();
-        dialog_is_using = false;
-    });
-    dialog->show();
+    showAdvancedSection(AdvancedPage::Settings);
+    m_settingsSection->showDialog(m_hotkeySettings);
 }
 
 void MainWindow::saveWindowState() {
@@ -129,7 +122,6 @@ void MainWindow::saveWindowState() {
         auto news = QString("%1x%2").arg(size().width()).arg(size().height());
         if (settings->mw_size != news) settings->mw_size = news;
     }
-    settings->splitter_state = ui->splitter->saveState().toBase64();
 }
 
 void MainWindow::on_commitDataRequest() {
@@ -155,7 +147,11 @@ void MainWindow::on_menu_exit_triggered() {
             arguments.removeAll("-tray");
             arguments.removeAll("-flag_restart_tun_on");
         }
+        arguments.erase(std::remove_if(arguments.begin(), arguments.end(), [](const QString &argument) {
+            return argument.startsWith(QLatin1String("-flag_restart_profile="));
+        }), arguments.end());
         if (reason == ExitReason::RestartWithTun) arguments << "-flag_restart_tun_on";
+        if (m_restartProfileId >= 0) arguments << QString("-flag_restart_profile=%1").arg(m_restartProfileId);
         if (unattended && m_exitKeepTray) arguments << "-tray";
     }
 
@@ -317,69 +313,6 @@ bool isNewer(QString assetName) {
 constexpr auto dashboardDownloadURL = "https://github.com/SagerNet/sing-box-dashboard/archive/refs/heads/gh-pages.zip";
 
 } // namespace
-
-void MainWindow::OpenDashboard() {
-    const auto &settings = *Configs::dataManager->settingsRepo;
-    const auto port = settings.core_box_api_port;
-    if (port <= 0) {
-        MessageBoxWarning(software_name, tr("The sing-box API is disabled. Set a listen port in Preferences > Basic Settings > Core."));
-        return;
-    }
-    if (settings.started_id < 0) {
-        MessageBoxWarning(software_name, tr("Start a profile first; the dashboard is served by the running core."));
-        return;
-    }
-
-    const auto show = [this, port] {
-        Engine::Dashboard::SeedApi();
-        // Fragment, not query: browsers never send it to the server.
-        QUrl url(QString("http://127.0.0.1:%1/dashboard/throne.html").arg(port));
-        url.setFragment(QString("secret=%1&url=127.0.0.1:%2")
-                            .arg(QString::fromUtf8(QUrl::toPercentEncoding(Configs::dataManager->settingsRepo->core_box_api_secret)))
-                            .arg(port),
-                        QUrl::StrictMode);
-        QDesktopServices::openUrl(url);
-    };
-
-    Engine::Dashboard::SeedApi();
-    if (QFile::exists(QDir(Configs::apiDashboardDir).filePath("index.html"))) {
-        show();
-        return;
-    }
-
-    if (QMessageBox::question(this, tr("Web dashboard"),
-                              tr("The dashboard is not installed yet. Download it now?"))
-        != QMessageBox::StandardButton::Yes) {
-        return;
-    }
-
-    runOnNewThread([=, this] {
-        if (!mu_download_dashboard.tryLock()) {
-            runOnUiThread([=, this] {
-                MessageBoxWarning(tr("Cannot start"), tr("A dashboard download is already running"));
-            });
-            return;
-        }
-        const auto archive = QString("throne-dashboard.zip");
-        auto error = NetworkRequestHelper::DownloadAsset(dashboardDownloadURL, archive, true);
-        if (error.isEmpty()) {
-            bool ok = false;
-            error = API::defaultClient->InstallDashboard(&ok, Configs::GetBasePath() + "/" + archive,
-                                                         QDir(Configs::apiDashboardDir).absolutePath());
-            if (!ok && error.isEmpty()) error = tr("The core did not answer.");
-        }
-        QFile::remove(Configs::GetBasePath() + "/" + archive);
-        mu_download_dashboard.unlock();
-
-        runOnUiThread([=, this] {
-            if (!error.isEmpty()) {
-                MessageBoxWarning(tr("Failed to install the dashboard"), error);
-                return;
-            }
-            show();
-        });
-    });
-}
 
 void MainWindow::CheckUpdate() {
     QString search;

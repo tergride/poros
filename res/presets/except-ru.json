@@ -1,0 +1,11 @@
+{
+  "kind": "poros-route-profile",
+  "v": 1,
+  "name": "Except Russian sites",
+  "default_outbound": "proxy",
+  "rules": [
+    {"name": "Route DNS", "type": "custom", "action": "hijack-dns", "protocol": "dns"},
+    {"name": "Local networks", "type": "custom", "action": "route", "outbound": "direct", "ip_is_private": true},
+    {"name": "Russian sites", "type": "custom", "action": "route", "outbound": "direct", "rule_set": ["geosite-ru", "geoip-ru"]}
+  ]
+}

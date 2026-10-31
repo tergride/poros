@@ -89,5 +89,3 @@ bool AutoRun_IsEnabled() {
 }
 
 void AutoRun_FixTaskIfNeeded() {}
-
-void AutoRun_MigrateIfNeeded() {}

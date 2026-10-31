@@ -12,6 +12,7 @@
 #include <QUrl>
 
 #include "include/engine/app/InstanceServer.h"
+#include "include/engine/app/StartupElevation.h"
 #include "include/global/Configs.hpp"
 #include "include/global/Logger.hpp"
 #include "include/global/Notice.hpp"
@@ -59,6 +60,8 @@ namespace {
         QT_TRANSLATE_NOOP("QPlatformTheme", "Cancel");
         QT_TRANSLATE_NOOP("QPlatformTheme", "Apply");
         QT_TRANSLATE_NOOP("QPlatformTheme", "Yes");
+        QT_TRANSLATE_NOOP("QPlatformTheme", "&Yes");
+        QT_TRANSLATE_NOOP("QPlatformTheme", "&No");
         QT_TRANSLATE_NOOP("QPlatformTheme", "No");
         QT_TRANSLATE_NOOP("QPlatformTheme", "OK");
         if (guiStartupTranslator != nullptr) {
@@ -144,7 +147,11 @@ namespace GuiStartup {
 #ifdef Q_OS_WIN
     bool RelaunchElevatedIfNeeded(Engine::InstanceServer &server, const QStringList &arguments, const QString &launchDeeplink,
                                   const QStringList &launchFiles) {
-        if (Configs::dataManager->settingsRepo->windows_set_admin && !Configs::IsAdmin() && !Configs::dataManager->settingsRepo->disable_run_admin)
+        const auto &settings = Configs::dataManager->settingsRepo;
+        // Read first: IsAdmin() overwrites windows_set_admin with the state of this process.
+        const bool needed = Engine::NeedsElevationAtStartup({settings->windows_set_admin, settings->disable_run_admin, settings->remember_enable,
+                                                             settings->remember_tun, settings->kill_switch});
+        if (needed && !Configs::IsAdmin())
         {
             Configs::dataManager->settingsRepo->windows_set_admin = false; // so that if permission denied, we will run as user on the next run
             Configs::dataManager->settingsRepo->Save();
@@ -169,6 +176,12 @@ namespace GuiStartup {
 
     void LoadTranslator() {
         QString locale;
+#ifdef POROS_UI_TOUR
+        if (qEnvironmentVariableIsSet("POROS_TOUR_LOCALE")) {
+            guiStartupLoadTranslate(qEnvironmentVariable("POROS_TOUR_LOCALE"));
+            return;
+        }
+#endif
         switch (Configs::dataManager->settingsRepo->language) {
             case 1: // English
                 break;
@@ -207,7 +220,7 @@ namespace GuiStartup {
         const auto holder = Sys::HostPresence::OtherHeadless();
         if (!holder) return;
         const QString text = QCoreApplication::translate("GuiStartup", "A background Poros (PID %1) is running on this computer (data directory: %2). "
-                                                                       "Tun mode is unavailable here while it runs; stop it or use thronectl.")
+                                                                       "Tun mode is unavailable here while it runs; stop it first.")
                                  .arg(QString::number(holder->pid), QDir::toNativeSeparators(holder->dataDir));
         MW_show_log("[Warn] " + text);
         // An autostart must not leave a parentless box behind; setTun's own notice covers an actual Tun attempt.

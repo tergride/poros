@@ -46,10 +46,6 @@ namespace Configs {
         
         void createTables() const;
 
-        [[nodiscard]] bool routeRulesColumnExists(const char* columnName) const;
-
-        [[nodiscard]] bool routeProfilesColumnExists(const char* columnName) const;
-
         int NewRouteProfileID() const;
 
     public:
@@ -64,6 +60,8 @@ namespace Configs {
 
         // Without loading the rules; nullopt when the profile follows the global DNS settings or does not exist.
         std::optional<RouteDns> GetCustomDns(int id) const;
+
+        [[nodiscard]] bool IsHardened(int id) const;
 
         void DeleteRouteProfile(int id);
         

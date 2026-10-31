@@ -16,6 +16,29 @@ script\build_windows.ps1
 
 The output goes to `deployment\windows-amd64`. The build fails if a shipped file's name or properties mention a VPN or Throne, or if a binary contains a local path.
 
+## Interface
+
+Poros opens in one of two modes, and the app menu switches between them at any time without dropping the connection.
+
+- **Simple:** the servers of each subscription, a Start button, a TUN or System switch, ready presets and short settings. The first Start asks whether to use TUN or System.
+- **Advanced:** groups and manual profiles, routing rules, DNS, connections, logs, statistics, tools and all the settings.
+
+The first launch runs a short setup: subscription, how to start, interface mode. Every step can be skipped, and it runs again from the app menu.
+
+Administrator rights are asked for only when an operation needs them, and you can always try without. A launch itself asks only when something has to work before the first click: a remembered TUN with `Connect to the last profile`, or the kill switch.
+
+Built-in presets cannot be changed. A copy keeps its preset's rules and adds your own sites and programs ahead of them.
+
+## Left out on purpose
+
+Compared to Throne, Poros has no Poros API or `thronectl`, background service, web panel, Clash API, IP scanner, WebDAV, Tailscale, Extra Core, themes, custom icons, custom inbound, or `Open with` for JSON and YAML files. A profile that uses an IP list keeps working with the list it has, but the list no longer updates.
+
+## Next to Throne
+
+Poros and Throne can run at the same time: each has its own folder, data, autostart entry and `poros://` or `throne://` links, and Poros keeps clear of Throne's default ports and TUN addresses (mixed port 2090, DNS port 5543, TUN 172.19.1.1/24).
+
+Two things stay shared by Windows. Only one client can carry the traffic of the whole computer, so run TUN in one of them at a time; with TUN in Throne, Poros in System goes out through it. The system proxy is also one per user: the client that set it last holds it, and Poros's kill switch blocks every other client, Throne included.
+
 ## Portable
 
 Poros has no installer: put the folder anywhere you can write to and run `Poros.exe`. Profiles, settings, logs, crash reports and temporary files all stay in `config` next to it, so deleting the folder removes Poros. If the folder is read-only, Poros says so and exits.

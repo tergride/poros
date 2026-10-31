@@ -37,8 +37,6 @@ namespace Configs {
         
         void createTables() const;
 
-        bool profilesColumnExists(const char* columnName) const;
-
         int NewProfileID() const;
         // Contiguous block starting at the returned id; atomic in the DB, so no lock is required.
         int NewProfileIDRange(int n) const;

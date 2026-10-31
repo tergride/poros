@@ -101,7 +101,7 @@ namespace Engine {
         });
     }
 
-    bool HeadlessPolicy::requestCorePrivileges() {
+    PrivilegeDecision HeadlessPolicy::requestCorePrivileges(PrivilegeReason) {
 #if defined(Q_OS_WIN)
         MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run Poros as a service or from an elevated prompt."));
 #elif defined(Q_OS_MACOS)
@@ -110,7 +110,7 @@ namespace Engine {
         MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run the unit as root, grant it CAP_NET_ADMIN, "
                                    "or install a setuid core."));
 #endif
-        return false;
+        return PrivilegeDecision::Cancel;
     }
 
     void HeadlessPolicy::systemProxyNeedsMixedInbound() {

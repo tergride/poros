@@ -1,4 +1,5 @@
 #include "include/configs/common/TLS.h"
+#include "include/database/RoutesRepo.h"
 
 #include <QCoreApplication>
 #include <QJsonArray>
@@ -891,10 +892,15 @@ namespace Configs {
         return {object, realityResult.error};
     }
 
+    static bool tlsRouteIsHardened()
+    {
+        return Configs::dataManager->routesRepo->IsHardened(Configs::dataManager->settingsRepo->current_route_id);
+    }
+
     bool TLS::FragmentEffectivelyOn()
     {
         if (fragment) return true;
-        if (fragment_unspecified) return Configs::dataManager->settingsRepo->fragment_default_on;
+        if (fragment_unspecified) return Configs::dataManager->settingsRepo->fragment_default_on || tlsRouteIsHardened();
         return false;
     }
 
@@ -909,7 +915,8 @@ namespace Configs {
     bool TLS::TlsTricksEffectivelyOn()
     {
         if (tls_tricks) return true;
-        if (tls_tricks_unspecified) return Configs::dataManager->settingsRepo->tls_tricks_default_on;
+        // Reality compares the server name, so a preset does not reshape it; only a choice made on the profile does.
+        if (tls_tricks_unspecified) return Configs::dataManager->settingsRepo->tls_tricks_default_on || (tlsRouteIsHardened() && !reality->enabled);
         return false;
     }
 

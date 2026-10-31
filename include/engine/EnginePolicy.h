@@ -69,8 +69,8 @@ namespace Engine {
         // Surfaces once the operation has run for delayMs; the caller dismisses it when the operation ends.
         virtual SlowOperation slowOperation(SlowOperationKind kind, int delayMs) = 0;
 
-        // Interactive callers only, once the core turned out to lack the privileges Tun needs; whether it has them now.
-        virtual bool requestCorePrivileges() = 0;
+        // Interactive callers only, once the core turned out to lack the privileges reason needs.
+        virtual PrivilegeDecision requestCorePrivileges(PrivilegeReason reason) = 0;
 
         virtual void systemProxyNeedsMixedInbound() = 0;
 

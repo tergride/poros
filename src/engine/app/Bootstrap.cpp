@@ -182,20 +182,9 @@ namespace Engine::Bootstrap {
 
     Launch PreScan(int argc, char **argv) {
         Launch launch;
-        bool dumpConfigs = false;
-        bool headless = false;
-        bool client = false;
         for (int i = 1; i < argc; i++) {
-            if (argv[i] != nullptr && std::strcmp(argv[i], "-dump-configs") == 0) dumpConfigs = true;
-            const char *name = bootstrapOptionName(argv[i]);
-            if (name == nullptr) continue;
-            if (std::strcmp(name, "headless") == 0) headless = true;
-            else if (std::strcmp(name, "health") == 0 || std::strcmp(name, "print-connection") == 0 || std::strcmp(name, "check") == 0) client = true;
-            else if (std::strcmp(name, "service") == 0) launch.service = true;
+            if (argv[i] != nullptr && std::strcmp(argv[i], "-dump-configs") == 0) launch.mode = Mode::DumpConfigs;
         }
-        if (dumpConfigs) launch.mode = Mode::DumpConfigs;
-        else if (client) launch.mode = Mode::HeadlessClient;
-        else if (headless || bootstrapEnvTruthy("THRONE_HEADLESS")) launch.mode = Mode::Headless;
         return launch;
     }
 
@@ -251,22 +240,6 @@ namespace Engine::Bootstrap {
         QByteArray hashBytes = QCryptographicHash::hash(wd.absolutePath().toUtf8(), QCryptographicHash::Md5).toBase64(QByteArray::OmitTrailingEquals);
         hashBytes.replace('+', '0').replace('/', '1');
         return LOCAL_SERVER_PREFIX + QString::fromUtf8(hashBytes);
-    }
-
-    void AdoptLegacyGeoAssets(const DataDir &dataDir) {
-        if (!dataDir.useAppdata || dataDir.appdataDir.isEmpty()) return;
-        const QDir legacy(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
-        if (legacy.absolutePath() == dataDir.wd.absolutePath()) return;
-        for (const QString &name : QStringList{"geoip.dat", "geosite.dat"}) {
-            const QString from = legacy.absoluteFilePath(name);
-            const QString to = dataDir.wd.absoluteFilePath(name);
-            if (!QFile::exists(from) || QFile::exists(to)) continue;
-            if (QFile::copy(from, to)) {
-                LOG_INFO(QString("copied %1 from %2").arg(name, legacy.absolutePath()));
-            } else {
-                LOG_WARN(QString("could not copy %1 from %2").arg(name, legacy.absolutePath()));
-            }
-        }
     }
 
     RelaunchParent::RelaunchParent(QStringList &arguments) {
@@ -387,7 +360,6 @@ namespace Engine::Bootstrap {
 #ifdef Q_OS_WIN
         bootstrapKeepTempInConfigDir(configDir);
 #endif
-        AdoptLegacyGeoAssets(dataDir);
 
         appStartEpoch = QDateTime::currentSecsSinceEpoch();
 
@@ -402,6 +374,9 @@ namespace Engine::Bootstrap {
         if (Configs::dataManager->settingsRepo->argv.contains("-tray")) Configs::dataManager->settingsRepo->flag_tray = true;
         if (Configs::dataManager->settingsRepo->argv.contains("-debug")) Configs::dataManager->settingsRepo->flag_debug = true;
         if (Configs::dataManager->settingsRepo->argv.contains("-flag_restart_tun_on")) Configs::dataManager->settingsRepo->flag_restart_tun_on = true;
+        for (const auto &argument : Configs::dataManager->settingsRepo->argv) {
+            if (argument.startsWith(QLatin1String("-flag_restart_profile="))) Configs::dataManager->settingsRepo->flag_restart_profile = argument.section('=', 1).toInt();
+        }
         Configs::dataManager->settingsRepo->flag_use_appdata = useAppdata;
         if(useAppdata && !appdataDir.isEmpty()) Configs::dataManager->settingsRepo->appdataDir = appdataDir;
 #ifdef NKR_CPP_DEBUG

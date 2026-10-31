@@ -441,12 +441,12 @@ namespace Engine::Preflight {
             int inboundPort = 2090;
             bool randomInboundPort = false;
             bool disableMixedInbound = false;
-            int dnsInPort = 5533;
-            int clashApiPort = -9090;
+            int dnsInPort = 5543;
+            int clashApiPort = -9190;
             QString clashListen = QStringLiteral("127.0.0.1");
-            int coreApiPort = -9091;
+            int coreApiPort = -9191;
             bool killSwitch = false;
-            QString tunCidr = QStringLiteral("172.19.0.1/24");
+            QString tunCidr = QStringLiteral("172.19.1.1/24");
             bool rememberTun = false;
         };
 

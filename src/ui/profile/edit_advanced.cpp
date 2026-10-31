@@ -230,6 +230,8 @@ void EditAdvanced::loadEndpoint() {
     if (auto *model = qobject_cast<QStandardItemModel *>(ui->endpoint_mode->model()); model != nullptr && ui->endpoint_list->count() == 0) {
         model->item(ui->endpoint_mode->findData(static_cast<int>(Mode::IpList)))->setEnabled(false);
     }
+    // The lists have no screen any more, so the choice stays only to move an old profile off one.
+    if (source.mode != Mode::IpList) ui->endpoint_mode->removeItem(ui->endpoint_mode->findData(static_cast<int>(Mode::IpList)));
     ui->endpoint_mode->setCurrentIndex(qMax(0, ui->endpoint_mode->findData(static_cast<int>(source.mode))));
 
     connect(ui->endpoint_mode, &QComboBox::currentIndexChanged, this, [this] { syncEndpoint(); });

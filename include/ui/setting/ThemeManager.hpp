@@ -9,9 +9,7 @@
 
 #include <array>
 
-// UI colours resolved from the installed palette, then contrast-repaired against `surface`.
-// Use these rather than palette(...) in a QSS: stylesheet palette() resolves against
-// QGuiApplication::palette() regardless of the widget, and only ever the Active group.
+// The Poros colours by role, for the widgets that paint themselves.
 struct ThemeTokens {
     QColor surface;
     QColor onSurface;
@@ -28,17 +26,14 @@ struct ThemeTokens {
 class ThemeManager : public QObject {
     Q_OBJECT
 public:
-    QString system_style_name = "";
-    QPalette system_palette;     // snapshot of the OS palette, taken on first apply
-    QString current_theme = "0"; // int: 0:system 1+:builtin string: QStyleFactory
-    ThemeTokens tokens;          // rebuilt by every ApplyTheme(), before themeChanged fires
+    ThemeTokens tokens;
 
-    void ApplyTheme(const QString &theme, bool force = false);
+    void ApplyTheme();
 
     // QStyle::standardIcon loads from the system on every call: about 9 ms for a message box icon on Windows.
     QIcon standardIcon(QStyle::StandardPixmap pixmap);
 signals:
-    void themeChanged(QString themeName);
+    void themeChanged();
 
 private:
     QHash<int, QIcon> standardIcons; // the current style's; ApplyTheme() reloads the message box icons

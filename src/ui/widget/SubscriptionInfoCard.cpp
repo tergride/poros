@@ -137,13 +137,6 @@ namespace {
                                 color.blueF() * a + base.blueF() * (1 - a));
     }
 
-    // Mirrors ThemeManager::ApplyTheme, which installs its chip sheet only for the windows11 style.
-    bool themeDrawsChips() {
-        const auto *tm = themeManager();
-        const bool system = tm->current_theme.compare(QLatin1String("system"), Qt::CaseInsensitive) == 0;
-        return (system ? tm->system_style_name : tm->current_theme).compare(QLatin1String("windows11"), Qt::CaseInsensitive) == 0;
-    }
-
     // Attribute selectors are only re-evaluated on polish.
     void setStyleProperty(QWidget *widget, const char *name, const QString &value) {
         if (widget->property(name).toString() == value)
@@ -164,7 +157,7 @@ SubscriptionInfoCard::SubscriptionInfoCard(QWidget *parent)
     setupUi();
     applyTheme();
 
-    connect(themeManager(), &ThemeManager::themeChanged, this, [this](const QString &) {
+    connect(themeManager(), &ThemeManager::themeChanged, this, [this] {
         applyTheme();
         updateData(); });
 
@@ -567,13 +560,11 @@ void SubscriptionInfoCard::applyTheme() {
                         "QPushButton#subLink { padding: 0px 6px; }")
                         .arg(surface.name(), line, QString::number(radius), solid(pal.color(QPalette::Active, QPalette::AlternateBase)),
                              QString::number(std::max(1, radius - 1)), tk.success.name(), tk.danger.name(), solid(hover));
-    if (themeDrawsChips()) {
-        sheet += QStringLiteral(
-                     "QFrame#subExpiryBadge, QFrame#subIntervalBadge, QFrame#subAnnounceBadge, QPushButton#subLink {"
-                     " background: transparent; border: 1px solid %1; border-radius: 4px; color: %2; }"
-                     "QFrame#subAnnounceBadge:hover, QPushButton#subLink:hover { background-color: %3; }")
-                     .arg(line, solid(pal.color(QPalette::Active, QPalette::WindowText)), solid(hover));
-    }
+    sheet += QStringLiteral(
+                 "QFrame#subExpiryBadge, QFrame#subIntervalBadge, QFrame#subAnnounceBadge, QPushButton#subLink {"
+                 " background: transparent; border: 1px solid %1; border-radius: 4px; color: %2; }"
+                 "QFrame#subAnnounceBadge:hover, QPushButton#subLink:hover { background-color: %3; }")
+                 .arg(line, solid(pal.color(QPalette::Active, QPalette::WindowText)), solid(hover));
     if (styleSheet() != sheet)
         setStyleSheet(sheet);
 

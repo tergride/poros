@@ -361,7 +361,7 @@ namespace Configs {
         // Child-first order: delete order matters once foreign keys are re-enabled.
         const std::vector<std::string> kProfileTables = {"profiles", "groups_order", "groups"};
         const std::vector<std::string> kRouteTables = {"route_rules", "route_profiles"};
-        const std::vector<std::string> kSettingsTables = {"settings", "markers"};
+        const std::vector<std::string> kSettingsTables = {"settings"};
         const std::vector<std::string> kOtpTables = {"otp_profiles"};
         const std::vector<std::string> kIpListTables = {"ip_list_entries", "ip_scans", "ip_lists"};
 
@@ -552,12 +552,7 @@ namespace Configs {
 
             if (parts.profiles) for (const auto& t : kProfileTables) copyTable(db, t);
             if (parts.routes) for (const auto& t : kRouteTables) skippedRules += copyTable(db, t);
-            if (parts.settings) {
-                for (const auto& t : kSettingsTables) copyTable(db, t, t == "settings" ? settingKeepKeys : QStringList{});
-                // Settings saved before the markers table existed have been through no migration yet.
-                if (!tableExists(db, "bak", "markers") && tableExists(db, "main", "markers"))
-                    db.exec("DELETE FROM main.markers");
-            }
+            if (parts.settings) copyTable(db, "settings", settingKeepKeys);
             if (parts.otp) for (const auto& t : kOtpTables) copyTable(db, t);
             if (parts.ipLists) for (const auto& t : kIpListTables) copyTable(db, t);
 

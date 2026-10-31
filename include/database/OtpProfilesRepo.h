@@ -17,8 +17,6 @@ namespace Configs {
 
         void createTables() const;
 
-        [[nodiscard]] bool otpProfilesColumnExists(const char *columnName) const;
-
         void saveToDatabase(const OtpProfile *profile, int id) const;
 
         [[nodiscard]] std::shared_ptr<OtpProfile> otpProfileFromRow(SQLite::Statement &stmt) const;

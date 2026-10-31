@@ -294,28 +294,9 @@ void MainWindow::setupConnectionFilter()
     connectionCloseAllButton->setToolTip(tr("Close every connection listed below"));
     connect(connectionCloseAllButton, &QToolButton::clicked, this, [this] { closeConnections(listedConnectionIds()); });
 
-    auto buttonGroup = [this](std::initializer_list<QWidget*> buttons) {
-        auto* group = new QWidget(this);
-        auto* layout = new QHBoxLayout(group);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(2);
-        for (auto* button : buttons) layout->addWidget(button);
-        return group;
-    };
-    auto* connectionButtons = buttonGroup({btnFilter, connectionExpandButton, connectionCloseAllButton});
-    // A tab widget has one top-right corner, so the Logs tab's buttons share it.
-    auto* logButtons = buttonGroup({logJumpLatestButton, logFilterButton});
-    auto* corner = buttonGroup({logButtons, connectionButtons});
-    ui->stats_widget->setCornerWidget(corner, Qt::TopRightCorner);
-
-    auto syncCorner = [=,this] {
-        const auto* current = ui->stats_widget->currentWidget();
-        connectionButtons->setVisible(current == ui->connections_tab);
-        logButtons->setVisible(current == ui->Logs);
-        corner->setVisible(current == ui->connections_tab || current == ui->Logs);
-    };
-    connect(ui->stats_widget, &QTabWidget::currentChanged, this, [syncCorner](int) { syncCorner(); });
-    syncCorner();
+    m_connectionActions->addWidget(btnFilter);
+    m_connectionActions->addWidget(connectionExpandButton);
+    m_connectionActions->addWidget(connectionCloseAllButton);
 
     connectionFilterDebounce = new QTimer(this);
     connectionFilterDebounce->setSingleShot(true);

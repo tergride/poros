@@ -6,7 +6,6 @@
 #include <QUuid>
 
 #include "include/global/Utils.hpp"
-#include "include/global/Validation.hpp"
 
 namespace Configs {
     SettingsRepo::SettingsRepo(Database& database) : db(database) {
@@ -58,6 +57,7 @@ namespace Configs {
             {"enable_tun_routing",            &enable_tun_routing},
             {"use_mozilla_certs",             &use_mozilla_certs},
             {"kill_switch",                   &kill_switch},
+            {"onboarding_done",               &onboarding_done},
             {"remote_api_enable",             &remote_api_enable},
             {"remote_api_lan",                &remote_api_lan},
             {"remote_api_admin_lan",          &remote_api_admin_lan},
@@ -160,6 +160,8 @@ namespace Configs {
             {"h2_stream_receive_window",   &h2_stream_receive_window},
             {"h2_connection_receive_window", &h2_connection_receive_window},
             {"theme",                      &theme},
+            {"ui_mode",                    &ui_mode},
+            {"simple_conn_mode",           &simple_conn_mode},
             {"custom_inbound",             &custom_inbound},
             {"custom_route",               &custom_route_global},
             {"font",                       &font},
@@ -277,15 +279,6 @@ namespace Configs {
                 xray_vless_preference = static_cast<Xray::XrayVlessPreference>(ok ? v : 0);
                 continue;
             }
-            // Pre-1.14 DNS rule strategies: only the v4-only case survives as a filter, the rest were no-ops.
-            if (key == "direct_dns_strategy") {
-                direct_dns_disable_ipv6 = str == "ipv4_only";
-                continue;
-            }
-            if (key == "remote_dns_strategy") {
-                remote_dns_disable_ipv6 = str == "ipv4_only";
-                continue;
-            }
             if (key == "route_auto_update_last") {
                 route_auto_update_last = str.toLongLong();
                 continue;
@@ -316,16 +309,6 @@ namespace Configs {
                 continue;
             }
         }
-        // Builds before 1.2.1 saved the translated interval label ("5 мин.", "۱۰ دقیقه"), which the core rejects.
-        if (!Validation::Duration(ntp_interval).isEmpty()) {
-            QString minutes;
-            for (const QChar c : ntp_interval) {
-                if (c.digitValue() >= 0) minutes += QChar(u'0' + c.digitValue());
-            }
-            ntp_interval = minutes.isEmpty() ? QStringLiteral("30m") : minutes + u'm';
-        }
-        // Retired keys nothing writes back; the DNS ones would otherwise keep overriding the migrated flags on every load.
-        db.exec("DELETE FROM settings WHERE key IN ('direct_dns_strategy', 'remote_dns_strategy', 'log_auto_scroll')");
     }
 
     void SettingsRepo::saveAllSettings() const {

@@ -6,9 +6,12 @@
 #include <QMenu>
 #include <QMimeData>
 #include <QResizeEvent>
+#include <QStackedWidget>
 #include <QTimer>
 
 #include "include/engine/connection/ConnectionManager.h"
+#include "include/ui/advanced/AdvancedPage.h"
+#include "include/ui/shell/TitleBar.h"
 #include "include/ui/widget/TrayOtpCodes.hpp"
 #include "include/ui/widget/TrayProfileSelector.hpp"
 
@@ -68,8 +71,6 @@ void MainWindow::changeEvent(QEvent *event) {
             w->updateGeometry();
         };
         forceFontReapply(ui->profilesTableView);
-
-        applyTopBarMetrics();
     }
     if (type == QEvent::FontChange ||
         type == QEvent::PaletteChange ||
@@ -79,6 +80,7 @@ void MainWindow::changeEvent(QEvent *event) {
     }
     if (type == QEvent::WindowStateChange) {
         syncConnectionViewState();
+        if (m_titleBar != nullptr) m_titleBar->setMaximized(isMaximized());
     }
     if (type == QEvent::ActivationChange) {
         // Not stamped from WindowDeactivate in eventFilter(): that only reaches visible filtered children.
@@ -100,8 +102,8 @@ void MainWindow::hideEvent(QHideEvent *event) {
 }
 
 void MainWindow::syncConnectionViewState() {
-    const bool inView = isVisible() && !isMinimized()
-        && ui->stats_widget->currentWidget() == ui->connections_tab;
+    const bool inView = isVisible() && !isMinimized() && m_rootStack->currentWidget() == m_advancedPage
+        && m_advancedPage->currentSection() == AdvancedPage::Connections;
     Stats::connection_lister->SetInView(inView);
 }
 
@@ -180,7 +182,8 @@ void MainWindow::openTrayOtpCodes() {
 void MainWindow::keyPressEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
         if (!qobject_cast<QLineEdit *>(QApplication::focusWidget())) {
-            profile_start();
+            if (simpleModeShown()) simpleStart();
+            else profile_start();
             return;
         }
     }
@@ -198,12 +201,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
         return true;
     }
 
-    if (type == QEvent::Resize && obj == ui->toolButton_program) {
-        const int h = ui->toolButton_program->height();
-        if (h > 0 && ui->toolButton_startstop->height() != h) {
-            ui->toolButton_startstop->setFixedSize(h, h);
-        }
-    }
     // The viewport, not the window: splitter moves and scrollbar toggles change its width too.
     if (type == QEvent::Resize && obj == ui->profilesTableView->viewport()) {
         const auto *resize = static_cast<QResizeEvent *>(event);
@@ -229,11 +226,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
         } else if (obj == ui->label_inbound && mouseEvent->button() == Qt::LeftButton) {
             on_menu_basic_settings_triggered();
             return true;
-        }
-    } else if (type == QEvent::MouseButtonDblClick) {
-        if (obj == ui->splitter) {
-            const auto size = ui->splitter->size();
-            ui->splitter->setSizes({size.height() / 2, size.height() / 2});
         }
     }
     return QMainWindow::eventFilter(obj, event);

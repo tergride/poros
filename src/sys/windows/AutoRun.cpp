@@ -3,8 +3,6 @@
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
-#include <QFileInfo>
-#include <QSettings>
 #include <vector>
 #include "include/global/Configs.hpp"
 #include "include/global/Logger.hpp"
@@ -126,11 +124,6 @@ static QString autoRunExeKey() {
     return QDir::cleanPath(QCoreApplication::applicationFilePath()).toLower();
 }
 
-// Older builds registered one task for any user's logon, named after the executable alone.
-static QString legacyTaskName() {
-    return autoRunTaskName(autoRunExeKey());
-}
-
 static QString userTaskName() {
     return autoRunTaskName(autoRunExeKey() + "|" + autoRunUserSid());
 }
@@ -207,28 +200,13 @@ static bool taskStartsAtLogon(IRegisteredTask *task) {
     return false;
 }
 
-// Older tasks carry priority 7, and a missing element means the same; a deliberate bump to a higher priority is left alone.
-static bool taskIsStale(IRegisteredTask *task, bool elevated) {
+static bool taskRunsElevated(IRegisteredTask *task) {
     TaskPtr<ITaskDefinition> definition;
     TaskPtr<IPrincipal> principal;
-    TaskPtr<ITaskSettings> settings;
     TASK_RUNLEVEL_TYPE runLevel = TASK_RUNLEVEL_LUA;
-    int priority = 7;
     if (FAILED(task->get_Definition(definition.put())) || FAILED(definition->get_Principal(principal.put()))
-        || FAILED(definition->get_Settings(settings.put())) || FAILED(principal->get_RunLevel(&runLevel))
-        || FAILED(settings->get_Priority(&priority))) return false;
-    return (runLevel == TASK_RUNLEVEL_HIGHEST) != elevated || priority > 6;
-}
-
-static QString taskAuthor(IRegisteredTask *task) {
-    TaskPtr<ITaskDefinition> definition;
-    TaskPtr<IRegistrationInfo> info;
-    BSTR author = nullptr;
-    if (FAILED(task->get_Definition(definition.put())) || FAILED(definition->get_RegistrationInfo(info.put()))
-        || FAILED(info->get_Author(&author))) return {};
-    const QString result = QString::fromWCharArray(author, SysStringLen(author));
-    SysFreeString(author);
-    return result;
+        || FAILED(principal->get_RunLevel(&runLevel))) return false;
+    return runLevel == TASK_RUNLEVEL_HIGHEST;
 }
 
 // A task registered from an elevated process may refuse a plain user; only an explicit disable is worth a UAC prompt.
@@ -256,7 +234,6 @@ bool AutoRun_SetEnabled(bool enable, QString *error) {
         if (const HRESULT hr = root.put(userTaskName(), autoRunTaskXml(autoRunElevated())); FAILED(hr)) failure = hresultText(hr);
     } else {
         failure = removeTask(root, userTaskName());
-        if (failure.isEmpty()) failure = removeTask(root, legacyTaskName());
     }
     if (failure.isEmpty()) return true;
     LOG_WARN(QString("autorun: %1 failed: %2").arg(enable ? QStringLiteral("enabling") : QStringLiteral("disabling"), failure));
@@ -267,11 +244,8 @@ bool AutoRun_SetEnabled(bool enable, QString *error) {
 bool AutoRun_IsEnabled() {
     const TaskRoot root;
     if (FAILED(root.status())) return false;
-    for (const QString &name : {userTaskName(), legacyTaskName()}) {
-        const auto task = root.find(name);
-        if (task && taskStartsAtLogon(task.get())) return true;
-    }
-    return false;
+    const auto task = root.find(userTaskName());
+    return task && taskStartsAtLogon(task.get());
 }
 
 void AutoRun_FixTaskIfNeeded() {
@@ -280,25 +254,13 @@ void AutoRun_FixTaskIfNeeded() {
     const bool elevated = autoRunElevated();
     const QString name = userTaskName();
 
-    // Both tasks would fire at logon, so the per-user replacement is dropped again when the old one refuses deletion.
-    const auto legacy = root.find(legacyTaskName());
-    if (legacy && taskStartsAtLogon(legacy.get()) && taskAuthor(legacy.get()).compare(autoRunUserName(), Qt::CaseInsensitive) == 0) {
-        HRESULT hr = root.put(name, autoRunTaskXml(elevated));
-        if (SUCCEEDED(hr) && FAILED(hr = root.remove(legacyTaskName()))) root.remove(name);
-        if (FAILED(hr)) LOG_WARN(QString("autorun: keeping any-user task %1: %2").arg(legacyTaskName(), hresultText(hr)));
-        return;
-    }
-
     const auto task = root.find(name);
-    if (!task || !taskIsStale(task.get(), elevated)) return;
-    if (const HRESULT hr = root.put(name, autoRunTaskXml(elevated)); FAILED(hr)) {
+    if (!task) return;
+    // Most launches run without rights now, and that must not cost the elevated start at logon: only the setting lowers the task.
+    const bool current = taskRunsElevated(task.get());
+    const bool wanted = elevated || (current && !Configs::dataManager->settingsRepo->disable_run_admin);
+    if (current == wanted) return;
+    if (const HRESULT hr = root.put(name, autoRunTaskXml(wanted)); FAILED(hr)) {
         LOG_WARN(QString("autorun: refreshing %1 failed: %2").arg(name, hresultText(hr)));
     }
-}
-
-void AutoRun_MigrateIfNeeded() {
-    QSettings run("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
-    const QString name = QFileInfo(QCoreApplication::applicationFilePath()).baseName();
-    const QString command = "\"" + QDir::toNativeSeparators(QCoreApplication::applicationFilePath()) + "\" -tray";
-    if (run.value(name).toString() == command && AutoRun_SetEnabled(true)) run.remove(name);
 }

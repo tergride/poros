@@ -41,11 +41,11 @@ void MainWindow::createCommandPalette() {
 
     commandPalette = new CommandPalette(this,
                                         {
-                                            {ui->toolButton_program->text(), ui->menu_program},
-                                            {ui->toolButton_preferences->text(), ui->menu_preferences},
-                                            {ui->toolButton_testing->text(), ui->menuTesting},
-                                            {ui->toolButton_routing->text(), ui->menuRouting_Menu},
-                                            {ui->toolButton_tools->text(), ui->menuTools},
+                                            {ui->menu_program->title(), ui->menu_program},
+                                            {ui->menu_preferences->title(), ui->menu_preferences},
+                                            {ui->menuTesting->title(), ui->menuTesting},
+                                            {ui->menuRouting_Menu->title(), ui->menuRouting_Menu},
+                                            {ui->menuTools->title(), ui->menuTools},
                                             {ui->menu_server->title(), ui->menu_server},
                                         },
                                         commandPaletteAction);
@@ -101,7 +101,7 @@ void MainWindow::showCommandPalette() {
 
 void MainWindow::revealSetting(const SettingsIndex::Item &item) {
     // Settings dialogs are parented to the main window; a busy slot leaves the open one in place.
-    for (auto *dialog : findChildren<QDialog *>(QString(), Qt::FindDirectChildrenOnly)) {
+    for (auto *dialog : findChildren<QDialog *>()) {
         if (!dialog->isVisible() || item.dialogClass != QLatin1String(dialog->metaObject()->className())) continue;
         dialog->raise();
         dialog->activateWindow();

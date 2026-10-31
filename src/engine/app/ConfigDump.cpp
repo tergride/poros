@@ -320,7 +320,7 @@ namespace Engine {
             return ExitCode::NoInput;
         }
         arguments[appdataIndex + 1] = appdataPath;
-        PrintError("-dump-configs: run this on a COPY of the data directory, opening the database may migrate it.");
+        PrintError("-dump-configs: run this on a COPY of the data directory, opening the database may change it.");
 
         const auto dataDir = Bootstrap::ResolveDataDir(arguments, launchCwd);
         Configs::SetBasePath(dataDir.wd.absolutePath());

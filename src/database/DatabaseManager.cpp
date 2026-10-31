@@ -1,7 +1,6 @@
 #include "include/database/GroupsRepo.h"
 #include "include/database/IpListsRepo.h"
 #include "include/database/IpScansRepo.h"
-#include "include/database/MarkersRepo.h"
 #include "include/database/OtpProfilesRepo.h"
 #include "include/database/ProfilesRepo.h"
 #include "include/database/RoutesRepo.h"
@@ -16,10 +15,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QHostAddress>
 #include <QThread>
-
-#include <algorithm>
 
 namespace Configs {
     std::string DatabaseManager::deriveStatsDbPath(const std::string& dbPath) {
@@ -74,16 +70,6 @@ namespace Configs {
         createEntityIdsTable(db);
 
         initializeRepos();
-        applyMigrations();
-    }
-
-    bool DatabaseManager::entityIdsColumnExists(Database& db, const char* columnName) {
-        auto pragma = db.query("PRAGMA table_info(entity_ids)");
-        if (!pragma) return false;
-        while (pragma->executeStep()) {
-            if (pragma->getColumn(1).getText() == std::string(columnName)) return true;
-        }
-        return false;
     }
 
     void DatabaseManager::createEntityIdsTable(Database& db) {
@@ -98,14 +84,6 @@ namespace Configs {
                 ip_scan_last_id INTEGER NOT NULL DEFAULT 0
             )
         )");
-
-        // CREATE IF NOT EXISTS skips existing databases, so each added counter needs its own ALTER.
-        if (!entityIdsColumnExists(db, "otp_profile_last_id"))
-            db.exec("ALTER TABLE entity_ids ADD COLUMN otp_profile_last_id INTEGER NOT NULL DEFAULT 0");
-        if (!entityIdsColumnExists(db, "ip_list_last_id"))
-            db.exec("ALTER TABLE entity_ids ADD COLUMN ip_list_last_id INTEGER NOT NULL DEFAULT 0");
-        if (!entityIdsColumnExists(db, "ip_scan_last_id"))
-            db.exec("ALTER TABLE entity_ids ADD COLUMN ip_scan_last_id INTEGER NOT NULL DEFAULT 0");
 
         auto checkQuery = db.query("SELECT COUNT(*) FROM entity_ids");
         int count = 0;
@@ -136,27 +114,8 @@ namespace Configs {
         otpProfilesRepo = std::make_unique<OtpProfilesRepo>(db);
         settingsRepo = std::make_unique<SettingsRepo>(db);
         trafficStatsRepo = std::make_unique<TrafficStatsRepo>(statsDb);
-        markersRepo = std::make_unique<MarkersRepo>(db);
         ipListsRepo = std::make_unique<IpListsRepo>(scanDb);
         ipScansRepo = std::make_unique<IpScansRepo>(scanDb);
         ipScansRepo->NormalizeInterrupted();
-    }
-
-    void DatabaseManager::applyMigrations() {
-        if (!markersRepo->IsMarked(Markers::TunPrivateRangesIPv6)) {
-            auto &ranges = settingsRepo->vpn_private_ranges;
-            // An emptied list opts out of the bypass entirely.
-            if (!ranges.isEmpty()) {
-                const auto before = ranges.size();
-                for (const auto &range : {"fc00::/7", "fe80::/10", "ff00::/8"}) {
-                    const auto subnet = QHostAddress::parseSubnet(range);
-                    if (std::none_of(ranges.cbegin(), ranges.cend(),
-                                     [&subnet](const QString &it) { return QHostAddress::parseSubnet(it) == subnet; }))
-                        ranges << range;
-                }
-                if (ranges.size() != before) settingsRepo->Save();
-            }
-            markersRepo->Mark(Markers::TunPrivateRangesIPv6);
-        }
     }
 }

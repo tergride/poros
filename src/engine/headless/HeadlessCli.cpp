@@ -255,7 +255,7 @@ namespace Engine::HeadlessCli {
                           "FORMAT"});
         parser.addOption({kApiListen,
                           "Poros API listener: PORT, IPv4:PORT, [IPv6]:PORT, *:PORT, or off (THRONE_API_LISTEN). Default: "
-                          "127.0.0.1:9095, unless the settings enable the API.",
+                          "127.0.0.1:9195, unless the settings enable the API.",
                           "LISTEN"});
         parser.addOption({kApiKeyFile,
                           "Poros API key file; it must exist (create it with: thronectl keygen -o FILE) "

@@ -49,9 +49,6 @@ namespace Engine::Bootstrap {
 
     QString InstanceServerName(const QDir &wd);
 
-    // An explicit -appdata dir used to keep its Xray geo assets in AppConfigLocation; copies the ones it lacks.
-    void AdoptLegacyGeoAssets(const DataDir &dataDir);
-
     // The instance that relaunched us (-wait_pid=); it keeps the data dir lock and the socket until it exits.
     class RelaunchParent {
     public:
@@ -101,7 +98,7 @@ namespace Engine::Bootstrap {
     // A no-op elsewhere.
     void AttachParentConsole();
 
-    // CWD to <config>, temp wipe, legacy geo assets, start epoch, initDB, log level, stats DB, launch flags.
+    // CWD to <config>, temp wipe, start epoch, initDB, log level, stats DB, launch flags.
     void OpenDataDir(const DataDir &dataDir, const QStringList &arguments);
 
     // Bundled Qt plugins (TLS backends) and the DS_cores thread the core process lives on.

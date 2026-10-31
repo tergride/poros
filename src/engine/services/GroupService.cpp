@@ -1,5 +1,7 @@
 #include "include/engine/services/GroupService.h"
 
+#include "include/engine/services/AutoGroupService.h"
+
 #include <memory>
 
 #include <QMetaObject>
@@ -148,6 +150,8 @@ namespace Engine::GroupService {
         if (!Configs::dataManager->groupsRepo->DeleteGroup(groupId)) {
             return ServiceError{500, QStringLiteral("internal"), QStringLiteral("Could not delete the group")};
         }
+
+        AutoGroupService::Remove(groupId);
 
         auto *settings = Configs::dataManager->settingsRepo.get();
         // The caller stopped a running profile of the group, but a non-manual stop leaves started_id naming it.

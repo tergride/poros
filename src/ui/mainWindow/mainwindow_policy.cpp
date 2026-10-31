@@ -1,5 +1,9 @@
 #include "include/ui/mainwindow.h"
 
+#include "include/database/RoutesRepo.h"
+#include "include/ui/utils/ConnectionModeController.h"
+#include "include/ui/widget/AdminPromptDialog.h"
+
 #include <QMessageBox>
 #include <QPushButton>
 
@@ -58,6 +62,20 @@ void MainWindow::killSwitchProblem() {
         m_killSwitchDialog->close();
     }
 
+    if (privilege && !m_killSwitchPromptOpen) {
+        m_killSwitchPromptOpen = true;
+        AdminPromptDialog prompt(Engine::PrivilegeReason::KillSwitch, this);
+        prompt.exec();
+        m_killSwitchPromptOpen = false;
+        if (prompt.choice() == AdminPromptDialog::Choice::Restart) {
+            restartWithRights(Engine::PrivilegeReason::KillSwitch);
+        } else if (prompt.choice() == AdminPromptDialog::Choice::TryWithout) {
+            m_triedWithoutRights = Engine::PrivilegeReason::KillSwitch;
+            killSwitch->apply();
+        }
+        return;
+    }
+
     auto *box = new QMessageBox(QMessageBox::Warning, identity ? tr("Kill switch is blocking traffic") : tr("Kill switch is not active"),
                                 killSwitch->failureText(), QMessageBox::NoButton, this);
     box->setTextFormat(Qt::PlainText);
@@ -112,6 +130,14 @@ void MainWindow::extraCoreNotPermitted() {
 }
 
 void MainWindow::startFailed(const StartRequest &, StartOutcome, const QString &title, const QString &error) {
+    if (error.contains(QLatin1String("initial rule-set"), Qt::CaseInsensitive)) {
+        showRuleSetFailure();
+        return;
+    }
+    if (error.contains(QLatin1String("divert"), Qt::CaseInsensitive) && !Configs::KnownAdmin().value_or(false)) {
+        showRightsFailure(Engine::PrivilegeReason::TlsSpoof);
+        return;
+    }
     MessageBoxWarning(title, error);
 }
 
@@ -124,6 +150,11 @@ void MainWindow::strictRouteUnavailable(const QString &error) {
 }
 
 bool MainWindow::offerCoreReset(const QString &error) {
+    // TUN simply cannot open without rights: a reset would not help, and the choice to try was the user's.
+    if (!Configs::KnownAdmin().value_or(false)) {
+        showRightsFailure(Engine::PrivilegeReason::Tun);
+        return false;
+    }
     QMessageBox msg(
         QMessageBox::Information,
         tr("Tun device misbehaving"),
@@ -170,15 +201,16 @@ Engine::SlowOperation MainWindow::slowOperation(Engine::SlowOperationKind, int d
     return Engine::SlowOperation([restartPrompt] { if (restartPrompt) restartPrompt->dismiss(); });
 }
 
-bool MainWindow::requestCorePrivileges() {
+Engine::PrivilegeDecision MainWindow::requestCorePrivileges(Engine::PrivilegeReason reason) {
+    using Engine::PrivilegeDecision;
 #ifdef NKR_ELEVATION_HINT
     MessageBoxWarning(software_name, tr("This installation cannot grant the core privileges by itself.") + "\n\n" + NKR_ELEVATION_HINT);
-    return false;
+    return PrivilegeDecision::Cancel;
 #endif
 #ifdef Q_OS_LINUX
     if (!Linux_HavePkexec()) {
         MessageBoxWarning(software_name, "Please install \"pkexec\" first.");
-        return false;
+        return PrivilegeDecision::Cancel;
     }
     auto n = QMessageBox::warning(GetMessageBoxParent(), software_name, tr("Please give the core root privileges"), QMessageBox::Yes | QMessageBox::No);
     if (n == QMessageBox::Yes) {
@@ -197,14 +229,24 @@ bool MainWindow::requestCorePrivileges() {
                 MW_show_log(QString("Failed to run chmod %1").arg(chmodArgs));
             }
         });
-        return false;
+        return PrivilegeDecision::Restart;
     }
 #endif
 #ifdef Q_OS_WIN
-    auto n = QMessageBox::warning(GetMessageBoxParent(), software_name, tr("Please run Poros as admin"), QMessageBox::Yes | QMessageBox::No);
-    if (n == QMessageBox::Yes) {
-        this->exit_reason = ExitReason::RestartWithTun;
-        on_menu_exit_triggered();
+    AdminPromptDialog prompt(reason, this);
+    prompt.exec();
+    switch (prompt.choice()) {
+        case AdminPromptDialog::Choice::TryWithout:
+            m_triedWithoutRights = reason;
+            return PrivilegeDecision::TryWithout;
+        case AdminPromptDialog::Choice::UseSystem:
+            useSystemInsteadOfTun();
+            return PrivilegeDecision::Cancel;
+        case AdminPromptDialog::Choice::Restart:
+            restartWithRights(reason);
+            return PrivilegeDecision::Restart;
+        case AdminPromptDialog::Choice::Cancel:
+            break;
     }
 #endif
 
@@ -212,7 +254,7 @@ bool MainWindow::requestCorePrivileges() {
     if (Configs::isSetuidSet(Configs::FindCoreRealPath().toStdString()))
     {
         StopVPNProcess();
-        return true;
+        return PrivilegeDecision::TryWithout;
     }
     auto n = QMessageBox::warning(GetMessageBoxParent(), software_name, tr("Please give the core root privileges"), QMessageBox::Yes | QMessageBox::No);
     if (n == QMessageBox::Yes)
@@ -221,14 +263,12 @@ bool MainWindow::requestCorePrivileges() {
         auto ret = Mac_Run_Command(Command);
         if (ret == 0) {
             MessageBoxInfo(tr("Requesting permission"), tr("Please Enter your password in the opened terminal, then try again"));
-            return false;
         } else {
             MW_show_log(QString("Failed to run %1 with %2").arg(Command).arg(ret));
-            return false;
         }
     }
 #endif
-    return false;
+    return PrivilegeDecision::Cancel;
 }
 
 void MainWindow::systemProxyNeedsMixedInbound() {
@@ -282,4 +322,48 @@ void MainWindow::exitProgram(ExitReason reason, bool unattended) {
     }
     exit_reason = reason;
     on_menu_exit_triggered();
+}
+
+void MainWindow::restartWithRights(Engine::PrivilegeReason reason) {
+    const auto &settings = Configs::dataManager->settingsRepo;
+    // Whatever was being started, or what runs now: the new process picks it up by itself.
+    m_restartProfileId = m_pendingStart >= 0 ? m_pendingStart : settings->started_id;
+    exit_reason = reason == Engine::PrivilegeReason::Tun ? ExitReason::RestartWithTun : ExitReason::RestartElevated;
+    on_menu_exit_triggered();
+}
+
+void MainWindow::useSystemInsteadOfTun() {
+    if (Configs::dataManager->settingsRepo->ui_mode != QLatin1String("advanced")) m_modes->choose(ConnectionModeController::Mode::System);
+    else connection()->setSystemProxy(true);
+}
+
+void MainWindow::showRightsFailure(Engine::PrivilegeReason reason) {
+    QString text;
+    QList<FailureBanner::Action> actions{{tr("Restart with rights"), [this, reason] { restartWithRights(reason); }}};
+    switch (reason) {
+        case Engine::PrivilegeReason::Tun:
+            text = tr("TUN did not start without administrator rights.");
+            actions.append({tr("Use System"), [this] { useSystemInsteadOfTun(); }});
+            break;
+        case Engine::PrivilegeReason::KillSwitch:
+            text = tr("The kill switch did not turn on without administrator rights.");
+            break;
+        case Engine::PrivilegeReason::TlsSpoof:
+            text = tr("TLS spoofing did not work without administrator rights.");
+            break;
+    }
+    m_banner->present(text, actions);
+}
+
+void MainWindow::showRuleSetFailure() {
+    QList<FailureBanner::Action> actions;
+    for (const auto &route : Configs::dataManager->routesRepo->GetAllRouteProfiles()) {
+        if (route->builtinKey != QLatin1String("all")) continue;
+        actions.append({tr("Use %1").arg(route->name), [this, id = route->id] {
+            connection()->chooseRoute(id);
+            refreshRouteChoice();
+            refreshSimplePortal();
+        }});
+    }
+    m_banner->present(tr("Could not download the site lists this preset needs. Check the connection, or use a preset that does not need them."), actions);
 }

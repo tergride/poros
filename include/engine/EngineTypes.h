@@ -68,6 +68,20 @@ namespace Engine {
         Group,
     };
 
+    // What needs more rights than the process has.
+    enum class PrivilegeReason {
+        Tun,
+        KillSwitch,
+        TlsSpoof,
+    };
+
+    // Restart: the front end relaunches elevated, so the attempt ends here. TryWithout: go on and let it fail by itself.
+    enum class PrivilegeDecision {
+        Restart,
+        TryWithout,
+        Cancel,
+    };
+
     enum class ExitReason {
         None,
         RunUpdater,

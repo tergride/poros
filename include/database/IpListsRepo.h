@@ -26,8 +26,6 @@ namespace Configs {
 
         void createTables() const;
 
-        [[nodiscard]] bool ipListsColumnExists(const char *columnName) const;
-
         [[nodiscard]] std::shared_ptr<IpList> ipListFromRow(SQLite::Statement &stmt) const;
 
         [[nodiscard]] int NewIpListID() const;

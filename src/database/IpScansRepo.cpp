@@ -72,15 +72,6 @@ namespace Configs {
         )");
     }
 
-    bool IpScansRepo::ipScansColumnExists(const char *columnName) const {
-        auto pragma = db.query("PRAGMA table_info(ip_scans)");
-        if (!pragma) return false;
-        while (pragma->executeStep()) {
-            if (pragma->getColumn(1).getText() == std::string(columnName)) return true;
-        }
-        return false;
-    }
-
     std::shared_ptr<IpScan> IpScansRepo::ipScanFromRow(SQLite::Statement &stmt) const {
         auto scan = std::make_shared<IpScan>();
         scan->id = stmt.getColumn(0).getInt();

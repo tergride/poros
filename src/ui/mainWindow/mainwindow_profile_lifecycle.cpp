@@ -52,6 +52,11 @@ std::shared_ptr<Configs::Profile> MainWindow::runningSnapshot() const {
 void MainWindow::toggle_connection() {
     const auto state = connection()->connectionState();
     if (select_mode || state == ConnectionState::Connecting || state == ConnectionState::Stopping) return;
+    // The simple mode's Start also settles TUN or System, without which nothing would go through the server.
+    if (simpleModeShown()) {
+        simpleStart();
+        return;
+    }
     if (runningSnapshot() != nullptr) {
         profile_stop(false, false, true);
         return;

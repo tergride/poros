@@ -65,7 +65,7 @@ namespace RemoteApi {
         // Stops listening, closes every connection and joins the thread.
         void shutdown();
 
-        // "Off", "Listening on 127.0.0.1:9095", or why listening failed. Thread-safe.
+        // "Off", "Listening on 127.0.0.1:9195", or why listening failed. Thread-safe.
         QString statusText() const;
 
     signals:
