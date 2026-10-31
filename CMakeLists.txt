@@ -795,6 +795,19 @@ list(APPEND PROJECT_SOURCES ${ENGINE_SOURCES})
 # Windows only (cmake/windows/windows.cmake); empty elsewhere.
 list(APPEND PROJECT_SOURCES ${PLATFORM_HEADLESS_SOURCES})
 
+# Parts of upstream that Poros leaves out. They are filtered here instead of cut from the lists above, so merges do not
+# conflict on those lists and whatever upstream adds to these folders stays out too.
+foreach (removed
+        "^(include|src)/api/remote/"
+        "^(include|src)/scanner/"
+        "^(include|src)/engine/headless/(Headless(Api|Cli|Instance|Main|Runtime)|Preflight|ResumeGuard|RuntimeStatus|SupervisorLink)\\."
+        "^(include|src)/engine/services/(WebDavBackup|Dashboard)\\."
+        "^(include|src)/database/(entities/)?Ip(List|Scan)"
+        "^(include|src)/sys/(windows/)?(HostPresence|HostTun|HeadlessSignals|ServiceManager_win|CoreDiagnostics)"
+        "/(edit_tailscale|edit_extra_core|tailscale|extracore)\\.")
+    list(FILTER PROJECT_SOURCES EXCLUDE REGEX "${removed}")
+endforeach ()
+
 # Qt exe
 qt_add_executable(Poros
         MANUAL_FINALIZATION

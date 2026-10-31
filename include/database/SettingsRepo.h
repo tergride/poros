@@ -186,21 +186,7 @@ namespace Configs {
         bool use_mozilla_certs = false;
         bool kill_switch = false;
 
-        // Remote API
-        bool remote_api_enable = false;
-        bool remote_api_lan = false;
-        bool remote_api_admin_lan = false;
-        int remote_api_port = 9195;
-        QString remote_api_key = "";
-        // CIDRs separated by commas or whitespace; empty allows every LAN address.
-        QString remote_api_allow = "";
-
-        // WebDAV backup and this device's identity: device-local, see BackupArchive::DeviceLocalSettingKeys().
-        QString webdav_server = "";
-        QString webdav_user = "";
-        QString webdav_pass = "";
-        QString webdav_path = "Poros";
-        bool webdav_use_proxy = false;
+        // This device's identity: device-local, see BackupArchive::DeviceLocalSettingKeys().
         // Generated on first use; an empty name means the host name.
         QString device_id = "";
         QString device_name = "";

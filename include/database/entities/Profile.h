@@ -1,6 +1,5 @@
 #pragma once
 
-#include <include/configs/outbounds/tailscale.h>
 #include <include/configs/outbounds/wireguard.h>
 
 #include "include/configs/common/Outbound.h"
@@ -11,7 +10,6 @@
 #include "include/configs/outbounds/chain.h"
 #include "include/configs/outbounds/autoselector.h"
 #include "include/configs/outbounds/custom.h"
-#include "include/configs/outbounds/extracore.h"
 #include "include/configs/outbounds/socks.h"
 #include "include/configs/outbounds/http.h"
 #include "include/configs/outbounds/hysteria.h"
@@ -129,10 +127,6 @@ namespace Configs {
             return dynamic_cast<Configs::ssh *>(outbound.get());
         };
 
-        [[nodiscard]] Configs::tailscale *Tailscale() const {
-            return dynamic_cast<Configs::tailscale *>(outbound.get());
-        };
-
         [[nodiscard]] Configs::tuic *TUIC() const {
             return dynamic_cast<Configs::tuic *>(outbound.get());
         };
@@ -183,10 +177,6 @@ namespace Configs {
 
         [[nodiscard]] Configs::direct *Direct() const {
             return dynamic_cast<Configs::direct *>(outbound.get());
-        };
-
-        [[nodiscard]] Configs::extracore *ExtraCore() const {
-            return dynamic_cast<Configs::extracore *>(outbound.get());
         };
     };
     class ProfileFilter {

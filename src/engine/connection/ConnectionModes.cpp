@@ -11,8 +11,6 @@
 #include "include/global/LocalNetwork.hpp"
 #include "include/global/Notice.hpp"
 #include "include/global/Utils.hpp"
-#include "include/sys/HostPresence.hpp"
-#include "include/sys/HostTun.hpp"
 #include "include/sys/KillSwitch.hpp"
 #include "include/sys/SystemProxy.hpp"
 
@@ -23,7 +21,6 @@
 #include <utility>
 
 namespace {
-    constexpr qint64 kConnectionModesTunBlockedCacheMs = 5000;
     constexpr int kConnectionModesCapsRefreshMs = 1000;
 
     // networksetup and gsettings runs are slow, and profile start/stop call in from their own threads.
@@ -76,27 +73,7 @@ namespace Engine {
     }
 
     QString ConnectionManager::tunBlockedReason() {
-        ENGINE_CHECK_MAIN_THREAD();
-        const auto &settings = Configs::dataManager->settingsRepo;
-        if (settings->spmode_vpn || runningTun()) return {};
-        // Our own core's Tun may still be coming up or going down, and would read as another owner's.
-        if (const auto state = connectionState(); state == ConnectionState::Connecting || state == ConnectionState::Stopping) return {};
-        const qint64 now = MonotonicMs();
-        const int dnsProbePort = runningSnapshot() ? 0 : settings->core_dns_in_port;
-        const auto key = QStringLiteral("%1|%2").arg(settings->vpn_tun_ipv4_cidr).arg(dnsProbePort);
-        if (m_tunBlockedAtMs != 0 && key == m_tunBlockedKey && now - m_tunBlockedAtMs < kConnectionModesTunBlockedCacheMs) {
-            return m_tunBlockedCache;
-        }
-        QString reason;
-        if (m_options.headless) {
-            reason = Sys::HostTun::Conflict(settings->vpn_tun_ipv4_cidr, dnsProbePort);
-        } else if (const auto holder = Sys::HostPresence::OtherHeadless()) {
-            reason = tr("A background Poros (PID %1) owns Tun on this computer; stop it first.").arg(holder->pid);
-        }
-        m_tunBlockedCache = reason;
-        m_tunBlockedKey = key;
-        m_tunBlockedAtMs = std::max<qint64>(now, 1);
-        return reason;
+        return {};
     }
 
     QString ConnectionManager::tunRestoreHoldReason() {
@@ -192,7 +169,6 @@ namespace Engine {
             return false;
         }
         m_tunRestoreHeld = false;
-        m_tunBlockedAtMs = 0;
 
         if (change.save) {
             // Written here, after the elevation check, so a failed enable is not remembered.

@@ -14,20 +14,13 @@ namespace Engine::Bootstrap {
     enum class Mode {
         Gui,
         DumpConfigs,
-        Headless,
-        // --health / --print-connection / --check: ask a running headless instance or inspect the host, never own the data dir.
-        HeadlessClient,
     };
 
     struct Launch {
         Mode mode = Mode::Gui;
-        // --service, recorded for the Windows service mode.
-        bool service = false;
     };
 
-    // Runs before any Qt object exists, so it only looks at raw argv and the environment. -dump-configs wins; --health,
-    // --print-connection or --check (one or two dashes) is HeadlessClient even without --headless; --headless/-headless or a truthy
-    // THRONE_HEADLESS (not ""/0/false/no/off) is Headless.
+    // Runs before any Qt object exists, so it only looks at raw argv.
     Launch PreScan(int argc, char **argv);
 
     // software_name and software_core_name; before anything titles a dialog or notice.
@@ -78,8 +71,6 @@ namespace Engine::Bootstrap {
         Owned,
         HandedOff,
         HeldByOther,
-        // A headless instance owns the data dir; the GUI tells the user instead of handing off.
-        HeldByHeadless,
     };
 
     struct Claim {
@@ -88,9 +79,7 @@ namespace Engine::Bootstrap {
     };
 
     // Owned also covers a lock that could not be taken at all: that run continues unlocked, as before.
-    // handOff false (headless): Busy is HeldByOther right after the relaunch wait and no payload is handed off; the legacy probe
-    // answering (HandedOff) then means an older lock-less Throne owns the dir. handOff true (GUI): a busy lock whose owner mode is
-    // "headless" is HeldByHeadless at once; at the hand-off deadline a HELLO answered by a headless owner is HeldByHeadless too.
+    // handOff false: Busy is HeldByOther right after the relaunch wait and no payload is handed off.
     Claim ClaimDataDir(DataDirLock &lock, const DataDir &dataDir, const QString &serverName, const QString &lockMode,
                        const QStringList &payload, const RelaunchParent &relaunchParent, bool handOff = true);
 

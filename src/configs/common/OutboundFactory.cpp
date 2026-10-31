@@ -23,10 +23,8 @@
 #include "include/configs/outbounds/masque.h"
 #include "include/configs/outbounds/openvpn.h"
 #include "include/configs/outbounds/openconnect.h"
-#include "include/configs/outbounds/tailscale.h"
 #include "include/configs/outbounds/ssh.h"
 #include "include/configs/outbounds/custom.h"
-#include "include/configs/outbounds/extracore.h"
 #include "include/configs/outbounds/naive.h"
 #include "include/configs/outbounds/direct.h"
 
@@ -55,10 +53,8 @@ namespace Configs
         if (type == "masque") return new masque();
         if (type == "openvpn") return new openvpn();
         if (type == "openconnect") return new openconnect();
-        if (type == "tailscale") return new tailscale();
         if (type == "ssh") return new ssh();
         if (type == "custom") return new Custom();
-        if (type == "extracore") return new extracore();
         if (type == "naive") return new naive();
         if (type == "direct") return new direct();
         auto* ob = new outbound();

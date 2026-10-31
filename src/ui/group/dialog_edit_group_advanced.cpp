@@ -4,7 +4,6 @@
 #include "include/configs/generate.h"
 #include "include/configs/sub/GroupUpdater.hpp"
 #include "include/database/DatabaseManager.h"
-#include "include/database/IpListsRepo.h"
 #include "include/database/SettingsRepo.h"
 #include "include/ui/utils/GuiUtils.hpp"
 #include "include/global/Validation.hpp"
@@ -146,26 +145,11 @@ void DialogEditGroupAdvanced::loadEndpoint() {
     using Mode = Configs::EndpointSource::Mode;
     ui->endpoint_mode->addItem(tr("Profiles' own addresses"), static_cast<int>(Mode::Inherit));
     ui->endpoint_mode->addItem(tr("Fixed address"), static_cast<int>(Mode::Address));
-    ui->endpoint_mode->addItem(tr("IP list"), static_cast<int>(Mode::IpList));
 
     if (endpoint.mode == Mode::Address) ui->endpoint_address->setText(endpoint.address);
-    for (const auto &list : Configs::dataManager->ipListsRepo->GetAllIpLists()) {
-        ui->endpoint_list->addItem(list->name, list->id);
-    }
-    if (endpoint.mode == Mode::IpList) {
-        // A gone list stays selected, so saving never points the group at another list by itself.
-        if (ui->endpoint_list->findData(endpoint.ipListId) < 0) ui->endpoint_list->insertItem(0, tr("Missing list"), endpoint.ipListId);
-        ui->endpoint_list->setCurrentIndex(ui->endpoint_list->findData(endpoint.ipListId));
-    }
-    if (auto *model = qobject_cast<QStandardItemModel *>(ui->endpoint_mode->model()); model != nullptr && ui->endpoint_list->count() == 0) {
-        model->item(ui->endpoint_mode->findData(static_cast<int>(Mode::IpList)))->setEnabled(false);
-    }
-    // The lists have no screen any more, so the choice stays only to move an old group off one.
-    if (endpoint.mode != Mode::IpList) ui->endpoint_mode->removeItem(ui->endpoint_mode->findData(static_cast<int>(Mode::IpList)));
     ui->endpoint_mode->setCurrentIndex(qMax(0, ui->endpoint_mode->findData(static_cast<int>(endpoint.mode))));
 
     connect(ui->endpoint_mode, &QComboBox::currentIndexChanged, this, [this] { syncEndpoint(); });
-    connect(ui->endpoint_list, &QComboBox::currentIndexChanged, this, [this] { syncEndpoint(); });
     syncEndpoint();
 }
 
@@ -177,21 +161,7 @@ void DialogEditGroupAdvanced::syncEndpoint() {
     using Mode = Configs::EndpointSource::Mode;
     const auto mode = endpointMode();
     ui->endpoint_address->setVisible(mode == Mode::Address);
-    ui->endpoint_list->setVisible(mode == Mode::IpList);
-
-    QString hint;
-    if (mode == Mode::IpList) {
-        Configs::EndpointSource source;
-        source.mode = mode;
-        source.ipListId = ui->endpoint_list->currentData().toInt();
-        if (const auto resolution = Configs::ResolveEndpointSource(source); !resolution.address.isEmpty()) {
-            hint = tr("Profiles connect to %1 (%2).").arg(resolution.address, resolution.origin);
-        } else if (!resolution.problem.isEmpty()) {
-            hint = tr("%1, so profiles use their own addresses.").arg(resolution.problem);
-        }
-    }
-    ui->endpoint_hint->setText(hint);
-    ui->endpoint_hint->setHidden(hint.isEmpty());
+    ui->endpoint_hint->hide();
 }
 
 void DialogEditGroupAdvanced::syncHwidFields() {
@@ -215,8 +185,6 @@ void DialogEditGroupAdvanced::accept() {
     source.mode = endpointMode();
     if (source.mode == Mode::Address) {
         source.address = groupEndpointHost(ui->endpoint_address->text());
-    } else if (source.mode == Mode::IpList) {
-        source.ipListId = ui->endpoint_list->currentData().toInt();
     }
     endpoint = source;
 

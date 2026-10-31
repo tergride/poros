@@ -1,13 +1,11 @@
 #include "include/engine/app/ExitController.h"
 
-#include "include/api/remote/Server.hpp"
 #include "include/engine/EnginePolicy.h"
 #include "include/engine/ThreadCheck.h"
 #include "include/engine/connection/ConnectionManager.h"
 #include "include/engine/supervisor/CoreSupervisor.h"
 #include "include/global/Configs.hpp"
 #include "include/global/Logger.hpp"
-#include "include/scanner/ScanManager.h"
 #include "include/sys/KillSwitch.hpp"
 
 #include <QDebug>
@@ -44,13 +42,10 @@ namespace Engine {
         Configs::dataManager->settingsRepo->prepare_exit = true;
         emit shutdownStarted();
         LOG_INFO("prepare_exit started, tearing down proxy/tun/core");
-        // Before the waits below: their nested event loops would dispatch API requests mid-teardown.
-        RemoteApi::Server::instance()->shutdown();
         // Whatever the live mode says: an uncheck may still have its clear queued.
         if (m_shutdownOptions.clearSystemProxy) m_connection->applySystemProxy(false, true);
         emit sessionPersisting();
         persistSessionState();
-        Scanner::ScanManager::instance()->StopAll(true);
         Configs::dataManager->settingsRepo->noSave = true; // don't change Configs::dataManager->settingsRepo after this line
         m_connection->stop({false, true, false, interactive, m_shutdownOptions.stopRpcTimeoutMs, !m_shutdownOptions.stopTests});
 

@@ -33,14 +33,6 @@ private:
 
     void bindHotkeyValidation();
 
-    void setupApiTab();
-
-    void updateApiControls();
-
-    void regenerateApiKey();
-
-    void copyForScripts();
-
     struct HotkeyEdit {
         QtExtKeySequenceEdit *edit = nullptr;
         QString label;
@@ -50,7 +42,6 @@ private:
     QMap<QtExtKeySequenceEdit*, QString> seqEdit2ID;
     QList<HotkeyEdit> hotkeyEdits;
     Validation::Form *form = nullptr;
-    QString savedApiKey;
     Engine::EditLock settingsLock{Engine::EditTarget::Settings};
     Ui::DialogIntegration *ui;
 };

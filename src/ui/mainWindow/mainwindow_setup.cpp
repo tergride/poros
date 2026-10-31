@@ -4,8 +4,6 @@
 #include "include/engine/EngineHost.h"
 #include "include/engine/app/ExitController.h"
 #include "include/api/RPC.h"
-#include "include/api/remote/Router.hpp"
-#include "include/api/remote/Server.hpp"
 #include "include/engine/autoselector/AutoSelectorController.h"
 #include "include/engine/tests/TestRunner.h"
 
@@ -23,7 +21,6 @@
 #include "include/engine/vpn/VpnAuthController.h"
 #include "include/global/PeriodicRunner.hpp"
 #include "include/global/Logger.hpp"
-#include "include/scanner/IpListUpdater.h"
 #include "include/ui/stats/dialog_auto_selector.h"
 #include "include/sys/KillSwitch.hpp"
 #include "include/sys/AutoRun.hpp"
@@ -312,14 +309,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->runtime_tab->layout()->addWidget(runtimeScroll);
 
     profilesTableModel = new ProfilesTableModel(this);
-    // A profile fed by an IP list shows the list's first entry, which any list change can move.
-    const auto refreshEffectiveAddresses = [this] {
-        profilesTableModel->invalidateAddresses();
-    };
-    connect(Scanner::IpListUpdater::instance(), &Scanner::IpListUpdater::listsChanged, this, refreshEffectiveAddresses,
-            Qt::QueuedConnection);
-    connect(Scanner::IpListUpdater::instance(), &Scanner::IpListUpdater::listUpdated, this, refreshEffectiveAddresses,
-            Qt::QueuedConnection);
     profilesFilterModel = new ProfilesFilterProxyModel(this);
     profilesFilterModel->setSourceModel(profilesTableModel);
     ui->profilesTableView->setModel(profilesFilterModel);

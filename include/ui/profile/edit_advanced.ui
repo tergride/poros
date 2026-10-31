@@ -21,12 +21,9 @@
      </property>
      <layout class="QVBoxLayout" name="endpoint_layout">
       <item>
-       <layout class="QHBoxLayout" name="endpoint_row" stretch="0,0,1">
+       <layout class="QHBoxLayout" name="endpoint_row" stretch="0,1">
         <item>
          <widget class="QComboBox" name="endpoint_mode"/>
-        </item>
-        <item>
-         <widget class="QComboBox" name="endpoint_list"/>
         </item>
         <item>
          <spacer name="endpoint_spacer">
@@ -685,7 +682,6 @@
  </widget>
  <tabstops>
   <tabstop>endpoint_mode</tabstop>
-  <tabstop>endpoint_list</tabstop>
   <tabstop>reuse_addr</tabstop>
   <tabstop>tcp_fast_open</tabstop>
   <tabstop>udp_fragment</tabstop>

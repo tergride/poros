@@ -16,7 +16,6 @@
 
 #include "include/engine/app/DataDirLock.h"
 #include "include/engine/app/InstanceServer.h"
-#include "include/engine/headless/HeadlessInstance.h"
 #include "include/global/Configs.hpp"
 #include "include/global/DeviceDetailsHelper.hpp"
 #include "include/global/Logger.hpp"
@@ -299,21 +298,11 @@ namespace Engine::Bootstrap {
                 if (relaunchParent.relaunched() && !relaunchParent.gone()) {
                     LOG_WARN(QString("the data dir is still held after waiting for the restarting PID %1").arg(relaunchParent.pid));
                 }
-                // A headless owner never takes a hand-off; its socket would only answer REJECT.
-                if (const auto owner = DataDirLock::ReadOwner(configDir); owner.value("mode").toString() == "headless") {
-                    WarnDroppedPayload(payload);
-                    return {ClaimOutcome::HeldByHeadless, owner.value("pid").toInteger()};
-                }
                 handOffDeadline.setRemainingTime(10000);
             }
             // The owner may still be starting up, or exiting and about to release the lock.
             if (InstanceServer::HandOff(serverName, payload)) return {ClaimOutcome::HandedOff};
             if (handOffDeadline.hasExpired()) {
-                // The owner record may be unreadable; a headless owner still answers HELLO on its own socket.
-                if (const qint64 headlessPid = HeadlessInstance::Hello(dataDir.wd, "gui", 500); headlessPid > 0) {
-                    WarnDroppedPayload(payload);
-                    return {ClaimOutcome::HeldByHeadless, headlessPid};
-                }
                 const auto owner = DataDirLock::ReadOwner(configDir);
                 const auto pid = owner.value("pid").toInteger();
                 LOG_WARN(QString("the data dir is held by PID %1, which does not answer on %2").arg(QString::number(pid), serverName));

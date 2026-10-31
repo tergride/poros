@@ -27,9 +27,7 @@
 #include "include/engine/app/DataDirLock.h"
 #include "include/engine/app/ExitCodes.h"
 #include "include/engine/app/InstanceServer.h"
-#include "include/engine/headless/HeadlessMain.h"
 #include "include/sys/Process.hpp"
-#include "include/sys/ServiceManager.hpp"
 #include "include/ui/app/GuiStartup.h"
 #include "include/ui/mainwindow.h"
 #include "include/stats/traffic/TrafficStatsManager.hpp"
@@ -70,27 +68,7 @@ int main(int argc, char* argv[]) {
 
     // Ahead of the crash handler: its MessageBoxW would hang a displayless run.
     auto launch = Engine::Bootstrap::PreScan(argc, argv);
-#ifdef Q_OS_WIN
-    if (launch.service) {
-        if (!Sys::ServiceManager::StartServiceDispatcher()) {
-            Engine::Bootstrap::AttachParentConsole();
-            if (_fileno(stderr) >= 0) {
-                std::fputs("--service: Poros was not started by the Windows Service Control Manager; run without --service\n", stderr);
-                std::fflush(stderr);
-            }
-            return Engine::ExitCode::Usage;
-        }
-        // Session 0 shows no window: --service alone runs headless too.
-        if (launch.mode == Engine::Bootstrap::Mode::Gui) launch.mode = Engine::Bootstrap::Mode::Headless;
-    }
-#endif
     if (launch.mode == Engine::Bootstrap::Mode::DumpConfigs) return Engine::RunConfigDump(argc, argv);
-    if (launch.mode == Engine::Bootstrap::Mode::Headless || launch.mode == Engine::Bootstrap::Mode::HeadlessClient) {
-        const int code = Engine::RunHeadless(argc, argv, launch);
-        // Last: once the SCM sees SERVICE_STOPPED it may kill this process and start the recovery instance.
-        Sys::ServiceManager::NotifyStopped(code);
-        return code;
-    }
 
 #ifdef Q_OS_WIN
     Windows_SetCrashHandler(Windows_WindowStationVisible());
@@ -143,14 +121,6 @@ int main(int argc, char* argv[]) {
     Engine::DataDirLock dataDirLock;
     const auto claim = Engine::Bootstrap::ClaimDataDir(dataDirLock, dataDir, serverName, "gui", launchPayload, relaunchParent);
     if (claim.outcome == Engine::Bootstrap::ClaimOutcome::HandedOff) return 0;
-    if (claim.outcome == Engine::Bootstrap::ClaimOutcome::HeldByHeadless) {
-        const auto pid = claim.ownerPid;
-        const QString text = pid > 0 ? QObject::tr("Poros is running in the background (PID %1). Stop the service or use thronectl.").arg(pid)
-                                     : QObject::tr("Poros is running in the background. Stop the service or use thronectl.");
-        std::fputs(qPrintable(QString("%1 Data directory: %2\n").arg(text, QDir::toNativeSeparators(wd.absolutePath()))), stderr);
-        if (!arguments.contains("-tray")) QMessageBox::information(nullptr, "Poros", text);
-        return 0;
-    }
     if (claim.outcome == Engine::Bootstrap::ClaimOutcome::HeldByOther) {
         const auto pid = claim.ownerPid;
         // An autostart must not leave a box behind.
@@ -204,7 +174,6 @@ int main(int argc, char* argv[]) {
     Engine::EngineHost::create();
     auto *window = UI_InitMainWindow();
     Engine::host()->init(window, window);
-    GuiStartup::WarnAboutHeadless();
 
     Configs::dataManager->RunDeferredMaintenance();
 

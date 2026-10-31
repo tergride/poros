@@ -58,9 +58,6 @@ namespace Configs {
             {"use_mozilla_certs",             &use_mozilla_certs},
             {"kill_switch",                   &kill_switch},
             {"onboarding_done",               &onboarding_done},
-            {"remote_api_enable",             &remote_api_enable},
-            {"remote_api_lan",                &remote_api_lan},
-            {"remote_api_admin_lan",          &remote_api_admin_lan},
             {"allow_beta_update",             &allow_beta_update},
             {"adblock_enable",                &adblock_enable},
             {"use_custom_icons",              &use_custom_icons},
@@ -95,7 +92,6 @@ namespace Configs {
             {"traffic_graph_smooth", &traffic_graph_smooth},
             {"traffic_graph_markers", &traffic_graph_markers},
             {"exit_country_lookup", &exit_country_lookup},
-            {"webdav_use_proxy", &webdav_use_proxy},
         };
 
         intMap = {
@@ -126,7 +122,6 @@ namespace Configs {
             {"ntp_server_port",        &ntp_server_port},
             {"core_box_clash_api",     &core_box_clash_api},
             {"core_box_api_port",      &core_box_api_port},
-            {"remote_api_port",        &remote_api_port},
             {"speed_test_mode",        &speed_test_mode},
             {"speed_test_timeout_ms",  &speed_test_timeout_ms},
             {"url_test_timeout_ms",    &url_test_timeout_ms},
@@ -173,12 +168,6 @@ namespace Configs {
             {"hk_toggle",                  &hotkey_toggle_system_proxy},
             {"hk_startstop",               &hotkey_toggle_connection},
             {"hk_tun",                     &hotkey_toggle_tun},
-            {"remote_api_key",             &remote_api_key},
-            {"remote_api_allow",           &remote_api_allow},
-            {"webdav_server",              &webdav_server},
-            {"webdav_user",                &webdav_user},
-            {"webdav_pass",                &webdav_pass},
-            {"webdav_path",                &webdav_path},
             {"device_id",                  &device_id},
             {"device_name",                &device_name},
             {"active_routing",             &active_routing},

@@ -14,7 +14,6 @@
 
 
 #include "include/database/GroupsRepo.h"
-#include "include/database/IpListsRepo.h"
 #include "include/database/ProfilesRepo.h"
 #include "include/database/RoutesRepo.h"
 
@@ -54,7 +53,6 @@ namespace Configs {
             constexpr auto dnsDirect = "dns-direct";
             constexpr auto dnsLocal = "dns-local";
             constexpr auto dnsFake = "dns-fake";
-            constexpr auto dnsTailscale = "dns-tailscale";
             constexpr auto dnsHosts = "dns-hosts";
             constexpr auto dnsVpnPrefix = "dns-vpn";
             constexpr auto dnsEchPrefix = "dns-ech";
@@ -689,18 +687,6 @@ namespace Configs {
 
         // ------------------------------------------------------- prerequisites
 
-        std::shared_ptr<Profile> resolveExtraCoreProfile(const std::shared_ptr<Profile> &ent)
-        {
-            if (ent->outbound != nullptr && ent->outbound->IsExtraCore()) return ent;
-            if (ent->type != "chain") return nullptr;
-            auto chain = ent->Chain();
-            if (chain == nullptr || chain->list.isEmpty()) return nullptr;
-            auto firstEnt = getProfile(chain->list[0]);
-            if (firstEnt != nullptr && firstEnt->outbound != nullptr && firstEnt->outbound->IsExtraCore())
-                return firstEnt;
-            return nullptr;
-        }
-
         QList<int> unwrapChain(int entID);
 
         void calculatePrerequisites(BuildContext &ctx) {
@@ -905,21 +891,6 @@ namespace Configs {
                 preReqs.tun.privateRangesAsRuleSet = ctx.tunEnabled && ctx.os == Linux && settings.vpn_auto_redirect &&
                     !preReqs.tun.bypassedPrivateRanges.isEmpty() && !(routeChain->isRaw && routeChain->preventModifications);
             }
-
-            auto extraCoreEnt = resolveExtraCoreProfile(ctx.ent);
-            if (extraCoreEnt == nullptr) return;
-            auto outbound = extraCoreEnt->ExtraCore();
-            if (outbound == nullptr)
-            {
-                MW_show_log("INVALID ENT TYPE, NEEDED EXTRACORE GOT NULLPTR");
-                ctx.error = "failed to cast to extracore, type is: " + extraCoreEnt->type;
-                return;
-            }
-            auto &extraCoreData = *ctx.result->extraCoreData;
-            extraCoreData.path = QFileInfo(outbound->extraCorePath).canonicalFilePath();
-            extraCoreData.args = outbound->extraCoreArgs;
-            extraCoreData.config = outbound->extraCoreConf;
-            extraCoreData.noLog = outbound->noLogs;
         }
 
         // ------------------------------------------------------- small sections
@@ -1070,11 +1041,10 @@ namespace Configs {
             }
 
             const auto &dns = ctx.prerequisites.dns;
-            bool isTailscale = ctx.ent->type == "tailscale";
             bool independentCache = false;
             QJsonArray servers;
             QJsonArray rules;
-            // Merged in front of `rules` at the end; the tailscale block below prepends.
+            // Merged in front of `rules` at the end.
             QJsonArray headRules;
             if (!ctx.forTest) {
                 auto remoteDnsObj = buildDnsObj(ctx, ctx.dns.remote_dns);
@@ -1087,40 +1057,6 @@ namespace Configs {
                 remoteDnsObj["detour"] = tags::proxy;
                 servers += remoteDnsObj;
 
-                if (isTailscale)
-                {
-                    auto tailscale = ctx.ent->Tailscale();
-                    if (tailscale != nullptr)
-                    {
-                        servers += QJsonObject{
-                            {"type", "tailscale"},
-                            {"tag", tags::dnsTailscale},
-                            {"endpoint", tags::proxy},
-                            {"accept_default_resolvers", tailscale->globalDNS},
-                        };
-
-                        rules.prepend(QJsonObject{
-                            {"domain_suffix", QJsonArray{"ts.net", "tailscale.net"}},
-                            {"action", "route"},
-                            {"server", tags::dnsTailscale},
-                        });
-                    }
-
-                    rules.prepend(QJsonObject{
-                        {"domain", QJsonArray{
-                            "controlplane.tailscale.com",
-                            "login.tailscale.com",
-                            "log.tailscale.io"
-                        }},
-                        {"domain_suffix", QJsonArray{
-                            "tailscale.com",
-                            "tailscale.net",
-                            "tailscale.io"
-                        }},
-                        {"action", "route"},
-                        {"server", tags::dnsDirect},
-                    });
-                }
             }
 
             auto directDnsObj = buildDnsObj(ctx, ctx.dns.direct_dns);
@@ -3289,23 +3225,7 @@ namespace Configs {
         if (source.mode == EndpointSource::Mode::Address)
             return {source.address.trimmed(), QObject::tr("the group's fixed address"), {}};
         if (source.mode != EndpointSource::Mode::IpList) return {};
-
-        auto *cache = generateEndpointCache;
-        if (cache != nullptr) {
-            if (const auto it = cache->lists.constFind(source.ipListId); it != cache->lists.constEnd()) return it.value();
-        }
-        EndpointResolution res;
-        if (const auto list = dataManager->ipListsRepo->GetIpListHeader(source.ipListId); list == nullptr || list->IsHidden()) {
-            res.problem = QObject::tr("The IP list no longer exists");
-        } else {
-            res.origin = QObject::tr("IP list \"%1\"").arg(list->name);
-            if (const auto first = dataManager->ipListsRepo->GetEntries(source.ipListId, 0, 1); !first.isEmpty())
-                res.address = first.first().cidr.section('/', 0, 0);
-            else
-                res.problem = QObject::tr("The IP list \"%1\" is empty").arg(list->name);
-        }
-        if (cache != nullptr) cache->lists.insert(source.ipListId, res);
-        return res;
+        return {{}, {}, QObject::tr("The IP list no longer exists")};
     }
 
     EndpointSource EffectiveEndpointSource(const Profile &profile)

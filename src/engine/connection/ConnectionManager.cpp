@@ -1,7 +1,6 @@
 #include "include/engine/connection/ConnectionManager.h"
 
 #include "include/api/RPC.h"
-#include "include/api/remote/Server.hpp"
 #include "include/configs/common/xrayStreamSetting.h"
 #include "include/configs/generate.h"
 #include "include/database/DatabaseManager.h"
@@ -33,36 +32,12 @@
 #include <utility>
 
 namespace {
-#ifdef Q_OS_LINUX
-    constexpr bool kConnectionManagerLinux = true;
-#else
-    constexpr bool kConnectionManagerLinux = false;
-#endif
 #ifdef Q_OS_WIN
     constexpr bool kConnectionManagerWindows = true;
 #else
     constexpr bool kConnectionManagerWindows = false;
 #endif
 
-    // Main thread, headless Linux, as a start brings the Tun up: once per boot each, the Tun settings that cut API clients off.
-    void connectionManagerWarnTunApiReach() {
-        static bool warnedRedirect = false;
-        static bool warnedIpv6 = false;
-        const auto api = RemoteApi::Server::instance()->lastResult();
-        if (api.state != RemoteApi::ApplyResult::State::Listening || api.address.isLoopback()) return;
-        const auto &settings = Configs::dataManager->settingsRepo;
-        if (!settings->vpn_auto_redirect && !std::exchange(warnedRedirect, true)) {
-            LOG_WARN(QStringLiteral("[Tun] replies to API clients outside the bypassed address ranges go into the tunnel; remote API "
-                                    "clients may lose the connection. From this host: thronectl tun off (after eval \"$(Poros "
-                                    "--headless --print-connection)\"), or restart with --no-resume"));
-        }
-        const auto protocol = api.address.protocol();
-        const bool acceptsIpv6 = protocol == QAbstractSocket::IPv6Protocol || protocol == QAbstractSocket::AnyIPProtocol;
-        if (settings->vpn_strict_route && !settings->vpn_ipv6 && acceptsIpv6 && !std::exchange(warnedIpv6, true)) {
-            LOG_WARN(QStringLiteral("[Tun] strict route without Tun IPv6 drops IPv6 API clients while Tun runs; set tun_ipv6 or listen "
-                                    "on IPv4"));
-        }
-    }
 } // namespace
 
 namespace Engine {
@@ -311,7 +286,6 @@ namespace Engine {
             return;
         }
 
-        if (kConnectionManagerLinux && m_options.headless && Configs::dataManager->settingsRepo->spmode_vpn) connectionManagerWarnTunApiReach();
 
         // Wintun spends 15 s on a leftover adapter before failing; a restart from the prompt inside that window strands a new one.
         const int slowStartMs = kConnectionManagerWindows && !result->tunIPv4CIDR.isEmpty() ? 20000 : 10000;
@@ -626,8 +600,6 @@ namespace Engine {
         ENGINE_CHECK_MAIN_THREAD();
         if (const auto connState = connectionState(); connState != m_lastConnectionState) {
             m_lastConnectionState = connState;
-            // Whether a profile runs decides the dns-in port probe, and a Tun of ours may just have gone.
-            m_tunBlockedAtMs = 0;
             emit connectionStateChanged(connState);
         }
     }

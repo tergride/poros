@@ -60,8 +60,7 @@ namespace Engine {
         // A remembered Tun the boot could not restore; cleared by a Tun disable or a successful enable.
         bool tunRestoreHeld() const { return m_tunRestoreHeld; }
 
-        // Main thread. Empty while Tun is requested here or the running config carries a tun inbound. Headless: Sys::HostTun::Conflict(vpn_tun_ipv4_cidr, idle ? core_dns_in_port
-        // : 0), cached for 5 s. GUI: a live headless instance from Sys::HostPresence::OtherHeadless() (translated text).
+        // Always empty: only a background instance could hold Tun, and there is none.
         QString tunBlockedReason();
 
         // Any thread. The running config carries a tun inbound.
@@ -194,10 +193,6 @@ namespace Engine {
 
         RuntimeOptions m_options;
         bool m_tunRestoreHeld = false;
-        QString m_tunBlockedCache;
-        // The inputs m_tunBlockedCache was computed from (Tun CIDR and probed DNS port); a change recomputes it.
-        QString m_tunBlockedKey;
-        qint64 m_tunBlockedAtMs = 0;
         // The boot request's serial until the first coreStarted; only that request is refused while the Tun is held.
         quint64 m_bootSerial = 0;
         int m_geoRetriedProfile = -1;

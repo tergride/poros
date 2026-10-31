@@ -24,7 +24,6 @@
 #include "include/engine/ThreadCheck.h"
 #include "include/global/Configs.hpp"
 #include "include/global/Validation.hpp"
-#include "include/scanner/ScanManager.h"
 
 // Error texts are English and equal to the settings dialog's tr() sources, which translates them for display.
 namespace Engine::BackupArchive {
@@ -227,8 +226,7 @@ namespace Engine::BackupArchive {
 
     const QStringList &DeviceLocalSettingKeys() {
         static const QStringList keys = {
-            QStringLiteral("webdav_server"), QStringLiteral("webdav_user"), QStringLiteral("webdav_pass"), QStringLiteral("webdav_path"),
-            QStringLiteral("webdav_use_proxy"), QStringLiteral("device_id"), QStringLiteral("device_name"),
+            QStringLiteral("device_id"), QStringLiteral("device_name"),
         };
         return keys;
     }
@@ -407,8 +405,6 @@ namespace Engine::BackupArchive {
             auto &settings = *Configs::dataManager->settingsRepo;
             // Preserved keys keep the database's values, so the live ones must reach it first.
             settings.Save();
-            // A running scan would otherwise keep writing its progress and results over the restored rows.
-            Scanner::ScanManager::instance()->StopAll(false);
             auto &db = Configs::dataManager->getDatabase();
             QStringList keptKeys = preservedSettingKeys;
             for (const auto &key : DeviceLocalSettingKeys()) {

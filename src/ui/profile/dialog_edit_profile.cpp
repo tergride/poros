@@ -8,7 +8,6 @@
 #include "include/ui/profile/edit_chain.h"
 #include "include/ui/profile/edit_custom.h"
 #include "include/ui/profile/edit_direct.h"
-#include "include/ui/profile/edit_extra_core.h"
 #include "include/ui/profile/edit_http.h"
 #include "include/ui/profile/edit_hysteria.h"
 #include "include/ui/profile/edit_juicity.h"
@@ -22,7 +21,6 @@
 #include "include/ui/profile/edit_snell.h"
 #include "include/ui/profile/edit_socks.h"
 #include "include/ui/profile/edit_ssh.h"
-#include "include/ui/profile/edit_tailscale.h"
 #include "include/ui/profile/edit_trojan.h"
 #include "include/ui/profile/edit_trusttunnel.h"
 #include "include/ui/profile/edit_tuic.h"
@@ -74,12 +72,10 @@ EditorFactory editorFactory(const QString &type) {
         {"masque", makeEditor<EditMasque>},
         {"openvpn", makeEditor<EditOpenVPN>},
         {"openconnect", makeEditor<EditOpenConnect>},
-        {"tailscale", makeEditor<EditTailScale>},
         {"ssh", makeEditor<EditSSH>},
         {"direct", makeEditor<EditDirect>},
         {"chain", makeEditor<EditChain>},
         {"autoselector", makeEditor<EditAutoSelector>},
-        {"extracore", makeEditor<EditExtraCore>},
         {"custom", makeEditor<EditCustom>},
     };
     return factories.value(type);
@@ -249,9 +245,6 @@ void DialogEditProfile::setupTypeList() {
     addType("chain");
     ui->type->insertSeparator(ui->type->count());
     for (const auto *t: {"juicity", "mieru", "snell"}) addType(t);
-    // These can no longer be created, but an old profile of the kind still opens.
-    if (type == QLatin1String("tailscale")) addType(type);
-    if (type == QLatin1String("extracore")) ui->type->addItem(tr("Extra Core"), type);
 
     ui->type->setCurrentIndex(qMax(0, ui->type->findData(type)));
     connect(ui->type, &QComboBox::currentIndexChanged, this, [this](int index) {

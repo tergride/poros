@@ -21,7 +21,7 @@
      </property>
      <layout class="QVBoxLayout" name="endpoint_layout">
       <item>
-       <layout class="QHBoxLayout" name="endpoint_row" stretch="0,1,1,0">
+       <layout class="QHBoxLayout" name="endpoint_row" stretch="0,1,0">
         <item>
          <widget class="QComboBox" name="endpoint_mode"/>
         </item>
@@ -31,9 +31,6 @@
            <string>Host or IP address</string>
           </property>
          </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="endpoint_list"/>
         </item>
         <item>
          <spacer name="endpoint_spacer">
@@ -383,7 +380,6 @@
  <tabstops>
   <tabstop>endpoint_mode</tabstop>
   <tabstop>endpoint_address</tabstop>
-  <tabstop>endpoint_list</tabstop>
   <tabstop>user_agent</tabstop>
   <tabstop>tls_version</tabstop>
   <tabstop>http_version</tabstop>

@@ -12,7 +12,6 @@
 #include <QUrl>
 
 #include "3rdparty/QrDecoder.h"
-#include "include/api/remote/Server.hpp"
 #include "include/configs/sub/GroupUpdater.hpp"
 #include "include/configs/sub/RouteUpdater.hpp"
 #include "include/database/GroupsRepo.h"

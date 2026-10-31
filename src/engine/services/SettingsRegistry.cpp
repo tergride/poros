@@ -11,7 +11,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "include/api/remote/Overlay.hpp"
 #include "include/configs/generate.h"
 #include "include/engine/EditLocks.h"
 #include "include/engine/EngineEvents.h"
@@ -323,9 +322,6 @@ namespace Engine::SettingsRegistryImpl {
                     break;
                 }
             }
-            if (const auto api = RemoteApi::EffectiveConfig().config; holder.isEmpty() && api.enabled && port == api.port) {
-                holder = QStringLiteral("the Poros API");
-            }
             if (!holder.isEmpty() && reenabled) {
                 return QStringLiteral("\"inbound_enabled\" would turn the mixed inbound on at port %1, which %2 already uses; choose a "
                                       "different inbound_port")
@@ -431,8 +427,6 @@ namespace Engine::SettingsRegistry {
 
     const QStringList &HostKeys() {
         static const QStringList keys = {
-            QStringLiteral("remote_api_enable"), QStringLiteral("remote_api_lan"), QStringLiteral("remote_api_admin_lan"),
-            QStringLiteral("remote_api_port"), QStringLiteral("remote_api_key"), QStringLiteral("remote_api_allow"),
             QStringLiteral("disable_mixed_inbound"), QStringLiteral("inbound_address"), QStringLiteral("inbound_socks_port"),
             QStringLiteral("random_inbound_port"), QStringLiteral("custom_inbound"), QStringLiteral("inbound_auth"),
             QStringLiteral("inbound_user"), QStringLiteral("inbound_pass"),

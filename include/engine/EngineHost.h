@@ -10,10 +10,6 @@
 #include "include/engine/EngineControl.h"
 #include "include/engine/RuntimeOptions.h"
 
-namespace RemoteApi {
-    class Router;
-}
-
 namespace Engine {
     class AutoSelectorController;
     class ConnectionManager;
@@ -43,14 +39,10 @@ namespace Engine {
             quint64 serial = 0;
         };
 
-        // Once the front end exists: binds its answers, then the random inbound port, the core IPC listener, the kill switch,
-        // the core and the API. observer may be null. Without bootStart the remembered profile starts as the GUI always did
-        // (remember_enable && remember_id >= 0); with it, exactly that request starts once the core is up. The API answers
-        // 503 "starting" until this returns.
+        // Once the front end exists: binds its answers, then the random inbound port, the core IPC listener, the kill switch
+        // and the core. observer may be null. Without bootStart the remembered profile starts as the GUI always did
+        // (remember_enable && remember_id >= 0); with it, exactly that request starts once the core is up.
         void init(EnginePolicy *policy, TestObserver *observer, std::optional<BootStart> bootStart = std::nullopt);
-
-        // The Throne API's status object; main thread. For the headless HEALTH reply.
-        QJsonObject statusJson() const;
 
         // The boot resume was skipped by the crash-loop guard (headless): degraded resume_suppressed until cleared.
         void setResumeSuppressed(bool suppressed);
@@ -161,12 +153,9 @@ namespace Engine {
         // After m_tests, so it is destroyed first.
         std::unique_ptr<AutoSelectorController> m_autoSelector;
         ExitController *m_exit = nullptr;
-        RemoteApi::Router *m_router = nullptr;
         bool m_initialized = false;
         RuntimeOptions m_options;
         bool m_resumeSuppressed = false;
-        // Set when init() returns; until then the API answers 503 "starting".
-        bool m_apiReady = false;
     };
 
     // Null before EngineHost::create().

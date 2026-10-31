@@ -1,13 +1,8 @@
 #include "include/engine/EngineHost.h"
 
-#include <QPointer>
-
 #include <atomic>
 #include <memory>
 
-#include "include/api/remote/Overlay.hpp"
-#include "include/api/remote/Router.hpp"
-#include "include/api/remote/Server.hpp"
 #include "include/configs/generate.h"
 #include "include/configs/sub/GroupUpdater.hpp"
 #include "include/configs/sub/RouteUpdater.hpp"
@@ -21,7 +16,6 @@
 #include "include/engine/connection/ConnectionManager.h"
 #include "include/engine/headless/HeadlessPolicy.h"
 #include "include/engine/services/AssetUpdates.h"
-#include "include/engine/services/Dashboard.h"
 #include "include/engine/services/ProfileService.h"
 #include "include/engine/services/StatsService.h"
 #include "include/engine/supervisor/CoreSupervisor.h"
@@ -32,7 +26,6 @@
 #include "include/global/DeviceDetailsHelper.hpp"
 #include "include/global/Logger.hpp"
 #include "include/global/PeriodicRunner.hpp"
-#include "include/scanner/IpListUpdater.h"
 #include "include/sys/AutoRun.hpp"
 #include "include/sys/KillSwitch.hpp"
 
@@ -187,7 +180,6 @@ namespace Engine {
         detachFrontEnd();
         Subscription::updater()->SetUrlTester(nullptr);
         Lifecycle::SetStopHandler({});
-        delete m_router;
         m_autoSelector.reset();
         m_tests.reset();
         delete m_exit;
@@ -239,10 +231,6 @@ namespace Engine {
             // The job's own count: the global may already belong to the next job.
             MW_show_log(MainWindowTr::tr("Imported %1 profile(s)").arg(importedCount >= 0 ? importedCount : Configs::dataManager->settingsRepo->imported_count));
         });
-        // Queued and connected before the window's model refresh, so posted-event order clears the cache first.
-        auto *ipLists = Scanner::IpListUpdater::instance();
-        connect(ipLists, &Scanner::IpListUpdater::listsChanged, this, [] { Configs::InvalidateEndpointDisplayCache(); }, Qt::QueuedConnection);
-        connect(ipLists, &Scanner::IpListUpdater::listUpdated, this, [] { Configs::InvalidateEndpointDisplayCache(); }, Qt::QueuedConnection);
 
         runOnNewThread([] { GetDeviceDetails(); });
 
@@ -251,16 +239,6 @@ namespace Engine {
         });
 
         registerPeriodicJobs();
-
-        m_router = new RemoteApi::Router(this, this);
-        const QPointer<RemoteApi::Router> apiRouter = m_router;
-        const QPointer<EngineHost> self = this;
-        RemoteApi::Server::instance()->setDispatcher([apiRouter, self](const RemoteApi::Request &request, const RemoteApi::Responder &respond) {
-            if (!apiRouter || !self) respond(RemoteApi::Response::Error(503, "exiting", "Poros is shutting down"));
-            // A start dispatched before the core supervisor started would strand the core.
-            else if (!self->m_apiReady) respond(RemoteApi::Response::Error(503, "starting", "Poros is starting"));
-            else apiRouter->dispatch(request, respond);
-        });
     }
 
     void EngineHost::init(EnginePolicy *frontEnd, TestObserver *testObserver, std::optional<BootStart> bootStart) {
@@ -306,12 +284,6 @@ namespace Engine {
             if (startSettings->flag_restart_profile >= 0) m_coreSupervisor->start(startSettings->flag_restart_profile);
             else m_coreSupervisor->start(startSettings->remember_enable && startSettings->remember_id >= 0 ? startSettings->remember_id : -1);
         }
-
-        m_apiReady = true;
-    }
-
-    QJsonObject EngineHost::statusJson() const {
-        return m_router != nullptr ? m_router->statusJson() : QJsonObject();
     }
 
     void EngineHost::setResumeSuppressed(bool suppressed) {
@@ -474,10 +446,6 @@ namespace Engine {
         if (m_coreSupervisor->state() == CoreState::GaveUp) return QStringLiteral("core_gave_up");
         if (!settings->core_running) return QStringLiteral("core_unavailable");
         if (killSwitchFailed()) return QStringLiteral("kill_switch_failed");
-        if (RemoteApi::EffectiveConfig().config.enabled &&
-            RemoteApi::Server::instance()->lastResult().state != RemoteApi::ApplyResult::State::Listening) {
-            return QStringLiteral("api_unavailable");
-        }
         if (m_connection->tunRestoreHeld()) return QStringLiteral("tun_unavailable");
         if (m_resumeSuppressed) return QStringLiteral("resume_suppressed");
         if (m_vpnAuth->authFailed()) return QStringLiteral("vpn_auth_failed");

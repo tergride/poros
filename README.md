@@ -31,7 +31,7 @@ Built-in presets cannot be changed. A copy keeps its preset's rules and adds you
 
 ## Left out on purpose
 
-Compared to Throne, Poros has no Poros API or `thronectl`, background service, web panel, Clash API, IP scanner, WebDAV, Tailscale, Extra Core, themes, custom icons, custom inbound, or `Open with` for JSON and YAML files. A profile that uses an IP list keeps working with the list it has, but the list no longer updates.
+Compared to Throne, Poros has no Poros API or `thronectl`, background service, web panel, Clash API, IP scanner, WebDAV, Tailscale, Extra Core, themes, custom icons, custom inbound, or `Open with` for JSON and YAML files.
 
 ## Next to Throne
 
@@ -47,4 +47,4 @@ Windows only offers three features through its own stores, so they exist outside
 
 ## Staying close to upstream
 
-`core/` and the engine layers are merged from upstream, so only names the OS or the user can see were changed there. The Go module, code identifiers, comments, `THRONE_*` variables and `thronectl` keep their names. `throne://` links and `throne-route-profile` data stay importable.
+`core/` and the engine layers are merged from upstream with `script\merge_upstream.ps1`, so only names the OS or the user can see were changed there. To keep that merge small, parts of upstream that Poros leaves out are filtered in `CMakeLists.txt` rather than cut from its source lists, and settings that left the interface stay as hidden widgets in the settings dialog. The Go module, code identifiers, comments, `THRONE_*` variables and `thronectl` keep their names. `throne://` links and `throne-route-profile` data stay importable.

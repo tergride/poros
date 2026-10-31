@@ -10,8 +10,6 @@
 #include "include/configs/sub/LinkKind.h"
 #include "include/database/Database.h"
 #include "include/database/GroupsRepo.h"
-#include "include/database/IpListsRepo.h"
-#include "include/database/IpScansRepo.h"
 #include "include/database/OtpProfilesRepo.h"
 #include "include/database/ProfilesRepo.h"
 #include "include/database/RoutesRepo.h"

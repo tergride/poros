@@ -10,8 +10,6 @@ namespace Configs {
     class GroupsRepo;
     class ProfilesRepo;
     class OtpProfilesRepo;
-    class IpListsRepo;
-    class IpScansRepo;
     class TrafficStatsRepo;
 
     void initDB(const std::string& dbPath);
@@ -20,8 +18,6 @@ namespace Configs {
     private:
         Database db;
         Database statsDb;
-        // Same file as db; transactions are per connection, so scanner writes never interleave with the other repos' BEGIN.
-        Database scanDb;
 
         static void createEntityIdsTable(Database& db);
         static std::string deriveStatsDbPath(const std::string& dbPath);
@@ -37,8 +33,6 @@ namespace Configs {
         std::unique_ptr<OtpProfilesRepo> otpProfilesRepo;
         std::unique_ptr<SettingsRepo> settingsRepo;
         std::unique_ptr<TrafficStatsRepo> trafficStatsRepo;
-        std::unique_ptr<IpListsRepo> ipListsRepo;
-        std::unique_ptr<IpScansRepo> ipScansRepo;
 
         explicit DatabaseManager(const std::string& dbPath);
         ~DatabaseManager() = default;

@@ -6,7 +6,6 @@
 
 #include "include/engine/EngineHost.h"
 #include "include/engine/app/ExitCodes.h"
-#include "include/engine/headless/HeadlessRuntime.h"
 #include "include/engine/vpn/VpnAuthController.h"
 #include "include/engine/vpn/VpnEndpoints.h"
 #include "include/global/Configs.hpp"
@@ -44,7 +43,7 @@ namespace Engine {
         if (killSwitch->failedForIdentity()) return;
         QString hint;
 #if defined(Q_OS_WIN)
-        if (killSwitch->failedForPrivileges()) hint = QStringLiteral("run Poros as a service or elevated");
+        if (killSwitch->failedForPrivileges()) hint = QStringLiteral("run Poros elevated");
 #else
         if (killSwitch->failedForPrivileges()) hint = QStringLiteral("it needs root (euid 0)");
 #endif
@@ -103,7 +102,7 @@ namespace Engine {
 
     PrivilegeDecision HeadlessPolicy::requestCorePrivileges(PrivilegeReason) {
 #if defined(Q_OS_WIN)
-        MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run Poros as a service or from an elevated prompt."));
+        MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run Poros from an elevated prompt."));
 #elif defined(Q_OS_MACOS)
         MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run Poros as a LaunchDaemon (root) or install a setuid core."));
 #else
@@ -153,10 +152,10 @@ namespace Engine {
     void HeadlessPolicy::exitProgram(ExitReason reason, bool) {
         switch (reason) {
             case ExitReason::None:
-                HeadlessRuntime::RequestExit(ExitCode::Ok, QStringLiteral("shutdown requested"));
+                QCoreApplication::exit(ExitCode::Ok);
                 return;
             case ExitReason::Restart:
-                HeadlessRuntime::RequestExit(ExitCode::Restart, QStringLiteral("restart requested"));
+                QCoreApplication::exit(ExitCode::Restart);
                 return;
             case ExitReason::RunUpdater:
                 MW_show_log(QStringLiteral("Running the updater is not available in headless mode; ignored."));
