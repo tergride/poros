@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(Throne VERSION 0.1)
+project(Poros VERSION 0.1)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -11,6 +11,12 @@ if(MSVC)
     string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
     string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
 endif()
+
+#### No local paths in shipped binaries ####
+if (MSVC)
+    add_compile_options("/d1trimfile:${CMAKE_SOURCE_DIR}/" "/d1trimfile:${CMAKE_BINARY_DIR}/")
+    add_link_options(/PDBALTPATH:%_PDB%)
+endif ()
 
 #### Dead code stripping ####
 # link.exe disables /OPT:REF and /OPT:ICF whenever /DEBUG is passed.
@@ -782,7 +788,7 @@ list(APPEND PROJECT_SOURCES ${ENGINE_SOURCES})
 list(APPEND PROJECT_SOURCES ${PLATFORM_HEADLESS_SOURCES})
 
 # Qt exe
-qt_add_executable(Throne
+qt_add_executable(Poros
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
 )
@@ -793,24 +799,24 @@ if (THRONE_ENGINE_LINT)
             COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/EngineBoundary.cmake
             COMMENT "Checking the engine/UI boundary"
             VERBATIM)
-    add_dependencies(Throne engine_boundary)
+    add_dependencies(Poros engine_boundary)
 endif ()
 
 # Target
 
-set_property(TARGET Throne PROPERTY AUTOUIC ON)
-set_property(TARGET Throne PROPERTY AUTOMOC ON)
-set_property(TARGET Throne PROPERTY AUTORCC ON)
+set_property(TARGET Poros PROPERTY AUTOUIC ON)
+set_property(TARGET Poros PROPERTY AUTOMOC ON)
+set_property(TARGET Poros PROPERTY AUTORCC ON)
 
 
 # Target Source macOS
 
 set(MACOSX_ICON ${CMAKE_SOURCE_DIR}/res/Throne.icns)
 if (APPLE)
-    target_sources(Throne PRIVATE ${MACOSX_ICON})
+    target_sources(Poros PRIVATE ${MACOSX_ICON})
 endif ()
 
-set_target_properties(Throne PROPERTIES
+set_target_properties(Poros PROPERTIES
         MACOSX_BUNDLE_ICON_FILE "Throne.icns"
         RESOURCE ${MACOSX_ICON}
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/res/MacOSXBundleInfo.plist
@@ -820,13 +826,13 @@ set_target_properties(Throne PROPERTIES
 )
 
 if (WIN32 AND MSVC)
-    set_target_properties(Throne PROPERTIES UNITY_BUILD ON)
+    set_target_properties(Poros PROPERTIES UNITY_BUILD ON)
 endif ()
 set_property(SOURCE "3rdparty/SQLiteCpp/src/sqlite3.c" PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
 set_property(SOURCE "3rdparty/monocypher/monocypher.c" PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
 
 # Verified to link. OMIT_VIRTUALTABLE/VIEW/ANALYZE/CTE/WINDOWFUNC/DECLTYPE all break this build.
-target_compile_definitions(Throne PRIVATE
+target_compile_definitions(Poros PRIVATE
         SQLITE_DQS=0
         SQLITE_DEFAULT_MEMSTATUS=0
         SQLITE_DEFAULT_WAL_SYNCHRONOUS=1
@@ -859,20 +865,20 @@ set(LUPDATE_OPTIONS
 )
 # lupdate sees only the target's include paths; without the repo root it cannot resolve EngineTr.h, and files the
 # MainWindowTr::tr strings under a MainWindowTr context instead of MainWindow.
-target_include_directories(Throne PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-qt_add_lupdate(Throne TS_FILES ${TS_FILES} OPTIONS ${LUPDATE_OPTIONS})
-qt_add_lrelease(Throne TS_FILES ${TS_FILES} QM_FILES_OUTPUT_VARIABLE QM_FILES)
+target_include_directories(Poros PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+qt_add_lupdate(Poros TS_FILES ${TS_FILES} OPTIONS ${LUPDATE_OPTIONS})
+qt_add_lrelease(Poros TS_FILES ${TS_FILES} QM_FILES_OUTPUT_VARIABLE QM_FILES)
 
 configure_file(res/translations/translations.qrc ${CMAKE_BINARY_DIR} COPYONLY)
-target_sources(Throne PRIVATE ${CMAKE_BINARY_DIR}/translations.qrc)
+target_sources(Poros PRIVATE ${CMAKE_BINARY_DIR}/translations.qrc)
 
 # Target Link
 
-target_link_libraries(Throne PRIVATE
+target_link_libraries(Poros PRIVATE
         Qt6::Widgets Qt6::Network ${QT_DBUS_LIBRARY}
         Threads::Threads
         ${NKR_EXTERNAL_TARGETS}
         ${PLATFORM_LIBRARIES}
 )
 
-qt_finalize_executable(Throne)
+qt_finalize_executable(Poros)

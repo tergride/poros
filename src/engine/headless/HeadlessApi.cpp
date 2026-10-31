@@ -244,9 +244,9 @@ namespace Engine::HeadlessApi {
                 overlay.key = file.key;
                 if (file.replaced) {
                     LOG_WARN(QStringLiteral("[API] The key file %1 held no key (an interrupted first start?); created a new one. Clients "
-                                            "need it again: Throne --headless --print-connection").arg(overlay.defaultKeyFile));
+                                            "need it again: Poros --headless --print-connection").arg(overlay.defaultKeyFile));
                 } else if (file.created) {
-                    LOG_INFO(QStringLiteral("[API] Created the key file %1 (owner only); Throne --headless --print-connection tells "
+                    LOG_INFO(QStringLiteral("[API] Created the key file %1 (owner only); Poros --headless --print-connection tells "
                                             "thronectl where to find it.").arg(overlay.defaultKeyFile));
                 }
             } else {
@@ -287,7 +287,7 @@ namespace Engine::HeadlessApi {
         if (!effective.explicitListen) {
             // At boot the holder is the instance that won the port; a retry could take it in that one's restart gap, for good.
             if (result.error == QAbstractSocket::AddressInUseError && headlessApiThroneAnswers(bindAddress, config.port)) {
-                LOG_WARN(QStringLiteral("[API] Not listening on %1 (%2): another Throne instance's API holds it; give this one "
+                LOG_WARN(QStringLiteral("[API] Not listening on %1 (%2): another Poros instance's API holds it; give this one "
                                         "--api-listen PORT (or THRONE_API_LISTEN)")
                              .arg(listen, headlessApiDescribe(effective)));
                 return {};
@@ -378,7 +378,7 @@ namespace Engine::HeadlessApi {
             const auto port = effective.config.port;
             const auto listen = headlessApiListenText(address, port);
             if (headlessApiThroneAnswers(address, port)) {
-                LOG_WARN(QStringLiteral("[API] Another Throne instance's API holds %1; give this one --api-listen PORT (or "
+                LOG_WARN(QStringLiteral("[API] Another Poros instance's API holds %1; give this one --api-listen PORT (or "
                                         "THRONE_API_LISTEN)").arg(listen));
                 stop();
                 return;

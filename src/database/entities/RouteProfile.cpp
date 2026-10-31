@@ -651,7 +651,7 @@ namespace Configs {
 
     QJsonObject RouteProfile::ToShareObject(QString* warnings) {
         QJsonObject root;
-        root["kind"] = "throne-route-profile";
+        root["kind"] = "poros-route-profile";
         root["v"] = 1;
         root["name"] = name;
         if (const auto active = ActiveDns()) root["dns"] = active->ToJson();
@@ -700,7 +700,7 @@ namespace Configs {
     QString RouteProfile::ToShareLink(QString* warnings) {
         const auto json = QJsonDocument(ToShareObject(warnings)).toJson(QJsonDocument::Compact);
         const auto b64 = json.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
-        return QStringLiteral("throne://route/") + QString::fromLatin1(b64);
+        return QStringLiteral("poros://route/") + QString::fromLatin1(b64);
     }
 
     std::shared_ptr<RouteProfile> RouteProfile::FromShareInput(const QString& input, QString* fatalError, QString* warnings, bool* wasOldArray, bool materializeEndpoints) {
@@ -711,7 +711,7 @@ namespace Configs {
             return nullptr;
         }
 
-        if (text.startsWith("throne://route/", Qt::CaseInsensitive)) {
+        if (text.startsWith("poros://route/", Qt::CaseInsensitive) || text.startsWith("throne://route/", Qt::CaseInsensitive)) {
             const QUrl u(text);
             if (!u.isValid()) {
                 fatalError->append("Deep link is invalid");
@@ -731,13 +731,14 @@ namespace Configs {
                 doc = QJsonDocument::fromJson(QByteArray::fromBase64(text.toUtf8()));
         }
         if (doc.isNull()) {
-            fatalError->append("Input is not valid JSON, base64, or a Throne route link");
+            fatalError->append("Input is not valid JSON, base64, or a Poros route link");
             return nullptr;
         }
 
         if (doc.isObject()) {
             const QJsonObject root = doc.object();
-            if (root.value("kind").toString() != QStringLiteral("throne-route-profile")) {
+            const QString kind = root.value("kind").toString();
+            if (kind != QStringLiteral("poros-route-profile") && kind != QStringLiteral("throne-route-profile")) {
                 fatalError->append("Unrecognized route object");
                 return nullptr;
             }
@@ -812,7 +813,7 @@ namespace Configs {
     QList<std::shared_ptr<RouteProfile>> RouteProfile::FromRemoteRoutesLink(const QString& input, bool* wasRemoteRouteLink, QString* error) {
         if (wasRemoteRouteLink) *wasRemoteRouteLink = false;
         const QString text = input.trimmed();
-        if (!text.startsWith("throne://remoteroute/", Qt::CaseInsensitive)) return {};
+        if (!text.startsWith("poros://remoteroute/", Qt::CaseInsensitive) && !text.startsWith("throne://remoteroute/", Qt::CaseInsensitive)) return {};
         if (wasRemoteRouteLink) *wasRemoteRouteLink = true;
 
         const QUrl u(text);

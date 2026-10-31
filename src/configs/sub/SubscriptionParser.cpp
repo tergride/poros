@@ -467,9 +467,9 @@ namespace Subscription {
                 return parserWarning(QCoreApplication::translate("Validation", "A VLESS profile cannot store this setting, so it was ignored. Such an outbound is kept as written only when nothing else in it needs fixing."), key.path);
             }
             if (key.protects) {
-                return parserError(QCoreApplication::translate("Validation", "Rename this key to \"%1\": Throne reads only that spelling, and dropping its value would weaken the connection's security.").arg(key.spelling), key.path);
+                return parserError(QCoreApplication::translate("Validation", "Rename this key to \"%1\": Poros reads only that spelling, and dropping its value would weaken the connection's security.").arg(key.spelling), key.path);
             }
-            return parserWarning(QCoreApplication::translate("Validation", "Rename this key to \"%1\": Throne reads only that spelling, so its value was ignored.").arg(key.spelling), key.path);
+            return parserWarning(QCoreApplication::translate("Validation", "Rename this key to \"%1\": Poros reads only that spelling, so its value was ignored.").arg(key.spelling), key.path);
         }
 
         // Values the typed parse fixes without a note; a verbatim copy would hand Xray the originals, which it refuses.
@@ -1029,7 +1029,7 @@ namespace Subscription {
                 jsonLink(toQString(line), false);
                 return;
             }
-            if (scan::startsWithNoCase(line, "throne://add/")) {
+            if (scan::startsWithNoCase(line, "poros://add/") || scan::startsWithNoCase(line, "throne://add/")) {
                 jsonLink(toQString(line), true);
                 return;
             }
@@ -1070,7 +1070,7 @@ namespace Subscription {
             QString type;
             QString name;
             const auto source = [&] {
-                QString label = throneAdd ? QStringLiteral("throne://add/") : QStringLiteral("json://");
+                QString label = throneAdd ? QStringLiteral("poros://add/") : QStringLiteral("json://");
                 label += type;
                 if (const auto shown = parserElide(name); !shown.isEmpty()) label += QStringLiteral(" #") + shown;
                 return label;

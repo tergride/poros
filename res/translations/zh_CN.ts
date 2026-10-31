@@ -160,8 +160,8 @@ Outbound: %4</source>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/DiagnosticsTab.ui" line="53"/>
-        <source>Include Throne logs</source>
-        <translation>包含 Throne 日志</translation>
+        <source>Include Poros logs</source>
+        <translation>包含 Poros 日志</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/DiagnosticsTab.ui" line="62"/>
@@ -556,8 +556,8 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="327"/>
-        <source>Register throne:// links at startup</source>
-        <translation>启动时注册 throne:// 链接</translation>
+        <source>Register poros:// links at startup</source>
+        <translation>启动时注册 poros:// 链接</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="354"/>
@@ -577,13 +577,13 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="324"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Registers Throne as the handler for throne:// links, re-applying the registration whenever the install is moved.&lt;/p&gt;&lt;p&gt;Turning this off does not undo an existing registration: use Uninstall for that.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;注册 Throne 为 throne:// 链接的处理程序，在软件安装移动位置时重新应用该注册。&lt;/p&gt;&lt;p&gt;关闭这个选项不会撤销已有的注册：如需撤销请使用“卸载”。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Registers Poros as the handler for poros:// links, re-applying the registration whenever the install is moved.&lt;/p&gt;&lt;p&gt;Turning this off does not undo an existing registration: use Uninstall for that.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;注册 Poros 为 poros:// 链接的处理程序，在软件安装移动位置时重新应用该注册。&lt;/p&gt;&lt;p&gt;关闭这个选项不会撤销已有的注册：如需撤销请使用“卸载”。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="364"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Removes the throne:// handler Throne wrote. Entries owned by other applications are left alone.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;移除 Throne 写入的 throne:// 处理工具。属于其它应用程序的条目不受影响。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Removes the poros:// handler Poros wrote. Entries owned by other applications are left alone.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;移除 Poros 写入的 poros:// 处理工具。属于其它应用程序的条目不受影响。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="367"/>
@@ -593,8 +593,8 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="374"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Adds Throne to the &quot;Open with&quot; list for config files such as JSON and YAML, re-applying the registration whenever the install is moved.&lt;/p&gt;&lt;p&gt;Turning this off does not undo an existing registration: use Uninstall for that.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;添加 Throne 到（如 JSON 和 YAML 等）配置文件的“打开方式”列表，当该安装移动时重新应用该注册。&lt;/p&gt;&lt;p&gt;关闭这个选项不会撤销已有注册：如需撤销则使用“卸载”功能。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Adds Poros to the &quot;Open with&quot; list for config files such as JSON and YAML, re-applying the registration whenever the install is moved.&lt;/p&gt;&lt;p&gt;Turning this off does not undo an existing registration: use Uninstall for that.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;添加 Poros 到（如 JSON 和 YAML 等）配置文件的“打开方式”列表，当该安装移动时重新应用该注册。&lt;/p&gt;&lt;p&gt;关闭这个选项不会撤销已有注册：如需撤销则使用“卸载”功能。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="377"/>
@@ -608,8 +608,8 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="401"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Removes every config file association Throne wrote, including those added by older versions. Associations owned by other applications are left alone.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;移除由 Throne 写入的每个配置文件关联，包括由较旧版本添加的那些。属于其他应用程序的条目会保留不变。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Removes every config file association Poros wrote, including those added by older versions. Associations owned by other applications are left alone.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;移除由 Poros 写入的每个配置文件关联，包括由较旧版本添加的那些。属于其他应用程序的条目会保留不变。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="439"/>
@@ -756,8 +756,8 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="791"/>
-        <source>Follow the connection status icon in the dock/taskbar. When off, it always shows the Throne icon</source>
-        <translation>Dock/任务栏中图标跟随连接状态变化。关闭时始终显示 Throne 图标</translation>
+        <source>Follow the connection status icon in the dock/taskbar. When off, it always shows the Poros icon</source>
+        <translation>Dock/任务栏中图标跟随连接状态变化。关闭时始终显示 Poros 图标</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/dialog_basic_settings.ui" line="794"/>
@@ -1134,8 +1134,8 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="87"/>
-        <source>Could not register the handler for throne:// links.</source>
-        <translation>无法为 throne:// 链接注册处理工具。</translation>
+        <source>Could not register the handler for poros:// links.</source>
+        <translation>无法为 poros:// 链接注册处理工具。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="89"/>
@@ -1195,8 +1195,8 @@ It stays a preference, not a lock: if that profile stops working the selector st
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="595"/>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="685"/>
-        <source>Throne Backup (*.thrbackup)</source>
-        <translation>Throne 备份 (*.thrbackup)</translation>
+        <source>Poros Backup (*.thrbackup)</source>
+        <translation>Poros 备份 (*.thrbackup)</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="609"/>
@@ -1258,8 +1258,8 @@ Included: %2</source>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="703"/>
-        <source>Not a valid Throne backup file.</source>
-        <translation>不是有效的 Throne 备份文件。</translation>
+        <source>Not a valid Poros backup file.</source>
+        <translation>不是有效的 Poros 备份文件。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="711"/>
@@ -1288,8 +1288,8 @@ Select which parts to restore:</source>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="764"/>
         <source>Each selected part replaces the current data. This cannot be undone.
-Throne will restart to complete the restore.</source>
-        <translation>每个选中部分会替换当前的数据。 这个操作无法撤销。 Throne 将会重启以完成恢复。</translation>
+Poros will restart to complete the restore.</source>
+        <translation>每个选中部分会替换当前的数据。 这个操作无法撤销。 Poros 将会重启以完成恢复。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="770"/>
@@ -1318,8 +1318,8 @@ Throne will restart to complete the restore.</source>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_basic_settings.cpp" line="832"/>
-        <source>Backup restored successfully. Throne will now restart for the changes to take effect.</source>
-        <translation>备份成功恢复。 Throne 现在将要重启以使得更改生效。</translation>
+        <source>Backup restored successfully. Poros will now restart for the changes to take effect.</source>
+        <translation>备份成功恢复。 Poros 现在将要重启以使得更改生效。</translation>
     </message>
     <message>
         <source>A geo asset download is already running.</source>
@@ -2861,8 +2861,8 @@ Throne will restart to complete the restore.</source>
         <translation>允许从局域网进行管理</translation>
     </message>
     <message>
-        <source>Lets devices on the local network import, delete, change settings, back up and restore through the Throne API. This device can always do so.</source>
-        <translation>允许局域网中的设备通过 Throne API 导入、删除、更改设置、备份和恢复。本设备始终可以执行这些操作。</translation>
+        <source>Lets devices on the local network import, delete, change settings, back up and restore through the Poros API. This device can always do so.</source>
+        <translation>允许局域网中的设备通过 Poros API 导入、删除、更改设置、备份和恢复。本设备始终可以执行这些操作。</translation>
     </message>
 </context>
 <context>
@@ -3597,8 +3597,8 @@ Use a number followed by ns, us, ms, s, m, h or d.</source>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_manage_routes.cpp" line="714"/>
-        <source>Paste a Throne route link, a remoteRoute link, a base64 blob, or a JSON rule array</source>
-        <translation>粘贴一个 Throne 路由链接，一个 remoteRoute 链接，一个 base64 blob 或者一个 JSON 规则数组</translation>
+        <source>Paste a Poros route link, a remoteRoute link, a base64 blob, or a JSON rule array</source>
+        <translation>粘贴一个 Poros 路由链接，一个 remoteRoute 链接，一个 base64 blob 或者一个 JSON 规则数组</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/dialog_manage_routes.cpp" line="726"/>
@@ -4359,8 +4359,8 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/profile/dialog_vpn_auth.cpp" line="102"/>
-        <source>This server requires single sign-on in a browser, which Throne does not support yet. Cancel here and use a profile with direct credentials, or supply an authentication cookie in the profile&apos;s advanced settings.</source>
-        <translation>这个服务器想要在浏览器中进行单点登录，而 Throne 还未支持。可以在这里取消，然后使用带直接凭证的配置档，或者在配置档的高级设置中提高认证的 cookie。</translation>
+        <source>This server requires single sign-on in a browser, which Poros does not support yet. Cancel here and use a profile with direct credentials, or supply an authentication cookie in the profile&apos;s advanced settings.</source>
+        <translation>这个服务器想要在浏览器中进行单点登录，而 Poros 还未支持。可以在这里取消，然后使用带直接凭证的配置档，或者在配置档的高级设置中提高认证的 cookie。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/profile/dialog_vpn_auth.cpp" line="110"/>
@@ -5183,8 +5183,8 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/profile/edit_custom.cpp" line="66"/>
-        <source>Xray full config (Throne adds a socks inbound and uses sing-box for tun/routing).</source>
-        <translation>Xray 完整配置 (Throne 添加一个 socks inbound (套接字入站)并把 sing-box 用于 tun / 路由)。</translation>
+        <source>Xray full config (Poros adds a socks inbound and uses sing-box for tun/routing).</source>
+        <translation>Xray 完整配置 (Poros 添加一个 socks inbound (套接字入站)并把 sing-box 用于 tun / 路由)。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/profile/edit_custom.cpp" line="68"/>
@@ -5931,8 +5931,8 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/profile/edit_openconnect_advanced.ui" line="141"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This is the token the core generates itself. To use a Throne OTP profile, bind it on the main editor instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;这是核心自己生成的令牌。要使用 Throne OTP 配置档，请改为在主编辑器上绑定它。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This is the token the core generates itself. To use a Poros OTP profile, bind it on the main editor instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;这是核心自己生成的令牌。要使用 Poros OTP 配置档，请改为在主编辑器上绑定它。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/profile/edit_openconnect_advanced.ui" line="144"/>
@@ -6543,8 +6543,8 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/profile/edit_openvpn.ui" line="65"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Static challenge text shown by the server when it asks for a second authentication response. When a challenge is set and an OTP profile is bound, Throne sends the answer itself and no interactive prompt appears.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;服务器在要求第二次身份验证响应时显示的静态质询文本。当设置了质询文本并绑定了 OTP 配置档时，Throne 将自行发送应答，而不出现交互式提示。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Static challenge text shown by the server when it asks for a second authentication response. When a challenge is set and an OTP profile is bound, Poros sends the answer itself and no interactive prompt appears.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;服务器在要求第二次身份验证响应时显示的静态质询文本。当设置了质询文本并绑定了 OTP 配置档时，Poros 将自行发送应答，而不出现交互式提示。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/profile/edit_openvpn.ui" line="68"/>
@@ -9590,8 +9590,8 @@ Error: %1</source>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/mainWindow/mainwindow_system.cpp" line="254"/>
-        <source>Please run Throne as admin</source>
-        <translation>请以管理员身份运行 Throne</translation>
+        <source>Please run Poros as admin</source>
+        <translation>请以管理员身份运行 Poros</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/mainWindow/mainwindow_system.cpp" line="273"/>
@@ -9839,8 +9839,8 @@ Error: %1</source>
         <translation>地理资源文件正在下载中。</translation>
     </message>
     <message>
-        <source>Update is unavailable while a background Throne (PID %1) runs from this installation; stop it first.</source>
-        <translation>从此安装目录运行的后台 Throne（PID %1）仍在运行，无法更新；请先停止它。</translation>
+        <source>Update is unavailable while a background Poros (PID %1) runs from this installation; stop it first.</source>
+        <translation>从此安装目录运行的后台 Poros（PID %1）仍在运行，无法更新；请先停止它。</translation>
     </message>
     <message>
         <source>Kill switch is blocking traffic</source>
@@ -10511,8 +10511,8 @@ Deleted %5 Profiles:
     </message>
     <message>
         <location filename="Throne-1.3.1/src/configs/sub/vpnFileImport.cpp" line="995"/>
-        <source>Configure a proxy through Throne&apos;s chain instead, ignored: %1</source>
-        <translation>改为通过 Throne 的链来配置代理，已忽略： %1</translation>
+        <source>Configure a proxy through Poros&apos;s chain instead, ignored: %1</source>
+        <translation>改为通过 Poros 的链来配置代理，已忽略： %1</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/configs/sub/vpnFileImport.cpp" line="999"/>
@@ -10693,8 +10693,8 @@ Deleted %5 Profiles:
     </message>
     <message>
         <location filename="Throne-1.3.1/src/main.cpp" line="457"/>
-        <source>[Warn] Throne did not shut down cleanly last time. Diagnostics were saved to: %1</source>
-        <translation>[警告] 上次 Throne 没有正常干净的关闭。诊断信息已被保存到： %1</translation>
+        <source>[Warn] Poros did not shut down cleanly last time. Diagnostics were saved to: %1</source>
+        <translation>[警告] 上次 Poros 没有正常干净的关闭。诊断信息已被保存到： %1</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/stats/autoselector/AutoSelectorMonitor.cpp" line="23"/>
@@ -10822,14 +10822,14 @@ Direct: %2</source>
         <location filename="Throne-1.3.1/src/sys/Process.cpp" line="24"/>
         <source>IPv4 forwarding is on for the network adapter &quot;%1&quot;, usually because Mobile Hotspot or Internet Connection Sharing is sharing it.
 
-Windows then ignores the adapter binding that keeps Throne&apos;s own connections out of the Tun, so they loop back into it and fail.
+Windows then ignores the adapter binding that keeps Poros&apos;s own connections out of the Tun, so they loop back into it and fail.
 
-To fix this, share the hotspot from the throne-tun adapter instead of &quot;%1&quot; (Settings &gt; Mobile hotspot &gt; Share my internet connection from), or turn the hotspot off while using Tun mode.</source>
+To fix this, share the hotspot from the poros-net adapter instead of &quot;%1&quot; (Settings &gt; Mobile hotspot &gt; Share my internet connection from), or turn the hotspot off while using Tun mode.</source>
         <translation>IPv4 转发在网络适配器 &quot;%1&quot; 上开启，这通常是因为“移动热点”或“Internet 连接共享”功能共享它。
 
-然后，导致 Windows 忽略旨在阻止 Throne 自身的连接进入 Tun 模式的适配器绑定，从而使流量回环到其本身而导致连接失败。
+然后，导致 Windows 忽略旨在阻止 Poros 自身的连接进入 Tun 模式的适配器绑定，从而使流量回环到其本身而导致连接失败。
 
-要修复这个问题，从 throne-tun 适配器而不是 &quot;%1&quot; 中共享热点 (设置&gt; 移动热点 &gt; 共享我的互联网连接来自)，或者在运行 Tun 模式时关闭热点。</translation>
+要修复这个问题，从 poros-net 适配器而不是 &quot;%1&quot; 中共享热点 (设置&gt; 移动热点 &gt; 共享我的互联网连接来自)，或者在运行 Tun 模式时关闭热点。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/sys/Process.cpp" line="84"/>
@@ -11303,13 +11303,13 @@ Release note:
     </message>
     <message>
         <location filename="Throne-1.3.1/src/database/TrafficStatsRepo.cpp" line="314"/>
-        <source>The statistics database is unusable (%1). Statistics are paused for this session and the file will be rebuilt when Throne restarts.</source>
-        <translation>统计数据库不可用 (%1)。 本次会话将暂停统计功能，将在 Throne 重启时重建该文件。</translation>
+        <source>The statistics database is unusable (%1). Statistics are paused for this session and the file will be rebuilt when Poros restarts.</source>
+        <translation>统计数据库不可用 (%1)。 本次会话将暂停统计功能，将在 Poros 重启时重建该文件。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/database/TrafficStatsRepo.cpp" line="315"/>
-        <source>Writing statistics keeps failing (%1). Statistics are paused until Throne restarts.</source>
-        <translation>写入统计信息持续失败（%1）。统计功能将暂停，直至 Throne 重启。</translation>
+        <source>Writing statistics keeps failing (%1). Statistics are paused until Poros restarts.</source>
+        <translation>写入统计信息持续失败（%1）。统计功能将暂停，直至 Poros 重启。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/stats/connectionLister/connectionLister.cpp" line="149"/>
@@ -11414,8 +11414,8 @@ Release note:
         <translation>下载停滞：%1 秒内未收到数据。</translation>
     </message>
     <message>
-        <source>Throne needs at least one group.</source>
-        <translation>Throne 至少需要一个分组。</translation>
+        <source>Poros needs at least one group.</source>
+        <translation>Poros 至少需要一个分组。</translation>
     </message>
     <message>
         <source>This group&apos;s subscription is being updated. Try again when it finishes.</source>
@@ -11486,11 +11486,11 @@ Release note:
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/RawRouteItem.cpp" line="118"/>
         <source>Use the route object exactly as written (outbound ids are still resolved to tags).
-Throne will NOT add its DNS-hijack or xray bridge plumbing, so DNS, chained/xray
-outbounds and other Throne features may break. For advanced users only.</source>
+Poros will NOT add its DNS-hijack or xray bridge plumbing, so DNS, chained/xray
+outbounds and other Poros features may break. For advanced users only.</source>
         <translation>按原样使用路由对象 (outbounds ids (出站标识符)仍被解析为标记)。
-在 Throne 中「不会」添加它的 DNS-hijack (DNS劫持)或 xray bridge plumbing (桥接)等底层机制，
-所以 DNS、链式/xray 出口和其它 Throne 功能可能会失效。仅限高级用户使用。</translation>
+在 Poros 中「不会」添加它的 DNS-hijack (DNS劫持)或 xray bridge plumbing (桥接)等底层机制，
+所以 DNS、链式/xray 出口和其它 Poros 功能可能会失效。仅限高级用户使用。</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/src/ui/setting/RawRouteItem.cpp" line="175"/>
@@ -11559,8 +11559,8 @@ outbounds and other Throne features may break. For advanced users only.</source>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/RouteItem.ui" line="85"/>
-        <source>https://... (throne://route link, base64, or JSON)</source>
-        <translation>https://... (throne://路由链接, base64 或 JSON)</translation>
+        <source>https://... (poros://route link, base64, or JSON)</source>
+        <translation>https://... (poros://路由链接, base64 或 JSON)</translation>
     </message>
     <message>
         <location filename="Throne-1.3.1/include/ui/setting/RouteItem.ui" line="96"/>
@@ -12201,8 +12201,8 @@ Remove that endpoint from this routing profile as well?</source>
 <context>
     <name>Engine::CoreSupervisor</name>
     <message>
-        <source>Throne could not open the local channel the core connects to (%1), so no profile can start.</source>
-        <translation>Throne 无法打开核心用于连接的本地通道（%1），因此无法启动任何配置档。</translation>
+        <source>Poros could not open the local channel the core connects to (%1), so no profile can start.</source>
+        <translation>Poros 无法打开核心用于连接的本地通道（%1），因此无法启动任何配置档。</translation>
     </message>
     <message>
         <source>Core unavailable</source>
@@ -12220,19 +12220,19 @@ Remove that endpoint from this routing profile as well?</source>
 <context>
     <name>GuiStartup</name>
     <message>
-        <source>Throne is running in the background</source>
-        <translation>Throne 正在后台运行</translation>
+        <source>Poros is running in the background</source>
+        <translation>Poros 正在后台运行</translation>
     </message>
     <message>
-        <source>A background Throne (PID %1) is running on this computer (data directory: %2). Tun mode is unavailable here while it runs; stop it or use thronectl.</source>
-        <translation>此计算机上正在运行后台 Throne（PID %1，数据目录：%2）。它运行期间此处无法使用 Tun 模式；请停止它或使用 thronectl。</translation>
+        <source>A background Poros (PID %1) is running on this computer (data directory: %2). Tun mode is unavailable here while it runs; stop it or use thronectl.</source>
+        <translation>此计算机上正在运行后台 Poros（PID %1，数据目录：%2）。它运行期间此处无法使用 Tun 模式；请停止它或使用 thronectl。</translation>
     </message>
 </context>
 <context>
     <name>Engine::ConnectionManager</name>
     <message>
-        <source>A background Throne (PID %1) owns Tun on this computer; stop it or use thronectl.</source>
-        <translation>此计算机上的 Tun 由后台 Throne（PID %1）占用；请停止它或使用 thronectl。</translation>
+        <source>A background Poros (PID %1) owns Tun on this computer; stop it or use thronectl.</source>
+        <translation>此计算机上的 Tun 由后台 Poros（PID %1）占用；请停止它或使用 thronectl。</translation>
     </message>
 </context>
 </TS>

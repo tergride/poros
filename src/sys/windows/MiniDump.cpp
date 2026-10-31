@@ -141,7 +141,7 @@ static void WriteSidecar(const wchar_t *path, EXCEPTION_POINTERS *pException, bo
     SYSTEMTIME st;
     GetLocalTime(&st);
 
-    AppendA(file, "Throne crash report\r\n===================\r\n");
+    AppendA(file, "Poros crash report\r\n===================\r\n");
     wsprintfA(line, "time      : %04d-%02d-%02d %02d:%02d:%02d\r\n",
               st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
     AppendA(file, line);
@@ -217,10 +217,10 @@ static void WriteCrashArtifacts(EXCEPTION_POINTERS *pException) {
 
     wchar_t dumpPath[MAX_PATH];
     wchar_t sidecarPath[MAX_PATH];
-    wsprintfW(dumpPath, L"%s\\Throne_%s_%s_%04d%02d%02d-%02d%02d%02d.dmp",
+    wsprintfW(dumpPath, L"%s\\Poros_%s_%s_%04d%02d%02d-%02d%02d%02d.dmp",
               g_dumpPathTemplate, L"" NKR_VERSION, THRONE_ARCH,
               st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-    wsprintfW(sidecarPath, L"%s\\Throne_%s_%s_%04d%02d%02d-%02d%02d%02d.txt",
+    wsprintfW(sidecarPath, L"%s\\Poros_%s_%s_%04d%02d%02d-%02d%02d%02d.txt",
               g_dumpPathTemplate, L"" NKR_VERSION, THRONE_ARCH,
               st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 
@@ -261,7 +261,7 @@ static void WriteCrashArtifacts(EXCEPTION_POINTERS *pException) {
         if (err != nullptr && err != INVALID_HANDLE_VALUE) {
             char narrow[MAX_PATH * 3] = "";
             WideCharToMultiByte(CP_UTF8, 0, g_dumpPathTemplate, -1, narrow, sizeof(narrow) - 1, nullptr, nullptr);
-            AppendA(err, "Throne crashed; a crash report was saved to ");
+            AppendA(err, "Poros crashed; a crash report was saved to ");
             AppendA(err, narrow);
             AppendA(err, "\r\n");
         }
@@ -274,13 +274,13 @@ static void WriteCrashArtifacts(EXCEPTION_POINTERS *pException) {
     wchar_t addrHex[17];
     HexPtrW(addrHex, record != nullptr ? record->ExceptionAddress : nullptr);
     wsprintfW(msg,
-              L"Throne %s (%s) crashed.\n\nException: 0x%08X\nAddress: 0x%s\n\n"
+              L"Poros %s (%s) crashed.\n\nException: 0x%08X\nAddress: 0x%s\n\n"
               L"A crash report was saved to:\n%s\n\nPlease attach the .txt file (and the .dmp if you can) to a bug report.",
               L"" NKR_VERSION, THRONE_ARCH,
               record != nullptr ? record->ExceptionCode : 0,
               addrHex,
               g_dumpPathTemplate);
-    MessageBoxW(nullptr, msg, L"Throne crashed", MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+    MessageBoxW(nullptr, msg, L"Poros crashed", MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
 }
 
 LONG __stdcall CreateCrashHandler(EXCEPTION_POINTERS *pException) {
@@ -373,74 +373,4 @@ void Windows_SetCrashDumpPath() {
     if (dir == nullptr || *dir == L'\0') return;
     lstrcpynW(g_dumpPathTemplate, dir, MAX_PATH);
     g_crashDirReady = true;
-}
-
-enum class WerRegistration { Written, Kept, Failed };
-
-// WER reads LocalDumps from HKLM only; an HKCU copy is silently ignored, so this needs admin.
-static WerRegistration RegisterWerApp(const wchar_t *exeName, const wchar_t *folder, bool onlyIfAbsent) {
-    wchar_t subKey[512];
-    wsprintfW(subKey, L"SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting\\LocalDumps\\%s", exeName);
-
-    HKEY key = nullptr;
-    // Readable without admin, so an unelevated headless still reports a present key as kept, not as a failure.
-    if (onlyIfAbsent && RegOpenKeyExW(HKEY_LOCAL_MACHINE, subKey, 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
-        RegCloseKey(key);
-        return WerRegistration::Kept;
-    }
-    DWORD disposition = 0;
-    if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, subKey, 0, nullptr, REG_OPTION_NON_VOLATILE,
-                        KEY_SET_VALUE, nullptr, &key, &disposition) != ERROR_SUCCESS) {
-        return WerRegistration::Failed;
-    }
-    if (onlyIfAbsent && disposition == REG_OPENED_EXISTING_KEY) {
-        RegCloseKey(key);
-        return WerRegistration::Kept;
-    }
-    RegSetValueExW(key, L"DumpFolder", 0, REG_EXPAND_SZ,
-                   reinterpret_cast<const BYTE *>(folder),
-                   static_cast<DWORD>((lstrlenW(folder) + 1) * sizeof(wchar_t)));
-    const DWORD dumpCount = 5;
-    RegSetValueExW(key, L"DumpCount", 0, REG_DWORD,
-                   reinterpret_cast<const BYTE *>(&dumpCount), sizeof(dumpCount));
-    // DumpType 0 = custom, so CustomDumpFlags decides.
-    const DWORD dumpType = 0;
-    RegSetValueExW(key, L"DumpType", 0, REG_DWORD,
-                   reinterpret_cast<const BYTE *>(&dumpType), sizeof(dumpType));
-    const DWORD customFlags = static_cast<DWORD>(DUMP_TYPE);
-    RegSetValueExW(key, L"CustomDumpFlags", 0, REG_DWORD,
-                   reinterpret_cast<const BYTE *>(&customFlags), sizeof(customFlags));
-    RegCloseKey(key);
-    return WerRegistration::Written;
-}
-
-void Windows_ConfigureWER(bool onlyIfAbsent) {
-    if (!g_crashDirReady) return;
-    // A non-interactive run is headless whatever the caller passed: the GUI and the service share Throne.exe's key.
-    const bool keepExisting = onlyIfAbsent || !g_interactive;
-
-    wchar_t exePath[MAX_PATH] = L"";
-    if (GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) return;
-    const wchar_t *exeName = exePath;
-    for (const wchar_t *p = exePath; *p != L'\0'; ++p) {
-        if (*p == L'\\' || *p == L'/') exeName = p + 1;
-    }
-
-    // The core is a separate process: its fatal Go runtime aborts are invisible to anything installed in this one.
-    const WerRegistration self = RegisterWerApp(exeName, g_dumpPathTemplate, keepExisting);
-    const WerRegistration core = RegisterWerApp(L"ThroneCore.exe", g_dumpPathTemplate, keepExisting);
-    const QString selfName = QString::fromWCharArray(exeName);
-    if (self == WerRegistration::Failed || core == WerRegistration::Failed) {
-        LOG_INFO("WER LocalDumps not registered (needs admin); crashes that bypass "
-                 "the exception filter will go to %LOCALAPPDATA%\\CrashDumps if "
-                 "LocalDumps is enabled machine-wide");
-    } else if (self == WerRegistration::Kept && core == WerRegistration::Kept) {
-        LOG_INFO(QStringLiteral("WER LocalDumps already registered for %1 and ThroneCore.exe; left as is").arg(selfName));
-    } else if (self == WerRegistration::Kept || core == WerRegistration::Kept) {
-        LOG_INFO(QStringLiteral("WER LocalDumps registered for %1; the existing key for %2 was left as is")
-                     .arg(self == WerRegistration::Written ? selfName : QStringLiteral("ThroneCore.exe"),
-                          self == WerRegistration::Kept ? selfName : QStringLiteral("ThroneCore.exe")));
-    } else {
-        LOG_INFO(QStringLiteral("WER LocalDumps registered for %1 and ThroneCore.exe").arg(selfName));
-    }
 }

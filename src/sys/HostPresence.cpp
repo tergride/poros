@@ -46,7 +46,7 @@ namespace Sys::HostPresence {
         QString hostPresenceUserDir() {
             const QString runtime = qEnvironmentVariable("XDG_RUNTIME_DIR");
             if (runtime.isEmpty() || !QDir::isAbsolutePath(runtime)) return {};
-            return QDir(runtime).absoluteFilePath(QStringLiteral("throne"));
+            return QDir(runtime).absoluteFilePath(QStringLiteral("poros"));
         }
 
         QString hostPresenceFile(const QString &dir) {
@@ -203,7 +203,7 @@ namespace Sys::HostPresence {
                 const auto holder = hostPresenceParse(hostPresenceRead(fd));
                 const QString who = holder.pid > 0 ? QStringLiteral("PID %1, data dir %2").arg(holder.pid).arg(holder.dataDir)
                                                    : QStringLiteral("its PID is unknown");
-                LOG_WARN(QStringLiteral("host presence: another headless Throne (%1) already publishes %2; a GUI on this computer sees "
+                LOG_WARN(QStringLiteral("host presence: another headless Poros (%1) already publishes %2; a GUI on this computer sees "
                                         "that one, not this one")
                              .arg(who, path));
             } else {

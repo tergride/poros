@@ -44,6 +44,9 @@ namespace Engine::Bootstrap {
     // Sets the application name first, since AppConfigLocation depends on it. Creates wd and wd/config; a relative -appdata resolves against relativeBase.
     DataDir ResolveDataDir(const QStringList &arguments, const QDir &relativeBase);
 
+    // Whether <config> can be written; on Windows there is no fallback outside the program folder.
+    bool DataDirIsUsable(const DataDir &dataDir);
+
     QString InstanceServerName(const QDir &wd);
 
     // An explicit -appdata dir used to keep its Xray geo assets in AppConfigLocation; copies the ones it lacks.

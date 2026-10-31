@@ -198,7 +198,7 @@ namespace Configs {
         QString webdav_server = "";
         QString webdav_user = "";
         QString webdav_pass = "";
-        QString webdav_path = "Throne";
+        QString webdav_path = "Poros";
         bool webdav_use_proxy = false;
         // Generated on first use; an empty name means the host name.
         QString device_id = "";
@@ -246,7 +246,7 @@ namespace Configs {
         // Socks & HTTP Inbound
         bool disable_mixed_inbound = false;
         QString inbound_address = "127.0.0.1";
-        int inbound_socks_port = 2080; // Mixed, actually
+        int inbound_socks_port = 2090; // Mixed, actually
         bool random_inbound_port = false;
         QString custom_inbound = "{\"inbounds\": []}";
         QString proxy_scheme = "{ip}:{port}";

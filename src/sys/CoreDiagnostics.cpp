@@ -82,7 +82,7 @@ namespace {
     }
 
     QString archivePath(const QDir &dir) {
-        const QString stem = QStringLiteral("throne-profile-") +
+        const QString stem = QStringLiteral("poros-profile-") +
                              QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
         QString path = dir.absoluteFilePath(stem + QStringLiteral(".zip"));
         for (int n = 2; QFileInfo::exists(path); n++)
@@ -175,7 +175,7 @@ namespace Sys {
         request->trace = options_.trace;
         request->attachments.push_back(makeAttachment(QStringLiteral("client.json"), clientInfo()));
         const QString logPath = options_.includeLogs
-                                    ? QDir(Logging::LogDir()).absoluteFilePath(QStringLiteral("throne.log"))
+                                    ? QDir(Logging::LogDir()).absoluteFilePath(QStringLiteral("poros.log"))
                                     : QString();
         const QString dir = directory();
 
@@ -190,7 +190,7 @@ namespace Sys {
         runOnNewThread([self, client, request, logPath, dir] {
             if (!logPath.isEmpty()) {
                 if (const QByteArray log = logTail(logPath); !log.isEmpty())
-                    request->attachments.push_back(makeAttachment(QStringLiteral("throne.log"), log));
+                    request->attachments.push_back(makeAttachment(QStringLiteral("poros.log"), log));
             }
 
             Outcome outcome;

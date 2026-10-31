@@ -201,7 +201,7 @@ bool MainWindow::requestCorePrivileges() {
     }
 #endif
 #ifdef Q_OS_WIN
-    auto n = QMessageBox::warning(GetMessageBoxParent(), software_name, tr("Please run Throne as admin"), QMessageBox::Yes | QMessageBox::No);
+    auto n = QMessageBox::warning(GetMessageBoxParent(), software_name, tr("Please run Poros as admin"), QMessageBox::Yes | QMessageBox::No);
     if (n == QMessageBox::Yes) {
         this->exit_reason = ExitReason::RestartWithTun;
         on_menu_exit_triggered();

@@ -352,7 +352,7 @@ namespace Configs {
                 else if (key == "randomtrailers" || key == "random_trailers") random_trailers = ParseAmneziaBool(value), enable_amnezia = true;
                 else if (key == "disablecookies" || key == "disable_cookies") disable_cookies = ParseAmneziaBool(value), enable_amnezia = true;
                 else if (key == "dns") {
-                    ParseDiag::Warn(rawKey, QCoreApplication::translate("Validation", "Ignored; Throne resolves names with its own DNS settings."), value);
+                    ParseDiag::Warn(rawKey, QCoreApplication::translate("Validation", "Ignored; Poros resolves names with its own DNS settings."), value);
                 }
                 else if (key == "allowedips") allowedIps << value.remove(' ').split(',', Qt::SkipEmptyParts);
                 else if (key != "listenport" && key != "table" && key != "fwmark" && key != "saveconfig" && key != "preup" &&
@@ -364,7 +364,7 @@ namespace Configs {
                 ParseDiag::Warn("[Peer]", QCoreApplication::translate("Validation", "Only the last of the %1 [Peer] sections is used.").arg(peers));
             }
             if (!allowedIps.isEmpty() && !allowedIps.contains(QStringLiteral("0.0.0.0/0"))) {
-                ParseDiag::Warn("AllowedIPs", QCoreApplication::translate("Validation", "Ignored; Throne sends all traffic of this profile through the tunnel."),
+                ParseDiag::Warn("AllowedIPs", QCoreApplication::translate("Validation", "Ignored; Poros sends all traffic of this profile through the tunnel."),
                                 allowedIps.join(", "));
             }
             FixAddress();

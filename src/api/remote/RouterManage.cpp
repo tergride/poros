@@ -36,7 +36,7 @@ namespace RemoteApi::RouterManageImpl {
     }
 
     Response exiting() {
-        return Response::Error(503, QStringLiteral("exiting"), QStringLiteral("Throne is shutting down"));
+        return Response::Error(503, QStringLiteral("exiting"), QStringLiteral("Poros is shutting down"));
     }
 
     // Only http and https: a file:// URL would make Throne read local files for a remote client.
@@ -57,7 +57,7 @@ namespace RemoteApi::RouterManageImpl {
             case Failure::NoGroup: return QStringLiteral("The group no longer exists or is archived");
             case Failure::Fetch: return QStringLiteral("The download failed");
             case Failure::Empty: return QStringLiteral("No usable profile was found");
-            case Failure::Database: return QStringLiteral("Throne could not save the result");
+            case Failure::Database: return QStringLiteral("Poros could not save the result");
             case Failure::Internal:
             case Failure::None: break;
         }
@@ -448,7 +448,7 @@ namespace RemoteApi {
         const bool queued = Engine::AssetUpdates::UpdateRuleSets([this, waiter, notRunning](const Engine::AssetUpdates::RuleSetResult &result) {
             if (!result.coreReachable) {
                 answer(waiter, Response::Error(503, QStringLiteral("core_unavailable"),
-                                               result.error.isEmpty() ? QStringLiteral("Throne's core process is not reachable") : result.error));
+                                               result.error.isEmpty() ? QStringLiteral("Poros's core process is not reachable") : result.error));
                 return;
             }
             if (result.notRunning) {

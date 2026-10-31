@@ -444,7 +444,7 @@ namespace Configs {
         }
 
         QString genTunName() {
-            auto tun_name = "throne-tun";
+            auto tun_name = "poros-net";
 #ifdef Q_OS_MACOS
             tun_name = "";
 #endif
@@ -2185,7 +2185,7 @@ namespace Configs {
                 ctx.outbounds.append(QJsonObject{
                 {"type", "bridge"},
                 {"tag", tags::l3Direct},
-                {"bridge_name", "throne-br"}
+                {"bridge_name", "poros-br"}
                 });
             }
 

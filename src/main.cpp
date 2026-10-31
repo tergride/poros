@@ -75,8 +75,7 @@ int main(int argc, char* argv[]) {
         if (!Sys::ServiceManager::StartServiceDispatcher()) {
             Engine::Bootstrap::AttachParentConsole();
             if (_fileno(stderr) >= 0) {
-                std::fputs("--service: Throne was not started by the Windows Service Control Manager; install the service with "
-                           "install-service.bat, or run without --service\n", stderr);
+                std::fputs("--service: Poros was not started by the Windows Service Control Manager; run without --service\n", stderr);
                 std::fflush(stderr);
             }
             return Engine::ExitCode::Usage;
@@ -123,6 +122,15 @@ int main(int argc, char* argv[]) {
 
     const auto dataDir = Engine::Bootstrap::ResolveDataDir(arguments, QDir(QCoreApplication::applicationDirPath()));
     const QDir &wd = dataDir.wd;
+#ifdef Q_OS_WIN
+    if (!Engine::Bootstrap::DataDirIsUsable(dataDir)) {
+        const QString text = QObject::tr("Poros keeps all its data in its own folder, but cannot write to:\n%1\n\nMove the Poros folder somewhere you can write to.")
+                                 .arg(QDir::toNativeSeparators(dataDir.configDir));
+        std::fputs(qPrintable(text + '\n'), stderr);
+        if (!arguments.contains("-tray")) QMessageBox::critical(nullptr, "Poros", text);
+        return 1;
+    }
+#endif
     Configs::SetBasePath(wd.absolutePath());
 
     const auto serverName = Engine::Bootstrap::InstanceServerName(wd);
@@ -137,18 +145,18 @@ int main(int argc, char* argv[]) {
     if (claim.outcome == Engine::Bootstrap::ClaimOutcome::HandedOff) return 0;
     if (claim.outcome == Engine::Bootstrap::ClaimOutcome::HeldByHeadless) {
         const auto pid = claim.ownerPid;
-        const QString text = pid > 0 ? QObject::tr("Throne is running in the background (PID %1). Stop the service or use thronectl.").arg(pid)
-                                     : QObject::tr("Throne is running in the background. Stop the service or use thronectl.");
+        const QString text = pid > 0 ? QObject::tr("Poros is running in the background (PID %1). Stop the service or use thronectl.").arg(pid)
+                                     : QObject::tr("Poros is running in the background. Stop the service or use thronectl.");
         std::fputs(qPrintable(QString("%1 Data directory: %2\n").arg(text, QDir::toNativeSeparators(wd.absolutePath()))), stderr);
-        if (!arguments.contains("-tray")) QMessageBox::information(nullptr, "Throne", text);
+        if (!arguments.contains("-tray")) QMessageBox::information(nullptr, "Poros", text);
         return 0;
     }
     if (claim.outcome == Engine::Bootstrap::ClaimOutcome::HeldByOther) {
         const auto pid = claim.ownerPid;
         // An autostart must not leave a box behind.
         if (!arguments.contains("-tray")) {
-            const QString who = pid > 0 ? QObject::tr("Another Throne instance (PID %1)").arg(pid) : QObject::tr("Another Throne instance");
-            QMessageBox::warning(nullptr, "Throne", QObject::tr("%1 is using this data directory:\n%2").arg(who, QDir::toNativeSeparators(wd.absolutePath())));
+            const QString who = pid > 0 ? QObject::tr("Another Poros instance (PID %1)").arg(pid) : QObject::tr("Another Poros instance");
+            QMessageBox::warning(nullptr, "Poros", QObject::tr("%1 is using this data directory:\n%2").arg(who, QDir::toNativeSeparators(wd.absolutePath())));
         }
         return 0;
     }
@@ -160,7 +168,7 @@ int main(int argc, char* argv[]) {
         const QString error = QString("Failed to start the instance server %1: %2").arg(serverName, server.errorString());
         std::fputs(qPrintable(error + '\n'), stderr);
         Engine::Bootstrap::WarnDroppedPayload(launchPayload);
-        QMessageBox::critical(nullptr, "Throne", error);
+        QMessageBox::critical(nullptr, "Poros", error);
         return 1;
     }
     // Not before this point: until the data dir is ours there is nothing to tear down, and the default action ends the waits above.
@@ -201,7 +209,7 @@ int main(int argc, char* argv[]) {
     Configs::dataManager->RunDeferredMaintenance();
 
     if (Logging::PreviousSessionCrashed()) {
-        MW_show_log(QObject::tr("[Warn] Throne did not shut down cleanly last time. "
+        MW_show_log(QObject::tr("[Warn] Poros did not shut down cleanly last time. "
                                 "Diagnostics were saved to: %1").arg(Logging::LogDir()));
     }
 

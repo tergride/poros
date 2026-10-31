@@ -69,7 +69,7 @@ RuntimeStatsWidget::RuntimeStatsWidget(QWidget* parent) : QWidget(parent), ui(ne
     ui->formRunning->setColumnStretch(3, 1);
 
     const QList<LiveChartRow> processRows{
-        LiveChartRow{QStringLiteral("throne"), QStringLiteral("Throne"), {}, kRuntimeThroneColor, 0, true},
+        LiveChartRow{QStringLiteral("poros"), QStringLiteral("Poros"), {}, kRuntimeThroneColor, 0, true},
         LiveChartRow{QStringLiteral("core"), tr("Core"), {}, kRuntimeCoreColor, 0, false},
     };
     cpuChart_ = new LiveChart(LiveChartOptions::sparkline(tr("CPU"), LiveChartAxis::percent()), this);
@@ -81,7 +81,7 @@ RuntimeStatsWidget::RuntimeStatsWidget(QWidget* parent) : QWidget(parent), ui(ne
         ui->chartsRow->addWidget(chart);
     }
     ui->labelThroneName->setText(QStringLiteral("<span style=\"color:%1\">●</span> %2")
-                                     .arg(kRuntimeThroneColor.name(), "Throne"));
+                                     .arg(kRuntimeThroneColor.name(), "Poros"));
     ui->labelCoreName->setText(QStringLiteral("<span style=\"color:%1\">●</span> %2")
                                    .arg(kRuntimeCoreColor.name(), tr("Core")));
     // A lookup service's answer: as AutoText a tag in it would render as HTML.
@@ -187,7 +187,7 @@ void RuntimeStatsWidget::refreshLive() {
 
     qint64 dbBytes = 0;
     const QDir dir(QDir::currentPath());
-    for (const QFileInfo& fi : dir.entryInfoList(QStringList{QStringLiteral("throne*.db*")}, QDir::Files))
+    for (const QFileInfo& fi : dir.entryInfoList(QStringList{QStringLiteral("poros*.db*")}, QDir::Files))
         dbBytes += fi.size();
     ui->vDbSize->setText(ReadableSize(dbBytes));
 

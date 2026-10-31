@@ -20,24 +20,6 @@ untar() {
         xargs -0 -r -I{} -P "$JOBS" tar xzf {} "$@"
 }
 
-build_installer() {
-    local version="${TAG#v}"
-    version="${version#V}"
-    local parts
-    IFS='.' read -r -a parts <<<"${version%%-*}"
-    local iscc="${ISCC:-$(command -v iscc.exe || echo '/c/Program Files (x86)/Inno Setup 6/ISCC.exe')}"
-    # ISCC is a native Windows program: stop MSYS from rewriting its /-switches as paths.
-    MSYS_NO_PATHCONV=1 "$iscc" /Q \
-        "/DAppVersion=$version" \
-        "/DAppVersionMajor=${parts[0]:-0}" \
-        "/DAppVersionMinor=${parts[1]:-0}" \
-        "/DAppVersionPatch=${parts[2]:-0}" \
-        "/DAppVersionBuild=${parts[3]:-0}" \
-        "/O$(cygpath -w "$DEPLOY")" \
-        "/FThrone-$TAG-windows-universal-installer" \
-        "$(cygpath -w "$ROOT/script/windows_installer.iss")"
-}
-
 # Hard links give the archive its Throne/ root without moving a dir other tasks still read.
 zip_dir() {
     mkdir -p "$WORK/$2"
@@ -83,13 +65,12 @@ run_task() {
     return $rc
 }
 
-export -f build_installer zip_dir zip_app zip_debug pack_deb pack_rpm run_task
+export -f zip_dir zip_app zip_debug pack_deb pack_rpm run_task
 
 case "$TARGET" in
 windows)
     untar 'windows*' --exclude='*.pdb'
     TASKS=(
-        "installer build_installer"
         "zip-windows64 zip_dir windows-amd64 windows64"
         "zip-windows-arm64 zip_dir windows-arm64 windows-arm64"
         "zip-windows32 zip_dir windowslegacy-386 windows32"

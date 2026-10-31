@@ -4,7 +4,9 @@
 
 // One Tun-owning Throne per host: the Tun name, the dns-in port and the sing-tun tables are host-global.
 namespace Sys::HostTun {
-    inline constexpr char kTunName[] = "throne-tun";
+    inline constexpr char kTunName[] = "poros-net";
+    // Upstream Throne's Tun: it fights over the same routes, so it blocks ours like a second Poros would.
+    inline constexpr char kThroneTunName[] = "throne-tun";
 
     // Why starting Tun here would collide with another Tun owner or an interface holding the Tun address (the text says which
     // and names the API key to change: tun_ipv4_cidr, or dns_in_port for the port), plain English; empty when free. Meaningful only while this

@@ -72,7 +72,7 @@ func watchMemory() {
 
 func writeHeapProfile() (string, error) {
 	// Core runs privileged: a guessable clock-derived name lets a planted symlink turn this into a root-owned write anywhere.
-	f, err := os.CreateTemp("", "throne-core-heap-*.pprof")
+	f, err := os.CreateTemp("", "poros-core-heap-*.pprof")
 	if err != nil {
 		return "", err
 	}
@@ -134,7 +134,7 @@ func RunCore() {
 		log.Fatalf("failed to connect to GUI socket after 10 attempts: %v", err)
 	}
 
-	fmt.Println("Core Has Successfully Connected to Throne!")
+	fmt.Println("Core Has Successfully Connected to Poros!")
 	rpc.Serve(conn, debug)
 	sysdns.Release()
 	log.Fatal("IPC connection dropped, exiting")

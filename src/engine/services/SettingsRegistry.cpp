@@ -324,7 +324,7 @@ namespace Engine::SettingsRegistryImpl {
                 }
             }
             if (const auto api = RemoteApi::EffectiveConfig().config; holder.isEmpty() && api.enabled && port == api.port) {
-                holder = QStringLiteral("the Throne API");
+                holder = QStringLiteral("the Poros API");
             }
             if (!holder.isEmpty() && reenabled) {
                 return QStringLiteral("\"inbound_enabled\" would turn the mixed inbound on at port %1, which %2 already uses; choose a "
@@ -351,7 +351,7 @@ namespace Engine::SettingsRegistryImpl {
             return {};
         }
         return QStringLiteral("\"clash_listen_addr\" %1 would open the Clash API to other hosts without a secret; keep it on 127.0.0.1, "
-                              "or set the Clash API secret in Throne's settings first")
+                              "or set the Clash API secret in Poros's settings first")
             .arg(host);
     }
 } // namespace Engine::SettingsRegistryImpl
@@ -370,10 +370,10 @@ namespace Engine::SettingsRegistry {
         if (result != nullptr) *result = {};
         auto &settings = *Configs::dataManager->settingsRepo;
         if (settings.prepare_exit || settings.noSave) {
-            return ServiceError{503, QStringLiteral("exiting"), QStringLiteral("Throne is shutting down")};
+            return ServiceError{503, QStringLiteral("exiting"), QStringLiteral("Poros is shutting down")};
         }
         if (IsBeingEdited(EditTarget::Settings)) {
-            return ServiceError{409, QStringLiteral("editing"), QStringLiteral("Throne's settings window is open; close it and try again")};
+            return ServiceError{409, QStringLiteral("editing"), QStringLiteral("Poros's settings window is open; close it and try again")};
         }
 
         SettingsRegistryImpl::Patch pending(settings);
@@ -395,7 +395,7 @@ namespace Engine::SettingsRegistry {
         }
         if (context.systemProxyOn && pending.changes(&Settings::disable_mixed_inbound) && pending.value(&Settings::disable_mixed_inbound)) {
             return ServiceError{409, QStringLiteral("mixed_inbound_disabled"),
-                                QStringLiteral("The system proxy needs Throne's mixed inbound; turn the system proxy off first")};
+                                QStringLiteral("The system proxy needs Poros's mixed inbound; turn the system proxy off first")};
         }
         // The core refuses an empty NTP interval, which would fail every start.
         if ((pending.touches(QStringLiteral("ntp_enabled")) || pending.touches(QStringLiteral("ntp_interval"))) &&

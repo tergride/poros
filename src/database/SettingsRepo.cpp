@@ -383,9 +383,9 @@ namespace Configs {
         if (user_agent.isEmpty() || isDefault) {
             const QStringView version = SubStrBefore(QStringLiteral(NKR_VERSION), u"-");
             if (version.contains(u'.')) {
-                return QStringLiteral("Throne/") + version.toString();
+                return QStringLiteral("Poros/") + version.toString();
             }
-            return QStringLiteral("Throne/1.0.0");
+            return QStringLiteral("Poros/1.0.0");
         }
         return user_agent;
     }

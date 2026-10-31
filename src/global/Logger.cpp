@@ -257,7 +257,7 @@ namespace Logging {
 
         QString sessionHeader() {
             QString out;
-            out += "===== Throne session start =====\n";
+            out += "===== Poros session start =====\n";
             out += "  version   : " NKR_VERSION "\n";
             out += "  built     : " __DATE__ " " __TIME__ "\n";
             out += "  qt        : " + QString(qVersion()) + " (built against " QT_VERSION_STR ")\n";
@@ -351,7 +351,7 @@ namespace Logging {
         QDir().mkpath(g_logDir);
         QDir().mkpath(g_crashDir);
 
-        g_logPath = QDir(g_logDir).absoluteFilePath("throne.log");
+        g_logPath = QDir(g_logDir).absoluteFilePath("poros.log");
         g_markerPath = QDir(g_logDir).absoluteFilePath("running.marker");
 
 #ifdef Q_OS_WIN
@@ -435,7 +435,7 @@ namespace Logging {
         QMutexLocker lock(&g_mutex);
         if (!g_initialized) return;
         if (g_file.isOpen()) {
-            writeLocked(formatLine(Level::Info, "===== Throne session end (clean) =====", nullptr, 0), true);
+            writeLocked(formatLine(Level::Info, "===== Poros session end (clean) =====", nullptr, 0), true);
             g_file.close();
         }
         QFile::remove(g_markerPath);

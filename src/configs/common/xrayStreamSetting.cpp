@@ -1474,7 +1474,7 @@ namespace Configs {
         {
             const auto t = network.trimmed();
             if (t.isEmpty() || XrayNetworks.contains(NormalizeXrayNetwork(t))) return {};
-            return QCoreApplication::translate("Validation", "Throne does not support the Xray transport \"%1\". Use raw, xhttp, ws, httpupgrade, grpc or xdrive.").arg(t);
+            return QCoreApplication::translate("Validation", "Poros does not support the Xray transport \"%1\". Use raw, xhttp, ws, httpupgrade, grpc or xdrive.").arg(t);
         }
 
         QString XraySecurity(const QString& security)

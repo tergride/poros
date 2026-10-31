@@ -91,6 +91,9 @@ inline std::function<void(QString)> MW_handle_deeplink;
 inline std::function<void(QStringList)> MW_import_files;
 
 // The pending buffer covers URLs arriving before the main window exists.
+// poros:// is registered and written; throne:// links shared by upstream users stay importable.
+bool IsAppDeeplink(const QString &text);
+
 QString Deeplink_ExtractFromArgs(const QStringList &args);
 void Deeplink_Submit(const QString &url);
 void Deeplink_FlushPending();

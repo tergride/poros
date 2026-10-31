@@ -25,6 +25,9 @@
 #ifdef Q_OS_WIN
 #include "include/sys/windows/MiniDump.h"
 
+#include <cstdlib>
+#include <string>
+
 #include <windows.h>
 // <windows.h> defines SetPort, which under unity builds clobbers Configs::outbound::SetPort.
 #undef SetPort
@@ -47,16 +50,18 @@
 #include <libproc.h>
 #endif
 
-#define LOCAL_SERVER_PREFIX "throne-"
+#define LOCAL_SERVER_PREFIX "poros-"
 
 namespace Engine::Bootstrap {
     namespace {
+#ifndef Q_OS_WIN
         constexpr auto FALLBACK_MARKER = "config/.install-dir-unwritable";
+#endif
 
         // QFileInfo::isWritable reports the read-only attribute, not what a UAC-filtered token can actually do.
         bool DirIsWritable(const QDir &dir) {
             if (!dir.exists() && !QDir().mkpath(dir.absolutePath())) return false;
-            QFile probe(dir.absoluteFilePath(".throne-write-test"));
+            QFile probe(dir.absoluteFilePath(".poros-write-test"));
             if (!probe.open(QIODevice::WriteOnly)) return false;
             probe.close();
             probe.remove();
@@ -65,12 +70,13 @@ namespace Engine::Bootstrap {
 
         bool ConfigDirIsUsable(const QDir &configDir) {
             if (!DirIsWritable(configDir)) return false;
-            const QString db = configDir.absoluteFilePath("throne.db");
+            const QString db = configDir.absoluteFilePath("poros.db");
             if (!QFile::exists(db)) return true;
             QFile file(db);
             return file.open(QIODevice::ReadWrite);
         }
 
+#ifndef Q_OS_WIN
         void CopyDirContents(const QString &from, const QString &to) {
             QDir().mkpath(to);
             QDirIterator it(from, QDir::Files | QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot);
@@ -96,7 +102,7 @@ namespace Engine::Bootstrap {
 
             const QString userConfig = userWd.absoluteFilePath("config");
             QDir().mkpath(userConfig);
-            if (!QFile::exists(userConfig + "/throne.db") && QFile::exists(installConfig + "/throne.db")) {
+            if (!QFile::exists(userConfig + "/poros.db") && QFile::exists(installConfig + "/poros.db")) {
                 CopyDirContents(installConfig, userConfig);
                 LOG_WARN(QString("copied existing config from %1").arg(installConfig));
             }
@@ -107,6 +113,16 @@ namespace Engine::Bootstrap {
             LOG_WARN(QString("%1 is not writable, using %2").arg(installConfig, userConfig));
             return true;
         }
+#else
+        // The core inherits these, so its temp files and those of the programs it starts stay under <config> as well.
+        void bootstrapKeepTempInConfigDir(const QString &configDir) {
+            const QString temp = QDir(configDir).absoluteFilePath(QStringLiteral("temp"));
+            QDir().mkpath(temp);
+            const std::wstring native = QDir::toNativeSeparators(temp).toStdWString();
+            _wputenv_s(L"TMP", native.c_str());
+            _wputenv_s(L"TEMP", native.c_str());
+        }
+#endif
 
         // "-name" and "--name" alike; nullptr for anything that is not an option.
         const char *bootstrapOptionName(const char *arg) {
@@ -126,7 +142,7 @@ namespace Engine::Bootstrap {
             struct stat st{};
             if (::lstat(QFile::encodeName(path).constData(), &st) != 0) return false;
             if (S_ISSOCK(st.st_mode) && st.st_uid == ::geteuid()) return true;
-            LOG_WARN(QString("%1 is not a socket of this user, so it is not taken for an older Throne").arg(path));
+            LOG_WARN(QString("%1 is not a socket of this user, so it is not taken for an older Poros").arg(path));
             return false;
 #else
             Q_UNUSED(serverName)
@@ -184,7 +200,7 @@ namespace Engine::Bootstrap {
     }
 
     void SetSoftwareNames() {
-        software_name = "Throne";
+        software_name = "Poros";
         software_core_name = "sing-box";
     }
 
@@ -201,24 +217,34 @@ namespace Engine::Bootstrap {
 #ifdef NKR_CPP_USE_APPDATA
         res.useAppdata = true;
 #endif
-        QCoreApplication::setApplicationName("Throne");
+#ifdef Q_OS_WIN
+        // Portable: the program folder, unless the caller names another one.
+        if (res.appdataDir.isEmpty()) res.useAppdata = false;
+#endif
+        QCoreApplication::setApplicationName("Poros");
         if (res.useAppdata) {
             if (!res.appdataDir.isEmpty()) {
                 res.wd.setPath(relativeBase.absoluteFilePath(res.appdataDir));
             } else {
                 res.wd.setPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
             }
+#ifndef Q_OS_WIN
         } else {
             const QDir userWd(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
             if (AdoptUserConfigDir(res.wd, userWd)) {
                 res.wd = userWd;
                 res.useAppdata = true;
             }
+#endif
         }
         if (!res.wd.exists()) res.wd.mkpath(res.wd.absolutePath());
         if (!res.wd.exists("config")) res.wd.mkdir("config");
         res.configDir = res.wd.absoluteFilePath("config");
         return res;
+    }
+
+    bool DataDirIsUsable(const DataDir &dataDir) {
+        return ConfigDirIsUsable(QDir(dataDir.configDir));
     }
 
     QString InstanceServerName(const QDir &wd) {
@@ -358,11 +384,14 @@ namespace Engine::Bootstrap {
 #else
         QDir("temp").removeRecursively();
 #endif
+#ifdef Q_OS_WIN
+        bootstrapKeepTempInConfigDir(configDir);
+#endif
         AdoptLegacyGeoAssets(dataDir);
 
         appStartEpoch = QDateTime::currentSecsSinceEpoch();
 
-        Configs::initDB(QString(QDir::currentPath() + QDir::separator() + "throne.db").toStdString());
+        Configs::initDB(QString(QDir::currentPath() + QDir::separator() + "poros.db").toStdString());
 
         Logging::SetLevel(Logging::LevelFromString(Configs::dataManager->settingsRepo->log_file_level));
 
@@ -398,7 +427,6 @@ namespace Engine::Bootstrap {
         LOG_INFO(QString("appdata mode: %1").arg(dataDir.useAppdata ? "yes" : "no"));
 #ifdef Q_OS_WIN
         Windows_SetCrashDumpPath();
-        Windows_ConfigureWER();
 #endif
     }
 

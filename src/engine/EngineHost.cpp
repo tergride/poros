@@ -260,9 +260,9 @@ namespace Engine {
         const QPointer<RemoteApi::Router> apiRouter = m_router;
         const QPointer<EngineHost> self = this;
         RemoteApi::Server::instance()->setDispatcher([apiRouter, self](const RemoteApi::Request &request, const RemoteApi::Responder &respond) {
-            if (!apiRouter || !self) respond(RemoteApi::Response::Error(503, "exiting", "Throne is shutting down"));
+            if (!apiRouter || !self) respond(RemoteApi::Response::Error(503, "exiting", "Poros is shutting down"));
             // A start dispatched before the core supervisor started would strand the core.
-            else if (!self->m_apiReady) respond(RemoteApi::Response::Error(503, "starting", "Throne is starting"));
+            else if (!self->m_apiReady) respond(RemoteApi::Response::Error(503, "starting", "Poros is starting"));
             else apiRouter->dispatch(request, respond);
         });
     }

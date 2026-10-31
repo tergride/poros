@@ -33,7 +33,7 @@ namespace Configs {
                 message += ' ' + QCoreApplication::translate("Validation", "To reach this server through another one, build a chain profile instead of a detour.");
             }
             if (dropped.contains("domain_resolver")) {
-                message += ' ' + QCoreApplication::translate("Validation", "Throne picks the resolver for server names itself.");
+                message += ' ' + QCoreApplication::translate("Validation", "Poros picks the resolver for server names itself.");
             }
             ParseDiag::Warn(QString(), message);
         }

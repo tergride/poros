@@ -1,6 +1,7 @@
 #include "include/engine/headless/HeadlessCli.h"
 
 #include <QCommandLineOption>
+#include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
 #include <QStandardPaths>
@@ -149,17 +150,17 @@ namespace Engine::HeadlessCli {
                 writable << headlessCliGroupName(st.st_gid) + QStringLiteral(" can write to it");
             }
             if (euid == 0 && !writable.isEmpty()) {
-                *error = QString("refusing to run as root with %1: %2. It holds the settings that name the programs Throne starts, "
+                *error = QString("refusing to run as root with %1: %2. It holds the settings that name the programs Poros starts, "
                                  "so only its owner may write to it (chmod go-w it, or pass another --data-dir)")
                              .arg(path, writable.join("; "));
                 return false;
             }
             if (!writable.isEmpty()) {
-                LOG_WARN(QString("%1: %2, so other users can change Throne's settings, which name the programs it starts")
+                LOG_WARN(QString("%1: %2, so other users can change Poros's settings, which name the programs it starts")
                              .arg(path, writable.join("; ")));
             }
             if (st.st_uid != euid) {
-                LOG_WARN(QString("%1 is owned by uid %2, who controls Throne's settings, which name the programs it starts%3")
+                LOG_WARN(QString("%1 is owned by uid %2, who controls Poros's settings, which name the programs it starts%3")
                              .arg(path, QString::number(st.st_uid), euid == 0 ? QStringLiteral(" as root") : QString()));
             }
             return true;
@@ -182,7 +183,7 @@ namespace Engine::HeadlessCli {
             }
 #endif
             // A fresh random name, created exclusively: a planted link or file is never followed or truncated.
-            QTemporaryFile probe(QDir(path).absoluteFilePath(".throne-write-test-XXXXXX"));
+            QTemporaryFile probe(QDir(path).absoluteFilePath(".poros-write-test-XXXXXX"));
             if (!probe.open()) {
                 *error = QString("%1 is not writable: %2").arg(QDir::toNativeSeparators(path), probe.errorString());
                 return false;
@@ -218,7 +219,7 @@ namespace Engine::HeadlessCli {
         // Before any option: the default compacted mode would split -appdata or -headless into single letters.
         parser.setSingleDashWordOptionMode(QCommandLineParser::ParseAsLongOptions);
         parser.setApplicationDescription(
-            "Throne without a window, driven through the Throne API (thronectl). One or two dashes both work for every option.");
+            "Poros without a window, driven through the Poros API (thronectl). One or two dashes both work for every option.");
         parser.addHelpOption();
         parser.addVersionOption();
 
@@ -228,9 +229,8 @@ namespace Engine::HeadlessCli {
 
 #ifdef Q_OS_WIN
         parser.addOption({{kDataDir, "appdata"},
-                          "Data directory (THRONE_DATA_DIR). Default: %ProgramData%\\Throne with --service or as LocalSystem, "
-                          "else the per-user configuration directory (%LOCALAPPDATA%\\Throne). A portable desktop install keeps "
-                          "its data next to the program: pass --data-dir <program directory> to share it.",
+                          "Data directory (THRONE_DATA_DIR). Default: %ProgramData%\\Poros with --service or as LocalSystem, "
+                          "else the program's own folder, shared with the desktop app.",
                           "DIR"});
 #else
         parser.addOption({{kDataDir, "appdata"},
@@ -241,8 +241,8 @@ namespace Engine::HeadlessCli {
                           "DIR"});
 #endif
         parser.addOption({kRestartMode,
-                          "What a restart request (exit code 75) does: exit leaves it to the service manager, exec re-runs Throne "
-                          "in place (on Windows: starts a new Throne process), auto picks exit under systemd, launchd, a container "
+                          "What a restart request (exit code 75) does: exit leaves it to the service manager, exec re-runs Poros "
+                          "in place (on Windows: starts a new Poros process), auto picks exit under systemd, launchd, a container "
                           "init or as a Windows service and exec otherwise (THRONE_RESTART_MODE). Default: auto.",
                           "MODE"});
         parser.addOption({kNoResume, "Do not reconnect the last profile at start (THRONE_RESUME=0)."});
@@ -254,11 +254,11 @@ namespace Engine::HeadlessCli {
                           "Default: auto.",
                           "FORMAT"});
         parser.addOption({kApiListen,
-                          "Throne API listener: PORT, IPv4:PORT, [IPv6]:PORT, *:PORT, or off (THRONE_API_LISTEN). Default: "
+                          "Poros API listener: PORT, IPv4:PORT, [IPv6]:PORT, *:PORT, or off (THRONE_API_LISTEN). Default: "
                           "127.0.0.1:9095, unless the settings enable the API.",
                           "LISTEN"});
         parser.addOption({kApiKeyFile,
-                          "Throne API key file; it must exist (create it with: thronectl keygen -o FILE) "
+                          "Poros API key file; it must exist (create it with: thronectl keygen -o FILE) "
                           "(THRONE_API_KEY_FILE). Default: <data dir>/config/api.key, created on the first start.",
                           "FILE"});
         parser.addOption({kApiAdminLan,
@@ -274,13 +274,13 @@ namespace Engine::HeadlessCli {
                           "or starting, 2 no answer."});
         parser.addOption({kPrintConnection,
                           "Print \"export THRONE_ADDR=...\" and \"export THRONE_KEY_FILE=...\" lines for thronectl: "
-                          "eval \"$(Throne --print-connection)\"."});
-        parser.addOption({kCheck, "Check whether this host can run Throne headless (data dir, TLS, core, Tun, kill switch, ports) "
+                          "eval \"$(Poros --print-connection)\"."});
+        parser.addOption({kCheck, "Check whether this host can run Poros headless (data dir, TLS, core, Tun, kill switch, ports) "
                                   "and print one line per item."});
         // Registered everywhere so that Parse can name the platform instead of reporting an unknown option.
         QCommandLineOption service(kService,
-                                   "Run as a Windows service, started by the Service Control Manager (install-service.bat); started "
-                                   "any other way it exits 64. The data directory defaults to %ProgramData%\\Throne, and a restart "
+                                   "Run as a Windows service, started by the Service Control Manager; started "
+                                   "any other way it exits 64. The data directory defaults to %ProgramData%\\Poros, and a restart "
                                    "request exits 75 for the service's recovery actions.");
 #ifndef Q_OS_WIN
         service.setFlags(QCommandLineOption::HiddenFromHelp);
@@ -336,8 +336,8 @@ namespace Engine::HeadlessCli {
         }
 #else
         if (parser.isSet(kService)) {
-            *message = "--service is for Windows only (it runs Throne under the Windows Service Control Manager); here a systemd "
-                       "unit, a launchd plist or a container runs Throne headless";
+            *message = "--service is for Windows only (it runs Poros under the Windows Service Control Manager); here a systemd "
+                       "unit, a launchd plist or a container runs Poros headless";
             return ParseOutcome::Usage;
         }
 #endif
@@ -418,24 +418,24 @@ namespace Engine::HeadlessCli {
             "      never appeared); --health: not healthy or still starting; --check: an item failed\n"
             "  2   --health: no instance answered; --print-connection: the API is off or not listening, or its key is not\n"
             "      in a file\n"
-            "  3   the data directory is in use by another Throne\n"
+            "  3   the data directory is in use by another Poros\n"
             "  64  bad option, option value or environment value; --service not started by the Windows service manager\n"
-            "  70  the core kept failing and Throne gave up, or it was not usable for 60 s (see Recovery)\n"
+            "  70  the core kept failing and Poros gave up, or it was not usable for 60 s (see Recovery)\n"
             "  71  the progress watchdog found the engine stuck (a profile connecting for 180 s or stopping for 90 s)\n"
             "  75  restart requested (thronectl restart, SIGHUP, backup restore) with --restart-mode exit, or as a\n"
             "      Windows service\n"
             "  78  configuration error (data directory, API key file, API listener, unusable database file)\n"
             "\n"
             "Recovery:\n"
-            "  If saved settings keep Throne unreachable (kill switch, Tun), start it once with --no-resume\n"
+            "  If saved settings keep Poros unreachable (kill switch, Tun), start it once with --no-resume\n"
             "  --no-kill-switch: no profile starts and the kill switch stays off for that run, so thronectl on this host\n"
-            "  can change the settings. After three boots in a row without a working core, Throne stays up (degraded\n"
+            "  can change the settings. After three boots in a row without a working core, Poros stays up (degraded\n"
             "  core_gave_up) instead of exiting 70 or 71, so the API stays reachable.\n");
 #ifdef Q_OS_WIN
         text += QStringLiteral(
             "\n"
             "Windows:\n"
-            "  Throne.exe returns to the prompt at once. For the exit code run it with start \"\" /wait Throne.exe ... in\n"
+            "  Poros.exe returns to the prompt at once. For the exit code run it with start \"\" /wait Poros.exe ... in\n"
             "  cmd, or with Start-Process -Wait -PassThru in PowerShell.\n");
 #endif
         return text;
@@ -477,8 +477,13 @@ namespace Engine::HeadlessCli {
                 return ExitCode::Config;
             }
 #endif
+#ifdef Q_OS_WIN
+            path = QCoreApplication::applicationDirPath();
+            options->dataDirSource = QStringLiteral("program folder");
+#else
             path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
             options->dataDirSource = QStringLiteral("user config");
+#endif
         }
         path = QDir::cleanPath(path);
         if (path.isEmpty()) {
@@ -494,7 +499,7 @@ namespace Engine::HeadlessCli {
             if (!headlessCliPrepareDir(path, error) || !headlessCliPrepareDir(configDir, error)) return ExitCode::Config;
 #ifdef Q_OS_WIN
             if (const QString who = Sys::ServiceManager::UsersCanWriteDataDir(path); !systemDefault && !who.isEmpty()) {
-                LOG_WARN(QString("%1: %2 can write to it, so other users can change Throne's settings, which name the programs it starts")
+                LOG_WARN(QString("%1: %2 can write to it, so other users can change Poros's settings, which name the programs it starts")
                              .arg(QDir::toNativeSeparators(path), who));
             }
 #endif
@@ -531,7 +536,7 @@ namespace Engine::HeadlessCli {
             *why = "Windows service";
             return RestartMode::Exit;
         }
-        *why = "not a Windows service; a new Throne process starts";
+        *why = "not a Windows service; a new Poros process starts";
         return RestartMode::Exec;
 #else
         // Set by the image that exec'd us: the launching shell may be gone and our new parent says nothing about a supervisor.

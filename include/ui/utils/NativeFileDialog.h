@@ -4,11 +4,18 @@
 #include <QFileDialog>
 #include <QTimer>
 
+#ifdef Q_OS_WIN
+#include "include/sys/windows/QtDialogState.h"
+#endif
+
 // main.cpp keeps AA_DontUseNativeDialogs set so message boxes stay Qt-drawn; file pickers opt back in to the platform dialog.
 namespace NativeFileDialog {
     namespace detail {
         template <typename Picker>
         auto run(Picker &&picker) {
+#ifdef Q_OS_WIN
+            const QtDialogStateGuard dialogState;
+#endif
             // Qt reads the attribute only until the picker is up, so it is restored on the picker loop's first turn.
             QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs, false);
             QTimer::singleShot(0, qApp, [] { QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs, true); });

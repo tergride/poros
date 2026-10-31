@@ -43,8 +43,8 @@ namespace Engine::WebDavBackup {
         constexpr int kWebDavIndexRounds = 4;
         constexpr int kWebDavMaxRedirects = 5;
         constexpr int kWebDavIndexFormat = 1;
-        constexpr char kWebDavIndexName[] = "throne_backups.json";
-        constexpr char kWebDavDefaultFolder[] = "Throne";
+        constexpr char kWebDavIndexName[] = "poros_backups.json";
+        constexpr char kWebDavDefaultFolder[] = "Poros";
         constexpr char kWebDavPropfindBody[] =
             R"(<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/><d:getlastmodified/><d:getetag/></d:prop></d:propfind>)";
 
@@ -153,7 +153,7 @@ namespace Engine::WebDavBackup {
                 QNetworkRequest request(r.url);
                 request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
                 request.setTransferTimeout(r.timeoutMs);
-                request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Throne/") + QStringLiteral(NKR_VERSION));
+                request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Poros/") + QStringLiteral(NKR_VERSION));
                 if (r.withAuth && !auth_.isEmpty()) request.setRawHeader("Authorization", auth_);
                 if (insecure_) {
                     auto ssl = request.sslConfiguration();
@@ -321,7 +321,7 @@ namespace Engine::WebDavBackup {
                 if (!kept) c = u'-';
             }
             const QString random = QStringLiteral("%1").arg(QRandomGenerator::global()->bounded(0x10000), 4, 16, QLatin1Char('0'));
-            return QStringLiteral("throne_backup_%1_%2_%3.thrbackup").arg(version, utc.toString(QStringLiteral("yyyyMMdd_HHmmss")), random);
+            return QStringLiteral("poros_backup_%1_%2_%3.thrbackup").arg(version, utc.toString(QStringLiteral("yyyyMMdd_HHmmss")), random);
         }
 
         QString WebDavTrimSlashes(QString path) {
@@ -479,7 +479,7 @@ namespace Engine::WebDavBackup {
                 WebDavIndex index;
                 if (auto error = WebDavFetchIndex(session, &index); !error.isEmpty()) return error;
                 if (const int format = index.root.value("format").toInt(kWebDavIndexFormat); format > kWebDavIndexFormat) {
-                    MW_show_log(QStringLiteral("[Backup] The WebDAV backup list uses format %1, newer than this Throne writes; left it unchanged.")
+                    MW_show_log(QStringLiteral("[Backup] The WebDAV backup list uses format %1, newer than this Poros writes; left it unchanged.")
                                     .arg(format));
                     return {};
                 }

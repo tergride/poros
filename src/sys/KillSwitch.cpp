@@ -51,13 +51,13 @@ namespace Sys {
 #ifdef Q_OS_MACOS
             return {};
 #else
-            return QStringLiteral("throne-tun");
+            return QStringLiteral("poros-net");
 #endif
         }
 
         QString bridgeName() {
 #ifdef Q_OS_LINUX
-            if (Configs::dataManager->settingsRepo->vpn_l3_bridge) return QStringLiteral("throne-br");
+            if (Configs::dataManager->settingsRepo->vpn_l3_bridge) return QStringLiteral("poros-br");
 #endif
             return {};
         }
@@ -175,7 +175,7 @@ namespace Sys {
         QString text;
         if (failureCode_ == kPrivilege) {
 #ifdef Q_OS_WIN
-            text = tr("The kill switch needs Throne to run as administrator.");
+            text = tr("The kill switch needs Poros to run as administrator.");
 #else
             text = tr("The kill switch needs the core to have root privileges.");
 #endif
@@ -443,7 +443,7 @@ namespace Sys {
         pending_ = nullptr;
         closeGuard(previous);
         LOG_INFO("kill switch: armed with " + QString::fromUtf8(guard->config));
-        MW_show_log(previous == nullptr ? tr("[Kill switch] On: only traffic through Throne can leave this device.")
+        MW_show_log(previous == nullptr ? tr("[Kill switch] On: only traffic through Poros can leave this device.")
                                         : tr("[Kill switch] New settings applied."));
         if (identityUnsupported_) {
             failIdentity();

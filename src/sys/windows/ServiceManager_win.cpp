@@ -32,7 +32,7 @@ namespace Sys::ServiceManager {
         constexpr DWORD kServiceManagerWinConsoleWaitMs = 4500;
         constexpr qint64 kServiceManagerWinMaxHintMs = 10 * 60 * 1000;
         constexpr size_t kServiceManagerWinMaxHeld = 4;
-        constexpr wchar_t kServiceManagerWinWindowClass[] = L"ThroneHeadlessWindow";
+        constexpr wchar_t kServiceManagerWinWindowClass[] = L"PorosHeadlessWindow";
         constexpr wchar_t kServiceManagerWinOwnedSddl[] = L"O:SYG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)";
         constexpr wchar_t kServiceManagerWinDaclSddl[] = L"D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)";
         // FOLDERID_ProgramData, spelled out so no uuid import library is needed.
@@ -628,9 +628,9 @@ namespace Sys::ServiceManager {
             return;
         }
         // Top level and never shown: an HWND_MESSAGE window gets no WM_QUERYENDSESSION, WM_ENDSESSION or taskkill WM_CLOSE (T20).
-        if (CreateWindowExW(0, kServiceManagerWinWindowClass, L"Throne headless", WS_OVERLAPPED, 0, 0, 0, 0, nullptr, nullptr, instance,
+        if (CreateWindowExW(0, kServiceManagerWinWindowClass, L"Poros headless", WS_OVERLAPPED, 0, 0, 0, 0, nullptr, nullptr, instance,
                             nullptr) == nullptr) {
-            state.notes << QStringLiteral("Could not create the shutdown window (taskkill and session end will not stop Throne cleanly): %1")
+            state.notes << QStringLiteral("Could not create the shutdown window (taskkill and session end will not stop Poros cleanly): %1")
                                .arg(serviceManagerWinError(GetLastError()));
         }
     }
@@ -727,7 +727,7 @@ namespace Sys::ServiceManager {
         }
         CoTaskMemFree(raw);
         if (base.isEmpty()) return {};
-        return QDir::fromNativeSeparators(base) + QStringLiteral("/Throne");
+        return QDir::fromNativeSeparators(base) + QStringLiteral("/Poros");
     }
 
     bool SecureDataDir(const QString &path, bool created, QString *error) {
@@ -863,7 +863,7 @@ namespace Sys::ServiceManager {
         const auto denied = [&refuse, closedToOthers, pid] {
             if (RunningAsLocalSystem() || serviceManagerWinSelfElevated()) {
                 return refuse(
-                    QStringLiteral("PID %1 serving the pipe cannot be inspected even by an elevated caller, unlike a Throne service")
+                    QStringLiteral("PID %1 serving the pipe cannot be inspected even by an elevated caller, unlike a Poros service")
                         .arg(QString::number(pid)));
             }
             if (!closedToOthers) {

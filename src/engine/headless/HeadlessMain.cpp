@@ -108,7 +108,7 @@ namespace Engine {
         QString headlessMainDbAdvice(const Configs::DbError &error, const QString &dbPath) {
             const int primary = headlessMainDbPrimary(error);
             if (primary == SQLITE_READONLY || primary == SQLITE_CANTOPEN) {
-                return QStringLiteral("make %1 and its -wal and -shm files writable by the user Throne runs as").arg(dbPath);
+                return QStringLiteral("make %1 and its -wal and -shm files writable by the user Poros runs as").arg(dbPath);
             }
             return QStringLiteral("move %1 and its -wal and -shm files aside to start with an empty database, or restore them from a "
                                   "file backup; if the API listener came from the settings, pass --api-listen until the restore")
@@ -349,7 +349,7 @@ namespace Engine {
         // Declared first so it is released last; the exec restart releases it explicitly.
         DataDirLock lock;
         auto app = std::make_unique<QCoreApplication>(argc, argv);
-        QCoreApplication::setApplicationName("Throne");
+        QCoreApplication::setApplicationName("Poros");
         QCoreApplication::setApplicationVersion(NKR_VERSION);
         // Now: the cached value survives an in-place upgrade and the working directory moving to <config>.
         const QString exePath = QCoreApplication::applicationFilePath();
@@ -376,10 +376,10 @@ namespace Engine {
                 headlessMainPrint(stdout, HeadlessCli::HelpText(parser).trimmed());
                 return ExitCode::Ok;
             case HeadlessCli::ParseOutcome::Version:
-                headlessMainPrint(stdout, QStringLiteral("Throne " NKR_VERSION));
+                headlessMainPrint(stdout, QStringLiteral("Poros " NKR_VERSION));
                 return ExitCode::Ok;
             case HeadlessCli::ParseOutcome::Usage:
-                headlessMainPrint(stderr, message + QStringLiteral("\nThe options: Throne --headless --help"));
+                headlessMainPrint(stderr, message + QStringLiteral("\nThe options: Poros --headless --help"));
                 return ExitCode::Usage;
             case HeadlessCli::ParseOutcome::Run:
                 break;
@@ -422,7 +422,7 @@ namespace Engine {
         const auto claim = Bootstrap::ClaimDataDir(lock, dataDir, Bootstrap::InstanceServerName(dataDir.wd), "headless", {},
                                                    relaunchParent, false);
         if (claim.outcome == Bootstrap::ClaimOutcome::HandedOff) {
-            headlessMainPrint(stderr, QString("%1 is in use by an older Throne, which answered on its instance socket").arg(wdText));
+            headlessMainPrint(stderr, QString("%1 is in use by an older Poros, which answered on its instance socket").arg(wdText));
             return ExitCode::DataDirOwned;
         }
         if (claim.outcome != Bootstrap::ClaimOutcome::Owned) {
@@ -505,7 +505,7 @@ namespace Engine {
         QString restartWhy;
         const auto restartMode = HeadlessCli::EffectiveRestartMode(options.restartMode, env, bootParentPid, &restartWhy);
         QStringList bootFields{
-            QStringLiteral("Throne " NKR_VERSION " headless"),
+            QStringLiteral("Poros " NKR_VERSION " headless"),
             "PID " + QString::number(QCoreApplication::applicationPid()),
             "started by " + options.trigger,
             "data dir " + wdText + " (" + options.dataDirSource + ")",
@@ -533,11 +533,11 @@ namespace Engine {
             const auto error = Configs::DescribeDbError(e);
             const int primary = headlessMainDbPrimary(error);
             const QDir configDir(dataDir.configDir);
-            QString dbFile = configDir.absoluteFilePath(QStringLiteral("throne.db"));
+            QString dbFile = configDir.absoluteFilePath(QStringLiteral("poros.db"));
             bool denied = false;
             if (primary == SQLITE_CANTOPEN || primary == SQLITE_READONLY) {
                 // The stats DB recreates itself unless it cannot even be moved aside (a Windows ACL denying DELETE).
-                for (const QString &name : {QStringLiteral("throne.db"), QStringLiteral("throne_stats.db")}) {
+                for (const QString &name : {QStringLiteral("poros.db"), QStringLiteral("poros_stats.db")}) {
                     if (const QString file = configDir.absoluteFilePath(name); Configs::DbFilesDenied(file)) {
                         dbFile = file;
                         denied = true;
@@ -585,7 +585,7 @@ namespace Engine {
 
         const auto bind = HeadlessApi::Bind();
         if (bind.exitCode != ExitCode::Ok) {
-            LOG_ERROR(QString("EXIT %1: the Throne API listener could not start").arg(bind.exitCode));
+            LOG_ERROR(QString("EXIT %1: the Poros API listener could not start").arg(bind.exitCode));
             return bind.exitCode;
         }
         if (!bind.retry) mark(RuntimeStatus::ApiStep);
@@ -606,8 +606,8 @@ namespace Engine {
             HeadlessApi::StartBindRetry(
                 runtime.get(), [mark] { mark(RuntimeStatus::ApiStep); },
                 [rt = runtime.get()](int code) {
-                    rt->terminate(code, code == ExitCode::Config ? QStringLiteral("the Throne API listener could not start")
-                                                                 : QStringLiteral("the Throne API listen address never became available"));
+                    rt->terminate(code, code == ExitCode::Config ? QStringLiteral("the Poros API listener could not start")
+                                                                 : QStringLiteral("the Poros API listen address never became available"));
                 });
         }
         // ApiStep is already marked for that failure; mark() is idempotent.

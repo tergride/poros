@@ -232,16 +232,16 @@ namespace Engine::Preflight {
             if (::kill(static_cast<pid_t>(pid), 0) != 0 && errno != EPERM) return false;
             // kill() already proved it alive; a name this OS or user cannot read does not undo that.
             const QString name = Bootstrap::ProcessName(pid);
-            return name.isEmpty() || name.contains(QLatin1String("throne"), Qt::CaseInsensitive);
+            return name.isEmpty() || name.contains(QLatin1String("poros"), Qt::CaseInsensitive);
 #else
-            return Bootstrap::ProcessName(pid).contains(QLatin1String("throne"), Qt::CaseInsensitive);
+            return Bootstrap::ProcessName(pid).contains(QLatin1String("poros"), Qt::CaseInsensitive);
 #endif
         }
 
         // ---- 1. build
 
         void preflightBuild(PreflightReport &report) {
-            QStringList fields{QStringLiteral("Throne " NKR_VERSION), QStringLiteral("Qt ") + QString::fromLatin1(qVersion()),
+            QStringList fields{QStringLiteral("Poros " NKR_VERSION), QStringLiteral("Qt ") + QString::fromLatin1(qVersion()),
                                QSysInfo::prettyProductName() + QLatin1Char(' ') + QSysInfo::currentCpuArchitecture()};
 #ifdef Q_OS_UNIX
             fields << QStringLiteral("kernel ") + QSysInfo::kernelVersion();
@@ -294,7 +294,7 @@ namespace Engine::Preflight {
                     if (!preflightWritable(path)) {
                         fails << shownPath + QStringLiteral(" is not writable by this user");
 #ifdef Q_OS_UNIX
-                        fixes << QStringLiteral("run Throne (and this check) as the owner of the data dir, or: sudo chown -R %1 %2")
+                        fixes << QStringLiteral("run Poros (and this check) as the owner of the data dir, or: sudo chown -R %1 %2")
                                      .arg(user, preflightQuote(wd));
 #else
                         fixes << QStringLiteral("give this user write access to it, or pass another --data-dir");
@@ -305,15 +305,15 @@ namespace Engine::Preflight {
                     if (const QStringList open = preflightOpenToOthers(path, &owner); !open.isEmpty()) {
                         if (::geteuid() == 0) {
                             fails << shownPath + QStringLiteral(": ") + open.join(QStringLiteral("; ")) +
-                                         QStringLiteral(" (Throne refuses to run as root with it)");
+                                         QStringLiteral(" (Poros refuses to run as root with it)");
                         } else {
                             warns << shownPath + QStringLiteral(": ") + open.join(QStringLiteral("; ")) +
-                                         QStringLiteral(", so other users can change the settings that name the programs Throne starts");
+                                         QStringLiteral(", so other users can change the settings that name the programs Poros starts");
                         }
                         fixes << QStringLiteral("chmod go-w %1").arg(preflightQuote(path));
                     }
                     if (owner != ::geteuid()) {
-                        warns << QStringLiteral("%1 is owned by uid %2, who controls Throne's settings").arg(shownPath).arg(owner);
+                        warns << QStringLiteral("%1 is owned by uid %2, who controls Poros's settings").arg(shownPath).arg(owner);
                     }
 #endif
                 };
@@ -392,7 +392,7 @@ namespace Engine::Preflight {
             const qint64 hello = HeadlessInstance::Hello(dataDir.wd, QStringLiteral("--check"), preflightHelloMs);
             if (hello > 0) {
                 instance.pid = hello;
-                instance.who = QStringLiteral("the headless Throne of this data dir");
+                instance.who = QStringLiteral("the headless Poros of this data dir");
                 preflightAskHealth(dataDir, &instance);
                 QString status;
                 if (instance.health) {
@@ -404,7 +404,7 @@ namespace Engine::Preflight {
                             status);
                 return instance;
             }
-            const QString answered = hello == 0 ? QStringLiteral("; something that is not a headless Throne answered on its instance socket")
+            const QString answered = hello == 0 ? QStringLiteral("; something that is not a headless Poros answered on its instance socket")
                                                 : QString();
             if (ownerPid <= 0) {
                 report.ok(QStringLiteral("instance: none") + answered);
@@ -416,11 +416,11 @@ namespace Engine::Preflight {
             }
             instance.pid = ownerPid;
             const bool gui = ownerMode == QLatin1String("gui");
-            instance.who = gui ? QStringLiteral("the Throne window that uses this data dir") : QStringLiteral("the owner of this data dir");
+            instance.who = gui ? QStringLiteral("the Poros window that uses this data dir") : QStringLiteral("the owner of this data dir");
             if (gui) {
-                report.warn(QStringLiteral("instance: the Throne window holds this data dir: %1; Throne --headless exits 3 while it runs")
+                report.warn(QStringLiteral("instance: the Poros window holds this data dir: %1; Poros --headless exits 3 while it runs")
                                 .arg(described),
-                            {QStringLiteral("quit the Throne window, or pass another --data-dir")});
+                            {QStringLiteral("quit the Poros window, or pass another --data-dir")});
             } else if (ownerMode == QLatin1String("headless")) {
                 report.info(QStringLiteral("instance: %1 holds the data dir but did not answer (still starting, or busy)").arg(described) +
                             answered);
@@ -438,7 +438,7 @@ namespace Engine::Preflight {
             int remoteApiPort = RemoteApi::kDefaultPort;
             QString remoteApiKey;
             QString inboundAddress = QStringLiteral("127.0.0.1");
-            int inboundPort = 2080;
+            int inboundPort = 2090;
             bool randomInboundPort = false;
             bool disableMixedInbound = false;
             int dnsInPort = 5533;
@@ -550,14 +550,14 @@ namespace Engine::Preflight {
 
         PreflightSettings preflightSettings(PreflightReport &report, const Bootstrap::DataDir &dataDir, const PreflightInstance &instance) {
             PreflightSettings settings;
-            const QString dbFile = QDir(dataDir.configDir).absoluteFilePath(QStringLiteral("throne.db"));
+            const QString dbFile = QDir(dataDir.configDir).absoluteFilePath(QStringLiteral("poros.db"));
             const QString shown = preflightNative(dbFile);
-            const QString advice = QStringLiteral("make %1 and its -wal and -shm files readable and writable by the user Throne runs as").arg(shown);
+            const QString advice = QStringLiteral("make %1 and its -wal and -shm files readable and writable by the user Poros runs as").arg(shown);
             const QFileInfo info(dbFile);
             if (!info.exists()) {
                 report.info(QStringLiteral("settings: no database yet (%1); the checks below use the defaults").arg(shown));
             } else if (!info.isFile()) {
-                report.fail(QStringLiteral("settings: %1 is not a regular file; Throne --headless cannot open it").arg(shown),
+                report.fail(QStringLiteral("settings: %1 is not a regular file; Poros --headless cannot open it").arg(shown),
                             {QStringLiteral("move it aside")});
             } else {
                 const auto read = preflightReadSettings(dbFile, &settings);
@@ -568,7 +568,7 @@ namespace Engine::Preflight {
                     const QString what = read.read ? QStringLiteral("read from %1").arg(shown)
                                                    : QStringLiteral("none saved yet in %1; the checks below use the defaults").arg(shown);
                     if (denied) {
-                        report.fail(QStringLiteral("settings: %1, but this user cannot write it (or its -wal and -shm files); Throne "
+                        report.fail(QStringLiteral("settings: %1, but this user cannot write it (or its -wal and -shm files); Poros "
                                                    "--headless exits 78")
                                         .arg(what),
                                     {advice});
@@ -576,12 +576,12 @@ namespace Engine::Preflight {
                         report.info(QStringLiteral("settings: ") + what);
                     }
                 } else if (denied) {
-                    report.fail(QStringLiteral("settings: this user cannot read and write %1 (or its -wal and -shm files); Throne --headless "
+                    report.fail(QStringLiteral("settings: this user cannot read and write %1 (or its -wal and -shm files); Poros --headless "
                                                "exits 78; the checks below use the defaults")
                                     .arg(shown),
                                 {advice});
                 } else if ((read.code == SQLITE_CORRUPT || read.code == SQLITE_NOTADB) && instance.pid <= 0) {
-                    report.fail(QStringLiteral("settings: %1 is unusable (%2); Throne --headless exits 78; the checks below use the defaults")
+                    report.fail(QStringLiteral("settings: %1 is unusable (%2); Poros --headless exits 78; the checks below use the defaults")
                                     .arg(shown, read.error),
                                 {QStringLiteral("move %1 and its -wal and -shm files aside to start with an empty database, or restore them "
                                                 "from a backup")
@@ -590,10 +590,10 @@ namespace Engine::Preflight {
                     report.warn(QStringLiteral("settings: cannot read %1 (%2); the checks below use the defaults").arg(shown, read.error));
                 }
             }
-            const QString statsFile = QDir(dataDir.configDir).absoluteFilePath(QStringLiteral("throne_stats.db"));
+            const QString statsFile = QDir(dataDir.configDir).absoluteFilePath(QStringLiteral("poros_stats.db"));
             if (Configs::DbFilesDenied(statsFile)) {
                 report.warn(QStringLiteral("settings: this user cannot read and write %1 (traffic statistics)").arg(preflightNative(statsFile)),
-                            {QStringLiteral("make %1 and its -wal and -shm files readable and writable by the user Throne runs as")
+                            {QStringLiteral("make %1 and its -wal and -shm files readable and writable by the user Poros runs as")
                                  .arg(preflightNative(statsFile))});
             }
             return settings;
@@ -611,11 +611,11 @@ namespace Engine::Preflight {
             QStringList fixes;
 #ifdef Q_OS_LINUX
             fixes << QStringLiteral("install OpenSSL 3 (Debian and Ubuntu: libssl3; Fedora: openssl-libs; Alpine: libssl3), and keep the "
-                                    "release's usr/plugins/tls directory next to Throne");
+                                    "release's usr/plugins/tls directory next to Poros");
 #else
-            fixes << QStringLiteral("reinstall Throne: its TLS plugin is missing");
+            fixes << QStringLiteral("reinstall Poros: its TLS plugin is missing");
 #endif
-            report.fail(QStringLiteral("TLS: no usable TLS backend (%1); subscription updates and the other downloads Throne makes fail")
+            report.fail(QStringLiteral("TLS: no usable TLS backend (%1); subscription updates and the other downloads Poros makes fail")
                             .arg(backends.isEmpty() ? QStringLiteral("none found")
                                                     : QStringLiteral("found: ") + backends.join(QStringLiteral(", "))),
                         fixes);
@@ -663,7 +663,7 @@ namespace Engine::Preflight {
             const QFileInfo info(core.path);
             if (!info.exists()) {
                 report.fail(QStringLiteral("core: %1 is missing").arg(shown),
-                            {QStringLiteral("reinstall Throne: ThroneCore must sit next to the Throne binary")});
+                            {QStringLiteral("reinstall Poros: PorosCore must sit next to the Poros binary")});
                 return core;
             }
             if (!info.isFile() || !info.isExecutable()) {
@@ -672,7 +672,7 @@ namespace Engine::Preflight {
                             {QStringLiteral("chmod +x %1").arg(preflightQuote(core.path))});
 #else
                 report.fail(QStringLiteral("core: %1 is not an executable file").arg(shown),
-                            {QStringLiteral("reinstall Throne")});
+                            {QStringLiteral("reinstall Poros")});
 #endif
                 return core;
             }
@@ -718,11 +718,11 @@ namespace Engine::Preflight {
             if (!core.reported) {
                 const int code = process.exitCode();
                 if (error.contains(QLatin1String("parent check"))) {
-                    report.fail(QStringLiteral("core: %1 refuses to run under this Throne").arg(shown) + errorSuffix,
-                                {QStringLiteral("Throne and ThroneCore must come from the same release and sit in the same directory")});
+                    report.fail(QStringLiteral("core: %1 refuses to run under this Poros").arg(shown) + errorSuffix,
+                                {QStringLiteral("Poros and PorosCore must come from the same release and sit in the same directory")});
                 } else if (code == 0 || error.contains(QLatin1String("THRONE_CORE_SOCKET"))) {
-                    report.warn(QStringLiteral("core: %1 does not support --check (an older ThroneCore?)").arg(shown) + skipped,
-                                {QStringLiteral("install Throne and ThroneCore from the same release")});
+                    report.warn(QStringLiteral("core: %1 does not support --check (an older PorosCore?)").arg(shown) + skipped,
+                                {QStringLiteral("install Poros and PorosCore from the same release")});
                 } else {
                     report.fail(QStringLiteral("core: %1 exited with code %2").arg(shown).arg(code) + errorSuffix, buildFix);
                 }
@@ -797,11 +797,11 @@ namespace Engine::Preflight {
             Q_UNUSED(core)
             Q_UNUSED(corePath)
             if (Configs::KnownAdmin().value_or(false)) {
-                report.ok(QStringLiteral("Tun: available (Throne runs elevated)"));
+                report.ok(QStringLiteral("Tun: available (Poros runs elevated)"));
             } else {
-                report.warn(QStringLiteral("Tun: unavailable: Throne does not run elevated") + remembered,
-                            {QStringLiteral("run Throne from an elevated prompt, as a task with the highest privileges, or as a Windows "
-                                            "service (Throne --headless --service)")});
+                report.warn(QStringLiteral("Tun: unavailable: Poros does not run elevated") + remembered,
+                            {QStringLiteral("run Poros from an elevated prompt, as a task with the highest privileges, or as a Windows "
+                                            "service (Poros --headless --service)")});
             }
 #else
             Q_UNUSED(core)
@@ -841,7 +841,7 @@ namespace Engine::Preflight {
                 if (euid != 0) {
                     problems << QStringLiteral("the core does not run as root");
                     fixes << preflightElevationFixes(
-                        {QStringLiteral("run Throne as root (a root systemd unit), or make the core setuid root: sudo chown root:root %1 && "
+                        {QStringLiteral("run Poros as root (a root systemd unit), or make the core setuid root: sudo chown root:root %1 && "
                                         "sudo chmod u+s %1")
                              .arg(corePath)});
                     if (netAdmin == true) fixes << QStringLiteral("a unit that grants capabilities instead of root cannot use it");
@@ -887,10 +887,10 @@ namespace Engine::Preflight {
             Q_UNUSED(core)
             Q_UNUSED(corePath)
             if (Configs::KnownAdmin().value_or(false)) {
-                report.ok(QStringLiteral("kill switch: available (Throne runs elevated); ") + setting);
+                report.ok(QStringLiteral("kill switch: available (Poros runs elevated); ") + setting);
             } else {
-                report.warn(QStringLiteral("kill switch: unavailable: Throne does not run elevated; ") + setting,
-                            {QStringLiteral("run Throne elevated, or as a Windows service (Throne --headless --service)")});
+                report.warn(QStringLiteral("kill switch: unavailable: Poros does not run elevated; ") + setting,
+                            {QStringLiteral("run Poros elevated, or as a Windows service (Poros --headless --service)")});
             }
 #else
             Q_UNUSED(core)
@@ -963,7 +963,7 @@ namespace Engine::Preflight {
             switch (api.key) {
                 case PreflightApi::Key::Settings:
                     if (RemoteApi::KeyFromText(settings.remoteApiKey).isEmpty()) {
-                        report.warn(QStringLiteral("API key: remote_api_key in the settings is missing or invalid, so the Throne API will not "
+                        report.warn(QStringLiteral("API key: remote_api_key in the settings is missing or invalid, so the Poros API will not "
                                                    "listen (key_invalid)"),
                                     {QStringLiteral("pass --api-key-file FILE (create one with: thronectl keygen -o FILE)")});
                     } else {
@@ -977,7 +977,7 @@ namespace Engine::Preflight {
                     if (file.error.isEmpty()) {
                         report.ok(QStringLiteral("API key: %1 (%2)").arg(shown, source));
                     } else {
-                        report.fail(QStringLiteral("API key: %1 (%2) is not usable: %3; Throne --headless exits 78").arg(shown, source, file.error),
+                        report.fail(QStringLiteral("API key: %1 (%2) is not usable: %3; Poros --headless exits 78").arg(shown, source, file.error),
                                     {QStringLiteral("create one with: thronectl keygen -o %1").arg(preflightQuote(api.keyFile))});
                     }
                     return;
@@ -996,7 +996,7 @@ namespace Engine::Preflight {
                     if (file.error.isEmpty()) {
                         report.ok(QStringLiteral("API key: %1").arg(shown));
                     } else {
-                        report.warn(QStringLiteral("API key: %1 is not usable (%2), so the Throne API may not listen").arg(shown, file.error),
+                        report.warn(QStringLiteral("API key: %1 is not usable (%2), so the Poros API may not listen").arg(shown, file.error),
                                     {QStringLiteral("delete it to have a new key created at the next start, or write one with: thronectl "
                                                     "keygen -o %1")
                                          .arg(preflightQuote(api.keyFile))});
@@ -1103,7 +1103,7 @@ namespace Engine::Preflight {
 
         // Why a running headless owner is not the holder, for the FAIL line.
         QString preflightNotHeldNote(const PreflightInstance &instance, const PreflightListener &listener) {
-            const QString owner = QStringLiteral("; the headless Throne of this data dir (PID %1)").arg(instance.pid);
+            const QString owner = QStringLiteral("; the headless Poros of this data dir (PID %1)").arg(instance.pid);
             if (!listener.api) return owner + QStringLiteral(" runs no profile now");
             QString note;
             if (instance.apiState == QLatin1String("listening") || instance.apiState == QLatin1String("address_missing")) {
@@ -1141,7 +1141,7 @@ namespace Engine::Preflight {
             QList<PreflightListener> listeners;
             if (api.enabled) {
                 PreflightListener listener;
-                listener.label = QStringLiteral("the Throne API, ") + api.source;
+                listener.label = QStringLiteral("the Poros API, ") + api.source;
                 listener.address = api.bind;
                 listener.port = api.port;
                 listener.change = QStringLiteral("pick another: --api-listen 127.0.0.1:PORT");
@@ -1150,7 +1150,7 @@ namespace Engine::Preflight {
                 listener.api = true;
                 listeners << listener;
             } else {
-                report.info(QStringLiteral("port: the Throne API is off (%1)").arg(api.source));
+                report.info(QStringLiteral("port: the Poros API is off (%1)").arg(api.source));
             }
 
             if (settings.disableMixedInbound) {
@@ -1254,7 +1254,7 @@ namespace Engine::Preflight {
                         break;
                     case PreflightBind::NoAddress:
                         if (listener.mayWaitForAddress) {
-                            report.warn(QStringLiteral("port %1 (%2): the address is not on this computer now; Throne --headless waits up "
+                            report.warn(QStringLiteral("port %1 (%2): the address is not on this computer now; Poros --headless waits up "
                                                        "to 30 s for it at start")
                                             .arg(where, listener.label));
                         } else {
@@ -1306,14 +1306,14 @@ namespace Engine::Preflight {
 #endif
             if (const auto other = Sys::HostPresence::OtherHeadless(); other.has_value()) {
                 if (QDir::cleanPath(other->dataDir).compare(QDir::cleanPath(dataDir.wd.absolutePath()), pathCase) == 0) {
-                    report.info(QStringLiteral("host: the headless Throne of this data dir runs (PID %1)").arg(other->pid));
+                    report.info(QStringLiteral("host: the headless Poros of this data dir runs (PID %1)").arg(other->pid));
                 } else {
-                    report.info(QStringLiteral("host: another headless Throne runs on this computer (PID %1, data dir %2, version %3); only "
-                                               "one Throne can run Tun at a time")
+                    report.info(QStringLiteral("host: another headless Poros runs on this computer (PID %1, data dir %2, version %3); only "
+                                               "one Poros can run Tun at a time")
                                     .arg(QString::number(other->pid), preflightNative(other->dataDir), other->version));
                 }
             } else {
-                report.info(QStringLiteral("host: no other headless Throne on this computer"));
+                report.info(QStringLiteral("host: no other headless Poros on this computer"));
             }
             const QString conflict = Sys::HostTun::Conflict(settings.tunCidr, 0);
             if (conflict.isEmpty()) {
@@ -1332,7 +1332,7 @@ namespace Engine::Preflight {
                                  .arg(lanOwner)});
             } else {
                 report.warn(QStringLiteral("Tun owner: %1").arg(conflict),
-                            {QStringLiteral("stop the other Throne or VPN before turning Tun on; when it only holds the Tun address, "
+                            {QStringLiteral("stop the other Poros or VPN before turning Tun on; when it only holds the Tun address, "
                                             "thronectl settings set tun_ipv4_cidr=CIDR also works")});
             }
         }
@@ -1369,19 +1369,19 @@ namespace Engine::Preflight {
             if (options.service) {
                 parts << QStringLiteral("the Windows SCM (--service: start progress, RUNNING and the exit code are reported)");
                 mode = HeadlessCli::RestartMode::Exit;
-                why = QStringLiteral("--service: the service's recovery actions start Throne again (sc failure, sc failureflag 1)");
+                why = QStringLiteral("--service: the service's recovery actions start Poros again (sc failure, sc failureflag 1)");
             } else if (parts.isEmpty()) {
-                parts << QStringLiteral("none (Throne --headless --service runs under the Windows SCM, where a restart request exits with 75 "
+                parts << QStringLiteral("none (Poros --headless --service runs under the Windows SCM, where a restart request exits with 75 "
                                         "for the service's recovery actions)");
             }
-            const QString execText = QStringLiteral("starts Throne again as a new process, which waits for this one to exit");
+            const QString execText = QStringLiteral("starts Poros again as a new process, which waits for this one to exit");
 #else
             if (parts.isEmpty()) parts << QStringLiteral("no service manager detected");
-            const QString execText = QStringLiteral("re-executes Throne in place");
+            const QString execText = QStringLiteral("re-executes Poros in place");
 #endif
             const QString restart = mode == HeadlessCli::RestartMode::Exec
                                         ? execText
-                                        : QStringLiteral("exits with 75 for the service manager to start Throne again");
+                                        : QStringLiteral("exits with 75 for the service manager to start Poros again");
             report.info(QStringLiteral("supervisor: %1; a restart request %2 (restart mode %3: %4)")
                             .arg(parts.join(QStringLiteral(", ")), restart, HeadlessCli::RestartModeName(mode), why));
         }

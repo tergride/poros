@@ -131,10 +131,10 @@ namespace RemoteApi::RouterImpl {
     QString tunPrivilegeMessage() {
         const auto caps = Configs::KnownCapabilities();
         if (!caps || (caps->tunDevice != false && caps->netAdmin != false) || caps->detail.isEmpty())
-            return QStringLiteral("Tun needs privileges that Throne does not have; grant them in Throne once");
+            return QStringLiteral("Tun needs privileges that Poros does not have; grant them in Poros once");
         // A privileged core that still lacks the device or CAP_NET_ADMIN gains nothing from more privileges.
-        if (caps->privileged) return QStringLiteral("Tun cannot work with Throne's core: %1").arg(caps->detail);
-        return QStringLiteral("Tun needs privileges that Throne does not have (%1); grant them in Throne once").arg(caps->detail);
+        if (caps->privileged) return QStringLiteral("Tun cannot work with Poros's core: %1").arg(caps->detail);
+        return QStringLiteral("Tun needs privileges that Poros does not have (%1); grant them in Poros once").arg(caps->detail);
     }
 
     Response busyConnection() {
@@ -146,14 +146,14 @@ namespace RemoteApi::RouterImpl {
             return Response::Error(status, QString::fromLatin1(code), error.isEmpty() ? QString::fromLatin1(fallback) : error);
         };
         switch (outcome) {
-            case Engine::StartOutcome::Exiting: return make(503, "exiting", "Throne is shutting down");
+            case Engine::StartOutcome::Exiting: return make(503, "exiting", "Poros is shutting down");
             case Engine::StartOutcome::NotFound: return make(404, "not_found", "The profile does not exist");
             case Engine::StartOutcome::GroupUnavailable: return make(409, "group_archived", "The profile's group is archived");
             case Engine::StartOutcome::KillSwitchInactive:
-                return make(409, "kill_switch_inactive", "The kill switch is on but not working, so Throne does not start profiles");
+                return make(409, "kill_switch_inactive", "The kill switch is on but not working, so Poros does not start profiles");
             case Engine::StartOutcome::Superseded: return make(409, "superseded", "A newer start replaced this one before it ran");
-            case Engine::StartOutcome::CoreUnavailable: return make(503, "core_unavailable", "Throne's core process is not reachable");
-            case Engine::StartOutcome::BuildFailed: return make(422, "build_failed", "Throne could not build the profile's configuration");
+            case Engine::StartOutcome::CoreUnavailable: return make(503, "core_unavailable", "Poros's core process is not reachable");
+            case Engine::StartOutcome::BuildFailed: return make(422, "build_failed", "Poros could not build the profile's configuration");
             case Engine::StartOutcome::Busy: return make(409, "busy", "Another profile is starting or stopping");
             case Engine::StartOutcome::ExtraCoreBlocked:
                 return make(409, "kill_switch_blocked", "The kill switch could not allow the profile's extra core");
@@ -246,7 +246,7 @@ namespace RemoteApi {
         const auto &settings = Configs::dataManager->settingsRepo;
         // A restore from the window sets noSave and restarts afterwards; until then the repos still cache what it replaced.
         if (restarting_ || (settings->noSave && !settings->prepare_exit)) {
-            respond(Response::Error(503, QStringLiteral("restarting"), QStringLiteral("Throne is restarting")));
+            respond(Response::Error(503, QStringLiteral("restarting"), QStringLiteral("Poros is restarting")));
             return;
         }
         bool knownPath = false;
@@ -262,7 +262,7 @@ namespace RemoteApi {
             if (request.method != QLatin1String("GET")) {
                 MW_show_log(tr("[API] %1 %2 from %3").arg(request.method, request.path, request.peer));
                 if (settings->prepare_exit) {
-                    respond(Response::Error(503, QStringLiteral("exiting"), QStringLiteral("Throne is shutting down")));
+                    respond(Response::Error(503, QStringLiteral("exiting"), QStringLiteral("Poros is shutting down")));
                     return;
                 }
             }
@@ -292,19 +292,19 @@ namespace RemoteApi {
     Response Router::forbidden() {
         if (CurrentOverlay().headless) {
             return Response::Error(403, QStringLiteral("forbidden"),
-                                   QStringLiteral("Management requests are accepted only from this device. Start Throne with "
+                                   QStringLiteral("Management requests are accepted only from this device. Start Poros with "
                                                   "--api-admin-lan (or THRONE_API_ADMIN_LAN=1) to accept them from the local network."));
         }
         return Response::Error(403, QStringLiteral("forbidden"),
                                QStringLiteral("Management requests are accepted only from this device. Allow management from the local "
-                                              "network in Throne's Throne API settings to accept them from the LAN."));
+                                              "network in Poros's Poros API settings to accept them from the LAN."));
     }
 
     Response Router::editing(const QString &what) {
         auto subject = what;
         if (!subject.isEmpty()) subject[0] = subject[0].toUpper();
         return Response::Error(409, QStringLiteral("editing"),
-                               QStringLiteral("%1 is open in an editor in Throne's window; close it and try again").arg(subject));
+                               QStringLiteral("%1 is open in an editor in Poros's window; close it and try again").arg(subject));
     }
 
     Response Router::serviceError(const Engine::ServiceError &error) {
@@ -747,7 +747,7 @@ namespace RemoteApi {
         } else if (select == QStringLiteral("last")) {
             id = engine_->resolveLastProfile();
             if (id < 0) {
-                respond(notFound(QStringLiteral("Throne has no profile to resume")));
+                respond(notFound(QStringLiteral("Poros has no profile to resume")));
                 return;
             }
         } else {
@@ -883,7 +883,7 @@ namespace RemoteApi {
         }
         if (systemProxy.has_value() && *systemProxy && !engine_->systemProxySupported()) {
             respond(Response::Error(409, QStringLiteral("system_proxy_unsupported"),
-                                    QStringLiteral("Headless Throne does not set the system proxy; point applications at its inbound")));
+                                    QStringLiteral("Headless Poros does not set the system proxy; point applications at its inbound")));
             return;
         }
         const auto &settings = Configs::dataManager->settingsRepo;
@@ -899,7 +899,7 @@ namespace RemoteApi {
         }
         if (proxyChanges && *systemProxy && settings->disable_mixed_inbound) {
             respond(Response::Error(409, QStringLiteral("mixed_inbound_disabled"),
-                                    QStringLiteral("The system proxy needs Throne's mixed inbound, which is turned off")));
+                                    QStringLiteral("The system proxy needs Poros's mixed inbound, which is turned off")));
             return;
         }
         if (tunChanges && *tun) Configs::RefreshStaleTunDevice(RouterImpl::kTunCapsRefreshMs);
@@ -1001,7 +1001,7 @@ namespace RemoteApi {
         }
         auto *repo = Configs::dataManager->trafficStatsRepo.get();
         if (Configs::dataManager->settingsRepo->disable_traffic_aggregation || repo == nullptr || repo->Disabled()) {
-            respond(Response::Error(409, QStringLiteral("stats_disabled"), QStringLiteral("Traffic statistics are turned off in Throne")));
+            respond(Response::Error(409, QStringLiteral("stats_disabled"), QStringLiteral("Traffic statistics are turned off in Poros")));
             return;
         }
         // The current minute stays in memory until flushed.

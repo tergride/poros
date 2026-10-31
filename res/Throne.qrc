@@ -24,6 +24,7 @@
     </qresource>
     <qresource prefix="/Throne">
         <file alias="Throne.png">public/Throne.png</file>
+        <file alias="Poros.png">public/Throne.png</file>
         <file alias="Off.png">public/Off.png</file>
         <file alias="Connecting.png">public/Connecting.png</file>
         <file alias="Proxy.png">public/Proxy.png</file>

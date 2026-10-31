@@ -546,19 +546,23 @@ static bool launchArgTakesValue(const QString &arg) {
 
 static QString g_pendingDeeplink;
 
+bool IsAppDeeplink(const QString &text) {
+    return text.startsWith("poros://", Qt::CaseInsensitive) || text.startsWith("throne://", Qt::CaseInsensitive);
+}
+
 QString Deeplink_ExtractFromArgs(const QStringList &args) {
     for (int i = 0; i < args.size(); i++) {
         if (launchArgTakesValue(args[i])) {
             i++;
             continue;
         }
-        if (args[i].startsWith("throne://")) return args[i];
+        if (IsAppDeeplink(args[i])) return args[i];
     }
     return {};
 }
 
 void Deeplink_Submit(const QString &url) {
-    if (url.isEmpty() || !url.startsWith("throne://")) return;
+    if (url.isEmpty() || !IsAppDeeplink(url)) return;
     if (MW_handle_deeplink) {
         MW_handle_deeplink(url);
     } else {
@@ -587,7 +591,7 @@ QStringList LaunchFiles_ExtractFromArgs(const QStringList &args, const QDir &lau
             if (launchArgTakesValue(arg)) i++;
             continue;
         }
-        if (arg.startsWith("throne://")) continue;
+        if (IsAppDeeplink(arg)) continue;
 
         // A relative path resolves against the directory we were launched from, which main() abandons early.
         auto path = arg.startsWith("file://") ? QUrl(arg).toLocalFile() : arg;

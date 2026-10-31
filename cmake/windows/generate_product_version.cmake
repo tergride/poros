@@ -103,9 +103,9 @@ function(generate_product_version outfiles)
         ${_VersionResourceFile}
         COPYONLY)
     # VersionResource.rc only includes VersionInfo.h; without this, incremental
-    # builds (and compiler caches) may keep a stale .res when the version changes.
+    # builds (and compiler caches) may keep a stale .res when the version or icon changes.
     set_source_files_properties(${_VersionResourceFile} PROPERTIES
-        OBJECT_DEPENDS "${_VersionInfoFile}")
+        OBJECT_DEPENDS "${_VersionInfoFile};${PRODUCT_ICON}")
     list(APPEND ${outfiles} ${_VersionInfoFile} ${_VersionResourceFile})
     set (${outfiles} ${${outfiles}} PARENT_SCOPE)
 endfunction()

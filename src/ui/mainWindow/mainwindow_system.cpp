@@ -168,7 +168,7 @@ void MainWindow::on_menu_exit_triggered() {
         if (!launched) {
             exitController()->setExitInProgress(false);
             exit_reason = ExitReason::None;
-            MW_show_log(tr("Restart as administrator was cancelled, Throne keeps running"));
+            MW_show_log(tr("Restart as administrator was cancelled, Poros keeps running"));
             return;
         }
         relaunched = true;
@@ -231,7 +231,7 @@ void MainWindow::show_startstop_menu() {
 
 void MainWindow::confirm_disable_kill_switch() {
     auto *box = new QMessageBox(QMessageBox::Warning, tr("Disable kill switch"),
-                                tr("Turn off the kill switch? Traffic that does not go through Throne will no longer be blocked."),
+                                tr("Turn off the kill switch? Traffic that does not go through Poros will no longer be blocked."),
                                 QMessageBox::NoButton, this);
     box->setAttribute(Qt::WA_DeleteOnClose);
     auto *disable = box->addButton(tr("Disable Kill Switch"), QMessageBox::DestructiveRole);
@@ -463,7 +463,7 @@ void MainWindow::CheckUpdate() {
         QMessageBox box(QMessageBox::Question, QObject::tr("Update") + note_pre_release,
                         QObject::tr("Update found: %1\nRelease note:\n%2").arg(assets_name, release_note));
         if (headlessSameInstall) {
-            box.setInformativeText(tr("Update is unavailable while a background Throne (PID %1) runs from this installation; stop it first.")
+            box.setInformativeText(tr("Update is unavailable while a background Poros (PID %1) runs from this installation; stop it first.")
                                        .arg(headless->pid));
         }
         QAbstractButton *btn1 = nullptr;
@@ -483,7 +483,7 @@ void MainWindow::CheckUpdate() {
                 }
                 QString errors;
                 if (!release_download_url.isEmpty()) {
-                    auto res = NetworkRequestHelper::DownloadAsset(release_download_url, "Throne.zip", false, true);
+                    auto res = NetworkRequestHelper::DownloadAsset(release_download_url, "Poros.zip", false, true);
                     if (!res.isEmpty()) {
                         errors += res;
                     }
