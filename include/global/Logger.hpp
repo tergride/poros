@@ -69,10 +69,8 @@ namespace Logging {
 
     QString CrashDir();
 
-#ifdef Q_OS_WIN
     // Filled during Init() so an exception filter never has to build a path.
     const wchar_t *CrashDirNative();
-#endif
 } // namespace Logging
 
 #define LOG_TRACE(msg) ::Logging::Write(::Logging::Level::Trace, (msg), __FILE__, __LINE__)

@@ -15,7 +15,7 @@ namespace Configs_network {
     };
 
     struct ExitLookupProvider {
-        // Persisted in exit_lookup_provider and shared with the Android app: never rename one.
+        // Persisted in exit_lookup_provider: never rename one.
         QString id;
         QString label;
         QString url;

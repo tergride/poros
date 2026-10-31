@@ -32,11 +32,7 @@
 #include <utility>
 
 namespace {
-#ifdef Q_OS_WIN
     constexpr bool kConnectionManagerWindows = true;
-#else
-    constexpr bool kConnectionManagerWindows = false;
-#endif
 
 } // namespace
 
@@ -285,7 +281,6 @@ namespace Engine {
             mu_starting.unlock();
             return;
         }
-
 
         // Wintun spends 15 s on a leftover adapter before failing; a restart from the prompt inside that window strands a new one.
         const int slowStartMs = kConnectionManagerWindows && !result->tunIPv4CIDR.isEmpty() ? 20000 : 10000;

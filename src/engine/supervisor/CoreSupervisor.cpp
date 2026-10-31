@@ -26,20 +26,9 @@
 #include <QUuid>
 
 // After every other header, so the protobuf and Qt headers above never see its macros.
-#ifdef Q_OS_WIN
 #include <windows.h>
 // <windows.h> defines SetPort, which under unity builds clobbers Configs::outbound::SetPort.
 #undef SetPort
-#else
-#ifdef Q_OS_LINUX
-#include <sys/socket.h>
-#endif
-#ifdef Q_OS_MACOS
-#include <sys/socket.h>
-#include <sys/un.h>
-#endif
-#include <unistd.h>
-#endif
 
 namespace {
     // Must match egressForwardingMarker in core/internal/rpc/forwarding_windows.go.
@@ -57,27 +46,6 @@ namespace {
                                 "To fix this, share the hotspot from the poros-net adapter instead of \"%1\" (Settings > Mobile hotspot > Share my internet connection from), or turn the hotspot off while using Tun mode.")
                         .arg(adapter)});
     }
-
-#ifdef Q_OS_MACOS
-    // A dead core cannot put back the system DNS it pointed at its lo0 listener; the setuid core replays its own record.
-    void coreSupervisorRestoreSystemDns(const QString &corePath) {
-        auto *restore = new QProcess;
-        restore->setProcessChannelMode(QProcess::MergedChannels);
-        QObject::connect(restore, &QProcess::finished, restore, [restore](int exitCode, QProcess::ExitStatus exitStatus) {
-            const auto output = QString::fromUtf8(restore->readAll()).trimmed();
-            if (!output.isEmpty()) MW_show_log(output);
-            if (exitStatus != QProcess::NormalExit || exitCode != 0)
-                Logging::Write(Logging::Level::Warn, QString("system DNS restore exited: code=%1").arg(exitCode));
-            restore->deleteLater();
-        });
-        QObject::connect(restore, &QProcess::errorOccurred, restore, [restore](QProcess::ProcessError error) {
-            if (error != QProcess::FailedToStart) return;
-            Logging::Write(Logging::Level::Warn, "system DNS restore failed to start: " + restore->errorString());
-            restore->deleteLater();
-        });
-        restore->start(corePath, {QStringLiteral("--restore-dns")});
-    }
-#endif
 
     // Main thread: the full reply onPrivilegeProbed is handling (its signature carries only the privileged bit).
     std::optional<API::PrivilegeInfo> coreSupervisorProbeReply;
@@ -342,14 +310,7 @@ namespace Engine {
     }
 
     bool CoreSupervisor::runningWithoutGuardIdentity() const {
-#ifdef Q_OS_WIN
         return false;
-#else
-        // A restart for the guard could never give it the identity here.
-        if (Sys::KillSwitch::instance()->identityUnsupported()) return false;
-        QMutexLocker lock(&m_processMutex);
-        return m_process != nullptr && Configs::dataManager->settingsRepo->core_running && !m_process->guard_identity;
-#endif
     }
 
     // Caller must hold m_processMutex (reads m_process lock-free by design).
@@ -358,31 +319,12 @@ namespace Engine {
         qint64 expectedPid = m_process->processId();
         if (expectedPid <= 0) return false;
 
-#if defined(Q_OS_LINUX)
-        struct ucred cred = {};
-        socklen_t credLen = sizeof(cred);
-        if (getsockopt(static_cast<int>(socket->socketDescriptor()), SOL_SOCKET, SO_PEERCRED, &cred, &credLen) == 0) {
-            return static_cast<qint64>(cred.pid) == expectedPid;
-        }
-        return false;
-#elif defined(Q_OS_MACOS)
-        pid_t pid = 0;
-        socklen_t pidLen = sizeof(pid);
-        if (getsockopt(static_cast<int>(socket->socketDescriptor()), SOL_LOCAL, LOCAL_PEERPID, &pid, &pidLen) == 0) {
-            return static_cast<qint64>(pid) == expectedPid;
-        }
-        return false;
-#elif defined(Q_OS_WIN)
         ULONG pid = 0;
         HANDLE hPipe = reinterpret_cast<HANDLE>(static_cast<qintptr>(socket->socketDescriptor()));
         if (GetNamedPipeClientProcessId(hPipe, &pid)) {
             return static_cast<qint64>(pid) == expectedPid;
         }
         return false;
-#else
-        Q_UNUSED(socket)
-        return true;
-#endif
     }
 
     void CoreSupervisor::onNewConnection() {
@@ -417,14 +359,9 @@ namespace Engine {
         }
         m_connectTimer->stop();
         setState(CoreState::Connected);
-#ifdef Q_OS_WIN
         // Local and quick, and it writes windows_set_admin, so it stays here on the main thread.
         LOG_INFO(QString("elevated: %1").arg(Configs::IsAdmin(true) ? "yes" : "no"));
         emitCoreStarted();
-#else
-        m_probing = true;
-        startPrivilegeProbe(m_acceptedGen);
-#endif
     }
 
     void CoreSupervisor::startPrivilegeProbe(quint64 gen, int attempt) {
@@ -562,9 +499,6 @@ namespace Engine {
                 MW_show_log("[Fatal] " + QObject::tr("Core exited, cleaning up..."));
 
                 Lifecycle::StopRunningProfile(true, true, false);
-#ifdef Q_OS_MACOS
-                coreSupervisorRestoreSystemDns(process->program);
-#endif
             }
             // Unix reports a failed exec as NotRunning before errorOccurred(FailedToStart), which posts it with errorString().
             if (!failedToStart && !reachedRunning) return;

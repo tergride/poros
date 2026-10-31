@@ -12,17 +12,12 @@
 #include <QScopeGuard>
 #include <QThreadPool>
 
-
 #include "include/database/GroupsRepo.h"
 #include "include/database/ProfilesRepo.h"
 #include "include/database/RoutesRepo.h"
 
-
 #include "include/database/entities/Profile.h"
 #include "include/global/VpnCredentialOverride.hpp"
-#ifdef Q_OS_LINUX
-#include "include/sys/linux/systemChecks.h"
-#endif
 
 #include <algorithm>
 #include <optional>
@@ -58,13 +53,11 @@ namespace Configs {
             constexpr auto dnsEchPrefix = "dns-ech";
 
             constexpr auto dnsIn = "dns-in";
-            constexpr auto dnsSystem = "dns-system";
             constexpr auto mixedIn = "mixed-in";
             constexpr auto tunIn = "tun-in";
             constexpr auto xrayFullConfigIn = "throne-bridge";
 
             constexpr auto adblockRuleSet = "throne-adblocksingbox";
-            constexpr auto privateRangesRuleSet = "throne-private-ranges";
 
             constexpr auto mainChainPrefix = "config";
             constexpr auto routeChainPrefix = "route";
@@ -147,7 +140,6 @@ namespace Configs {
             QJsonArray directIPSets;
             QJsonArray directIPCIDRs;
             QStringList bypassedPrivateRanges;
-            bool privateRangesAsRuleSet = false;
         };
 
         struct RoutingDeps {
@@ -192,7 +184,6 @@ namespace Configs {
             RouteDns dns;
             bool routeOwnsDns = false;
             BuildPrerequisites prerequisites;
-            osType os = getOS();
 
             QString error;
             QJsonArray outbounds;
@@ -220,18 +211,8 @@ namespace Configs {
             return {};
         }
 
-        // The core has no bridge backend for Windows on ARM, and a failed one aborts the config.
         bool l3BridgeEnabled(const BuildContext &ctx) {
-#if defined(Q_OS_WIN) && defined(Q_PROCESSOR_ARM)
-            return false;
-#else
             return ctx.tunEnabled && !ctx.forTest && dataManager->settingsRepo->vpn_l3_bridge;
-#endif
-        }
-
-        // The core points macOS's system resolver at this lo0 alias, and drops the inbound when it cannot take the address.
-        bool systemDnsInbound(const BuildContext &ctx) {
-            return ctx.os == Darwin && ctx.tunEnabled && !ctx.forTest;
         }
 
         // preferred_by matches only during pre-match, leaving the copy inert at L4.
@@ -298,86 +279,12 @@ namespace Configs {
                                         : a.first.isInSubnet(b.first, b.second);
         }
 
-        struct RawPrefix {
-            QByteArray addr;
-            int bits = -1;
-        };
-
-        RawPrefix parsePrefix(const QString &cidr) {
-            const auto parsed = QHostAddress::parseSubnet(cidr);
-            if (parsed.second < 0) return {};
-            RawPrefix prefix;
-            prefix.bits = parsed.second;
-            if (parsed.first.protocol() == QAbstractSocket::IPv4Protocol) {
-                const auto v4 = parsed.first.toIPv4Address();
-                prefix.addr.resize(4);
-                for (int i = 0; i < 4; ++i) prefix.addr[i] = char((v4 >> (24 - 8 * i)) & 0xFF);
-            } else if (parsed.first.protocol() == QAbstractSocket::IPv6Protocol) {
-                const auto v6 = parsed.first.toIPv6Address();
-                prefix.addr = QByteArray(reinterpret_cast<const char *>(v6.c), 16);
-            } else {
-                return {};
-            }
-            return prefix;
-        }
-
-        QString prefixToString(const RawPrefix &prefix) {
-            QHostAddress addr;
-            if (prefix.addr.size() == 4) {
-                quint32 v4 = 0;
-                for (int i = 0; i < 4; ++i) v4 = (v4 << 8) | quint8(prefix.addr[i]);
-                addr = QHostAddress(v4);
-            } else {
-                Q_IPV6ADDR v6;
-                for (int i = 0; i < 16; ++i) v6[i] = quint8(prefix.addr[i]);
-                addr = QHostAddress(v6);
-            }
-            return addr.toString() + "/" + QString::number(prefix.bits);
-        }
-
-        bool prefixContains(const RawPrefix &outer, const RawPrefix &inner) {
-            if (outer.bits < 0 || inner.bits < 0) return false;
-            if (outer.addr.size() != inner.addr.size() || outer.bits > inner.bits) return false;
-            const int wholeBytes = outer.bits / 8;
-            if (outer.addr.left(wholeBytes) != inner.addr.left(wholeBytes)) return false;
-            const int restBits = outer.bits % 8;
-            if (restBits == 0) return true;
-            const auto mask = quint8(0xFF << (8 - restBits));
-            return (quint8(outer.addr[wholeBytes]) & mask) == (quint8(inner.addr[wholeBytes]) & mask);
-        }
-
-        // sing-tun offers no way to re-add a subtracted route_exclude_address, so partly-routed ranges are pre-split.
-        QStringList subtractPrefix(const QStringList &ranges, const QString &hole) {
-            const auto cut = parsePrefix(hole);
-            if (cut.bits < 0) return ranges;
-            QStringList out;
-            for (const auto &entry : ranges) {
-                const auto range = parsePrefix(entry);
-                if (prefixContains(cut, range)) continue;
-                if (!prefixContains(range, cut)) {
-                    out << entry;
-                    continue;
-                }
-                for (int bits = range.bits + 1; bits <= cut.bits; ++bits) {
-                    RawPrefix sibling{cut.addr, bits};
-                    const int flipped = bits - 1;
-                    sibling.addr[flipped / 8] = char(quint8(sibling.addr[flipped / 8]) ^ quint8(0x80 >> (flipped % 8)));
-                    for (int i = bits; i < int(sibling.addr.size()) * 8; ++i)
-                        sibling.addr[i / 8] = char(quint8(sibling.addr[i / 8]) & ~quint8(0x80 >> (i % 8)));
-                    out << prefixToString(sibling);
-                }
-            }
-            return out;
-        }
-
         // ------------------------------------------------------- json fragments
 
         // sing-box matches process_path against the OS-native form.
         QJsonArray extraCoreProcessPaths(const QString &corePath) {
             auto path = corePath;
-#ifdef Q_OS_WIN
             path.replace("/", "\\");
-#endif
             return QJsonArray{path};
         }
 
@@ -443,9 +350,6 @@ namespace Configs {
 
         QString genTunName() {
             auto tun_name = "poros-net";
-#ifdef Q_OS_MACOS
-            tun_name = "";
-#endif
             return tun_name;
         }
 
@@ -692,10 +596,6 @@ namespace Configs {
         void calculatePrerequisites(BuildContext &ctx) {
             const auto &settings = *dataManager->settingsRepo;
             ctx.tunEnabled = settings.spmode_vpn;
-            ctx.os = getOS();
-#ifdef Q_OS_LINUX
-            ctx.isResolvedUsed = isSystemdResolvedDefaultResolver();
-#endif
             ctx.dns = RouteDns::Current(&ctx.routeOwnsDns);
             auto &preReqs = ctx.prerequisites;
 
@@ -887,9 +787,6 @@ namespace Configs {
                         [&range](const QString &cidr) { return prefixesOverlap(range, cidr); });
                     if (!hijacked) preReqs.tun.bypassedPrivateRanges << range;
                 }
-                // auto_redirect hijacks DNS after static excludes but before address-set ones (#1895); a verbatim raw route cannot host the set.
-                preReqs.tun.privateRangesAsRuleSet = ctx.tunEnabled && ctx.os == Linux && settings.vpn_auto_redirect &&
-                    !preReqs.tun.bypassedPrivateRanges.isEmpty() && !(routeChain->isRaw && routeChain->preventModifications);
             }
         }
 
@@ -1266,7 +1163,6 @@ namespace Configs {
                 inboundObj["auto_route"] = true;
                 inboundObj["mtu"] = settings.vpn_mtu;
                 inboundObj["strict_route"] = settings.vpn_strict_route;
-                if (ctx.os == Linux && settings.vpn_auto_redirect) inboundObj["auto_redirect"] = true;
                 const auto tunIPv4CIDR = settings.vpn_tun_ipv4_cidr;
                 const auto tunIPv6CIDR = settings.vpn_tun_ipv6_cidr;
                 ctx.result->tunIPv4CIDR = tunIPv4CIDR;
@@ -1278,10 +1174,9 @@ namespace Configs {
                 QStringList excludedRanges;
                 if (!settings.disable_private_range_bypass) {
                     routeExcludeAddrs = {"127.0.0.0/8", "255.255.255.255/32"};
-                    if (!tun.privateRangesAsRuleSet) excludedRanges = tun.bypassedPrivateRanges;
+                    excludedRanges = tun.bypassedPrivateRanges;
                 }
                 QJsonArray routeExcludeSets;
-                if (tun.privateRangesAsRuleSet) routeExcludeSets << tags::privateRangesRuleSet;
                 if (settings.enable_tun_routing)
                 {
                     // The route rule drops a bare IPv6's zone (Prefixable), so the exclusion must too; anything unparsable fails that rule anyway.
@@ -1293,14 +1188,7 @@ namespace Configs {
                     for (auto item: tun.directIPSets) routeExcludeSets << item;
                 }
 
-                // On macOS a bypass covering the Tun subnet black-holes the system DNS (#1738).
-                if (ctx.os == Darwin) {
-                    excludedRanges = subtractPrefix(excludedRanges, tunIPv4CIDR);
-                    if (settings.vpn_ipv6) excludedRanges = subtractPrefix(excludedRanges, tunIPv6CIDR);
-                }
                 for (const auto &range : excludedRanges) routeExcludeAddrs << range;
-                // An IPv4-only Tun's strict route rejects every IPv6 flow, [::1] included; the static exclusion is checked first.
-                if (ctx.os == Linux && settings.vpn_strict_route && !settings.vpn_ipv6) routeExcludeAddrs << "::1/128";
                 inboundObj["route_exclude_address"] = routeExcludeAddrs;
                 if (!routeExcludeSets.isEmpty()) inboundObj["route_exclude_address_set"] = routeExcludeSets;
                 inbounds += inboundObj;
@@ -1312,15 +1200,6 @@ namespace Configs {
                 {"listen", "127.0.0.1"},
                 {"listen_port", settings.core_dns_in_port}
             });
-            if (systemDnsInbound(ctx)) {
-                inbounds.prepend(QJsonObject{
-                    {"tag", tags::dnsSystem},
-                    {"type", "direct"},
-                    {"listen", "127.0.0.53"},
-                    {"listen_port", 53},
-                    {"reuse_addr", true},
-                });
-            }
 
             QJSONARRAY_ADD(inbounds, QString2QJsonObject(settings.custom_inbound)["inbounds"].toArray())
             ctx.result->coreConfig["inbounds"] = inbounds;
@@ -2117,7 +1996,6 @@ namespace Configs {
             });
 
             if (ctx.l3Bridge) {
-                // The Linux kill switch recognises the bridge tun by this name prefix.
                 ctx.outbounds.append(QJsonObject{
                 {"type", "bridge"},
                 {"tag", tags::l3Direct},
@@ -2159,13 +2037,6 @@ namespace Configs {
                 ruleSetArray += remoteRuleSet(tags::adblockRuleSet, get_jsdelivr_link("https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblocksingbox.srs"));
             }
 
-            if (const auto &tun = ctx.prerequisites.tun; tun.privateRangesAsRuleSet) {
-                ruleSetArray += QJsonObject{
-                            {"type", "inline"},
-                            {"tag", tags::privateRangesRuleSet},
-                            {"rules", QJsonArray{QJsonObject{{"ip_cidr", QJsonArray::fromStringList(tun.bypassedPrivateRanges)}}}},
-                        };
-            }
             return ruleSetArray;
         }
 
@@ -2210,15 +2081,7 @@ namespace Configs {
                 QJsonObject resolve;
                 QJsonObject dnsHijack;
                 QJsonObject dnsInReject;
-                QJsonObject dnsSystem;
             } injected;
-
-            if (systemDnsInbound(ctx)) {
-                injected.dnsSystem = QJsonObject{
-                    {"inbound", tags::dnsSystem},
-                    {"action", "hijack-dns"},
-                };
-            }
 
             if (!routeChain->isRaw) {
                 injected.sniff = QJsonObject{{"action", "sniff"}};
@@ -2328,7 +2191,6 @@ namespace Configs {
             for (const auto& r : bridgeRules) routeRules.append(r);
             if (!extraCoreDirect.isEmpty()) routeRules.append(extraCoreDirect);
             auto appendIfSet = [&routeRules](const QJsonObject& r) { if (!r.isEmpty()) routeRules.append(r); };
-            appendIfSet(injected.dnsSystem);
             appendIfSet(injected.sniff);
             appendIfSet(injected.resolve);
             appendIfSet(injected.dnsHijack);
@@ -2981,9 +2843,6 @@ namespace Configs {
         const auto clearTestBuildFlag = qScopeGuard([] { SetBuildingTestConfig(false); });
         BuildContext ctx;
         ctx.forTest = true;
-#ifdef Q_OS_LINUX
-        ctx.isResolvedUsed = isSystemdResolvedDefaultResolver();
-#endif
         ctx.dns = RouteDns::Current(&ctx.routeOwnsDns);
 
         for (const auto &item : profiles) {

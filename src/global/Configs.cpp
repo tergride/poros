@@ -15,17 +15,7 @@
 #include "include/database/GroupsRepo.h"
 #include "include/database/RoutesRepo.h"
 
-
-#ifdef Q_OS_WIN
 #include "include/sys/windows/guihelper.h"
-#else
-#ifdef Q_OS_LINUX
-#include <include/sys/linux/LinuxCap.h>
-#endif
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
 
 #include "include/configs/PresetCatalog.h"
 
@@ -53,43 +43,20 @@ namespace Configs {
     }
 
     QString FindCoreRealPath() {
-#ifdef NKR_CORE_IN_PATH
-        // Packaged installs may launch the core through a privilege wrapper on PATH (NixOS security wrappers).
-        const auto wrapped = QStandardPaths::findExecutable("PorosCore");
-        if (!wrapped.isEmpty()) return wrapped;
-#endif
         auto fn = QCoreApplication::applicationDirPath() + "/PorosCore";
-#ifdef Q_OS_WIN
         fn += ".exe";
-#endif
         auto fi = QFileInfo(fn);
         QString path;
         if (fi.isSymLink()) path =  fi.symLinkTarget();
         path = fn;
-#ifdef Q_OS_WIN
         path.replace("/", "\\");
-#endif
         return path;
     }
 
     short isAdminCache = -1;
 
     bool isSetuidSet(const std::string& path) {
-#ifdef Q_OS_MACOS
-        struct stat fileInfo;
-
-        if (stat(path.c_str(), &fileInfo) != 0) {
-            return false;
-        }
-
-        if (fileInfo.st_mode & S_ISUID) {
-            return true;
-        } else {
-            return false;
-        }
-#else
         return false;
-#endif
     }
 
     // IsAdmin 主要判断：有无权限启动 Tun
@@ -97,30 +64,16 @@ namespace Configs {
         if (isAdminCache >= 0 && !forceRenew) return isAdminCache;
 
         bool admin = false;
-#ifdef Q_OS_WIN
         admin = Windows_IsInAdmin();
         Configs::dataManager->settingsRepo->windows_set_admin = admin;
-#else
-        // Unknown until the core answers; caching that would pin "not elevated" for the session.
-        if (API::defaultClient == nullptr || !API::defaultClient->IsConnected()) return false;
-        bool ok;
-        const auto info = API::defaultClient->Privileges(&ok);
-        if (!ok) return false;
-        admin = info.privileged;
-        SetKnownCapabilities(info);
-#endif
         isAdminCache = admin;
         return admin;
     }
 
     std::optional<bool> KnownAdmin() {
         if (isAdminCache >= 0) return isAdminCache != 0;
-#ifdef Q_OS_WIN
         // Local and cheap; unlike IsAdmin it leaves windows_set_admin alone.
         return Windows_IsInAdmin();
-#else
-        return std::nullopt;
-#endif
     }
 
     void SetKnownAdmin(bool admin) {
@@ -140,19 +93,7 @@ namespace Configs {
     }
 
     void RefreshStaleTunDevice(int timeoutMs) {
-#ifdef Q_OS_WIN
         Q_UNUSED(timeoutMs);
-#else
-        // Only the device can appear later; a running core never gains CAP_NET_ADMIN.
-        const auto caps = KnownCapabilities();
-        if (!caps || caps->tunDevice != false) return;
-        if (API::defaultClient == nullptr || !API::defaultClient->IsConnected()) return;
-        bool ok = false;
-        const auto info = API::defaultClient->Privileges(&ok, timeoutMs);
-        if (!ok) return;
-        SetKnownAdmin(info.privileged);
-        SetKnownCapabilities(info);
-#endif
     }
 
     namespace {

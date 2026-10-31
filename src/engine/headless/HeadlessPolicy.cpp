@@ -42,16 +42,7 @@ namespace Engine {
         // failIdentity already logged "Profiles refused"; the guard still blocks, so "Not active" would be wrong.
         if (killSwitch->failedForIdentity()) return;
         QString hint;
-#if defined(Q_OS_WIN)
         if (killSwitch->failedForPrivileges()) hint = QStringLiteral("run Poros elevated");
-#else
-        if (killSwitch->failedForPrivileges()) hint = QStringLiteral("it needs root (euid 0)");
-#endif
-#ifdef Q_OS_LINUX
-        // The core's guard reports a capabilities-only install as unsupported.
-        if (killSwitch->failureCode() == QStringLiteral("unsupported") && !killSwitch->identityUnsupported())
-            hint = QStringLiteral("a unit that grants capabilities instead of root cannot use it");
-#endif
         MW_show_log(QStringLiteral("[Kill switch] Not active (%1): %2%3")
                         .arg(killSwitch->failureCode(), killSwitch->failureText().simplified(),
                              hint.isEmpty() ? QString() : QStringLiteral(" Hint: %1.").arg(hint)));
@@ -101,14 +92,7 @@ namespace Engine {
     }
 
     PrivilegeDecision HeadlessPolicy::requestCorePrivileges(PrivilegeReason) {
-#if defined(Q_OS_WIN)
         MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run Poros from an elevated prompt."));
-#elif defined(Q_OS_MACOS)
-        MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run Poros as a LaunchDaemon (root) or install a setuid core."));
-#else
-        MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run the unit as root, grant it CAP_NET_ADMIN, "
-                                   "or install a setuid core."));
-#endif
         return PrivilegeDecision::Cancel;
     }
 

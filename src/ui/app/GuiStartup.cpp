@@ -17,41 +17,11 @@
 #include "include/global/Logger.hpp"
 #include "include/global/Notice.hpp"
 
-#ifdef Q_OS_WIN
 #include <3rdparty/WinCommander.hpp>
 #include "include/sys/windows/eventHandler.h"
 #include "include/sys/windows/WinVersion.h"
-#endif
-#ifdef Q_OS_MACOS
-#include <QFileOpenEvent>
-#endif
 
 namespace {
-#ifdef Q_OS_MACOS
-    // macOS reuses the running app and delivers throne:// URLs and opened files as a QFileOpenEvent, never via argv.
-    class MacOpenEventFilter : public QObject {
-    public:
-        using QObject::QObject;
-
-    protected:
-        bool eventFilter(QObject *obj, QEvent *event) override {
-            if (event->type() == QEvent::FileOpen) {
-                const auto openEvent = static_cast<QFileOpenEvent *>(event);
-                const QString url = openEvent->url().toString();
-                if (IsAppDeeplink(url)) {
-                    Deeplink_Submit(url);
-                    return true;
-                }
-                const QString file = openEvent->file().isEmpty() ? openEvent->url().toLocalFile() : openEvent->file();
-                if (!file.isEmpty()) {
-                    LaunchFiles_Submit({file});
-                    return true;
-                }
-            }
-            return QObject::eventFilter(obj, event);
-        }
-    };
-#endif
 
     QTranslator *guiStartupTranslator = nullptr;
 
@@ -82,7 +52,6 @@ namespace {
         }
     }
 
-#ifdef Q_OS_WIN
     // Flags carry over; the deeplink and files go last as absolute paths, since the working directory has moved since launch.
     QStringList ElevatedRelaunchArguments(const QStringList &arguments, const QString &deeplink, const QStringList &files) {
         QStringList out;
@@ -96,24 +65,11 @@ namespace {
         if (!deeplink.isEmpty()) out << deeplink;
         return out + files;
     }
-#endif
 } // namespace
 
 namespace GuiStartup {
-    void InstallMacOpenEventFilter([[maybe_unused]] QApplication &app) {
-#ifdef Q_OS_MACOS
-        // Install before the event loop so launch-by-deeplink FileOpen events are caught.
-        app.installEventFilter(new MacOpenEventFilter(&app));
-#endif
-    }
-
     void LoadEmojiFont() {
-#if !defined(Q_OS_MACOS) && (QT_VERSION >= QT_VERSION_CHECK(6,9,0))
-#ifdef Q_OS_WIN
         int fontId = QFontDatabase::addApplicationFont(WinVersion::IsBuildNumGreaterOrEqual(BuildNumber::Windows_11_22H2) ? ":/font/notoEmoji" : ":/font/Twemoji");
-#else
-        int fontId = QFontDatabase::addApplicationFont(":/font/notoEmoji");
-#endif
         if (fontId >= 0)
         {
             QStringList fontFamilies = QFontDatabase::applicationFontFamilies(fontId);
@@ -122,7 +78,6 @@ namespace GuiStartup {
         {
             qDebug() << "could not load emoji font!";
         }
-#endif
     }
 
     void HandleLaunchLine([[maybe_unused]] QLocalSocket *socket, const QString &line) {
@@ -143,7 +98,6 @@ namespace GuiStartup {
         }
     }
 
-#ifdef Q_OS_WIN
     bool RelaunchElevatedIfNeeded(Engine::InstanceServer &server, const QStringList &arguments, const QString &launchDeeplink,
                                   const QStringList &launchFiles) {
         const auto &settings = Configs::dataManager->settingsRepo;
@@ -171,7 +125,6 @@ namespace GuiStartup {
         }
         return false;
     }
-#endif
 
     void LoadTranslator() {
         QString locale;
@@ -196,18 +149,9 @@ namespace GuiStartup {
     }
 
     void InstallSessionEndHooks([[maybe_unused]] QApplication &app, [[maybe_unused]] void (*onSessionEnd)(int)) {
-#ifdef Q_OS_WIN
         auto eventFilter = new PowerOffTaskkillFilter(onSessionEnd);
         app.installNativeEventFilter(eventFilter);
-#endif
 
-#ifdef Q_OS_MACOS
-        QObject::connect(qApp, &QGuiApplication::commitDataRequest, [onSessionEnd](QSessionManager &manager)
-        {
-            Q_UNUSED(manager);
-            onSessionEnd(0);
-        });
-#endif
     }
 
 } // namespace GuiStartup

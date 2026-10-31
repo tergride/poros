@@ -9,9 +9,7 @@
 #include <QKeySequence>
 #include <atomic>
 
-#ifdef Q_OS_WIN
 #include "include/sys/windows/WinVersion.h"
-#endif
 
 namespace Configs {
     // Loopback/broadcast are deliberately absent: routing them into the tun breaks the sing-box <-> Xray bridges and local DNS.
@@ -68,7 +66,7 @@ namespace Configs {
         QString test_latency_url = "http://cp.cloudflare.com/";
         // Fetched WITHOUT any proxy, so it must be reachable directly; empty falls back to the OS.
         QString direct_test_url = "";
-        // Both keys are shared with the Android app's settings table; the provider is a Configs_network::ExitLookupProviders() id.
+        // The provider is a Configs_network::ExitLookupProviders() id.
         bool exit_country_lookup = true;
         QString exit_lookup_provider = "auto";
         int url_test_timeout_ms = 3000;
@@ -257,13 +255,7 @@ namespace Configs {
         bool fake_dns = false;
         bool fakeip_disable_ipv6 = false;
         bool enable_tun_routing = false;
-#ifdef Q_OS_WIN
         bool vpn_strict_route = WinVersion::IsBuildNumGreaterOrEqual(BuildNumber::Windows_10_1507);
-#else
-        bool vpn_strict_route = false;
-#endif
-        // Linux only; while on, the host cannot act as a network gateway.
-        bool vpn_auto_redirect = true;
         // Only UDP and ICMP reach the bridge: pre-match aborts at the sniff rule for TCP.
         bool vpn_l3_bridge = false;
         int vpn_mtu = 1500;

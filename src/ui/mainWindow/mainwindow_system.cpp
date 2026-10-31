@@ -43,10 +43,8 @@
 #include "include/ui/setting/RouteItem.h"
 #include "include/database/RoutesRepo.h"
 
-#ifdef Q_OS_WIN
 #include "3rdparty/WinCommander.hpp"
 #include "include/sys/windows/WinVersion.h"
-#endif
 
 void MainWindow::on_menu_basic_settings_triggered() {
     showAdvancedSection(AdvancedPage::Settings);
@@ -153,7 +151,6 @@ void MainWindow::on_menu_exit_triggered() {
     }
 
     bool relaunched = false;
-#ifdef Q_OS_WIN
     if (reason == ExitReason::RestartWithTun || reason == ExitReason::RestartElevated) {
         // Asked before the teardown so a declined UAC prompt leaves this instance running; the new one waits for this pid to exit.
         const auto elevatedArguments = arguments + QStringList{QString("-wait_pid=%1").arg(QCoreApplication::applicationPid())};
@@ -166,17 +163,12 @@ void MainWindow::on_menu_exit_triggered() {
         }
         relaunched = true;
     }
-#endif
 
     Engine::host()->shutdown(!unattended);
     if (reason == ExitReason::RunUpdater) {
         QDir::setCurrent(QApplication::applicationDirPath());
-#ifdef Q_OS_WIN
         QFile::copy("./updater.exe", "./updater.old");
         QProcess::startDetached("./updater.old", Engine::ReleaseUpdates::instance()->installArguments(arguments));
-#else
-        QProcess::startDetached("./updater", QStringList{});
-#endif
     } else if (restart && !relaunched) {
         QDir::setCurrent(QApplication::applicationDirPath());
         // Until this process exits it holds the data dir lock and still answers on the instance socket.

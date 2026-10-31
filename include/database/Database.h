@@ -119,7 +119,7 @@ namespace Configs {
 
     private:
 
-        // Explicit overloads avoid ambiguity on Linux (int32_t/int64_t/uint32_t).
+        // Explicit overloads avoid ambiguity between the integer types.
         template<typename T>
         std::enable_if_t<std::is_integral_v<std::decay_t<T>>> bindOne(SQLite::Statement& query, int index, T&& value) {
             query.bind(index, static_cast<int64_t>(value));

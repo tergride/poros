@@ -7,18 +7,9 @@
 #include <QJsonDocument>
 #include <QStringList>
 
-#ifdef Q_OS_WIN
 #include <windows.h>
 // <windows.h> defines SetPort, which under unity builds clobbers Configs::outbound::SetPort.
 #undef SetPort
-#else
-#include <cerrno>
-#include <cstring>
-#include <fcntl.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
 
 namespace Engine {
     namespace {
@@ -47,11 +38,7 @@ namespace Engine {
     }
 
     bool DataDirLock::isHeld() const {
-#ifdef Q_OS_WIN
         return handle != nullptr;
-#else
-        return fd >= 0;
-#endif
     }
 
     DataDirLock::Result DataDirLock::tryAcquire(const QString &configDir, const QString &mode) {
@@ -59,7 +46,6 @@ namespace Engine {
         error.clear();
         const QString path = LockPath(configDir);
         const QByteArray record = OwnerRecord(mode);
-#ifdef Q_OS_WIN
         const QString nativePath = QDir::toNativeSeparators(path);
         // Share-read only: a second owner gets ERROR_SHARING_VIOLATION while ReadOwner can still open it.
         const HANDLE h = CreateFileW(reinterpret_cast<LPCWSTR>(nativePath.utf16()), GENERIC_READ | GENERIC_WRITE,
@@ -75,64 +61,17 @@ namespace Engine {
         if (!SetEndOfFile(h) || !WriteFile(h, record.constData(), static_cast<DWORD>(record.size()), &written, nullptr)) {
             error = QString("could not write the owner record to %1: Windows error %2").arg(nativePath).arg(GetLastError());
         }
-#else
-        const QByteArray nativePath = QFile::encodeName(path);
-        // Whoever owns the data dir could aim the truncate below at another file through a link; O_NONBLOCK keeps a FIFO from hanging.
-        const int f = ::open(nativePath.constData(), O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK, 0600);
-        if (f < 0) {
-            const int code = errno;
-            error = QString("could not open %1: %2")
-                        .arg(path, code == ELOOP ? QStringLiteral("it is a symbolic link") : QString::fromLocal8Bit(std::strerror(code)));
-            return Result::Failed;
-        }
-        struct stat st{};
-        if (::fstat(f, &st) != 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1) {
-            ::close(f);
-            error = QString("could not open %1: it is not a regular file with a single link").arg(path);
-            return Result::Failed;
-        }
-        if (::flock(f, LOCK_EX | LOCK_NB) != 0) {
-            const int code = errno;
-            ::close(f);
-            if (code == EWOULDBLOCK) return Result::Busy;
-            error = QString("could not lock %1: %2").arg(path, QString::fromLocal8Bit(std::strerror(code)));
-            return Result::Failed;
-        }
-        fd = f;
-        if (::ftruncate(f, 0) != 0) {
-            error = QString("could not truncate %1: %2").arg(path, QString::fromLocal8Bit(std::strerror(errno)));
-            return Result::Acquired;
-        }
-        qint64 offset = 0;
-        while (offset < record.size()) {
-            const auto n = ::pwrite(f, record.constData() + offset, static_cast<size_t>(record.size() - offset), static_cast<off_t>(offset));
-            if (n < 0 && errno == EINTR) continue;
-            if (n <= 0) {
-                error = QString("could not write the owner record to %1: %2").arg(path, QString::fromLocal8Bit(std::strerror(errno)));
-                break;
-            }
-            offset += n;
-        }
-#endif
         return Result::Acquired;
     }
 
     void DataDirLock::release() {
-#ifdef Q_OS_WIN
         if (handle == nullptr) return;
         CloseHandle(static_cast<HANDLE>(handle));
         handle = nullptr;
-#else
-        if (fd < 0) return;
-        ::flock(fd, LOCK_UN);
-        ::close(fd);
-        fd = -1;
-#endif
     }
 
     QJsonObject DataDirLock::ReadOwner(const QString &configDir) {
         const QString path = LockPath(configDir);
-#ifdef Q_OS_WIN
         const QString nativePath = QDir::toNativeSeparators(path);
         // FILE_SHARE_WRITE is required: the owner's handle already holds write access.
         const HANDLE h = CreateFileW(reinterpret_cast<LPCWSTR>(nativePath.utf16()), GENERIC_READ,
@@ -145,11 +84,6 @@ namespace Engine {
         if (!ok) return {};
         data.truncate(static_cast<qsizetype>(read));
         return ParseOwnerRecord(data);
-#else
-        QFile file(path);
-        if (!file.open(QIODevice::ReadOnly)) return {};
-        return ParseOwnerRecord(file.read(MAX_OWNER_RECORD));
-#endif
     }
 
     QString DataDirLock::DescribeOwner(const QJsonObject &owner) {

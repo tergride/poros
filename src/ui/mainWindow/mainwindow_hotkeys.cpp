@@ -132,16 +132,6 @@ void MainWindow::loadShortcuts()
         }
     }
 
-#ifdef Q_OS_MACOS
-    // After the loop: setShortcut above replaces the list.
-    auto hideShortcuts = ui->actionHide_window->shortcuts();
-    const QKeySequence hideSeq(Qt::ControlModifier | Qt::Key_W);
-    if (!hideShortcuts.contains(hideSeq)) {
-        hideShortcuts.append(hideSeq);
-        ui->actionHide_window->setShortcuts(hideShortcuts);
-    }
-#endif
-
     RegisterHiddenMenuShortcuts();
 }
 

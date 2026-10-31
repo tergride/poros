@@ -157,7 +157,7 @@ RouteItem::RouteItem(QWidget *parent, const std::shared_ptr<Configs::RouteProfil
     ui->route_name->setText(chain->name);
     ui->rule_preview->setReadOnly(true);
     ui->rule_attr_tabs->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-    // macOS styles prefer no scroll arrows, so many attribute tabs would otherwise widen the dialog.
+    // Many attribute tabs would otherwise widen the dialog.
     ui->rule_attr_tabs->setUsesScrollButtons(true);
     ui->rule_attr_tabs->tabBar()->setExpanding(false);
     ui->rule_attr_tabs->setTabsClosable(true);
@@ -783,7 +783,7 @@ void RouteItem::syncRuleActionCombo() {
     ui->rule_action_combo->blockSignals(true);
     ui->rule_action_combo->clear();
     ui->rule_action_combo->addItems(Configs::RouteRule::get_values_for_field(QStringLiteral("action")));
-    // An action outside the list (imported, or bypass off Linux) stays visible, so it can be changed.
+    // An imported action outside the list stays visible, so it can be changed.
     const QString& action = chain->Rules[currentIndex]->action;
     if (!action.isEmpty() && ui->rule_action_combo->findText(action) < 0) ui->rule_action_combo->addItem(action);
     ui->rule_action_combo->setCurrentText(action);

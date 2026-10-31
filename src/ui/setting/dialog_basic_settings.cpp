@@ -527,16 +527,9 @@ void DialogBasicSettings::bindValidation() {
 
 QList<QWidget *> DialogBasicSettings::UnavailableWidgets(const Ui::DialogBasicSettings *ui) {
     QList<QWidget *> widgets;
-#ifdef Q_OS_MACOS
-    // LaunchServices registers the scheme from the bundle's Info.plist, so there is nothing of ours to add or take back.
-    widgets << ui->url_scheme_install << ui->url_scheme_uninstall;
-#endif
     if (!UrlScheme_IsSupported(Association::ConfigFiles)) {
         widgets << ui->file_assoc_auto_register << ui->file_assoc_status << ui->file_assoc_install << ui->file_assoc_uninstall;
     }
-#ifndef Q_OS_WIN
-    widgets << ui->proxy_scheme_l << ui->proxy_scheme << ui->windows_no_admin;
-#endif
     return widgets;
 }
 

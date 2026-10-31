@@ -32,12 +32,7 @@
 #include <QFontInfo>
 #include <QTextBoundaryFinder>
 
-#ifdef Q_OS_WIN
 #include "include/sys/windows/guihelper.h"
-#endif
-#ifdef Q_OS_MAC
-#include <ApplicationServices/ApplicationServices.h>
-#endif
 
 namespace {
     using UserLogSink = std::function<void(const QString &)>;
@@ -459,12 +454,7 @@ void ActivateWindow(QWidget *w) {
     if (!IsGuiApp()) return;
     w->setWindowState(w->windowState() & ~Qt::WindowMinimized);
     w->setVisible(true);
-#ifdef Q_OS_WIN
     Windows_QWidget_SetForegroundWindow(w);
-#elif defined(Q_OS_MAC)
-    ProcessSerialNumber psn = { 0, kCurrentProcess };
-    TransformProcessType(&psn, kProcessTransformToForegroundApplication);
-#endif
     w->raise();
     w->activateWindow();
 }
@@ -472,10 +462,6 @@ void ActivateWindow(QWidget *w) {
 void HideWindow(QWidget *w) {
     if (!IsGuiApp()) return;
     w->hide();
-#ifdef Q_OS_MAC
-    ProcessSerialNumber psn = { 0, kCurrentProcess };
-    TransformProcessType(&psn, kProcessTransformToUIElementApplication);
-#endif
 }
 
 QStringList LogFontFamilies(const QString &preferred) {

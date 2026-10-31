@@ -16,11 +16,6 @@
 #include <thread>
 #include <unordered_map>
 
-#ifdef Q_OS_UNIX
-#include <cerrno>
-#include <unistd.h>
-#endif
-
 namespace Configs {
     namespace {
         constexpr int DB_ERROR_LOG_FIRST = 3;
@@ -80,16 +75,10 @@ namespace Configs {
         if (!QFileInfo::exists(dbFile)) return false;
         for (const QString& path : {dbFile, dbFile + QStringLiteral("-wal"), dbFile + QStringLiteral("-shm")}) {
             if (!QFileInfo::exists(path)) continue;
-#ifdef Q_OS_UNIX
-            if (::access(QFile::encodeName(path).constData(), R_OK | W_OK) != 0 && (errno == EACCES || errno == EPERM)) return true;
-#else
-#if defined(Q_OS_WIN) && QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
             // Without it Qt reports only the read-only attribute, never the ACL.
             const QNtfsPermissionCheckGuard ntfsCheck;
-#endif
             const QFileInfo info(path);
             if (!info.isReadable() || !info.isWritable()) return true;
-#endif
         }
         return false;
     }

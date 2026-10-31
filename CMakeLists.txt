@@ -8,58 +8,31 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # The toolchain's Qt has no debug libraries, so a debugger gets RelWithDebInfo with the optimizer off.
 option(POROS_DEBUGGER_BUILD "Build for a debugger: no optimization and full source paths, never for shipping" OFF)
-if(MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-    string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-endif()
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
 
 #### No local paths in shipped binaries ####
 # The debugger binds breakpoints by full source path.
-if (MSVC AND NOT POROS_DEBUGGER_BUILD)
+if (NOT POROS_DEBUGGER_BUILD)
     add_compile_options("/d1trimfile:${CMAKE_SOURCE_DIR}/" "/d1trimfile:${CMAKE_BINARY_DIR}/")
     add_link_options(/PDBALTPATH:%_PDB%)
 endif ()
 
 #### Dead code stripping ####
 # link.exe disables /OPT:REF and /OPT:ICF whenever /DEBUG is passed.
-if (MSVC)
-    add_link_options(
-            $<$<NOT:$<CONFIG:Debug>>:/INCREMENTAL:NO>
-            $<$<NOT:$<CONFIG:Debug>>:/OPT:REF>
-            $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>
-    )
-else ()
-    add_compile_options(-ffunction-sections -fdata-sections)
-    if (APPLE)
-        add_link_options(-Wl,-dead_strip)
-    else ()
-        add_link_options(-Wl,--gc-sections)
-    endif ()
-endif ()
+add_link_options(
+        $<$<NOT:$<CONFIG:Debug>>:/INCREMENTAL:NO>
+        $<$<NOT:$<CONFIG:Debug>>:/OPT:REF>
+        $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>
+)
 
-if (UNIX AND NOT APPLE)
-    set(QT_DBUS_COMPONENT DBus)
-    set(QT_DBUS_LIBRARY Qt6::DBus)
-endif ()
-
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg LinguistTools ${QT_DBUS_COMPONENT})
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg LinguistTools)
 
 include("cmake/nkr.cmake")
 
 #### Platform Variables ####
-if (APPLE)
-    include("cmake/macos/macos.cmake")
-elseif (WIN32)
-    include("cmake/windows/windows.cmake")
-else ()
-    include("cmake/linux/linux.cmake")
-endif ()
-
-#### For Dumps ####
-if (NOT MSVC)
-    add_compile_options(-fno-omit-frame-pointer)
-endif()
+include("cmake/windows/windows.cmake")
 
 # Qt drops file/line from QMessageLogContext in non-debug builds without this.
 add_compile_definitions(QT_MESSAGELOGCONTEXT)
@@ -79,25 +52,10 @@ include("cmake/print.cmake")
 
 find_package(Threads)
 
-if (NKR_PACKAGE OR NKR_PACKAGE_MACOS)
-    nkr_add_compile_definitions(NKR_CPP_USE_APPDATA)
-endif ()
-
-# Distro packaging hooks: a core reached through a PATH wrapper, and prefixes the app cannot chmod itself.
-if (NKR_CORE_IN_PATH)
-    nkr_add_compile_definitions(NKR_CORE_IN_PATH)
-endif ()
-if (NKR_ELEVATION_HINT)
-    nkr_add_compile_definitions(NKR_ELEVATION_HINT="${NKR_ELEVATION_HINT}")
-endif ()
-if (NKR_DESKTOP_EXEC)
-    nkr_add_compile_definitions(NKR_DESKTOP_EXEC="${NKR_DESKTOP_EXEC}")
-endif ()
-
 include("cmake/myproto.cmake")
 
 # After simple-protobuf: it builds with /WX, and unoptimized code raises warnings there.
-if (MSVC AND POROS_DEBUGGER_BUILD)
+if (POROS_DEBUGGER_BUILD)
     string(REPLACE "/O2 /Ob1" "/Od /Ob0" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
     string(REPLACE "/O2 /Ob1" "/Od /Ob0" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
 endif ()
@@ -146,8 +104,6 @@ set(PROJECT_SOURCES
         3rdparty/quirc/quirc.c
         3rdparty/quirc/version_db.c
 
-        3rdparty/monocypher/monocypher.c
-        3rdparty/monocypher/monocypher.h
 
         3rdparty/SQLiteCpp/src/Backup.cpp
         3rdparty/SQLiteCpp/src/Column.cpp
@@ -159,19 +115,6 @@ set(PROJECT_SOURCES
         3rdparty/SQLiteCpp/src/Transaction.cpp
 
         src/api/RPC.cpp
-        include/api/remote/Protocol.hpp
-        src/api/remote/Protocol.cpp
-        include/api/remote/Message.hpp
-        src/api/remote/Message.cpp
-        include/api/remote/Server.hpp
-        src/api/remote/Server.cpp
-        src/api/remote/Config.cpp
-        include/api/remote/Overlay.hpp
-        include/api/remote/Router.hpp
-        src/api/remote/Router.cpp
-        src/api/remote/RouterTests.cpp
-        src/api/remote/RouterManage.cpp
-        src/api/remote/RouterBackup.cpp
 
         src/stats/traffic/TrafficLooper.cpp
         include/stats/traffic/TrafficLine.hpp
@@ -205,8 +148,6 @@ set(PROJECT_SOURCES
         include/sys/ProcessMetrics.hpp
         src/sys/ProcessMetrics.cpp
 
-        include/sys/CoreDiagnostics.hpp
-        src/sys/CoreDiagnostics.cpp
 
         include/sys/UrlScheme.hpp
         src/sys/UrlScheme.cpp
@@ -383,9 +324,6 @@ set(PROJECT_SOURCES
         include/ui/profile/edit_snell.h
         src/ui/profile/edit_snell.cpp
         include/ui/profile/edit_snell.ui
-        include/ui/profile/edit_tailscale.h
-        src/ui/profile/edit_tailscale.cpp
-        include/ui/profile/edit_tailscale.ui
         include/ui/profile/edit_trojan.h
         src/ui/profile/edit_trojan.cpp
         include/ui/profile/edit_trojan.ui
@@ -421,9 +359,6 @@ set(PROJECT_SOURCES
         src/ui/profile/edit_custom.cpp
         include/ui/profile/edit_custom.ui
 
-        include/ui/profile/edit_extra_core.h
-        src/ui/profile/edit_extra_core.cpp
-        include/ui/profile/edit_extra_core.ui
 
         include/ui/profile/edit_wireguard.h
         src/ui/profile/edit_wireguard.cpp
@@ -496,17 +431,6 @@ set(PROJECT_SOURCES
         include/ui/utils/ReorderListWidget.h
         src/ui/utils/ReorderListWidget.cpp
 
-        include/scanner/IpListParse.h
-        src/scanner/IpListParse.cpp
-        include/scanner/WarpPresets.h
-        include/scanner/ScanProfiles.h
-        src/scanner/ScanProfiles.cpp
-        include/scanner/IpListUpdater.h
-        src/scanner/IpListUpdater.cpp
-        include/scanner/ScanManager.h
-        src/scanner/ScanManager.cpp
-        include/scanner/ScanWorker.h
-        src/scanner/ScanWorker.cpp
 
         src/ui/stats/dialog_traffic_stats.cpp
         include/ui/stats/dialog_traffic_stats.h
@@ -592,7 +516,6 @@ set(PROJECT_SOURCES
         src/configs/outbounds/shadowsocks.cpp
         src/configs/outbounds/socks.cpp
         src/configs/outbounds/ssh.cpp
-        src/configs/outbounds/tailscale.cpp
         src/configs/outbounds/trojan.cpp
         src/configs/outbounds/tuic.cpp
         src/configs/outbounds/juicity.cpp
@@ -627,7 +550,6 @@ set(PROJECT_SOURCES
         src/stats/autoselector/AutoSelectorMonitor.cpp
         include/ui/stats/dialog_auto_selector.h
         src/ui/stats/dialog_auto_selector.cpp
-        include/configs/outbounds/extracore.h
         include/ui/profile/edit_advanced.h
         src/ui/profile/edit_advanced.cpp
         include/ui/profile/edit_advanced.ui
@@ -650,8 +572,6 @@ set(PROJECT_SOURCES
         include/database/GroupsRepo.h
         include/database/RoutesRepo.h
         include/database/OtpProfilesRepo.h
-        include/database/IpListsRepo.h
-        include/database/IpScansRepo.h
         include/database/SettingsRepo.h
         include/database/TrafficStatsRepo.h
 
@@ -661,8 +581,6 @@ set(PROJECT_SOURCES
         include/database/entities/RouteProfile.h
         include/database/entities/RouteRule.h
         include/database/entities/OtpProfile.h
-        include/database/entities/IpList.h
-        include/database/entities/IpScan.h
         include/database/entities/EndpointSource.h
 
         src/database/entities/Profile.cpp
@@ -670,15 +588,12 @@ set(PROJECT_SOURCES
         src/database/entities/RouteProfile.cpp
         src/database/entities/RouteRule.cpp
         src/database/entities/OtpProfile.cpp
-        src/database/entities/IpScan.cpp
         src/database/entities/EndpointSource.cpp
 
         src/database/ProfilesRepo.cpp
         src/database/GroupsRepo.cpp
         src/database/RoutesRepo.cpp
         src/database/OtpProfilesRepo.cpp
-        src/database/IpListsRepo.cpp
-        src/database/IpScansRepo.cpp
         src/database/TrafficStatsRepo.cpp
 
         include/database/DatabaseManager.h
@@ -694,24 +609,15 @@ set(PROJECT_SOURCES
         src/ui/app/GuiStartup.cpp
 )
 
-if (NOT APPLE AND Qt6_VERSION VERSION_GREATER_EQUAL 6.9.0)
-    list(APPEND PROJECT_SOURCES res/EmojiFont.qrc)
-    if (WIN32)
-        list(APPEND PROJECT_SOURCES res/EmojiFontWin.qrc)
-    endif ()
-    # rcc's default threshold leaves these TTFs uncompressed.
-    set_property(SOURCE res/EmojiFont.qrc res/EmojiFontWin.qrc
-            PROPERTY AUTORCC_OPTIONS "--compress-algo;zlib;--compress;9;--threshold;5")
-endif ()
+list(APPEND PROJECT_SOURCES res/EmojiFont.qrc res/EmojiFontWin.qrc)
+# rcc's default threshold leaves these TTFs uncompressed.
+set_property(SOURCE res/EmojiFont.qrc res/EmojiFontWin.qrc
+        PROPERTY AUTORCC_OPTIONS "--compress-algo;zlib;--compress;9;--threshold;5")
 
 # Portable headless glue (sys layer, no <windows.h>), right before the engine block so it only regroups the trailing batches.
 set(HEADLESS_SYS_SOURCES
         include/sys/ServiceManager.hpp
         src/sys/ServiceManager.cpp
-        include/sys/HostPresence.hpp
-        src/sys/HostPresence.cpp
-        include/sys/HostTun.hpp
-        src/sys/HostTun.cpp
 )
 list(APPEND PROJECT_SOURCES ${HEADLESS_SYS_SOURCES})
 
@@ -753,8 +659,6 @@ set(ENGINE_SOURCES
         src/engine/services/SettingsRegistry.cpp
         include/engine/services/BackupArchive.h
         src/engine/services/BackupArchive.cpp
-        include/engine/services/WebDavBackup.h
-        src/engine/services/WebDavBackup.cpp
         include/engine/services/AssetUpdates.h
         src/engine/services/AssetUpdates.cpp
         include/engine/services/ReleaseUpdates.h
@@ -771,8 +675,6 @@ set(ENGINE_SOURCES
         src/engine/connection/ConnectionModes.cpp
         include/engine/vpn/VpnAuthController.h
         src/engine/vpn/VpnAuthController.cpp
-        include/engine/services/Dashboard.h
-        src/engine/services/Dashboard.cpp
         include/engine/app/InstanceServer.h
         src/engine/app/InstanceServer.cpp
         include/engine/app/ExitController.h
@@ -781,44 +683,11 @@ set(ENGINE_SOURCES
         src/engine/EngineHost.cpp
         include/engine/RuntimeOptions.h
         include/engine/app/ExitCodes.h
-        include/engine/headless/HeadlessCli.h
-        src/engine/headless/HeadlessCli.cpp
-        include/engine/headless/ResumeGuard.h
-        src/engine/headless/ResumeGuard.cpp
-        include/engine/headless/RuntimeStatus.h
-        src/engine/headless/RuntimeStatus.cpp
-        include/engine/headless/HeadlessApi.h
-        src/engine/headless/HeadlessApi.cpp
-        include/engine/headless/HeadlessInstance.h
-        src/engine/headless/HeadlessInstance.cpp
-        include/engine/headless/HeadlessRuntime.h
-        src/engine/headless/HeadlessRuntime.cpp
-        include/engine/headless/SupervisorLink.h
-        src/engine/headless/SupervisorLink.cpp
-        include/engine/headless/Preflight.h
-        src/engine/headless/Preflight.cpp
-        include/engine/headless/HeadlessMain.h
-        src/engine/headless/HeadlessMain.cpp
         # Last: its <windows.h> macros must not reach a later TU of the same MSVC unity batch.
         include/engine/supervisor/CoreSupervisor.h
         src/engine/supervisor/CoreSupervisor.cpp
 )
 list(APPEND PROJECT_SOURCES ${ENGINE_SOURCES})
-# Windows only (cmake/windows/windows.cmake); empty elsewhere.
-list(APPEND PROJECT_SOURCES ${PLATFORM_HEADLESS_SOURCES})
-
-# Parts of upstream that Poros leaves out. They are filtered here instead of cut from the lists above, so merges do not
-# conflict on those lists and whatever upstream adds to these folders stays out too.
-foreach (removed
-        "^(include|src)/api/remote/"
-        "^(include|src)/scanner/"
-        "^(include|src)/engine/headless/(Headless(Api|Cli|Instance|Main|Runtime)|Preflight|ResumeGuard|RuntimeStatus|SupervisorLink)\\."
-        "^(include|src)/engine/services/(WebDavBackup|Dashboard)\\."
-        "^(include|src)/database/(entities/)?Ip(List|Scan)"
-        "^(include|src)/sys/(windows/)?(HostPresence|HostTun|HeadlessSignals|ServiceManager_win|CoreDiagnostics)"
-        "/(edit_tailscale|edit_extra_core|tailscale|extracore)\\.")
-    list(FILTER PROJECT_SOURCES EXCLUDE REGEX "${removed}")
-endforeach ()
 
 # Qt exe
 qt_add_executable(Poros
@@ -847,30 +716,10 @@ set_property(TARGET Poros PROPERTY AUTOUIC ON)
 set_property(TARGET Poros PROPERTY AUTOMOC ON)
 set_property(TARGET Poros PROPERTY AUTORCC ON)
 
-
-# Target Source macOS
-
-set(MACOSX_ICON ${CMAKE_SOURCE_DIR}/res/Throne.icns)
-if (APPLE)
-    target_sources(Poros PRIVATE ${MACOSX_ICON})
-endif ()
-
-set_target_properties(Poros PROPERTIES
-        MACOSX_BUNDLE_ICON_FILE "Throne.icns"
-        RESOURCE ${MACOSX_ICON}
-        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/res/MacOSXBundleInfo.plist
-        MACOSX_BUNDLE_GUI_IDENTIFIER moe.Throne.macosx
-        MACOSX_BUNDLE TRUE
-        WIN32_EXECUTABLE TRUE
-)
-
-if (WIN32 AND MSVC)
-    set_target_properties(Poros PROPERTIES UNITY_BUILD ON)
-endif ()
+set_target_properties(Poros PROPERTIES WIN32_EXECUTABLE TRUE UNITY_BUILD ON)
 set_property(SOURCE "3rdparty/SQLiteCpp/src/sqlite3.c" PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
 # Its <windows.h> macros must not reach the next file of a unity batch.
 set_property(SOURCE "src/ui/shell/WindowFrame.cpp" PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
-set_property(SOURCE "3rdparty/monocypher/monocypher.c" PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
 
 # Verified to link. OMIT_VIRTUALTABLE/VIEW/ANALYZE/CTE/WINDOWFUNC/DECLTYPE all break this build.
 target_compile_definitions(Poros PRIVATE
@@ -896,19 +745,13 @@ target_compile_definitions(Poros PRIVATE
 
 # Target Source Translations
 
-set(TS_FILES
-        res/translations/zh_CN.ts
-        res/translations/fa_IR.ts
-        res/translations/ru_RU.ts
-)
+set(TS_FILES res/translations/ru_RU.ts)
 set(LUPDATE_OPTIONS
         -locations none -no-obsolete
 )
 # lupdate sees only the target's include paths; without the repo root it cannot resolve EngineTr.h, and files the
 # MainWindowTr::tr strings under a MainWindowTr context instead of MainWindow.
 target_include_directories(Poros PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-# Poros ships Russian, and English from the sources.
-list(FILTER TS_FILES INCLUDE REGEX "ru_RU")
 qt_add_lupdate(Poros TS_FILES ${TS_FILES} OPTIONS ${LUPDATE_OPTIONS})
 qt_add_lrelease(Poros TS_FILES ${TS_FILES} QM_FILES_OUTPUT_VARIABLE QM_FILES)
 
@@ -918,7 +761,7 @@ target_sources(Poros PRIVATE ${CMAKE_BINARY_DIR}/translations.qrc)
 # Target Link
 
 target_link_libraries(Poros PRIVATE
-        Qt6::Widgets Qt6::Network Qt6::Svg ${QT_DBUS_LIBRARY}
+        Qt6::Widgets Qt6::Network Qt6::Svg
         Threads::Threads
         ${NKR_EXTERNAL_TARGETS}
         ${PLATFORM_LIBRARIES}
@@ -938,12 +781,12 @@ if (POROS_BUILD_TESTS)
             ${POROS_UNIT_SOURCES}
             tests/poros_unit.cpp
     )
-    set_target_properties(poros_unit PROPERTIES AUTOUIC ON AUTOMOC ON AUTORCC ON WIN32_EXECUTABLE FALSE UNITY_BUILD ${MSVC})
+    set_target_properties(poros_unit PROPERTIES AUTOUIC ON AUTOMOC ON AUTORCC ON WIN32_EXECUTABLE FALSE UNITY_BUILD ON)
     set_property(SOURCE tests/poros_unit.cpp PROPERTY SKIP_UNITY_BUILD_INCLUSION ON)
     target_compile_definitions(poros_unit PRIVATE $<TARGET_PROPERTY:Poros,COMPILE_DEFINITIONS>)
     target_include_directories(poros_unit PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(poros_unit PRIVATE
-            Qt6::Widgets Qt6::Network Qt6::Svg Qt6::Test ${QT_DBUS_LIBRARY}
+            Qt6::Widgets Qt6::Network Qt6::Svg Qt6::Test
             Threads::Threads
             ${NKR_EXTERNAL_TARGETS}
             ${PLATFORM_LIBRARIES}

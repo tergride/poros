@@ -240,9 +240,6 @@ namespace Engine::SettingsRegistryImpl {
             list << autoUpdateKey(QStringLiteral("route_auto_update"), &Settings::route_auto_update, 1440);
             list << boolKey(QStringLiteral("kill_switch"), &Settings::kill_switch, Restart::None, ApplyKillSwitch);
             list << boolKey(QStringLiteral("tun_strict_route"), &Settings::vpn_strict_route, Restart::Tun, ApplyKillSwitch);
-#ifdef Q_OS_LINUX
-            list << boolKey(QStringLiteral("tun_auto_redirect"), &Settings::vpn_auto_redirect, Restart::Tun, ApplyKillSwitch);
-#endif
             list << intKey(QStringLiteral("tun_mtu"), &Settings::vpn_mtu, 1000, 10000, Restart::Tun, ApplyKillSwitch);
             list << boolKey(QStringLiteral("tun_ipv6"), &Settings::vpn_ipv6, Restart::Tun, ApplyKillSwitch);
             auto tunIpv4Cidr = stringKey(QStringLiteral("tun_ipv4_cidr"), &Settings::vpn_tun_ipv4_cidr, Restart::Tun,
@@ -433,7 +430,7 @@ namespace Engine::SettingsRegistry {
             QStringLiteral("core_box_clash_api"), QStringLiteral("core_box_clash_listen_addr"), QStringLiteral("core_box_clash_api_secret"),
             QStringLiteral("core_box_api_port"), QStringLiteral("core_box_api_secret"), QStringLiteral("core_dns_in_port"),
             QStringLiteral("core_box_underlying_dns"),
-            QStringLiteral("vpn_strict_route"), QStringLiteral("vpn_auto_redirect"), QStringLiteral("vpn_l3_bridge"), QStringLiteral("vpn_mtu"),
+            QStringLiteral("vpn_strict_route"), QStringLiteral("vpn_l3_bridge"), QStringLiteral("vpn_mtu"),
             QStringLiteral("vpn_ipv6"), QStringLiteral("vpn_tun_ipv4_cidr"), QStringLiteral("vpn_tun_ipv6_cidr"),
             QStringLiteral("enable_tun_routing"), QStringLiteral("disable_privilege_req"), QStringLiteral("disable_private_range_bypass"),
             QStringLiteral("vpn_private_ranges"),

@@ -16,7 +16,6 @@
 #include <QDateTime>
 #include <3rdparty/WinCommander.hpp>
 
-
 #include "include/global/Configs.hpp"
 #include "include/global/Logger.hpp"
 #include "include/global/Notice.hpp"
@@ -33,27 +32,11 @@
 #include "include/stats/traffic/TrafficStatsManager.hpp"
 #include "include/api/RPC.h"
 
-#ifdef Q_OS_WIN
 #include "include/sys/windows/MiniDump.h"
 #include "include/sys/windows/eventHandler.h"
 #include "include/sys/windows/WinVersion.h"
 #include <qfontdatabase.h>
 #include <windows.h>
-#endif
-#ifdef Q_OS_LINUX
-#include <include/sys/linux/coreDump.h>
-#include <qfontdatabase.h>
-#endif
-#ifdef Q_OS_UNIX
-#include <QSocketNotifier>
-#include <cerrno>
-#include <signal.h>
-#include <unistd.h>
-#include <fcntl.h>
-#endif
-#ifdef Q_OS_MACOS
-#include <QFileOpenEvent>
-#endif
 
 void signal_handler(int signum) {
     Q_UNUSED(signum)
@@ -70,12 +53,7 @@ int main(int argc, char* argv[]) {
     auto launch = Engine::Bootstrap::PreScan(argc, argv);
     if (launch.mode == Engine::Bootstrap::Mode::DumpConfigs) return Engine::RunConfigDump(argc, argv);
 
-#ifdef Q_OS_WIN
     Windows_SetCrashHandler(Windows_WindowStationVisible());
-#endif
-#ifdef Q_OS_LINUX
-    enable_core_dumps();
-#endif
 
     QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     QApplication::setQuitOnLastWindowClosed(false);
@@ -84,7 +62,6 @@ int main(int argc, char* argv[]) {
     SetNoticeSink([](const Notice &n) { ShowPassiveWarning(n.title, n.text); });
     Engine::Bootstrap::SetSoftwareNames();
 
-    GuiStartup::InstallMacOpenEventFilter(a);
     GuiStartup::LoadEmojiFont();
 
     QStringList arguments = QApplication::arguments();
@@ -100,7 +77,6 @@ int main(int argc, char* argv[]) {
 
     const auto dataDir = Engine::Bootstrap::ResolveDataDir(arguments, QDir(QCoreApplication::applicationDirPath()));
     const QDir &wd = dataDir.wd;
-#ifdef Q_OS_WIN
     if (!Engine::Bootstrap::DataDirIsUsable(dataDir)) {
         const QString text = QObject::tr("Poros keeps all its data in its own folder, but cannot write to:\n%1\n\nMove the Poros folder somewhere you can write to.")
                                  .arg(QDir::toNativeSeparators(dataDir.configDir));
@@ -108,7 +84,6 @@ int main(int argc, char* argv[]) {
         if (!arguments.contains("-tray")) QMessageBox::critical(nullptr, "Poros", text);
         return 1;
     }
-#endif
     Configs::SetBasePath(wd.absolutePath());
 
     const auto serverName = Engine::Bootstrap::InstanceServerName(wd);
@@ -142,9 +117,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     // Not before this point: until the data dir is ours there is nothing to tear down, and the default action ends the waits above.
-#ifdef Q_OS_UNIX
-    Engine::Bootstrap::InstallTerminationHandlers(signal_handler);
-#endif
     server.setHandlers(GuiStartup::HandleLaunchLine, [](QLocalSocket *) { MW_dialog_message(MwMessage::Raise, {}); });
     server.installQuitCleanup();
 
@@ -156,9 +128,7 @@ int main(int argc, char* argv[]) {
 
     GuiStartup::SetupIconTheme();
 
-#ifdef Q_OS_WIN
     if (GuiStartup::RelaunchElevatedIfNeeded(server, arguments, launchDeeplink, launchFiles)) return 0;
-#endif
 
     if (Configs::dataManager->settingsRepo->start_minimal) Configs::dataManager->settingsRepo->flag_tray = true;
 
@@ -182,15 +152,11 @@ int main(int argc, char* argv[]) {
                                 "Diagnostics were saved to: %1").arg(Logging::LogDir()));
     }
 
-    // The Flush calls replay whatever arrived before the window existed (e.g. a macOS FileOpen event).
+    // The Flush calls replay whatever arrived before the window existed.
     if (!launchDeeplink.isEmpty()) Deeplink_Submit(launchDeeplink);
     Deeplink_FlushPending();
     LaunchFiles_Submit(launchFiles);
     LaunchFiles_FlushPending();
 
-#ifdef Q_OS_UNIX
-    // Only right before exec(): a nested loop ahead of it would consume the signal while quit() is still a no-op.
-    Engine::Bootstrap::ArmTerminationHandlers([] { signal_handler(0); });
-#endif
     return QApplication::exec();
 }

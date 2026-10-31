@@ -6,7 +6,7 @@
 class NoWheelComboBox : public QComboBox {
 public:
     explicit NoWheelComboBox(QWidget *parent = nullptr) : QComboBox(parent) {
-        // Only strip the wheel bit: macOS deliberately gives non-editable combos TabFocus.
+        // Only strip the wheel bit.
         if (focusPolicy() == Qt::WheelFocus) setFocusPolicy(Qt::StrongFocus);
     }
 

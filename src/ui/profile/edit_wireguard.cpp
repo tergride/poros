@@ -107,9 +107,7 @@ void EditWireguard::onStart(std::shared_ptr<Configs::Profile> _ent) {
     this->ent = _ent;
     auto outbound = this->ent->Wireguard();
 
-#ifndef Q_OS_LINUX
     adjustSize();
-#endif
 
     ui->private_key->setText(outbound->private_key);
     ui->public_key->setText(outbound->peer->public_key);

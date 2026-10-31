@@ -60,9 +60,7 @@ namespace Engine::Bootstrap {
         qint64 pid = 0;
 
     private:
-#ifdef Q_OS_WIN
         void *handle = nullptr;
-#endif
     };
 
     void WarnDroppedPayload(const QStringList &payload);
@@ -106,28 +104,6 @@ namespace Engine::Bootstrap {
     inline constexpr int kSignalFromParent = 0x80;
     // Or'ed in for a SIGHUP from the kernel (a terminal hang-up) or from a process of the session we booted in (its shells).
     inline constexpr int kSignalFromSession = 0x40;
-
-#ifdef Q_OS_UNIX
-    struct SignalSet {
-        // SIGHUP as well as SIGTERM/SIGINT.
-        bool hangup = false;
-        // A SIGHUP or SIGINT that was SIG_IGN at install (nohup, a background job) stays ignored; SIGTERM is always caught.
-        bool keepInheritedIgnore = false;
-    };
-
-    // False when pipe() failed; directFallback (may be null) is then installed as the plain handler. The handler keeps errno.
-    bool InstallTerminationHandlers(void (*directFallback)(int), SignalSet set = {});
-
-    void ArmTerminationHandlers(std::function<void()> onSignal);
-
-    // Every caught signal once, in arrival order (each drained byte); never disarms and ignores ExitInProgress. Main thread.
-    void ArmSignalHandlers(std::function<void(int signum)> onSignal);
-
-    // Main thread, once no notifier reads the pipe (after exec() returned): the signals still in it, as ArmSignalHandlers
-    // would pass them on. Never blocks.
-    QList<int> TakePendingSignals();
-
-#endif
 
     // The short command name of a live process (/proc/<pid>/comm on Linux, proc_name() on macOS, the image file name on
     // Windows); empty when it is gone or unknown.

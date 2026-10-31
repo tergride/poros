@@ -23,17 +23,6 @@ public:
 // Null when this session cannot have global hotkeys.
 std::unique_ptr<GlobalHotkeyBackend> GlobalHotkeyBackend_Create();
 
-#ifdef Q_OS_LINUX
-std::unique_ptr<GlobalHotkeyBackend> GlobalHotkeyBackend_CreateKde();
-std::unique_ptr<GlobalHotkeyBackend> GlobalHotkeyBackend_CreateX11();
-
-// The session decides, not Qt's platform plugin: under XWayland, X11 grabs only fire while an X11 window has focus.
-inline bool GlobalHotkeyBackend_WaylandSession() {
-    const QString type = qEnvironmentVariable("XDG_SESSION_TYPE");
-    return type.isEmpty() ? !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY") : type == "wayland";
-}
-#endif
-
 inline QString GlobalHotkeyBackend_Unmappable() {
     return QCoreApplication::translate("GlobalHotkeys", "This key can't be used in a global hotkey.");
 }

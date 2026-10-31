@@ -48,21 +48,13 @@ namespace Sys {
 
         // Must match genTunName() and the l3-direct outbound's bridge_name in generate.cpp.
         QString tunName() {
-#ifdef Q_OS_MACOS
-            return {};
-#else
             return QStringLiteral("poros-net");
-#endif
         }
 
         QString bridgeName() {
-#ifdef Q_OS_LINUX
-            if (Configs::dataManager->settingsRepo->vpn_l3_bridge) return QStringLiteral("poros-br");
-#endif
             return {};
         }
 
-#ifdef Q_OS_WIN
         constexpr int kPermitTimeoutMs = 15000;
 
         // The guard drops relative entries; resolve them against the working directory the core inherits.
@@ -75,15 +67,9 @@ namespace Sys {
         bool listsPath(const QStringList &paths, const QString &path) {
             return paths.contains(nativePath(path), Qt::CaseInsensitive);
         }
-#endif
 
         void stopHard(QProcess *process) {
-#ifdef Q_OS_MACOS
-            // Never SIGKILL on macOS: pf keeps the rules until the guard removes them itself.
-            process->terminate();
-#else
             process->kill();
-#endif
         }
 
         const char *stateName(KillSwitch::State state) {
@@ -106,12 +92,10 @@ namespace Sys {
         GuardConfig buildConfig() {
             const auto *settings = Configs::dataManager->settingsRepo.get();
             GuardConfig config;
-#ifdef Q_OS_WIN
             for (const auto &path : settings->GetExtraCorePaths()) {
                 const auto native = nativePath(path);
                 if (!native.isEmpty() && !config.extraPaths.contains(native, Qt::CaseInsensitive)) config.extraPaths << native;
             }
-#endif
             const QJsonObject object{
                 {"allow_lan", !settings->disable_private_range_bypass},
                 {"tun_name", tunName()},
@@ -174,11 +158,7 @@ namespace Sys {
         if (failureCode_ == kOverridden) return failureMessage_;
         QString text;
         if (failureCode_ == kPrivilege) {
-#ifdef Q_OS_WIN
             text = tr("The kill switch needs Poros to run as administrator.");
-#else
-            text = tr("The kill switch needs the core to have root privileges.");
-#endif
         } else if (failureCode_ == kUnsupported) {
             return failureMessage_.isEmpty() ? tr("The kill switch is not supported on this system.") : failureMessage_;
         } else if (failureCode_ == kTampered) {
@@ -273,10 +253,6 @@ namespace Sys {
     }
 
     bool KillSwitch::permitExtraCore(const QString &path) {
-#ifndef Q_OS_WIN
-        Q_UNUSED(path)
-        return true;
-#else
         if (state() == State::Disabled) return true;
         auto promise = std::make_shared<std::promise<bool>>();
         auto future = promise->get_future();
@@ -299,7 +275,6 @@ namespace Sys {
         } catch (const std::future_error &) {
             return false;
         }
-#endif
     }
 
     void KillSwitch::shutdown() {
@@ -335,7 +310,7 @@ namespace Sys {
         guard->config = config.json;
         guard->launch = config.json;
         if (active_ != nullptr) {
-            // The READY guard's anchor stays loaded until this one is ready, so no state formed outside the block (macOS flush).
+            // The READY guard's anchor stays loaded until this one is ready, so no state formed outside the block.
             auto object = QJsonDocument::fromJson(config.json).object();
             object.insert(QStringLiteral("keep_states"), true);
             guard->launch = QJsonDocument(object).toJson(QJsonDocument::Compact);

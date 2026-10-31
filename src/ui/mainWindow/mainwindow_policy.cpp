@@ -13,13 +13,6 @@
 #include "include/ui/profile/dialog_vpn_auth.h"
 #include "include/ui/utils/RestartPrompt.h"
 
-#ifdef Q_OS_LINUX
-#include "include/sys/linux/LinuxCap.h"
-#endif
-#ifdef Q_OS_MACOS
-#include "include/sys/macos/MacOS.h"
-#endif
-
 void MainWindow::geoAssetMissingCategory(const QString &contextName, const QString &needed, const QString &whichFile) {
     MessageBoxWarning(
         tr("Geo asset missing category"),
@@ -85,11 +78,7 @@ void MainWindow::killSwitchProblem() {
     // The guard still blocks and the core cannot join its group: neither a retry nor more privileges changes that.
     QPushButton *fix = nullptr;
     if (!identity) {
-#ifdef Q_OS_WIN
         fix = box->addButton(privilege ? tr("Restart as Administrator") : tr("Retry"), QMessageBox::AcceptRole);
-#else
-        fix = box->addButton(privilege ? tr("Grant Privileges") : tr("Retry"), QMessageBox::AcceptRole);
-#endif
     }
     auto *disable = box->addButton(tr("Disable Kill Switch"), QMessageBox::DestructiveRole);
     auto *cancel = box->addButton(QMessageBox::Cancel);
@@ -110,12 +99,7 @@ void MainWindow::killSwitchProblem() {
             Sys::KillSwitch::instance()->apply();
             return;
         }
-#ifdef Q_OS_WIN
         exitController()->requestExit(ExitReason::RestartElevated, false);
-#else
-        // Otherwise the core restarts once it is privileged, and onCoreStarted retries.
-        if (connection()->ensureTunPrivileges(true)) Sys::KillSwitch::instance()->apply();
-#endif
     });
     box->open();
 }
@@ -203,36 +187,6 @@ Engine::SlowOperation MainWindow::slowOperation(Engine::SlowOperationKind, int d
 
 Engine::PrivilegeDecision MainWindow::requestCorePrivileges(Engine::PrivilegeReason reason) {
     using Engine::PrivilegeDecision;
-#ifdef NKR_ELEVATION_HINT
-    MessageBoxWarning(software_name, tr("This installation cannot grant the core privileges by itself.") + "\n\n" + NKR_ELEVATION_HINT);
-    return PrivilegeDecision::Cancel;
-#endif
-#ifdef Q_OS_LINUX
-    if (!Linux_HavePkexec()) {
-        MessageBoxWarning(software_name, "Please install \"pkexec\" first.");
-        return PrivilegeDecision::Cancel;
-    }
-    auto n = QMessageBox::warning(GetMessageBoxParent(), software_name, tr("Please give the core root privileges"), QMessageBox::Yes | QMessageBox::No);
-    if (n == QMessageBox::Yes) {
-        runOnNewThread([=,this]
-        {
-            auto chownArgs = QString("root:root " + Configs::FindCoreRealPath());
-            auto ret = Linux_Run_Command("chown", chownArgs);
-            if (ret != 0) {
-                MW_show_log(QString("Failed to run chown %1 code is %2").arg(chownArgs).arg(ret));
-            }
-            auto chmodArgs = QString("u+s " + Configs::FindCoreRealPath());
-            ret = Linux_Run_Command("chmod", chmodArgs);
-            if (ret == 0) {
-                StopVPNProcess();
-            } else {
-                MW_show_log(QString("Failed to run chmod %1").arg(chmodArgs));
-            }
-        });
-        return PrivilegeDecision::Restart;
-    }
-#endif
-#ifdef Q_OS_WIN
     AdminPromptDialog prompt(reason, this);
     prompt.exec();
     switch (prompt.choice()) {
@@ -248,26 +202,7 @@ Engine::PrivilegeDecision MainWindow::requestCorePrivileges(Engine::PrivilegeRea
         case AdminPromptDialog::Choice::Cancel:
             break;
     }
-#endif
 
-#ifdef Q_OS_MACOS
-    if (Configs::isSetuidSet(Configs::FindCoreRealPath().toStdString()))
-    {
-        StopVPNProcess();
-        return PrivilegeDecision::TryWithout;
-    }
-    auto n = QMessageBox::warning(GetMessageBoxParent(), software_name, tr("Please give the core root privileges"), QMessageBox::Yes | QMessageBox::No);
-    if (n == QMessageBox::Yes)
-    {
-        auto Command = QString("sudo chown root:wheel '%1' && sudo chmod u+s '%1'").arg(Configs::FindCoreRealPath());
-        auto ret = Mac_Run_Command(Command);
-        if (ret == 0) {
-            MessageBoxInfo(tr("Requesting permission"), tr("Please Enter your password in the opened terminal, then try again"));
-        } else {
-            MW_show_log(QString("Failed to run %1 with %2").arg(Command).arg(ret));
-        }
-    }
-#endif
     return PrivilegeDecision::Cancel;
 }
 

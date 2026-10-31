@@ -26,14 +26,9 @@
 #include "include/engine/app/InstanceServer.h"
 #include "include/global/Configs.hpp"
 #include "include/global/Logger.hpp"
-#ifdef Q_OS_LINUX
-#include "include/sys/linux/systemChecks.h"
-#endif
-#ifdef Q_OS_WIN
 #include <windows.h>
 // <windows.h> defines SetPort, which under unity builds clobbers Configs::outbound::SetPort.
 #undef SetPort
-#endif
 
 namespace Engine {
     namespace {
@@ -41,9 +36,7 @@ namespace Engine {
         const QString kVolatile = QStringLiteral("<volatile>");
 
         void PrintError(const QString &text) {
-#ifdef Q_OS_WIN
             if (_fileno(stderr) < 0) return;
-#endif
             std::fputs(text.toLocal8Bit().append('\n').constData(), stderr);
             std::fflush(stderr);
         }
@@ -178,15 +171,7 @@ namespace Engine {
         }
 
         QString PlatformName() {
-#if defined(Q_OS_WIN)
             return "windows";
-#elif defined(Q_OS_MACOS)
-            return "macos";
-#elif defined(Q_OS_LINUX)
-            return "linux";
-#else
-            return "unix";
-#endif
         }
 
         class Dumper {
@@ -283,22 +268,17 @@ namespace Engine {
                     "OTP codes are not resolved; {otp} placeholders stay in the credentials.",
                 }},
             };
-#ifdef Q_OS_LINUX
-            manifest["systemd_resolved"] = isSystemdResolvedDefaultResolver();
-#endif
             return manifest;
         }
     } // namespace
 
     int RunConfigDump(int argc, char **argv) {
         const QDir launchCwd = QDir::current();
-#ifdef Q_OS_WIN
         // A GUI-subsystem exe gets no stderr unless redirected; borrow the launching console instead.
         if (_fileno(stderr) < 0 && AttachConsole(ATTACH_PARENT_PROCESS)) {
             FILE *console = nullptr;
             freopen_s(&console, "CONOUT$", "w", stderr);
         }
-#endif
         QCoreApplication app(argc, argv);
         QCoreApplication::setApplicationName("Poros");
         Logging::EnableStdSink(Logging::Level::Info);

@@ -265,8 +265,7 @@ namespace SettingsIndex {
         collectForm<Ui::DialogBasicSettings>(DialogBasicSettings::staticMetaObject.className(), out,
                                              &DialogBasicSettings::UnavailableWidgets);
         collectForm<Ui::DialogManageRoutes>(DialogManageRoutes::staticMetaObject.className(), out);
-        collectForm<Ui::DialogVPNSettings>(DialogVPNSettings::staticMetaObject.className(), out,
-                                           &DialogVPNSettings::UnavailableWidgets);
+        collectForm<Ui::DialogVPNSettings>(DialogVPNSettings::staticMetaObject.className(), out);
         collectForm<Ui::DialogPresetSettings>(DialogPresetSettings::staticMetaObject.className(), out);
         collectForm<Ui::DialogIntegration>(DialogIntegration::staticMetaObject.className(), out);
         return out;

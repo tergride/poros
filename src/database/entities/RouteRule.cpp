@@ -353,7 +353,6 @@ namespace Configs {
             "override_destination",
             "strategy",
         };
-        if (getOS() == Darwin) res.removeAll("wifi_ssid"), res.removeAll("wifi_bssid");
         return res;
     }
 
@@ -393,9 +392,7 @@ namespace Configs {
         }
         if (fieldName == "action")
         {
-            auto actions = SingboxOptions::ActionTypes;
-            if (getOS() == Linux) actions.insert(1, "bypass");
-            return actions;
+            return SingboxOptions::ActionTypes;
         }
         if (fieldName == "method")
         {

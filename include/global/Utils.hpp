@@ -11,31 +11,7 @@
 #include <QDebug>
 #include <QApplication>
 #include <QStyle>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
 #include <QStyleHints>
-#endif
-
-enum osType
-{
-    unknown = 0,
-    Linux = 1,
-    Windows = 2,
-    Darwin = 3,
-};
-
-inline osType getOS()
-{
-#ifdef Q_OS_MACOS
-    return Darwin;
-#endif
-#ifdef Q_OS_LINUX
-    return Linux;
-#endif
-#ifdef Q_OS_WIN
-    return Windows;
-#endif
-    return unknown;
-}
 
 inline QString software_name;
 inline QString software_core_name;
@@ -284,8 +260,6 @@ void setTimeout(const std::function<void()> &callback, QObject *obj, int timeout
 
 inline bool isDarkMode() {
     if (!IsGuiApp()) return false;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     return qApp->styleHints()->colorScheme() == Qt::ColorScheme::Dark;
-#endif
     return qApp->style()->standardPalette().window().color().lightness() < qApp->style()->standardPalette().windowText().color().lightness();
 }

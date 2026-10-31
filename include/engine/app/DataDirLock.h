@@ -38,11 +38,7 @@ namespace Engine {
         static QString LockPath(const QString &configDir);
 
     private:
-#ifdef Q_OS_WIN
         void *handle = nullptr;
-#else
-        int fd = -1;
-#endif
         QString error;
     };
 } // namespace Engine

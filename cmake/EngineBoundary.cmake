@@ -9,12 +9,9 @@ file(TO_CMAKE_PATH "${ROOT}" ROOT)
 get_filename_component(ROOT "${ROOT}" ABSOLUTE)
 
 # E5 ratchet: files outside the UI that still include include/ui/. Entries only ever leave this list.
-set(UI_INCLUDE_ALLOWLIST
-        src/sys/macos/TrayIcon.mm                       # permanent
-)
+set(UI_INCLUDE_ALLOWLIST)
 
-set(LOWER_LAYER_REGEX "^(include|src)/(api|configs|database|global|scanner|stats|sys)/")
-set(LOWER_LAYER_EXEMPT_REGEX "^src/api/remote/Router[^/]*\\.cpp$")
+set(LOWER_LAYER_REGEX "^(include|src)/(api|configs|database|global|stats|sys)/")
 set(LOWER_ENGINE_HEADERS EngineTypes.h Lifecycle.h EngineEvents.h EngineTr.h)
 
 set(SOURCE_EXT_REGEX "\\.(h|hh|hpp|hxx|inl|ipp|c|cc|cpp|cxx|m|mm)$")
@@ -145,7 +142,7 @@ endmacro()
 # ENGINE runs E1/E2; LOWER runs E3/E5 and reports in <out_has_ui> whether the file includes include/ui/.
 function(eb_scan_file rel mode out_has_ui)
     set(lower FALSE)
-    if (mode STREQUAL "LOWER" AND rel MATCHES "${LOWER_LAYER_REGEX}" AND NOT rel MATCHES "${LOWER_LAYER_EXEMPT_REGEX}")
+    if (mode STREQUAL "LOWER" AND rel MATCHES "${LOWER_LAYER_REGEX}")
         set(lower TRUE)
     endif ()
 

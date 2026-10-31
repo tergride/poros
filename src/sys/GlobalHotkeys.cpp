@@ -4,12 +4,6 @@
 
 #include <QHash>
 
-#ifdef Q_OS_LINUX
-std::unique_ptr<GlobalHotkeyBackend> GlobalHotkeyBackend_Create() {
-    return GlobalHotkeyBackend_WaylandSession() ? GlobalHotkeyBackend_CreateKde() : GlobalHotkeyBackend_CreateX11();
-}
-#endif
-
 GlobalHotkeys::GlobalHotkeys(QObject *parent) : QObject(parent), backend(GlobalHotkeyBackend_Create()) {
     if (!backend) return;
     backend->activated = [this](int slot) {

@@ -12,15 +12,12 @@
 #include <vector>   
 #include <string>
 
-#ifdef Q_OS_WIN
 #include <windows.h>
 #include "include/sys/windows/WinVersion.h"
 #include <include/sys/Process.hpp>
 #include <Wbemidl.h>
 #pragma comment(lib, "wbemuuid.lib")
-#endif
 
-#ifdef Q_OS_WIN
 static QString queryWmiProperty(const QString& wmiClass, const QString& property) {
     HRESULT hres;
 
@@ -131,63 +128,11 @@ static QString winBaseBoard() {
 static QString winModel() {
     return queryWmiProperty("Win32_ComputerSystem", "Model");
 }
-#endif
 
 namespace {
     QMutex g_deviceDetailsStoreMutex;
     QString g_deviceDetailsStoreDir;
 
-#if !defined(Q_OS_WIN) && !defined(Q_OS_MACOS)
-    QString deviceDetailsStoreDir() {
-        QMutexLocker locker(&g_deviceDetailsStoreMutex);
-        return g_deviceDetailsStoreDir;
-    }
-
-    // The machine-id format: 32 hex digits ("uninitialized" and an empty file fail).
-    bool deviceDetailsIsMachineId(const QString &id) {
-        if (id.size() != 32) return false;
-        for (const QChar c : id) {
-            const char16_t u = c.unicode();
-            if (!((u >= u'0' && u <= u'9') || (u >= u'a' && u <= u'f') || (u >= u'A' && u <= u'F'))) return false;
-        }
-        return true;
-    }
-
-    // Unix without a usable machine-id: a generated ID kept in <configDir>/hwid, so the x-hwid header stays the same across runs.
-    QString deviceDetailsPersistedId() {
-        const QString dir = deviceDetailsStoreDir();
-        if (dir.isEmpty()) return {};
-        const QString path = QDir(dir).absoluteFilePath(QStringLiteral("hwid"));
-        QFile existing(path);
-        if (existing.open(QIODevice::ReadOnly)) {
-            const QString id = QString::fromLatin1(existing.read(256)).trimmed();
-            if (deviceDetailsIsMachineId(id)) return id;
-        }
-        const QString id = QUuid::createUuid().toString(QUuid::Id128);
-        QSaveFile file(path);
-        if (file.open(QIODevice::WriteOnly)) {
-            file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-            file.write(id.toLatin1() + '\n');
-            if (file.commit()) {
-                LOG_INFO(QStringLiteral("no usable /etc/machine-id; generated a device ID in %1").arg(path));
-                return id;
-            }
-        }
-        // A per-run ID would count as a new device on every launch; sending none is the lesser harm.
-        LOG_WARN(QStringLiteral("no usable /etc/machine-id, and %1 cannot be written (%2); subscriptions are fetched without a device ID")
-                     .arg(path, file.errorString()));
-        return {};
-    }
-#endif
-
-#ifdef Q_OS_LINUX
-    QString deviceDetailsMachineId(const QString &path) {
-        QFile file(path);
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return {};
-        const QString id = QString::fromUtf8(file.read(256)).trimmed();
-        return deviceDetailsIsMachineId(id) ? id : QString();
-    }
-#endif
 } // namespace
 
 void SetDeviceIdStore(const QString &configDir) {
@@ -199,7 +144,6 @@ DeviceDetails GetDeviceDetails() {
     static const DeviceDetails details = []() {
         DeviceDetails d;
 
-    #ifdef Q_OS_WIN
         d.hwid = QSysInfo::machineUniqueId();
         if (d.hwid.isEmpty()) {
             auto productType = QSysInfo::productType().toUtf8();
@@ -216,26 +160,6 @@ DeviceDetails GetDeviceDetails() {
         auto wbb = winBaseBoard();
         d.model = (wm == wbb) ? wm : wm + "/" + wbb;
         if (d.hwid.isEmpty()) d.model = QSysInfo::prettyProductName();
-    #elif defined(Q_OS_LINUX)
-        QString mid = deviceDetailsMachineId(QStringLiteral("/etc/machine-id"));
-        if (mid.isEmpty()) mid = deviceDetailsMachineId(QStringLiteral("/var/lib/dbus/machine-id"));
-        if (mid.isEmpty()) mid = deviceDetailsPersistedId();
-        d.hwid = mid;
-        d.os = QStringLiteral("Linux");
-        d.osVersion = QSysInfo::kernelVersion();
-        d.model = QSysInfo::prettyProductName();
-    #elif defined(Q_OS_MACOS)
-        d.hwid = QSysInfo::machineUniqueId();
-        d.os = QStringLiteral("macOS");
-        d.osVersion = QSysInfo::productVersion();
-        d.model = QSysInfo::prettyProductName();
-    #else
-        d.hwid = QSysInfo::machineUniqueId();
-        if (d.hwid.isEmpty()) d.hwid = deviceDetailsPersistedId();
-        d.os = QSysInfo::productType();
-        d.osVersion = QSysInfo::productVersion();
-        d.model = QSysInfo::prettyProductName();
-    #endif
         return d;
     }();
     return details;

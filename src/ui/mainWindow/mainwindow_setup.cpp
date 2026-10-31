@@ -51,11 +51,6 @@
 #include "include/ui/group/dialog_edit_group.h"
 #include "include/ui/utils/NativeFileDialog.h"
 
-#ifdef Q_OS_LINUX
-#include <QDBusInterface>
-#include <QDBusReply>
-#endif
-
 #include <QClipboard>
 #include <QStackedWidget>
 #include <QScrollArea>
@@ -561,20 +556,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     auto *actOtpCodes = new QAction(tr("OTP Codes"), trayMenu);
     connect(actOtpCodes, &QAction::triggered, this, [this]() { openTrayOtpCodes(); });
     trayMenu->addAction(actOtpCodes);
-    // MacOS cannot reuse menus across different parents properly
-    if (getOS() == Darwin) {
-        auto* traySpmodeMenu = new QMenu(ui->menu_spmode->title(), trayMenu);
-        traySpmodeMenu->addAction(ui->menu_spmode_system_proxy);
-        traySpmodeMenu->addAction(ui->menu_spmode_vpn);
-        connect(traySpmodeMenu, &QMenu::aboutToShow, this, [=,this]() {
-            ui->menu_spmode_disabled->setChecked(!(Configs::dataManager->settingsRepo->spmode_system_proxy || Configs::dataManager->settingsRepo->spmode_vpn));
-            ui->menu_spmode_system_proxy->setChecked(Configs::dataManager->settingsRepo->spmode_system_proxy);
-            ui->menu_spmode_vpn->setChecked(Configs::dataManager->settingsRepo->spmode_vpn);
-        });
-        trayMenu->addMenu(traySpmodeMenu);
-    } else {
-        trayMenu->addMenu(ui->menu_spmode);
-    }
+    trayMenu->addMenu(ui->menu_spmode);
     trayMenu->addSeparator();
 
     trayMenu->addAction(ui->actionRestart_Proxy);
@@ -583,11 +565,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     tray->setVisible(!Configs::dataManager->settingsRepo->disable_tray);
     tray->setContextMenu(trayMenu);
     connect(tray, &TrayIcon::activated, qApp, [=, this](QSystemTrayIcon::ActivationReason reason) {
-        if (reason == QSystemTrayIcon::Trigger && getOS() != Darwin) {
+        if (reason == QSystemTrayIcon::Trigger) {
             trayClickEvent();
         }
     });
-    connect(tray, &TrayIcon::dockIconClicked, this, [=,this] { ActivateWindow(this); });
 
     syncSettingsMirrors();
     ui->actionStart_with_system->setChecked(AutoRun_IsEnabled());

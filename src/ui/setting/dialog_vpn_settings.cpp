@@ -10,7 +10,6 @@
 #include <QMessageBox>
 #include <QHostAddress>
 
-
 #define ADJUST_SIZE runOnThread([=,this] { adjustSize(); adjustPosition(mainwindow); }, this);
 
 namespace {
@@ -36,9 +35,7 @@ DialogVPNSettings::DialogVPNSettings(QWidget *parent) : QDialog(parent), ui(new 
     ui->tun_ipv6_cidr->setText(Configs::dataManager->settingsRepo->vpn_tun_ipv6_cidr);
     ui->privRangeGroupBox->setChecked(!Configs::dataManager->settingsRepo->disable_private_range_bypass);
     ui->priv_ranges->setPlainText(Configs::dataManager->settingsRepo->vpn_private_ranges.join("\n"));
-    ui->auto_redirect->setChecked(Configs::dataManager->settingsRepo->vpn_auto_redirect);
     ui->l3_bridge->setChecked(Configs::dataManager->settingsRepo->vpn_l3_bridge);
-    for (auto *widget : UnavailableWidgets(ui)) widget->hide();
 
     using namespace Validation;
     form->bind(ui->vpn_mtu, Rules::Int(kVpnMinMtu, kVpnMaxMtu, Empty::Required)).label(ui->label_10->text());
@@ -64,19 +61,6 @@ DialogVPNSettings::~DialogVPNSettings() {
     delete ui;
 }
 
-QList<QWidget *> DialogVPNSettings::UnavailableWidgets(const Ui::DialogVPNSettings *ui) {
-    Q_UNUSED(ui) // On Linux x86 nothing is unavailable.
-    QList<QWidget *> widgets;
-#ifndef Q_OS_LINUX
-    widgets << ui->auto_redirect;
-#endif
-    // The core's bridge backend has no implementation for Windows on ARM.
-#if defined(Q_OS_WIN) && defined(Q_PROCESSOR_ARM)
-    widgets << ui->l3_bridge;
-#endif
-    return widgets;
-}
-
 void DialogVPNSettings::accept() {
     if (!form->validateAll()) return;
     const int mtu = int(*Validation::ToInt(ui->vpn_mtu->currentText()));
@@ -94,7 +78,6 @@ void DialogVPNSettings::accept() {
     Configs::dataManager->settingsRepo->vpn_tun_ipv6_cidr = tunIPv6CIDR;
     Configs::dataManager->settingsRepo->disable_private_range_bypass = !ui->privRangeGroupBox->isChecked();
     Configs::dataManager->settingsRepo->vpn_private_ranges = privateRanges;
-    Configs::dataManager->settingsRepo->vpn_auto_redirect = ui->auto_redirect->isChecked();
     Configs::dataManager->settingsRepo->vpn_l3_bridge = ui->l3_bridge->isChecked();
     MW_dialog_message(MwMessage::UpdateSettings, {MwArg::Vpn});
     QDialog::accept();
@@ -113,7 +96,6 @@ void DialogVPNSettings::on_restore_default_ranges_clicked() {
 }
 
 void DialogVPNSettings::on_troubleshooting_clicked() {
-
 
     QMessageBox msg(
         QMessageBox::Information,

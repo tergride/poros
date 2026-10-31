@@ -10,9 +10,6 @@
 #include "include/stats/connections/connectionLister.hpp"
 #include "include/stats/traffic/TrafficLine.hpp"
 #include "include/database/entities/Profile.h"
-#ifdef Q_OS_LINUX
-#include <QtDBus>
-#endif
 
 #include <deque>
 #include <optional>
@@ -679,34 +676,3 @@ inline MainWindow *GetMainWindow() {
 
 MainWindow *UI_InitMainWindow();
 
-#ifdef Q_OS_LINUX
-class OrgFreedesktopPortalRequestInterface : public QDBusAbstractInterface
-{
-    Q_OBJECT
-public:
-    OrgFreedesktopPortalRequestInterface(const QString& service,
-                                         const QString& path,
-                                         const QDBusConnection& connection,
-                                         QObject* parent = nullptr);
-
-    ~OrgFreedesktopPortalRequestInterface();
-
-public Q_SLOTS:
-    inline QDBusPendingReply<> Close()
-    {
-        QList<QVariant> argumentList;
-        return asyncCallWithArgumentList(QStringLiteral("Close"), argumentList);
-    }
-
-Q_SIGNALS:
-    void Response(uint response, QVariantMap results);
-};
-
-namespace org {
-namespace freedesktop {
-namespace portal {
-typedef ::OrgFreedesktopPortalRequestInterface Request;
-}
-}
-}
-#endif

@@ -71,7 +71,6 @@ namespace Sys::ServiceManager {
     // and the pipe's DACL lets no account but SYSTEM, Administrators and the caller add instances or rewrite it. True off Windows.
     bool PipeServerTrusted(qintptr descriptor, QString *why);
 
-#ifdef Q_OS_WIN
     enum class StopKind { Graceful, Fast };
 
     // Right after PreScan with --service: runs StartServiceCtrlDispatcherW on a helper thread and waits up to waitMs for
@@ -96,5 +95,4 @@ namespace Sys::ServiceManager {
 
     // Any thread, once the teardown finished: releases a console CLOSE/LOGOFF/SHUTDOWN handler that is waiting.
     void SignalShutdownComplete();
-#endif
 } // namespace Sys::ServiceManager

@@ -13,7 +13,6 @@ class QListWidgetItem;
 class QPushButton;
 class QTimer;
 
-// A window, not a tray submenu: Linux SNI/DBusMenu and macOS NSMenu won't reliably expand one populated dynamically.
 class TrayProfileSelector : public TrayPopupFrame {
     Q_OBJECT
 public:

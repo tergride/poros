@@ -12,8 +12,6 @@ namespace Engine {
 
 // The window-only half of startup, called from main() in order.
 namespace GuiStartup {
-    // No-op off macOS.
-    void InstallMacOpenEventFilter(QApplication &app);
 
     void LoadEmojiFont();
 
@@ -21,11 +19,9 @@ namespace GuiStartup {
 
     void SetupIconTheme();
 
-#ifdef Q_OS_WIN
     // True when an elevated copy was started and this process must return 0.
     bool RelaunchElevatedIfNeeded(Engine::InstanceServer &server, const QStringList &arguments, const QString &launchDeeplink,
                                   const QStringList &launchFiles);
-#endif
 
     void LoadTranslator();
 

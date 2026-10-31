@@ -15,14 +15,7 @@
 #include <QSysInfo>
 #include <QThread>
 
-#ifdef Q_OS_WIN
 #include <string>
-#endif
-#ifdef Q_OS_UNIX
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
 
 namespace Logging {
     namespace {
@@ -63,9 +56,7 @@ namespace Logging {
         QString g_previousSessionLog;
         bool g_previousCrashed = false;
 
-#ifdef Q_OS_WIN
         std::wstring g_crashDirNative;
-#endif
 
         const char *levelTag(Level level) {
             switch (level) {
@@ -119,23 +110,7 @@ namespace Logging {
 
         // JOURNAL_STREAM is inherited past redirections, so it only counts when its "dev:ino" is our stderr's (systemd.exec(5)).
         bool journalStream() {
-#ifdef Q_OS_UNIX
-            static const bool journal = [] {
-                const QByteArray value = qgetenv("JOURNAL_STREAM");
-                const auto colon = value.indexOf(':');
-                if (colon <= 0) return false;
-                bool devOk = false;
-                bool inoOk = false;
-                const qulonglong dev = value.left(colon).toULongLong(&devOk);
-                const qulonglong ino = value.mid(colon + 1).toULongLong(&inoOk);
-                struct stat st{};
-                if (!devOk || !inoOk || ::fstat(::fileno(stderr), &st) != 0) return false;
-                return static_cast<qulonglong>(st.st_dev) == dev && static_cast<qulonglong>(st.st_ino) == ino;
-            }();
-            return journal;
-#else
             return false;
-#endif
         }
 
         int journalPriority(Level level) {
@@ -150,9 +125,7 @@ namespace Logging {
 
         // journald takes the "<N>" priority prefix per line and stamps its own time.
         void writeStd(Level level, const QString &timestamp, const QString &body) {
-#ifdef Q_OS_WIN
             if (_fileno(stderr) < 0) return; // GUI-subsystem process without an inherited stderr
-#endif
             const auto format = static_cast<StdFormat>(g_stdFormat.load(std::memory_order_relaxed));
             QByteArray out;
             if (format == StdFormat::Journal || (format == StdFormat::Auto && journalStream())) {
@@ -173,31 +146,8 @@ namespace Logging {
         // Unix: never through a link or onto a hard-linked file, which the data dir's owner could aim at root's files; fails as unopenable.
         bool openTruncated(QFile &file, const QString &path) {
             file.setFileName(path);
-#ifdef Q_OS_UNIX
-            const int fd = ::open(QFile::encodeName(path).constData(), O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC, 0666);
-            if (fd < 0) return false;
-            struct stat st{};
-            if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1 || ::ftruncate(fd, 0) != 0) {
-                ::close(fd);
-                return false;
-            }
-            if (file.open(fd, QIODevice::WriteOnly, QFileDevice::AutoCloseHandle)) return true;
-            if (file.isOpen()) file.close();
-            else ::close(fd);
-            return false;
-#else
             return file.open(QIODevice::WriteOnly | QIODevice::Truncate);
-#endif
         }
-
-#ifdef Q_OS_UNIX
-        // A dir link the data dir's owner planted would aim root's log files and crash-file pruning at another dir.
-        bool foreignLink(const QString &path) {
-            struct stat st{};
-            if (::lstat(QFile::encodeName(path).constData(), &st) != 0 || !S_ISLNK(st.st_mode)) return false;
-            return st.st_uid != ::geteuid() && st.st_uid != 0;
-        }
-#endif
 
         // Caller holds g_mutex.
         void pushRing(const QByteArray &utf8) {
@@ -354,24 +304,9 @@ namespace Logging {
         g_logPath = QDir(g_logDir).absoluteFilePath("poros.log");
         g_markerPath = QDir(g_logDir).absoluteFilePath("running.marker");
 
-#ifdef Q_OS_WIN
         g_crashDirNative = QDir::toNativeSeparators(g_crashDir).toStdWString();
-#endif
 
-#ifdef Q_OS_UNIX
-        const bool pruneCrashDir = !foreignLink(g_crashDir);
-        if (foreignLink(g_logDir)) {
-            if (stdSinkTakes(Level::Warn)) {
-                writeStd(Level::Warn, formatTimestamp(),
-                         formatBody(Level::Warn, g_logDir + " is a symbolic link of another user; no log files are written", nullptr, 0));
-            }
-            g_markerPath.clear();
-            g_preInit.clear();
-            return;
-        }
-#else
         const bool pruneCrashDir = true;
-#endif
 
         // Set the crashed session's log aside before this one truncates it or rotation pushes it out.
         g_previousCrashed = QFile::exists(g_markerPath);
@@ -485,9 +420,7 @@ namespace Logging {
 
     QString CrashDir() { return g_crashDir; }
 
-#ifdef Q_OS_WIN
     const wchar_t *CrashDirNative() { return g_crashDirNative.c_str(); }
-#endif
 
     namespace {
         void qtMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &message) {
