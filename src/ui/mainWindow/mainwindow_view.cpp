@@ -408,6 +408,8 @@ void MainWindow::refresh_proxy_list_column_size() {
             group->column_width.clear();
         }
         if (group->column_width.isEmpty()) {
+            hHeader->setSectionResizeMode(ProfilesTableModel::ColSelect, QHeaderView::Fixed);
+            hHeader->resizeSection(ProfilesTableModel::ColSelect, 34);
             hHeader->setSectionResizeMode(ProfilesTableModel::ColType, QHeaderView::ResizeToContents);
             hHeader->setSectionResizeMode(ProfilesTableModel::ColAddress, QHeaderView::Stretch);
             hHeader->setSectionResizeMode(ProfilesTableModel::ColName, QHeaderView::Stretch);
@@ -438,6 +440,7 @@ void MainWindow::refresh_proxy_list_column_size() {
             }
             ui->profilesTableView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         }
+        hHeader->setSectionResizeMode(ProfilesTableModel::ColSelect, QHeaderView::Fixed);
         vBar->blockSignals(vBarBlocked);
         m_adjustingColumns = false;
     });

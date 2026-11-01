@@ -1,5 +1,6 @@
 #pragma once
 #include <QDialog>
+#include <functional>
 #include <optional>
 #include "profile_editor.h"
 
@@ -19,7 +20,7 @@ class DialogEditProfile : public QDialog {
     Q_OBJECT
 
 public:
-    explicit DialogEditProfile(const QString &_type, int profileOrGroupId, QWidget *parent = nullptr);
+    explicit DialogEditProfile(const QString &_type, int profileOrGroupId, QWidget *parent = nullptr, std::function<void(Configs::Profile &)> _preset = {});
 
     ~DialogEditProfile() override;
 
@@ -41,6 +42,8 @@ private:
     ProfileEditor *innerEditor{};
     EditAdvanced *advanced{};
     MuxSettingsWidget *muxSettings{};
+    // Runs once on the first new profile, before its editor loads.
+    std::function<void(Configs::Profile &)> preset;
     QList<QWidget *> outerTabOrder;
     qsizetype innerTabOrderIndex{-1};
 

@@ -148,8 +148,8 @@ void rebuildTabOrder(const QList<QWidget *> &tabOrder) {
 }
 }
 
-DialogEditProfile::DialogEditProfile(const QString &_type, int profileOrGroupId, QWidget *parent)
-    : QDialog(parent), ui(new Ui::DialogEditProfile) {
+DialogEditProfile::DialogEditProfile(const QString &_type, int profileOrGroupId, QWidget *parent, std::function<void(Configs::Profile &)> _preset)
+    : QDialog(parent), ui(new Ui::DialogEditProfile), preset(std::move(_preset)) {
     ui->setupUi(this);
     FormColumns::adoptAll(this);
     form = new Validation::Form(this);
@@ -257,6 +257,10 @@ bool DialogEditProfile::typeSelected(const QString &newType) {
         if (newEnt) {
             ent = Configs::dataManager->profilesRepo->NewProfile(type);
             ent->gid = groupId;
+            if (preset) {
+                preset(*ent);
+                preset = nullptr;
+            }
         }
 
         const auto [widget, editor] = factory(this);
@@ -346,6 +350,7 @@ void DialogEditProfile::updateChip() {
         security = ui->reality_pbk->text().trimmed().isEmpty() ? QStringLiteral("tls") : QStringLiteral("reality");
     }
     const auto chip = outbound->DisplayType();
+    ui->dialog_chip->setVisible(!chip.isEmpty());
     if (security.isEmpty()) ui->dialog_chip->setText(chip);
     else ui->dialog_chip->setText(chip + QStringLiteral(" · ") + (security == "reality" ? QStringLiteral("Reality") : security.toUpper()));
 }

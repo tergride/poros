@@ -18,7 +18,8 @@ public:
     enum { ProfileIdRole = Qt::UserRole, SecurityRole, CountryRole, RunningRole };
 
     enum Column {
-        ColType = 0,
+        ColSelect = 0,
+        ColType,
         ColAddress,
         ColName,
         ColTestResult,

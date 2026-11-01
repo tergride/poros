@@ -27,7 +27,7 @@ ConnectionBar::ConnectionBar(const Parts &parts, QWidget *parent) : QFrame(paren
     row->addWidget(parts.speed);
 
     m_routes = new NoWheelComboBox(this);
-    m_routes->setFixedWidth(170);
+    m_routes->setFixedWidth(200);
     m_routes->setToolTip(tr("Routing profile"));
     row->addWidget(m_routes);
     row->addWidget(parts.tun);

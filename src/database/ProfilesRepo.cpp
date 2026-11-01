@@ -428,6 +428,40 @@ namespace Configs {
         return true;
     }
 
+    bool ProfilesRepo::MoveProfiles(const QList<int>& ids, int gid) {
+        const auto target = dataManager->groupsRepo->GetGroup(gid);
+        if (target == nullptr) return false;
+        auto profiles = GetProfileBatch(ids);
+        profiles.removeIf([gid](const std::shared_ptr<Profile>& profile) { return profile->gid == gid; });
+        if (profiles.isEmpty()) return true;
+
+        QHash<int, QList<int>> bySource;
+        QList<int> moved;
+        for (const auto& profile : profiles) {
+            bySource[profile->gid] << profile->id;
+            moved << profile->id;
+        }
+        {
+            QMutexLocker locker(&mutex);
+            const bool ok = db.transaction("ProfilesRepo::MoveProfiles", [&] {
+                for (const int id : moved) db.execThrow("UPDATE profiles SET gid = ? WHERE id = ?", gid, id);
+                return true;
+            });
+            if (!ok) return false;
+            for (const auto& profile : profiles) profile->gid = gid;
+        }
+        for (auto source = bySource.cbegin(); source != bySource.cend(); ++source) {
+            if (const auto group = dataManager->groupsRepo->GetGroup(source.key())) {
+                group->RemoveProfileBatch(source.value());
+                dataManager->groupsRepo->Save(group);
+            }
+        }
+        target->AddProfileBatch(moved);
+        dataManager->groupsRepo->Save(target);
+        RepositionLater(profiles, SortInput::Membership);
+        return true;
+    }
+
     bool ProfilesRepo::DeleteAndForget(const std::function<bool(QList<int>& deletedIds)>& deleteRows) {
         QMutexLocker locker(&mutex);
         QList<int> deletedIds;

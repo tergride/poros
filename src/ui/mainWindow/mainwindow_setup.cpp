@@ -750,6 +750,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         auto selected = get_now_selected_list();
 
         ui->menu_edit->setEnabled(selected.count() == 1);
+        ui->menu_qr->setEnabled(selected.count() == 1);
+        ui->menu_export_config->setEnabled(selected.count() == 1);
         ui->menu_export_config->setVisible(false);
         if (selected.isEmpty()) return;
 

@@ -67,6 +67,9 @@ namespace Configs {
         // A missing group is skipped. False when the rows could not be deleted.
         bool BatchDeleteProfiles(QList<int>& ids, bool stopRunningProfile = false, bool interactive = true);
 
+        // Keeps the ids, so chains and the running profile still find the profiles. False when the group or the rows fail.
+        bool MoveProfiles(const QList<int>& ids, int gid);
+
         // Runs deleteRows under this repo's lock; when it returns true, the ids it filled leave the identity map and are
         // tombstoned. Lock order: this repo, then GroupsRepo.
         bool DeleteAndForget(const std::function<bool(QList<int>& deletedIds)>& deleteRows);

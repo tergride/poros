@@ -29,6 +29,7 @@
 #include "include/ui/mainWindow/MainWindowInternal.h"
 #include "include/ui/group/dialog_edit_group.h"
 #include "include/ui/onboarding/OnboardingPage.h"
+#include "include/ui/profile/dialog_profile_type.h"
 #include "include/ui/profile/dialog_edit_profile.h"
 #include "include/ui/shell/SegmentSwitch.h"
 #include "include/ui/simple/PresetEditor.h"
@@ -95,6 +96,16 @@ void MainWindow::runUiTour(const QString &dir) {
     });
 
     const auto trigger = [](QAction *action) { return [action] { action->trigger(); }; };
+    const auto tile = [this](const QString &label) {
+        return [this, label] {
+            ui->menu_add_from_input->trigger();
+            auto *picker = findChild<DialogProfileType *>();
+            picker->findChild<QPushButton *>(QStringLiteral("more_types"))->click();
+            for (auto *button : picker->findChildren<QPushButton *>()) {
+                if (button->text() == label) button->click();
+            }
+        };
+    };
     const auto fakeConnections = [] {
         const auto connection = [](const QString &id, const QString &process, const QString &domain, const QString &protocol, const QString &outbound, long long bytes) {
             Stats::ConnectionMetadata meta;
@@ -159,7 +170,11 @@ void MainWindow::runUiTour(const QString &dir) {
             ui->menu_server->adjustSize();
             ui->menu_server->grab().save(dir + QStringLiteral("/profiles-context.png"));
         }},
-        {"connections", [this] { m_advancedPage->showSection(AdvancedPage::Connections); }},
+        {"profiles-bulk", [this] { selectProfileRows({0, 2}); }},
+        {"connections", [this] {
+            ui->profilesTableView->clearSelection();
+            m_advancedPage->showSection(AdvancedPage::Connections);
+        }},
         {"connections-data", [this, fakeConnections] {
             UpdateConnectionList(fakeConnections());
             ui->connections->expandAll();
@@ -304,6 +319,13 @@ void MainWindow::runUiTour(const QString &dir) {
         }, 14000},
         {"ruleset-result", [] {}, 30000},
         {"add-profile", trigger(ui->menu_add_from_input)},
+        {"add-profile-others", [this] {
+            ui->menu_add_from_input->trigger();
+            findChild<DialogProfileType *>()->findChild<QPushButton *>(QStringLiteral("more_types"))->click();
+        }},
+        {"new-amnezia", tile(QStringLiteral("AmneziaWG"))},
+        {"new-realm", tile(QStringLiteral("Hysteria Realm"))},
+        {"new-custom", tile(QStringLiteral("Custom JSON"))},
         {"edit-profile", [this, subscription] {
             const auto id = Configs::dataManager->groupsRepo->GetGroup(subscription)->Profiles().first();
             (new DialogEditProfile({}, id, this))->setAttribute(Qt::WA_DeleteOnClose);

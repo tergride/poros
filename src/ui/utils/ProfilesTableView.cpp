@@ -7,11 +7,29 @@
 #include <QKeyEvent>
 #include <QMimeData>
 #include <QPainter>
+#include <QPainterPath>
 #include <QStyledItemDelegate>
 
 namespace {
     constexpr int profilesRowHeight = 36;
     constexpr int profilesCellPadding = 10;
+
+    void paintTick(QPainter *painter, const QRect &cell, bool ticked) {
+        using namespace PorosTheme;
+        constexpr int size = 16;
+        const QRectF box(cell.center().x() - size / 2 + 0.5, cell.center().y() - size / 2 + 0.5, size - 1, size - 1);
+        painter->setRenderHint(QPainter::Antialiasing);
+        painter->setPen(QPen(QColor(ticked ? Act : Line2), 1.5));
+        painter->setBrush(QColor(ticked ? Act : S0));
+        painter->drawRoundedRect(box, 5, 5);
+        if (!ticked) return;
+        QPainterPath mark(box.topLeft() + QPointF(4, 7.5));
+        mark.lineTo(box.topLeft() + QPointF(6.5, 10));
+        mark.lineTo(box.topLeft() + QPointF(11, 5));
+        painter->setPen(QPen(Qt::white, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter->setBrush(Qt::NoBrush);
+        painter->drawPath(mark);
+    }
 
     // Hover, selection and the running mark belong to the whole row, which the stylesheet's per-cell states cannot draw.
     class ProfilesRowDelegate : public QStyledItemDelegate {
@@ -28,6 +46,12 @@ namespace {
             else if (view != nullptr && view->hoveredRow() == index.row()) painter->fillRect(option.rect, QColor(S2));
             painter->setPen(QColor(Line));
             painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight());
+
+            if (index.column() == ProfilesTableModel::ColSelect) {
+                paintTick(painter, option.rect, option.state & QStyle::State_Selected);
+                painter->restore();
+                return;
+            }
 
             QRect text = option.rect.adjusted(profilesCellPadding, 0, -profilesCellPadding, 0);
             if (index.column() == ProfilesTableModel::ColName) {
@@ -120,6 +144,57 @@ void ProfilesTableView::leaveEvent(QEvent *event) {
     viewport()->update();
 }
 
+void ProfilesTableView::reset() {
+    QTableView::reset();
+    notifyBulkRows();
+}
+
+void ProfilesTableView::notifyBulkRows() {
+    if (selectionModel() == nullptr) return;
+    const auto rows = selectionModel()->selectedRows().size();
+    emit bulkRowsChanged(rows >= 2 || (rows == 1 && m_ticked) ? int(rows) : 0);
+}
+
+void ProfilesTableView::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected) {
+    QTableView::selectionChanged(selected, deselected);
+    notifyBulkRows();
+}
+
+// A tick adds to the selection or takes from it, whatever the other rows hold.
+bool ProfilesTableView::tickAt(const QMouseEvent *event) {
+    if (event->button() != Qt::LeftButton) return false;
+    const QModelIndex index = indexAt(event->position().toPoint());
+    if (!index.isValid() || index.column() != ProfilesTableModel::ColSelect) return false;
+    m_ticked = true;
+    m_tickPressed = true;
+    selectionModel()->setCurrentIndex(index, QItemSelectionModel::NoUpdate);
+    selectionModel()->select(index, QItemSelectionModel::Toggle | QItemSelectionModel::Rows);
+    return true;
+}
+
+void ProfilesTableView::mousePressEvent(QMouseEvent *event) {
+    if (tickAt(event)) return;
+    if (event->button() == Qt::LeftButton && event->modifiers() == Qt::NoModifier) m_ticked = false;
+    QTableView::mousePressEvent(event);
+    notifyBulkRows();
+}
+
+void ProfilesTableView::mouseDoubleClickEvent(QMouseEvent *event) {
+    if (!tickAt(event)) QTableView::mouseDoubleClickEvent(event);
+}
+
+void ProfilesTableView::mouseMoveEvent(QMouseEvent *event) {
+    if (!m_tickPressed) QTableView::mouseMoveEvent(event);
+}
+
+void ProfilesTableView::mouseReleaseEvent(QMouseEvent *event) {
+    if (m_tickPressed) {
+        m_tickPressed = false;
+        return;
+    }
+    QTableView::mouseReleaseEvent(event);
+}
+
 int ProfilesTableView::firstVisibleRow() {
     QRect rect = this->viewport()->rect();
 
@@ -134,6 +209,7 @@ int ProfilesTableView::firstVisibleRow() {
 
 void ProfilesTableView::keyPressEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_Escape && selectionModel() && selectionModel()->hasSelection()) {
+        m_ticked = false;
         clearSelection();
         selectionModel()->clearCurrentIndex();
         event->accept();

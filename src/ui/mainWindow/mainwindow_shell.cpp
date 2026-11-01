@@ -41,6 +41,7 @@
 #include "include/ui/simple/SimpleHome.h"
 #include "include/ui/utils/CommandPalette.h"
 #include "include/ui/utils/ConnectionModeController.h"
+#include "include/ui/utils/ProfilesTableView.h"
 #include "include/ui/utils/TableSearchEdit.h"
 #include "include/ui/utils/ScreenQrScanner.h"
 #include "include/ui/widget/AdminPromptDialog.h"
@@ -258,7 +259,9 @@ void MainWindow::setupShell() {
     profilesHeadColumn->setSpacing(0);
     profilesHeadColumn->addWidget(m_groupInfo);
     profilesHeadColumn->addWidget(toolbar);
-    profilesRow->addWidget(shellSection(profilesHead, ui->tabWidget, profiles), 1);
+    auto *profilesSection = shellSection(profilesHead, ui->tabWidget, profiles);
+    profilesSection->layout()->addWidget(profilesBulkPanel(profilesSection));
+    profilesRow->addWidget(profilesSection, 1);
     m_advancedPage->setSection(AdvancedPage::Profiles, profiles);
 
     ui->stats_widget->removeTab(ui->stats_widget->indexOf(ui->Logs));
@@ -458,6 +461,66 @@ void MainWindow::showAppMenu(const QPoint &globalPos) {
     add(QStringLiteral("hide"), ui->actionHide_window);
     add(QStringLiteral("close"), ui->menu_exit);
     menu.exec(globalPos);
+}
+
+QWidget *MainWindow::profilesBulkPanel(QWidget *parent) {
+    auto *panel = new QFrame(parent);
+    panel->setProperty("role", QStringLiteral("bulk"));
+    panel->hide();
+    auto *row = new QHBoxLayout(panel);
+    row->setContentsMargins(14, 8, 14, 8);
+    row->setSpacing(6);
+    auto *count = new QLabel(panel);
+    row->addWidget(count);
+    row->addStretch();
+    const auto button = [panel, row](const QString &icon, const QString &text) {
+        auto *added = shellSmallButton(icon, text, panel);
+        row->addWidget(added);
+        return added;
+    };
+    connect(button(QStringLiteral("gauge"), tr("Latency test")), &QPushButton::clicked, ui->actionUrl_Test_Selected, &QAction::trigger);
+    connect(button(QStringLiteral("bolt"), tr("Speed")), &QPushButton::clicked, ui->actionSpeedtest_Selected, &QAction::trigger);
+
+    auto *share = button(QStringLiteral("share"), tr("Share"));
+    share->setProperty("menu", true);
+    auto *shareMenu = shellMenu({{QStringLiteral("link"), ui->menu_copy_links}, {QStringLiteral("link"), ui->menu_copy_links_nkr},
+                                 {QStringLiteral("qr"), ui->menu_qr}, {QStringLiteral("download"), ui->menu_export_config}}, share);
+    share->setMenu(shareMenu);
+    connect(shareMenu, &QMenu::aboutToShow, this, [this] {
+        const bool single = get_now_selected_list().size() == 1;
+        ui->menu_qr->setEnabled(single);
+        ui->menu_export_config->setEnabled(single);
+        ui->menu_export_config->setVisible(true);
+    });
+
+    connect(button(QStringLiteral("copy"), tr("Clone")), &QPushButton::clicked, ui->menu_clone, &QAction::trigger);
+
+    auto *toGroup = button(QStringLiteral("folder"), tr("To group"));
+    toGroup->setProperty("menu", true);
+    auto *groupsMenu = new QMenu(toGroup);
+    toGroup->setMenu(groupsMenu);
+    connect(groupsMenu, &QMenu::aboutToShow, this, [this, groupsMenu] {
+        groupsMenu->clear();
+        for (const int gid : Configs::dataManager->groupsRepo->GetGroupsTabOrder()) {
+            const auto group = Configs::dataManager->groupsRepo->GetGroup(gid);
+            // A subscription replaces its profiles on the next update.
+            if (group == nullptr || gid == Configs::dataManager->settingsRepo->current_group || !group->url.isEmpty()) continue;
+            connect(groupsMenu->addAction(group->name), &QAction::triggered, this, [this, gid] { moveSelectedProfiles(gid); });
+        }
+        if (groupsMenu->isEmpty()) groupsMenu->addAction(tr("No other groups"))->setEnabled(false);
+    });
+
+    auto *remove = button(QStringLiteral("trash"), tr("Delete"));
+    remove->setProperty("variant", QStringLiteral("danger"));
+    connect(remove, &QPushButton::clicked, ui->menu_delete, &QAction::trigger);
+
+    connect(ui->profilesTableView, &ProfilesTableView::bulkRowsChanged, this, [this, panel, count](int rows) {
+        panel->setVisible(rows > 0);
+        count->setText(tr("Selected: %1").arg(rows));
+        ui->actionUrl_Test_Selected->setEnabled(rows > 0);
+        ui->actionSpeedtest_Selected->setEnabled(rows > 0);
+    });
+    return panel;
 }
 
 void MainWindow::refreshGroupPane() {

@@ -411,6 +411,8 @@ private:
     void refreshProfilesEmptyState();
 
     void copyGroupLinks();
+    void moveSelectedProfiles(int gid);
+    QWidget *profilesBulkPanel(QWidget *parent);
 
     QList<int> get_now_selected_list();
     void refresh_startstop_button();

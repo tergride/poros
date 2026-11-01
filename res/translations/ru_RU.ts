@@ -3629,6 +3629,41 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     </message>
 </context>
 <context>
+    <name>DialogProfileType</name>
+    <message>
+        <source>New profile</source>
+        <translation>Новый профиль</translation>
+    </message>
+    <message>
+        <source>Proxy</source>
+        <translation>Прокси</translation>
+    </message>
+    <message>
+        <source>QUIC</source>
+        <translation>QUIC</translation>
+    </message>
+    <message>
+        <source>VPN</source>
+        <translation>VPN</translation>
+    </message>
+    <message>
+        <source>Composite</source>
+        <translation>Составные</translation>
+    </message>
+    <message>
+        <source>Chain</source>
+        <translation>Цепочка</translation>
+    </message>
+    <message>
+        <source>Auto selector</source>
+        <translation>Автовыбор</translation>
+    </message>
+    <message>
+        <source>Others</source>
+        <translation>Другие</translation>
+    </message>
+</context>
+<context>
     <name>DialogTrafficStats</name>
     <message>
         <source>Download: %1  ·  Upload: %2  ·  Total: %3</source>
@@ -7647,6 +7682,22 @@ Improves hole-punching reliability. Requires IPv4.</source>
     <message>
         <source>Diagnostics</source>
         <translation>Диагностика</translation>
+    </message>
+    <message>
+        <source>Latency test</source>
+        <translation>Задержка</translation>
+    </message>
+    <message>
+        <source>To group</source>
+        <translation>В группу</translation>
+    </message>
+    <message>
+        <source>No other groups</source>
+        <translation>Других групп нет</translation>
+    </message>
+    <message>
+        <source>Selected: %1</source>
+        <translation>Выбрано: %1</translation>
     </message>
     <message>
         <source>Subscriptions</source>

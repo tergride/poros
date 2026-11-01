@@ -297,6 +297,9 @@ set(PROJECT_SOURCES
         src/ui/group/dialog_edit_group.cpp
         include/ui/group/dialog_edit_group.ui
 
+        include/ui/profile/dialog_profile_type.h
+        src/ui/profile/dialog_profile_type.cpp
+
         include/ui/profile/edit_chain.h
         src/ui/profile/edit_chain.cpp
         include/ui/profile/edit_chain.ui

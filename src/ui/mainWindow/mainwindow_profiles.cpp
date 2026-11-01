@@ -41,6 +41,7 @@
 #include "include/engine/services/ProfileService.h"
 #include "include/ui/mainWindow/MainWindowInternal.h"
 #include "include/ui/profile/dialog_edit_profile.h"
+#include "include/ui/profile/dialog_profile_type.h"
 #include "include/ui/utils/ProfilesTableModel.h"
 #include "include/ui/widget/json/JsonCodeEdit.h"
 
@@ -67,8 +68,13 @@ void MainWindow::on_menu_edit_triggered() {
 }
 
 void MainWindow::on_menu_add_from_input_triggered() {
-    auto dialog = new DialogEditProfile("autoselector", Configs::dataManager->settingsRepo->current_group, this);
-    connect(dialog, &QDialog::finished, dialog, &QDialog::deleteLater);
+    auto *picker = new DialogProfileType(this);
+    connect(picker, &DialogProfileType::chosen, this, [this](const QString &type, const DialogProfileType::Preset &preset) {
+        auto dialog = new DialogEditProfile(type, Configs::dataManager->settingsRepo->current_group, this, preset);
+        connect(dialog, &QDialog::finished, dialog, &QDialog::deleteLater);
+    });
+    connect(picker, &QDialog::finished, picker, &QDialog::deleteLater);
+    picker->open();
 }
 
 void MainWindow::on_menu_add_from_clipboard_triggered() {
@@ -141,6 +147,13 @@ void MainWindow::on_menu_delete_triggered() {
         Configs::dataManager->profilesRepo->BatchDeleteProfiles(entIDs, true);
         refresh_proxy_list({}, true, RefreshAnchor::Removal);
     }
+}
+
+void MainWindow::moveSelectedProfiles(int gid) {
+    const auto entIDs = get_now_selected_list();
+    if (entIDs.isEmpty() || !Configs::dataManager->profilesRepo->MoveProfiles(entIDs, gid)) return;
+    refresh_proxy_list({}, true, RefreshAnchor::Removal);
+    refreshGroupPane();
 }
 
 void MainWindow::on_menu_reset_traffic_triggered() {

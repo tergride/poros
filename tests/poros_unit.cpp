@@ -7,6 +7,8 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QLocale>
+#include <QSignalSpy>
+#include <QStandardItemModel>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -32,6 +34,8 @@
 #include "include/ui/utils/ConnectionsTreeFilterProxyModel.h"
 #include "include/ui/utils/ConnectionsTreeModel.h"
 #include "include/ui/utils/FormColumns.h"
+#include "include/ui/utils/ProfilesTableModel.h"
+#include "include/ui/utils/ProfilesTableView.h"
 
 namespace {
     std::shared_ptr<Configs::RouteProfile> routeByKey(const QString &key) {
@@ -466,6 +470,56 @@ private slots:
         QLocale::setDefault(QLocale(QLocale::Russian));
         QCOMPARE(ReadableSize(2516582), QStringLiteral("2,4 MiB"));
         QLocale::setDefault(saved);
+    }
+
+    void moveProfilesKeepsIdsAndChangesGroups() {
+        auto &groups = Configs::dataManager->groupsRepo;
+        auto &profiles = Configs::dataManager->profilesRepo;
+        int source = -1;
+        int target = -1;
+        QVERIFY(!Engine::GroupService::Add({"Move from", {}, false}, &source).has_value());
+        QVERIFY(!Engine::GroupService::Add({"Move to", {}, false}, &target).has_value());
+        auto staying = Configs::ProfilesRepo::NewProfile("socks");
+        auto moving = Configs::ProfilesRepo::NewProfile("socks");
+        QVERIFY(profiles->AddProfile(staying, source));
+        QVERIFY(profiles->AddProfile(moving, source));
+        const int movingId = moving->id;
+
+        QVERIFY(profiles->MoveProfiles({movingId}, target));
+        QCOMPARE(moving->gid, target);
+        QCOMPARE(groups->GetGroup(source)->Profiles(), QList<int>{staying->id});
+        QCOMPARE(groups->GetGroup(target)->Profiles(), QList<int>{movingId});
+        moving.reset();
+        QCOMPARE(profiles->GetProfile(movingId)->gid, target);
+
+        QVERIFY(!profiles->MoveProfiles({movingId}, -7));
+        QVERIFY(!Engine::GroupService::Delete(source).has_value());
+        QVERIFY(!Engine::GroupService::Delete(target).has_value());
+    }
+
+    void ticksOpenTheSelectionPanel() {
+        QStandardItemModel model(3, ProfilesTableModel::ColumnCount);
+        ProfilesTableView view;
+        view.setModel(&model);
+        view.resize(700, 300);
+        view.doItemsLayout();
+        QSignalSpy panel(&view, &ProfilesTableView::bulkRowsChanged);
+        const auto click = [&](int row, int column) {
+            QTest::mouseClick(view.viewport(), Qt::LeftButton, Qt::NoModifier, view.visualRect(model.index(row, column)).center());
+        };
+        const int plain = ProfilesTableModel::ColName;
+        const int tick = ProfilesTableModel::ColSelect;
+
+        click(0, plain);
+        QCOMPARE(view.selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(panel.last().first().toInt(), 0);
+        click(1, tick);
+        QCOMPARE(panel.last().first().toInt(), 2);
+        click(0, tick);
+        QCOMPARE(panel.last().first().toInt(), 1);
+        click(2, plain);
+        QCOMPARE(view.selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(panel.last().first().toInt(), 0);
     }
 
     void connectionsListByProcessOrFlat() {
