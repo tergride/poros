@@ -45,9 +45,7 @@ private:
         int landing_proxy;
     } LANDING;
 
-    Configs::SubscriptionOptions subOptions;
-
-    Configs::EndpointSource endpoint;
+    bool globalSendHwid = false;
 
     bool restartNeeded = false;
 
@@ -56,6 +54,22 @@ private:
     Validation::Form *form = nullptr;
 
     int resolve_proxy_selection(QComboBox *combo, int fallback) const;
+
+    void syncType();
+
+    void loadEndpoint();
+
+    void loadOptions();
+
+    void bindOptions();
+
+    [[nodiscard]] Configs::EndpointSource endpointFromUi() const;
+
+    [[nodiscard]] Configs::SubscriptionOptions optionsFromUi() const;
+
+    void syncHwidFields();
+
+    void syncUrlTestFollowUps();
 
 private slots:
 

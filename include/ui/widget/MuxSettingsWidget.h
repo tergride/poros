@@ -3,8 +3,6 @@
 #include <QPointer>
 #include <QWidget>
 
-#include <functional>
-
 #include "include/configs/common/multiplex.h"
 
 class QCheckBox;
@@ -27,10 +25,6 @@ public:
     [[nodiscard]] Configs::MuxSettings settings() const;
     // labelPrefix leads every field name in the form's messages.
     void bindValidation(Validation::Form *form, const QString &labelPrefix = {});
-
-    // A small window-modal dialog over parent; done runs only when it is accepted.
-    static void openDialog(QWidget *parent, const Configs::MuxSettings &settings,
-                           std::function<void(const Configs::MuxSettings &)> done);
 
 private:
     void updateControls();

@@ -41,10 +41,6 @@ QStringList xdriveSecretsFromUi(const Ui::DialogEditProfile *ui, const Configs::
 }
 
 void DialogEditProfile::setupXrayXDriveControls() {
-    for (auto *grid: {ui->gridLayout_xray_xdrive_storage, ui->gridLayout_xray_xdrive_tuning}) {
-        grid->setColumnStretch(1, 1);
-        grid->setColumnStretch(3, 1);
-    }
     ui->verticalLayout_xray_xdrive->setAlignment(Qt::AlignTop);
     ui->xray_xdrive_service->addItems(Configs::XrayXDriveServices);
 

@@ -13,10 +13,10 @@
   <property name="windowTitle">
    <string notr="true">EditOpenConnect</string>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout">
+  <layout class="QVBoxLayout" name="horizontalLayout">
    <item>
     <widget class="QWidget" name="basic_w" native="true">
-     <layout class="QFormLayout" name="basic_layout">
+     <layout class="QGridLayout" name="basic_layout">
       <item row="0" column="0">
        <widget class="QLabel" name="flavor_l">
         <property name="toolTip">
@@ -177,7 +177,7 @@
      <layout class="QVBoxLayout" name="tls_layout">
       <item>
        <widget class="QWidget" name="tls_form_w" native="true">
-        <layout class="QFormLayout" name="tls_form">
+        <layout class="QGridLayout" name="tls_form">
          <item row="0" column="0" colspan="2">
           <widget class="QCheckBox" name="insecure">
            <property name="toolTip">

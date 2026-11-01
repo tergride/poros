@@ -11,10 +11,6 @@
 
 #include <climits>
 
-namespace {
-constexpr int kXrayPanelNetworkMinWidth = 760;
-}
-
 // A stored value the combo does not offer is shown, and flagged by its rule, instead of being rewritten on save.
 void DialogEditProfile::keepXrayComboValue(QComboBox *combo, const QString &value) {
     if (!value.isEmpty() && combo->findText(value) < 0) combo->addItem(value);
@@ -201,13 +197,14 @@ void DialogEditProfile::saveXrayStream() {
 
 void DialogEditProfile::updateXrayRows() {
     const bool hasStream = ent->outbound->HasXrayStream();
-    ui->xray_settings_box->setVisible(hasStream);
+    ui->xray_transport_w->setVisible(hasStream);
+    ui->xray_security_w->setVisible(hasStream);
+    ui->xray_mux_box->setVisible(hasStream);
 
     const auto security = ui->xray_security->currentText();
     const bool tls = security == "tls";
     const bool reality = security == "reality";
-    const bool securityBox = hasStream && (tls || reality);
-    ui->xray_security_box->setVisible(securityBox);
+    ui->xray_security_box->setVisible(tls || reality);
     ui->xray_tls_only->setVisible(tls);
     ui->xray_reality_box->setVisible(reality);
 
@@ -215,19 +212,15 @@ void DialogEditProfile::updateXrayRows() {
     const bool xhttp = network == "xhttp";
     const bool grpc = network == "grpc";
     const bool xdrive = network == "xdrive";
-    const bool networkBox = hasStream && network != "raw";
-    ui->xray_network_box->setVisible(networkBox);
+    ui->xray_network_box->setVisible(network != "raw");
     ui->xray_common_box->setVisible(!xdrive);
     ui->xray_xhttp_box->setVisible(xhttp);
     ui->xray_xdrive_box->setVisible(xdrive);
-    ui->xray_network_scroll->setMinimumWidth(xhttp || xdrive ? kXrayPanelNetworkMinWidth : 0);
     setRowVisible(ui->xray_ed_label, ui->xray_ed_length, !xhttp && !grpc);
     setRowVisible(ui->xray_headers_l, ui->xray_headers, !grpc);
     ui->xray_multi_mode->setVisible(grpc);
     updateXrayXHTTPControls();
     updateXrayXDriveControls();
-
-    ui->xray_widget->setVisible(securityBox || networkBox);
 }
 
 void DialogEditProfile::on_xray_downloadsettings_edit_clicked() {

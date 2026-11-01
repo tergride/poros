@@ -1,11 +1,10 @@
 #include "include/ui/profile/edit_advanced.h"
 
+#include "include/ui/utils/FormColumns.h"
 #include "include/ui/utils/GuiUtils.hpp"
 
-#include <QGuiApplication>
 #include <QInputDialog>
 #include <QNetworkInterface>
-#include <QScreen>
 #include <QAbstractSocket>
 #include "include/configs/generate.h"
 #include "include/database/DatabaseManager.h"
@@ -28,12 +27,13 @@ EditAdvanced::InterfaceFields EditAdvanced::GetInterfaceFields() const {
 }
 
 EditAdvanced::EditAdvanced(QWidget *parent, const std::shared_ptr<Configs::Profile> &_ent)
-    : QDialog(parent)
+    : QWidget(parent)
     , ui(new Ui::EditAdvanced)
 {
     ui->setupUi(this);
+    FormColumns::adoptAll(this);
     form = new Validation::Form(this);
-    form->attachStatus(ui->buttonBox);
+    form->attachStatus(ui->status_row);
     ent = _ent;
     bindValidation();
     auto dialFieldsObj = ent->outbound->dialFields;
@@ -139,10 +139,6 @@ EditAdvanced::EditAdvanced(QWidget *parent, const std::shared_ptr<Configs::Profi
 
     ADD_ASTERISK(this)
     form->markAll();
-
-    // adjustSize() clamps to 2/3 of the screen.
-    const auto *scr = screen() != nullptr ? screen() : QGuiApplication::primaryScreen();
-    if (scr != nullptr) resize(sizeHint().boundedTo(scr->availableGeometry().size()));
 }
 
 EditAdvanced::~EditAdvanced()
@@ -240,8 +236,8 @@ void EditAdvanced::syncEndpoint() {
     ui->endpoint_hint->setHidden(hint.isEmpty());
 }
 
-void EditAdvanced::accept() {
-    if (!form->validateAll()) return;
+bool EditAdvanced::apply() {
+    if (!form->validateAll()) return false;
     auto dialFieldsObj = ent->outbound->dialFields;
     dialFieldsObj->reuse_addr = ui->reuse_addr->isChecked();
     dialFieldsObj->tcp_fast_open = ui->tcp_fast_open->isChecked();
@@ -303,7 +299,7 @@ void EditAdvanced::accept() {
     }
 
     if (!ui->endpoint_box->isHidden()) ent->endpoint = endpointFromUi();
-    QDialog::accept();
+    return true;
 }
 
 void EditAdvanced::setCacheButtonText(QPushButton *button, const QStringList &value) {

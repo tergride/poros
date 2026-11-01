@@ -11,9 +11,7 @@
 
 #include <QFormLayout>
 #include <QGridLayout>
-#include <QGuiApplication>
 #include <QListWidget>
-#include <QScreen>
 #include <QSet>
 
 #include <algorithm>
@@ -28,7 +26,6 @@ EditAutoSelector::EditAutoSelector(QWidget *parent) : QWidget(parent), ui(new Ui
     connect(ui->advanced_toggle, &QPushButton::toggled, this, [this](bool on) {
         ui->advanced_area->setVisible(on);
         ui->advanced_toggle->setText(on ? tr("Advanced ▴") : tr("Advanced…"));
-        resizeDialogToContent();
     });
 
     ui->advanced_layout->setColumnStretch(0, 1);
@@ -69,21 +66,6 @@ EditAutoSelector::EditAutoSelector(QWidget *parent) : QWidget(parent), ui(new Ui
 
 EditAutoSelector::~EditAutoSelector() {
     delete ui;
-}
-
-// Hiding a child never shrinks the dialog: parent layouts cache their last size, so the resize is only correct one event-loop pass after the invalidation.
-void EditAutoSelector::resizeDialogToContent() {
-    auto *dialog = get_edit_dialog ? get_edit_dialog() : nullptr;
-    if (dialog == nullptr) return;
-    if (layout() != nullptr) layout()->invalidate();
-    updateGeometry();
-
-    runOnThread([dialog] {
-        if (auto *dialogLayout = dialog->layout()) dialogLayout->activate();
-        // adjustSize() would clamp to 2/3 of the screen, so bound it here instead.
-        const auto available = QGuiApplication::primaryScreen()->availableGeometry().size();
-        dialog->resize(dialog->sizeHint().boundedTo(available));
-    }, dialog);
 }
 
 void EditAutoSelector::mirrorTooltipsToLabels() const {

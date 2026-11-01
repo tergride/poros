@@ -6,17 +6,9 @@
 #include "include/ui/utils/ValidationForm.h"
 
 #include <QAbstractButton>
-#include <QGridLayout>
 #include <QLabel>
 
 #include <climits>
-
-namespace {
-void setXHTTPGridStretch(QGridLayout *layout) {
-    layout->setColumnStretch(1, 1);
-    layout->setColumnStretch(3, 1);
-}
-}
 
 void DialogEditProfile::setXrayXHTTPHelp(QWidget *caption, QWidget *field,
                                          const QString &text,
@@ -33,11 +25,6 @@ void DialogEditProfile::setXrayXHTTPHelp(QWidget *caption, QWidget *field,
 }
 
 void DialogEditProfile::setupXrayXHTTPControls() {
-    setXHTTPGridStretch(ui->gridLayout_xray_xhttp_common);
-    setXHTTPGridStretch(ui->gridLayout_xray_xhttp_padding);
-    setXHTTPGridStretch(ui->gridLayout_xray_xhttp_packet);
-    setXHTTPGridStretch(ui->gridLayout_xray_xhttp_xmux);
-
     ui->verticalLayout_xray_xhttp->setAlignment(Qt::AlignTop);
     ui->xray_mode->addItems(Configs::XrayXHTTPModes);
     ui->xray_xpadding_method->addItems({"", "repeat-x", "tokenish"});

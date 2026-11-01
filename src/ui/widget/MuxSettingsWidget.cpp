@@ -5,8 +5,6 @@
 
 #include <QCheckBox>
 #include <QComboBox>
-#include <QDialog>
-#include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -142,28 +140,3 @@ void MuxSettingsWidget::updateControls() {
     if (m_form != nullptr) m_form->refresh();
 }
 
-void MuxSettingsWidget::openDialog(QWidget *parent, const Configs::MuxSettings &settings,
-                                   std::function<void(const Configs::MuxSettings &)> done) {
-    auto *dialog = new QDialog(parent);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setWindowTitle(tr("Custom Multiplex"));
-    auto *layout = new QVBoxLayout(dialog);
-    auto *editor = new MuxSettingsWidget(dialog);
-    editor->setSettings(settings);
-    layout->addWidget(editor);
-    layout->addStretch(1);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, dialog);
-    layout->addWidget(buttons);
-
-    auto *form = new Validation::Form(dialog);
-    form->attachStatus(buttons);
-    editor->bindValidation(form);
-    connect(buttons, &QDialogButtonBox::accepted, dialog, [dialog, form, editor, done = std::move(done)] {
-        if (!form->validateAll()) return;
-        done(editor->settings());
-        dialog->accept();
-    });
-    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
-    form->markAll();
-    dialog->open();
-}

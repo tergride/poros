@@ -1252,12 +1252,16 @@ Poros will restart to complete the restore.</source>
 <context>
     <name>DialogEditGroup</name>
     <message>
-        <source>Edit Group</source>
-        <translation>Редактирование группы</translation>
+        <source>Group</source>
+        <translation>Группа</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>Основное</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation>Название</translation>
+        <translation>Имя</translation>
     </message>
     <message>
         <source>Type</source>
@@ -1280,51 +1284,8 @@ Poros will restart to complete the restore.</source>
         <translation>Автоочистка недоступных профилей</translation>
     </message>
     <message>
-        <source>URL</source>
-        <translation>URL</translation>
-    </message>
-    <message>
-        <source>Advanced</source>
-        <translation>Доп. настройки</translation>
-    </message>
-    <message>
-        <source>Copy profile share links</source>
-        <translation>Копировать ссылки профилей</translation>
-    </message>
-    <message>
-        <source>No profile named &quot;%1&quot;. Pick one from the list.</source>
-        <translation>Профиля с названием &quot;%1&quot; нет. Выберите профиль из списка.</translation>
-    </message>
-    <message>
-        <source>Copied</source>
-        <translation>Скопировано</translation>
-    </message>
-    <message>
-        <source>Skip automatic update</source>
-        <translation>Не обновлять автоматически</translation>
-    </message>
-    <message>
-        <source>Common</source>
-        <translation>Основные</translation>
-    </message>
-    <message>
-        <source>Share</source>
-        <translation>Поделиться</translation>
-    </message>
-    <message>
-        <source>Landing Proxy</source>
-        <translation>Выходной прокси</translation>
-    </message>
-    <message>
-        <source>Copy profile share links (Deep Links)</source>
-        <translation>Копировать ссылки профилей (deep links)</translation>
-    </message>
-</context>
-<context>
-    <name>DialogEditGroupAdvanced</name>
-    <message>
-        <source>Advanced Group Settings</source>
-        <translation>Доп. настройки группы</translation>
+        <source>Request</source>
+        <translation>Запрос</translation>
     </message>
     <message>
         <source>Server Address</source>
@@ -1333,10 +1294,6 @@ Poros will restart to complete the restore.</source>
     <message>
         <source>Host or IP address</source>
         <translation>Хост или IP-адрес</translation>
-    </message>
-    <message>
-        <source>Request</source>
-        <translation>Запрос</translation>
     </message>
     <message>
         <source>Empty uses the User Agent from the Subscription settings.</source>
@@ -1487,6 +1444,42 @@ Poros will restart to complete the restore.</source>
         <translation>Сортировать по задержке</translation>
     </message>
     <message>
+        <source>URL</source>
+        <translation>URL</translation>
+    </message>
+    <message>
+        <source>Copy profile share links</source>
+        <translation>Копировать ссылки профилей</translation>
+    </message>
+    <message>
+        <source>Must be shorter than 1000 characters, on a single line.</source>
+        <translation>Должно быть короче 1000 символов и в одну строку.</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>New group</source>
+        <translation>Новая группа</translation>
+    </message>
+    <message>
+        <source>No profile named &quot;%1&quot;. Pick one from the list.</source>
+        <translation>Профиля с названием &quot;%1&quot; нет. Выберите профиль из списка.</translation>
+    </message>
+    <message>
+        <source>Copied</source>
+        <translation>Скопировано</translation>
+    </message>
+    <message>
+        <source>Profiles&apos; own addresses</source>
+        <translation>Собственные адреса профилей</translation>
+    </message>
+    <message>
+        <source>Fixed address</source>
+        <translation>Фиксированный адрес</translation>
+    </message>
+    <message>
         <source> min</source>
         <translation> мин.</translation>
     </message>
@@ -1503,24 +1496,24 @@ Poros will restart to complete the restore.</source>
         <translation>Последний интервал, присланный этим сервером: %1 ч.</translation>
     </message>
     <message>
-        <source>Profiles&apos; own addresses</source>
-        <translation>Собственные адреса профилей</translation>
-    </message>
-    <message>
-        <source>Fixed address</source>
-        <translation>Фиксированный адрес</translation>
-    </message>
-    <message>
-        <source>Must be shorter than 1000 characters, on a single line.</source>
-        <translation>Должно быть короче 1000 символов и в одну строку.</translation>
+        <source>Enter a host name or an IP address, without a port.</source>
+        <translation>Введите имя хоста или IP-адрес без порта.</translation>
     </message>
     <message>
         <source>Must be at least 30 minutes, or 0 to keep the default.</source>
         <translation>Должно быть не меньше 30 минут или 0, чтобы оставить значение по умолчанию.</translation>
     </message>
     <message>
-        <source>Enter a host name or an IP address, without a port.</source>
-        <translation>Введите имя хоста или IP-адрес без порта.</translation>
+        <source>Skip automatic update</source>
+        <translation>Пропускать автообновление</translation>
+    </message>
+    <message>
+        <source>Landing Proxy</source>
+        <translation>Лэндинг-прокси</translation>
+    </message>
+    <message>
+        <source>Copy profile share links (Deep Links)</source>
+        <translation>Копировать как deep link</translation>
     </message>
 </context>
 <context>
@@ -1658,11 +1651,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>Name</source>
-        <translation>Название</translation>
-    </message>
-    <message>
-        <source>Settings</source>
-        <translation>Настройки</translation>
+        <translation>Имя</translation>
     </message>
     <message>
         <source>The underlying transport method. It must be consistent with the server, otherwise, the connection cannot be established.</source>
@@ -1686,7 +1675,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>Multiplex</source>
-        <translation>Мультиплексирование</translation>
+        <translation>Мультиплекс</translation>
     </message>
     <message>
         <source>Keep Default</source>
@@ -1709,10 +1698,6 @@ Poros will restart to complete the restore.</source>
         <translation>Выкл.</translation>
     </message>
     <message>
-        <source>Advanced Settings</source>
-        <translation>Доп. настройки</translation>
-    </message>
-    <message>
         <source>Finalmask</source>
         <translation>Finalmask</translation>
     </message>
@@ -1721,20 +1706,8 @@ Poros will restart to complete the restore.</source>
         <translation>Свой</translation>
     </message>
     <message>
-        <source>Configure</source>
-        <translation>Настроить</translation>
-    </message>
-    <message>
-        <source>Network Settings (%1)</source>
-        <translation>Настройки соединения (%1)</translation>
-    </message>
-    <message>
         <source>Service Name</source>
         <translation>Service Name</translation>
-    </message>
-    <message>
-        <source>TLS Security Settings</source>
-        <translation>Настройки безопасности TLS</translation>
     </message>
     <message>
         <source>When enabled, V2Ray will not check the validity of the TLS certificate provided by the remote host (the security is equivalent to plaintext)</source>
@@ -1775,10 +1748,6 @@ Poros will restart to complete the restore.</source>
     <message>
         <source>Colon-separated TLS 1.2 cipher suite names. A uTLS fingerprint ignores them; use the &quot;unsafe&quot; fingerprint (Go&apos;s own TLS stack) to apply them.</source>
         <translation>Названия наборов шифров TLS 1.2 через двоеточие. uTLS fingerprint их игнорирует; чтобы они применялись, выберите fingerprint &quot;unsafe&quot; (собственный стек TLS из Go).</translation>
-    </message>
-    <message>
-        <source>Security Settings</source>
-        <translation>Настройки безопасности</translation>
     </message>
     <message>
         <source>SNI</source>
@@ -1827,10 +1796,6 @@ Poros will restart to complete the restore.</source>
     <message>
         <source>Reality SpiderX</source>
         <translation>Reality SpiderX</translation>
-    </message>
-    <message>
-        <source>Network Settings</source>
-        <translation>Настройки соединения</translation>
     </message>
     <message>
         <source>Headers</source>
@@ -1961,6 +1926,22 @@ Poros will restart to complete the restore.</source>
         <translation>hKeepAlivePeriod</translation>
     </message>
     <message>
+        <source>Advanced</source>
+        <translation>Дополнительно</translation>
+    </message>
+    <message>
+        <source>JSON</source>
+        <translation>JSON</translation>
+    </message>
+    <message>
+        <source>The profile as it was last saved, in the core&apos;s format.</source>
+        <translation>Профиль в том виде, в каком он сохранён, в формате ядра.</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>Копировать ссылку</translation>
+    </message>
+    <message>
         <source>Max Concurrency</source>
         <translation>Max Concurrency</translation>
     </message>
@@ -2025,12 +2006,16 @@ Poros will restart to complete the restore.</source>
         <translation>ALPN — согласование протокола прикладного уровня, передаётся в открытом виде. Разделяйте значения запятыми.</translation>
     </message>
     <message>
-        <source>TLS Camouflage Settings</source>
-        <translation>Настройки маскировки TLS</translation>
-    </message>
-    <message>
         <source>Reality public key. If not empty, turn TLS into REALITY.</source>
         <translation>Публичный ключ Reality. Если задан, вместо TLS используется REALITY.</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>New profile</source>
+        <translation>Новый профиль</translation>
     </message>
     <message>
         <source>Custom (%1 outbound)</source>
@@ -2329,6 +2314,18 @@ Poros will restart to complete the restore.</source>
     <message>
         <source>Service</source>
         <translation>Сервис</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>Профиль</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>Общее</translation>
+    </message>
+    <message>
+        <source>Transport</source>
+        <translation>Транспорт</translation>
     </message>
     <message>
         <source>Folder</source>
@@ -8812,10 +8809,6 @@ Name: %1</source>
         <source>Download (Mb/s)</source>
         <translation>Загрузка (Мбит/с)</translation>
     </message>
-    <message>
-        <source>Custom Multiplex</source>
-        <translation>Свой мультиплекс</translation>
-    </message>
 </context>
 <context>
     <name>NavRail</name>
@@ -10411,6 +10404,26 @@ Move the Poros folder somewhere you can write to.</source>
     <message>
         <source>OK</source>
         <translation>ОК</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <source>Discard</source>
+        <translation>Не сохранять</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>Сбросить</translation>
+    </message>
+    <message>
+        <source>Restore Defaults</source>
+        <translation>Вернуть значения по умолчанию</translation>
     </message>
 </context>
 <context>

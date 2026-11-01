@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QDialog>
 #include <QStringList>
+#include <QWidget>
 #include "ui_edit_advanced.h"
 #include "include/database/entities/Profile.h"
 
@@ -11,7 +11,8 @@ class EditAdvanced;
 
 namespace Validation { class Form; }
 
-class EditAdvanced : public QDialog
+// The Advanced tab of the profile dialog.
+class EditAdvanced : public QWidget
 {
     Q_OBJECT
 
@@ -20,8 +21,8 @@ public:
 
     ~EditAdvanced() override;
 
-public slots:
-    void accept() override;
+    // Writes into the profile when the page validates.
+    bool apply();
 
 private slots:
     void on_ech_config_clicked();

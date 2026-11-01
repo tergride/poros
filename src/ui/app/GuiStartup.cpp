@@ -33,6 +33,11 @@ namespace {
         QT_TRANSLATE_NOOP("QPlatformTheme", "&No");
         QT_TRANSLATE_NOOP("QPlatformTheme", "No");
         QT_TRANSLATE_NOOP("QPlatformTheme", "OK");
+        QT_TRANSLATE_NOOP("QPlatformTheme", "Close");
+        QT_TRANSLATE_NOOP("QPlatformTheme", "Save");
+        QT_TRANSLATE_NOOP("QPlatformTheme", "Discard");
+        QT_TRANSLATE_NOOP("QPlatformTheme", "Reset");
+        QT_TRANSLATE_NOOP("QPlatformTheme", "Restore Defaults");
         if (guiStartupTranslator != nullptr) {
             guiStartupTranslator->deleteLater();
         }

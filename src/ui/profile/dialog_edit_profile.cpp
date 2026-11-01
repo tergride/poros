@@ -31,11 +31,15 @@
 
 #include "include/database/GroupsRepo.h"
 #include "include/database/ProfilesRepo.h"
+#include "include/ui/utils/FormColumns.h"
 #include "include/ui/utils/GuiUtils.hpp"
 #include "include/global/RunningProfiles.hpp"
 #include "include/global/Utils.hpp"
+#include "include/ui/setting/PorosTheme.h"
 #include "include/ui/utils/ValidationForm.h"
 
+#include <QClipboard>
+#include <QGuiApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPointer>
@@ -147,22 +151,21 @@ void rebuildTabOrder(const QList<QWidget *> &tabOrder) {
 DialogEditProfile::DialogEditProfile(const QString &_type, int profileOrGroupId, QWidget *parent)
     : QDialog(parent), ui(new Ui::DialogEditProfile) {
     ui->setupUi(this);
+    FormColumns::adoptAll(this);
     form = new Validation::Form(this);
     form->attachStatus(ui->buttonBox);
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Save"));
+    ui->buttonBox->button(QDialogButtonBox::Cancel)->setProperty("variant", QStringLiteral("ghost"));
+    ui->copy_link->setIcon(PorosTheme::Icon(QStringLiteral("copy")));
+    connect(ui->copy_link, &QPushButton::clicked, this, [this] { QGuiApplication::clipboard()->setText(ent->outbound->ExportToLink()); });
+    connect(ui->tabs, &QTabWidget::currentChanged, this, [this] {
+        if (ui->tabs->currentWidget() == ui->tab_json) ui->json_view->setPlainText(QJsonObject2QString(ent->outbound->ExportToJson(), false));
+    });
 
     outerTabOrder = collectTabOrder(this, nullptr, ui->fake);
     innerTabOrderIndex = outerTabOrder.indexOf(ui->fake);
     if (innerTabOrderIndex >= 0) outerTabOrder.removeAt(innerTabOrderIndex);
 
-    ui->dialog_layout->setStretch(0, 0);
-    ui->dialog_layout->setStretch(1, 1);
-    ui->dialog_layout->setStretch(2, 1);
-    ui->dialog_layout->setAlignment(ui->left_w, Qt::AlignTop);
-    ui->dialog_layout->setAlignment(ui->right_all_w, Qt::AlignTop);
-    ui->left->setAlignment(Qt::AlignTop);
-    ui->right_layout->setAlignment(Qt::AlignTop);
-    ui->verticalLayout_5->setAlignment(Qt::AlignTop);
-    ui->verticalLayout_8->setAlignment(Qt::AlignTop);
     ui->port->setValidator(QRegExpValidator_Number);
     form->bind(ui->address, [this](const QString &text) {
         const auto empty = innerEditor->serverAddressOptional() ? Validation::Empty::Allowed : Validation::Empty::Required;
@@ -177,24 +180,6 @@ DialogEditProfile::DialogEditProfile(const QString &_type, int profileOrGroupId,
 
     setupSingboxStream();
     setupXrayStream();
-
-    addressEffective = new QLineEdit(this);
-    addressEffective->setEnabled(false);
-    addressEffective->hide();
-    ui->gridLayout_2->addWidget(addressEffective, 2, 1);
-
-    connect(ui->advanced_button, &QPushButton::clicked, this, [this] {
-        auto *advanced = new EditAdvanced(this, ent);
-        advanced->setAttribute(Qt::WA_DeleteOnClose);
-        connect(advanced, &QDialog::accepted, this, [this] {
-            updateControls();
-            // Rules anchored here also read what Advanced just wrote into the profile.
-            for (QWidget *anchor: std::initializer_list<QWidget *>{ui->reality_pbk, ui->certificate_edit, ui->sni, ui->utlsFingerprint}) {
-                form->revalidate(anchor);
-            }
-        });
-        advanced->show();
-    });
 
     newEnt = !_type.isEmpty();
     if (newEnt) {
@@ -211,15 +196,15 @@ DialogEditProfile::DialogEditProfile(const QString &_type, int profileOrGroupId,
         type = ent->type;
         setRowVisible(ui->type_l, ui->type, false);
     }
+    ui->dialog_title->setText(newEnt ? tr("New profile") : tr("Profile"));
+    setWindowTitle(ui->dialog_title->text());
 
     if (!typeSelected(type)) {
         deleteLater();
         return;
     }
     runOnThread([self = QPointer<DialogEditProfile>(this)] {
-        if (self == nullptr) return;
-        self->fitToContent();
-        self->show();
+        if (self != nullptr) self->show();
     }, this);
 }
 
@@ -277,12 +262,14 @@ bool DialogEditProfile::typeSelected(const QString &newType) {
         const auto [widget, editor] = factory(this);
         if (auto *custom = qobject_cast<EditCustom *>(widget)) custom->preset_core = customType;
         mountEditor(widget, editor);
-        ui->bean->setTitle(ent->outbound->DisplayType());
+        mountAdvanced();
 
         loadSingboxStream();
         loadXrayStream();
         innerEditor->onStart(ent);
         innerEditor->bindValidation(*form);
+        FormColumns::adoptAll(widget);
+        ui->copy_link->setVisible(!newEnt && !ent->outbound->ExportToLink().isEmpty());
         ui->name->setText(ent->outbound->name);
         ui->address->setText(ent->outbound->GetAddress());
         ui->port->setText(ent->outbound->GetPort());
@@ -324,6 +311,16 @@ void DialogEditProfile::mountEditor(QWidget *widget, ProfileEditor *editor) {
     editor->editor_state_changed = [this] { relayout(); };
 }
 
+void DialogEditProfile::mountAdvanced() {
+    delete advanced;
+    advanced = new EditAdvanced(ui->tab_advanced_contents, ent);
+    ui->tab_advanced_column->insertWidget(0, advanced);
+}
+
+void DialogEditProfile::setTabVisible(QWidget *tab, bool visible) {
+    ui->tabs->setTabVisible(ui->tabs->indexOf(tab), visible);
+}
+
 // Visibility and enabled state are derived from the profile and the current input, never from other widgets.
 void DialogEditProfile::updateControls() {
     if (ent == nullptr || innerEditor == nullptr) return;
@@ -331,6 +328,26 @@ void DialogEditProfile::updateControls() {
     updateSingboxRows();
     updateTlsControlsEnabled();
     updateXrayRows();
+
+    const auto outbound = ent->outbound;
+    const bool xray = outbound->HasXrayStream();
+    setTabVisible(ui->tab_transport, outbound->HasTransport() || xray);
+    setTabVisible(ui->tab_security, outbound->HasTLS() || xray);
+    setTabVisible(ui->tab_mux, outbound->HasMux() || xray);
+    updateChip();
+}
+
+void DialogEditProfile::updateChip() {
+    const auto outbound = ent->outbound;
+    QString security;
+    if (outbound->HasXrayStream()) {
+        security = ui->xray_security->currentText();
+    } else if (outbound->HasTLS() && ui->security->currentText() == "tls") {
+        security = ui->reality_pbk->text().trimmed().isEmpty() ? QStringLiteral("tls") : QStringLiteral("reality");
+    }
+    const auto chip = outbound->DisplayType();
+    if (security.isEmpty()) ui->dialog_chip->setText(chip);
+    else ui->dialog_chip->setText(chip + QStringLiteral(" · ") + (security == "reality" ? QStringLiteral("Reality") : security.toUpper()));
 }
 
 void DialogEditProfile::updateCommonRows() {
@@ -343,29 +360,26 @@ void DialogEditProfile::updateCommonRows() {
     const auto endpoint = endpointOverride(ent, server && !locked);
     const bool overridden = !endpoint.address.isEmpty();
     ui->address->setVisible(server && !overridden);
-    addressEffective->setVisible(overridden);
-    addressEffective->setText(endpoint.address);
+    ui->address_effective->setVisible(overridden);
+    ui->address_effective->setText(endpoint.address);
     const QString own = ui->address->text().trimmed();
-    addressEffective->setToolTip(!overridden ? QString()
-                                 : own.isEmpty() ? tr("Set by %1.").arg(endpoint.origin)
-                                                 : tr("Set by %1; the profile's own address is %2.").arg(endpoint.origin, own));
-    ui->advanced_button->setVisible(server || type == "direct");
+    ui->address_effective->setToolTip(!overridden ? QString()
+                                      : own.isEmpty() ? tr("Set by %1.").arg(endpoint.origin)
+                                                      : tr("Set by %1; the profile's own address is %2.").arg(endpoint.origin, own));
+    setTabVisible(ui->tab_advanced, server || type == "direct");
 }
 
 void DialogEditProfile::relayout() {
     updateControls();
     if (form != nullptr) form->refresh();
-    runOnThread([self = QPointer<DialogEditProfile>(this)] {
-        if (self != nullptr) self->fitToContent();
-    }, this);
-}
-
-void DialogEditProfile::fitToContent() {
-    adjustSize();
-    adjustPosition(mainwindow);
 }
 
 bool DialogEditProfile::onEnd() {
+    // First: the rules of this form also read what the advanced page keeps in the profile.
+    if (ui->tabs->isTabVisible(ui->tabs->indexOf(ui->tab_advanced)) && !advanced->apply()) {
+        ui->tabs->setCurrentWidget(ui->tab_advanced);
+        return false;
+    }
     if (!form->validateAll()) return false;
     if (!innerEditor->onEnd()) return false;
 

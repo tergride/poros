@@ -329,6 +329,8 @@ QFrame[role="statusLine"] { background-color: @s2; border: 1px solid @line; bord
 
 QFrame[role="card"] { background-color: @s2; border: 1px solid @line; border-radius: 12px; }
 QFrame[role="footer"] { background-color: @s1; border: none; border-top: 1px solid @line; }
+QFrame[role="dialogFooter"] { background: transparent; border: none; border-top: 1px solid @line; }
+QLabel[role="dialogTitle"] { font-size: 17px; font-weight: 600; }
 QScrollArea#settingsNav { background-color: @s1; border: none; border-right: 1px solid @line; }
 
 QDialog[embedded="true"] { background-color: @s1; }

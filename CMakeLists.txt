@@ -270,6 +270,8 @@ set(PROJECT_SOURCES
         include/ui/utils/TableSearchEdit.h
         include/ui/utils/ConnectionsHeader.h
         include/ui/utils/ConnectionsTreeModel.h
+        src/ui/utils/FormColumns.cpp
+        include/ui/utils/FormColumns.h
         src/ui/utils/ConnectionsTreeModel.cpp
         include/ui/utils/ConnectionsTreeFilterProxyModel.h
         src/ui/utils/ConnectionsTreeFilterProxyModel.cpp
@@ -294,9 +296,6 @@ set(PROJECT_SOURCES
         include/ui/group/dialog_edit_group.h
         src/ui/group/dialog_edit_group.cpp
         include/ui/group/dialog_edit_group.ui
-        include/ui/group/dialog_edit_group_advanced.h
-        src/ui/group/dialog_edit_group_advanced.cpp
-        include/ui/group/dialog_edit_group_advanced.ui
 
         include/ui/profile/edit_chain.h
         src/ui/profile/edit_chain.cpp

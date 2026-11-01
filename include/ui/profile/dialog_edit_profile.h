@@ -12,6 +12,9 @@ namespace Ui {
     class DialogEditProfile;
 }
 
+class EditAdvanced;
+class MuxSettingsWidget;
+
 class DialogEditProfile : public QDialog {
     Q_OBJECT
 
@@ -36,8 +39,8 @@ private:
 
     QWidget *innerWidget{};
     ProfileEditor *innerEditor{};
-    // Stands in for the address field while an endpoint source sets the host; the field keeps the profile's own.
-    QLineEdit *addressEffective{};
+    EditAdvanced *advanced{};
+    MuxSettingsWidget *muxSettings{};
     QList<QWidget *> outerTabOrder;
     qsizetype innerTabOrderIndex{-1};
 
@@ -47,25 +50,23 @@ private:
     std::shared_ptr<Configs::Profile> ent;
     std::optional<Engine::EditLock> editLock;
 
-    QString network_title_base;
-
     struct {
         QStringList certificate;
         QString XrayDownloadSettings;
         QJsonObject XrayFinalmask;
         QJsonObject XrayXDriveTemplate;
-        // Saved into the profile only while Multiplex is Custom.
-        Configs::MuxSettings mux;
     } CACHE;
 
     // dialog_edit_profile.cpp: profile type, protocol editor, common fields, layout
     void setupTypeList();
     bool typeSelected(const QString &newType);
     void mountEditor(QWidget *widget, ProfileEditor *editor);
+    void mountAdvanced();
+    void setTabVisible(QWidget *tab, bool visible);
     void updateControls();
     void updateCommonRows();
+    void updateChip();
     void relayout();
-    void fitToContent();
     bool onEnd();
     void editor_cache_updated_impl();
     void setCacheButtonText(QPushButton *button, bool isSet);

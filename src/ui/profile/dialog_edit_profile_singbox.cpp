@@ -11,16 +11,15 @@
 #include <climits>
 
 void DialogEditProfile::setupSingboxStream() {
-    network_title_base = ui->network_box->title();
     ui->utlsFingerprint->addItems(Configs::tlsFingerprints);
+    muxSettings = new MuxSettingsWidget(ui->singbox_mux_w);
+    ui->singbox_mux_layout->addWidget(muxSettings);
 
     connect(ui->network, &QComboBox::currentTextChanged, this, [this] { relayout(); });
     connect(ui->security, &QComboBox::currentTextChanged, this, [this] { relayout(); });
     connect(ui->fragment, &QComboBox::currentIndexChanged, this, [this] { relayout(); });
     connect(ui->multiplex, &QComboBox::currentIndexChanged, this, [this] { relayout(); });
-    connect(ui->multiplex_custom, &QPushButton::clicked, this, [this] {
-        MuxSettingsWidget::openDialog(this, CACHE.mux, [this](const Configs::MuxSettings &settings) { CACHE.mux = settings; });
-    });
+    connect(ui->reality_pbk, &QLineEdit::textChanged, this, [this] { updateChip(); });
     bindSingboxStream();
 }
 
@@ -51,6 +50,7 @@ void DialogEditProfile::bindSingboxStream() {
     using Validation::Severity;
     namespace Checks = Configs::Checks;
 
+    muxSettings->bindValidation(form);
     form->addRule({ui->network}, [this] { return Checks::TransportType(ui->network->currentText()); });
     form->bind(ui->headers, Checks::HeaderPairs);
     form->bind(ui->method, Validation::Rules::HttpToken()).warning();
@@ -150,7 +150,7 @@ void DialogEditProfile::loadSingboxStream() {
     if (outbound->HasMux()) {
         const auto mux = outbound->GetMux();
         ui->multiplex->setCurrentIndex(mux->getMuxState());
-        CACHE.mux = mux->CustomSettings();
+        muxSettings->setSettings(mux->CustomSettings());
     }
 }
 
@@ -188,7 +188,7 @@ void DialogEditProfile::saveSingboxStream() {
         auto mux = outbound->GetMux();
         const int state = ui->multiplex->currentIndex();
         mux->saveMuxState(state);
-        if (state == Configs::kMuxCustom) mux->SetCustomSettings(CACHE.mux);
+        if (state == Configs::kMuxCustom) mux->SetCustomSettings(muxSettings->settings());
     }
 }
 
@@ -198,15 +198,14 @@ void DialogEditProfile::updateSingboxRows() {
     const bool hasTLS = outbound->HasTLS();
     const bool hasMux = outbound->HasMux();
 
-    setRowVisible(ui->network_l, ui->network, hasTransport);
-    setRowVisible(ui->security_l, ui->security, hasTLS);
-    setRowVisible(ui->multiplex_l, ui->multiplex, hasMux);
-    ui->multiplex_custom->setVisible(hasMux && ui->multiplex->currentIndex() == Configs::kMuxCustom);
+    ui->singbox_transport_w->setVisible(hasTransport);
+    ui->singbox_security_w->setVisible(hasTLS);
+    ui->singbox_mux_w->setVisible(hasMux);
+    muxSettings->setVisible(ui->multiplex->currentIndex() == Configs::kMuxCustom);
     ui->security->setEnabled(!outbound->MustTLS());
     const bool muxEditable = !innerEditor->blocksMultiplex();
     ui->multiplex->setEnabled(muxEditable);
-    ui->multiplex_custom->setEnabled(muxEditable);
-    ui->stream_box->setVisible(hasTransport || hasTLS || hasMux);
+    muxSettings->setEnabled(muxEditable);
 
     const auto network = ui->network->currentText();
     const bool ws = network == "ws";
@@ -220,14 +219,8 @@ void DialogEditProfile::updateSingboxRows() {
     setRowVisible(ui->ws_early_data_length_l, ui->ws_early_data_length, ws);
     setRowVisible(ui->ws_early_data_name_l, ui->ws_early_data_name, ws);
     setRowVisible(ui->service_name_l, ui->service_name, grpc);
-    const bool networkBox = hasTransport && (httpLike || grpc);
-    ui->network_box->setTitle(network_title_base.arg(network));
-    ui->network_box->setVisible(networkBox);
-
-    const bool tls = hasTLS && ui->security->currentText() == "tls";
-    ui->security_box->setVisible(tls);
-    ui->tls_camouflage_box->setVisible(tls);
-    ui->right_all_w->setVisible(networkBox || tls);
+    ui->network_box->setVisible(httpLike || grpc);
+    ui->security_box->setVisible(ui->security->currentText() == "tls");
 }
 
 void DialogEditProfile::updateTlsControlsEnabled() {

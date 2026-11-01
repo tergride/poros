@@ -47,5 +47,4 @@ private:
 
     void mirrorTooltipsToLabels() const;
 
-    void resizeDialogToContent();
 };

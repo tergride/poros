@@ -1,7 +1,11 @@
 // poros_unit: the logic that decides what a user ends up with. Built with -DPOROS_BUILD_TESTS=ON, from the same sources as the app.
 #include <QApplication>
+#include <QCheckBox>
 #include <QDir>
+#include <QGridLayout>
 #include <QJsonObject>
+#include <QLabel>
+#include <QLineEdit>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -26,6 +30,7 @@
 #include "include/ui/utils/ConnectionModeController.h"
 #include "include/ui/utils/ConnectionsTreeFilterProxyModel.h"
 #include "include/ui/utils/ConnectionsTreeModel.h"
+#include "include/ui/utils/FormColumns.h"
 
 namespace {
     std::shared_ptr<Configs::RouteProfile> routeByKey(const QString &key) {
@@ -413,6 +418,41 @@ private slots:
     void releaseFeedRefusesWhatWouldReachAPath() {
         QFETCH(QByteArray, json);
         QVERIFY(!Engine::ParseReleaseFeed(json).has_value());
+    }
+
+    void formColumnsCloseUpHiddenRows() {
+        QWidget page;
+        auto *grid = new QGridLayout(&page);
+        QList<QLineEdit *> fields;
+        for (int row = 0; row < 3; ++row) {
+            grid->addWidget(new QLabel(QString::number(row), &page), row, 0);
+            fields << new QLineEdit(&page);
+            grid->addWidget(fields.last(), row, 1);
+        }
+        auto *check = new QCheckBox(&page);
+        grid->addWidget(check, 3, 0);
+        auto *note = new QLabel(&page);
+        grid->addWidget(note, 4, 0, 1, 2);
+        new FormColumns(grid);
+
+        const auto cellHolds = [grid](int row, int column, QWidget *widget) {
+            auto *item = grid->itemAtPosition(row, column);
+            return item != nullptr && item->layout() != nullptr && item->layout()->indexOf(widget) >= 0;
+        };
+        QVERIFY(cellHolds(0, 0, fields[0]));
+        QVERIFY(cellHolds(0, 1, fields[1]));
+        QVERIFY(cellHolds(1, 0, fields[2]));
+        QVERIFY(cellHolds(1, 1, check));
+        QVERIFY(cellHolds(2, 0, note));
+        QVERIFY(cellHolds(2, 1, note));
+
+        for (auto *widget : page.findChildren<QWidget *>()) widget->setVisible(true);
+        QLayoutItem *second = grid->itemAtPosition(0, 1);
+        for (int index = 0; index < second->layout()->count(); ++index) second->layout()->itemAt(index)->widget()->hide();
+        QCoreApplication::processEvents();
+        QVERIFY(cellHolds(0, 1, fields[2]));
+        QVERIFY(cellHolds(1, 0, check));
+        QVERIFY(cellHolds(2, 0, note));
     }
 
     void connectionsListByProcessOrFlat() {

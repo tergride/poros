@@ -3,6 +3,7 @@
 #include "include/ui/mainwindow.h"
 
 #include <QApplication>
+#include <QComboBox>
 #include <QDateTime>
 #include <cmath>
 #include <QDir>
@@ -26,7 +27,9 @@
 #include "include/ui/advanced/EmbeddedDialog.h"
 #include "include/ui/advanced/SettingsSection.h"
 #include "include/ui/mainWindow/MainWindowInternal.h"
+#include "include/ui/group/dialog_edit_group.h"
 #include "include/ui/onboarding/OnboardingPage.h"
+#include "include/ui/profile/dialog_edit_profile.h"
 #include "include/ui/shell/SegmentSwitch.h"
 #include "include/ui/simple/PresetEditor.h"
 #include "include/ui/simple/ServerTreeModel.h"
@@ -301,7 +304,45 @@ void MainWindow::runUiTour(const QString &dir) {
         }, 14000},
         {"ruleset-result", [] {}, 30000},
         {"add-profile", trigger(ui->menu_add_from_input)},
+        {"edit-profile", [this, subscription] {
+            const auto id = Configs::dataManager->groupsRepo->GetGroup(subscription)->Profiles().first();
+            (new DialogEditProfile({}, id, this))->setAttribute(Qt::WA_DeleteOnClose);
+        }},
+        {"new-vmess", [this] {
+            (new DialogEditProfile(QStringLiteral("vmess"), Configs::dataManager->settingsRepo->current_group, this))->setAttribute(Qt::WA_DeleteOnClose);
+        }},
+        {"new-xray", [this] {
+            (new DialogEditProfile(QStringLiteral("xrayvless"), Configs::dataManager->settingsRepo->current_group, this))->setAttribute(Qt::WA_DeleteOnClose);
+        }},
+        {"new-types", [this] {
+            auto *dialog = new DialogEditProfile(QStringLiteral("vmess"), Configs::dataManager->settingsRepo->current_group, this);
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            auto *types = dialog->findChild<QComboBox *>(QStringLiteral("type"));
+            for (int index = 0; index < types->count(); ++index) types->setCurrentIndex(index);
+        }},
+        {"edit-group", [this, subscription] {
+            auto *dialog = new DialogEditGroup(Configs::dataManager->groupsRepo->GetGroup(subscription), this);
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            dialog->open();
+        }},
+        {"edit-save", [this, subscription] {
+            const auto id = Configs::dataManager->groupsRepo->GetGroup(subscription)->Profiles().first();
+            auto *dialog = new DialogEditProfile({}, id, this);
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            dialog->findChild<QLineEdit *>(QStringLiteral("name"))->setText(QStringLiteral("Saved from the tour"));
+            QTimer::singleShot(100, dialog, [dialog] { dialog->accept(); });
+        }},
+        {"edit-saved", [this] {
+            setUiMode(QStringLiteral("advanced"));
+            m_advancedPage->showSection(AdvancedPage::Profiles);
+        }},
     });
+    for (const auto *type : {"socks", "http", "shadowsocks", "trojan", "vless", "hysteria", "tuic", "naive", "trusttunnel", "anytls", "shadowtls",
+                             "wireguard", "masque", "openvpn", "openconnect", "ssh", "direct", "chain", "juicity", "mieru", "snell"}) {
+        steps->append({QStringLiteral("type-%1").arg(QLatin1String(type)), [this, type] {
+            (new DialogEditProfile(QString::fromLatin1(type), Configs::dataManager->settingsRepo->current_group, this))->setAttribute(Qt::WA_DeleteOnClose);
+        }});
+    }
 
     auto step = std::make_shared<std::function<void(int)>>();
     *step = [=, this](int index) {

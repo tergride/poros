@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string notr="true">EditSSH</string>
   </property>
-  <layout class="QFormLayout" name="formLayout">
+  <layout class="QGridLayout" name="formLayout">
    <item row="0" column="0">
     <widget class="QLabel" name="user_l">
      <property name="text">
