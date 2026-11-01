@@ -33,11 +33,11 @@ namespace Configs
         latency_at = ms == 0 ? 0 : QDateTime::currentSecsSinceEpoch();
     }
 
-    QString Profile::DisplayTestResult() const {
+    QString Profile::DisplayTestResult(bool withFlag) const {
         auto group = dataManager->groupsRepo->GetGroup(gid);
         if (group == nullptr) return "";
         QString result;
-        if (!test_country.isEmpty()) result += UNICODE_LRO + CountryCodeToFlag(test_country) + " ";
+        if (withFlag && !test_country.isEmpty()) result += UNICODE_LRO + CountryCodeToFlag(test_country) + " ";
         if (latency == kLatencyConnectOnly) {
             result = QObject::tr("Connect OK");
             return result;
@@ -53,25 +53,6 @@ namespace Configs
         if (!ul_speed.isEmpty() && ul_speed != "N/A" && showSpeed) result += " ↑" + ul_speed;
         if (!ip_out.isEmpty() && showIP) result += " 🌐" + ip_out;
         return result;
-    }
-
-    QColor Profile::DisplayLatencyColor() const {
-        if (latency == kLatencyConnectOnly) {
-            return Qt::darkCyan;
-        } else if (latency < 0) {
-            return Qt::darkGray;
-        } else if (latency > 0) {
-            if (latency <= 100) {
-                return Qt::darkGreen;
-            } else if (latency <= 300)
-            {
-                return Qt::darkYellow;
-            } else {
-                return Qt::red;
-            }
-        } else {
-            return {};
-        }
     }
 
     QString Profile::DisplayTraffic() const {

@@ -16,7 +16,7 @@
 #include "include/ui/mainWindow/MainWindowInternal.h"
 #include "include/engine/tests/TestRunner.h"
 #include "include/ui/stats/dialog_endpoint_details.h"
-#include "include/ui/utils/ProfilesTableFilterHeader.h"
+#include "include/ui/widget/SubscriptionInfoCard.hpp"
 #include "include/global/Utils.hpp"
 
 void MainWindow::on_tabWidget_currentChanged(int index) {
@@ -103,15 +103,13 @@ void MainWindow::show_group(int gid) {
 
     ui->tabWidget->widget(groupId2TabIndex(gid))->layout()->addWidget(ui->profilesTableView);
 
-    auto *filterHeader = dynamic_cast<ProfilesTableFilterHeader*>(ui->profilesTableView->horizontalHeader());
-    if (filterHeader != nullptr) {
-        filterHeader->setGroup(group);
-    }
+    m_groupInfo->setGroup(group);
 
     updateTabToolTip(gid);
     m_groupPane->setCurrent(gid);
 
     refresh_proxy_list({}, true);
+    refreshProfilesEmptyState();
 
     // scroll_last_profile came from firstVisibleRow(), so it is a proxy row.
     const int rowCount = profilesFilterModel->rowCount();

@@ -174,9 +174,6 @@
            <property name="editTriggers">
             <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
            </property>
-           <property name="alternatingRowColors">
-            <bool>true</bool>
-           </property>
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
            </property>
@@ -191,12 +188,6 @@
            </attribute>
            <attribute name="horizontalHeaderHighlightSections">
             <bool>false</bool>
-           </attribute>
-           <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
-            <bool>false</bool>
-           </attribute>
-           <attribute name="verticalHeaderDefaultSectionSize">
-            <number>30</number>
            </attribute>
           </widget>
          </item>
@@ -520,29 +511,16 @@
     <property name="title">
      <string>Server</string>
     </property>
-    <widget class="QMenu" name="menu_share_item">
-     <property name="title">
-      <string>Share</string>
-     </property>
-     <addaction name="menu_qr"/>
-     <addaction name="menu_export_config"/>
-     <addaction name="separator"/>
-     <addaction name="menu_copy_links"/>
-     <addaction name="menu_copy_links_nkr"/>
-     <addaction name="actionCopy_Test_Result"/>
-    </widget>
-    <addaction name="menu_add_from_input"/>
-    <addaction name="menu_add_from_clipboard"/>
-    <addaction name="actionAdd_profile_from_File"/>
-    <addaction name="menu_scan_qr"/>
-    <addaction name="separator"/>
     <addaction name="menu_start"/>
     <addaction name="menu_stop"/>
-    <addaction name="menu_share_item"/>
-    <addaction name="menu_delete"/>
-    <addaction name="separator"/>
-    <addaction name="menu_select_all"/>
+    <addaction name="menu_edit"/>
     <addaction name="menu_clone"/>
+    <addaction name="separator"/>
+    <addaction name="menu_qr"/>
+    <addaction name="menu_export_config"/>
+    <addaction name="menu_copy_links"/>
+    <addaction name="menu_copy_links_nkr"/>
+    <addaction name="actionCopy_Test_Result"/>
     <addaction name="separator"/>
     <addaction name="actionUrl_Test_Selected"/>
     <addaction name="actionSpeedtest_Selected"/>
@@ -550,6 +528,8 @@
     <addaction name="menu_resolve_selected"/>
     <addaction name="actionClear_Test_Result"/>
     <addaction name="menu_reset_traffic"/>
+    <addaction name="separator"/>
+    <addaction name="menu_delete"/>
    </widget>
    <widget class="QMenu" name="menuHidden_menu">
     <property name="title">
@@ -562,6 +542,7 @@
      <addaction name="menu_spmode_system_proxy"/>
      <addaction name="menu_spmode_vpn"/>
     </widget>
+    <addaction name="menu_select_all"/>
     <addaction name="menu_update_subscription"/>
     <addaction name="menu_resolve_domain"/>
     <addaction name="menu_remove_invalid"/>
@@ -887,6 +868,11 @@
    </property>
    <property name="text">
     <string>Tun Mode</string>
+   </property>
+  </action>
+  <action name="menu_edit">
+   <property name="text">
+    <string>Edit</string>
    </property>
   </action>
   <action name="menu_clone">

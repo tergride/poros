@@ -15,6 +15,7 @@
 
 #include "include/configs/PresetRules.h"
 #include "include/database/GroupsRepo.h"
+#include "include/database/ProfilesRepo.h"
 #include "include/database/RoutesRepo.h"
 #include "include/engine/connection/ConnectionManager.h"
 #include "include/engine/services/GroupService.h"
@@ -22,10 +23,12 @@
 #include "include/ui/advanced/AdvancedPage.h"
 #include "include/ui/advanced/EmbeddedDialog.h"
 #include "include/ui/advanced/SettingsSection.h"
+#include "include/ui/mainWindow/MainWindowInternal.h"
 #include "include/ui/onboarding/OnboardingPage.h"
 #include "include/ui/simple/PresetEditor.h"
 #include "include/ui/simple/ServerTreeModel.h"
 #include "include/ui/utils/ConnectionModeController.h"
+#include "include/ui/utils/ProfilesSearchEdit.h"
 #include "include/ui/widget/AdminPromptDialog.h"
 #include "include/ui/widget/ConnectionChoiceDialog.h"
 
@@ -74,6 +77,7 @@ void MainWindow::runUiTour(const QString &dir) {
         const auto group = Configs::dataManager->groupsRepo->GetGroup(subscription);
         if (group == nullptr) return;
         group->url = QStringLiteral("https://sub.example.com/s/1");
+        group->sub_info.valid = true;
         group->sub_info.has_quota = true;
         group->sub_info.download = qint64(38) * 1024 * 1024 * 1024;
         group->sub_info.total = qint64(100) * 1024 * 1024 * 1024;
@@ -105,6 +109,26 @@ void MainWindow::runUiTour(const QString &dir) {
     };
     auto steps = std::make_shared<QList<TourStep>>(QList<TourStep>{
         {"profiles", [this] { setUiMode(QStringLiteral("advanced")); }},
+        {"profiles-subscription", [this, subscription] {
+            const QList<int> latencies{42, 96, 143, 320, -1};
+            const QStringList countries{QStringLiteral("DE"), QStringLiteral("NL"), QStringLiteral("TR"), QStringLiteral("PL"), QString()};
+            const auto ids = Configs::dataManager->groupsRepo->GetGroup(subscription)->Profiles();
+            for (int i = 0; i < ids.size() && i < latencies.size(); ++i) {
+                const auto profile = Configs::dataManager->profilesRepo->GetProfile(ids[i]);
+                profile->latency = latencies[i];
+                profile->test_country = countries[i];
+                Configs::dataManager->profilesRepo->Save(profile);
+            }
+            ui->tabWidget->setCurrentIndex(groupId2TabIndex(subscription));
+            selectProfileRows({1});
+        }},
+        {"profiles-search", [this] { m_profileSearch->setText(QStringLiteral("nl2")); }},
+        {"profiles-nothing", [this] { m_profileSearch->setText(QStringLiteral("port=1")); }},
+        {"profiles-menu", [this, dir] {
+            m_profileSearch->clear();
+            ui->menu_server->adjustSize();
+            ui->menu_server->grab().save(dir + QStringLiteral("/profiles-context.png"));
+        }},
         {"connections", [this] { m_advancedPage->showSection(AdvancedPage::Connections); }},
         {"routing-section", [this] { m_advancedPage->showSection(AdvancedPage::Routing); }},
         {"logs", [this] { m_advancedPage->showSection(AdvancedPage::Logs); }},

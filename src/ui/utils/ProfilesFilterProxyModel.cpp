@@ -15,16 +15,12 @@ ProfilesTableModel *ProfilesFilterProxyModel::profilesModel() const {
 }
 
 bool ProfilesFilterProxyModel::hasActiveFilter() const {
-    return !m_type.isEmpty() || !m_address.isEmpty() || !m_name.isEmpty() || !m_country.isEmpty();
+    return !m_search.isEmpty();
 }
 
-void ProfilesFilterProxyModel::setFilters(const QString &type, const QString &address,
-                                          const QString &name, const QString &country) {
-    if (m_type == type && m_address == address && m_name == name && m_country == country) return;
-    m_type = type;
-    m_address = address;
-    m_name = name;
-    m_country = country;
+void ProfilesFilterProxyModel::setSearch(const QString &text) {
+    if (m_search == text) return;
+    m_search = text;
     invalidateRowsFilter();
 }
 
@@ -40,7 +36,7 @@ int ProfilesFilterProxyModel::toProxyRow(int sourceRow) const {
 }
 
 bool ProfilesFilterProxyModel::portMatches(int port) const {
-    const QString val = m_address.mid(portPrefix.size());
+    const QString val = m_search.mid(portPrefix.size());
     if (!val.contains(':')) return val.isEmpty() ? false : port == val.toInt();
     const QStringList parts = val.split(':');
     const bool minOk = parts[0].isEmpty() || port >= parts[0].toInt();
@@ -58,16 +54,8 @@ bool ProfilesFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex
     const auto *key = model->filterKeyAt(sourceRow);
     if (!key) return true;
 
-    if (!m_address.isEmpty()) {
-        if (m_address.startsWith(portPrefix)) {
-            if (!portMatches(key->port)) return false;
-        } else if (!key->address.contains(m_address, Qt::CaseInsensitive) &&
-                   !key->effectiveAddress.contains(m_address, Qt::CaseInsensitive)) {
-            return false;
-        }
-    }
-    if (!m_name.isEmpty() && !key->name.contains(m_name, Qt::CaseInsensitive)) return false;
-    if (!m_type.isEmpty() && !key->type.contains(m_type, Qt::CaseInsensitive)) return false;
-    if (!m_country.isEmpty() && !key->country.contains(m_country, Qt::CaseInsensitive)) return false;
-    return true;
+    if (m_search.startsWith(portPrefix)) return portMatches(key->port);
+    return key->name.contains(m_search, Qt::CaseInsensitive) || key->address.contains(m_search, Qt::CaseInsensitive)
+        || key->effectiveAddress.contains(m_search, Qt::CaseInsensitive) || key->type.contains(m_search, Qt::CaseInsensitive)
+        || key->country.contains(m_search, Qt::CaseInsensitive);
 }

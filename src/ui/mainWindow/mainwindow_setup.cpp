@@ -45,7 +45,7 @@
 #include "include/database/RoutesRepo.h"
 #include "include/global/Common.h"
 
-#include "include/ui/utils/ProfilesTableFilterHeader.h"
+#include "include/ui/utils/ProfilesSearchEdit.h"
 #include "include/ui/utils/ProfilesTableModel.h"
 
 #include "include/ui/group/dialog_edit_group.h"
@@ -56,6 +56,7 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QDesktopServices>
+#include <QShortcut>
 #include <QTimer>
 #include <QMessageBox>
 #include <QDir>
@@ -225,15 +226,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->label_running->setTextFormat(Qt::PlainText);
     ui->label_running->installEventFilter(this);
     ui->label_inbound->installEventFilter(this);
-    auto btnFilter = new QToolButton(this);
-    btnFilter->setIcon(QIcon(":/icon/filter.png"));
-    btnFilter->setToolTip(QString("%1\n%2").arg(tr("Enable Filter"), QKeySequence(QKeySequence::Find).toString(QKeySequence::NativeText)));
-    btnFilter->setShortcut(QKeySequence::Find);
-    btnFilter->setCheckable(true);
-    connect(btnFilter, &QToolButton::toggled, static_cast<ProfilesTableFilterHeader*>(ui->profilesTableView->horizontalHeader()), &ProfilesTableFilterHeader::setFiltersVisible);
-    connect(static_cast<ProfilesTableFilterHeader*>(ui->profilesTableView->horizontalHeader()), &ProfilesTableFilterHeader::closeRequested,
-            btnFilter, [btnFilter] { btnFilter->setChecked(false); });
-    m_profileActions->addWidget(btnFilter);
     RegisterHotkey(false);
     auto last_size = Configs::dataManager->settingsRepo->mw_size.split("x");
     if (last_size.length() == 2) {
@@ -289,6 +281,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     profilesFilterModel = new ProfilesFilterProxyModel(this);
     profilesFilterModel->setSourceModel(profilesTableModel);
     ui->profilesTableView->setModel(profilesFilterModel);
+    connect(profilesFilterModel, &QAbstractItemModel::modelReset, this, &MainWindow::refreshProfilesEmptyState);
+    connect(profilesFilterModel, &QAbstractItemModel::rowsInserted, this, &MainWindow::refreshProfilesEmptyState);
+    connect(profilesFilterModel, &QAbstractItemModel::rowsRemoved, this, &MainWindow::refreshProfilesEmptyState);
     connect(ui->profilesTableView->selectionModel(), &QItemSelectionModel::selectionChanged, this,
             [this] { refresh_startstop_button(); });
     ui->profilesTableView->rowsSwapped = [this](int row1, int row2)
@@ -455,9 +450,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QMenu menu(this);
         execHeaderMenu(menu);
     });
-    ui->profilesTableView->verticalHeader()->setStretchLastSection(false);
-    ui->profilesTableView->verticalHeader()->setDefaultSectionSize(24);
-    ui->profilesTableView->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     ui->profilesTableView->setTabKeyNavigation(false);
     ui->profilesTableView->horizontalHeader()->setResizeContentsPrecision(0);
 
@@ -467,41 +459,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
     ui->profilesTableView->viewport()->installEventFilter(this);
 
-    auto *filterHeader = static_cast<ProfilesTableFilterHeader*>(ui->profilesTableView->horizontalHeader());
-    filterHeader->setLastFilterColumn(Configs::dataManager->settingsRepo->last_filter_column);
-    connect(filterHeader, &ProfilesTableFilterHeader::lastFilterColumnChanged, this, [](int column)
-    {
-        Configs::dataManager->settingsRepo->last_filter_column = column;
-        Configs::dataManager->settingsRepo->Save();
-    });
-
     m_filterRefreshDebounce = new QTimer(this);
     m_filterRefreshDebounce->setSingleShot(true);
     m_filterRefreshDebounce->setInterval(50);
     connect(m_filterRefreshDebounce, &QTimer::timeout, this, [this] { applyProfileFilters(); });
 
-    connect(filterHeader, &ProfilesTableFilterHeader::typeFilterChanged, this, [this](const QString& currentText)
-    {
-       typeFilterString = currentText;
-       m_filterRefreshDebounce->start();
+    connect(m_profileSearch, &QLineEdit::textChanged, m_filterRefreshDebounce, qOverload<>(&QTimer::start));
+    connect(m_profileSearch, &ProfilesSearchEdit::focusTableRequested, this, [this](bool selectFirst) { focusProfilesTable(selectFirst); });
+    connect(ui->profilesTableView, &ProfilesTableView::focusSearchRequested, m_profileSearch, [this] { m_profileSearch->setFocus(); });
+    auto *searchShortcut = new QShortcut(QKeySequence::Find, m_profileSearch);
+    connect(searchShortcut, &QShortcut::activated, m_profileSearch, [this] {
+        m_profileSearch->setFocus();
+        m_profileSearch->selectAll();
     });
-    connect(filterHeader, &ProfilesTableFilterHeader::addressFilterChanged, this, [this](const QString& currentText)
-    {
-       addressFilterString = currentText;
-       m_filterRefreshDebounce->start();
-    });
-    connect(filterHeader, &ProfilesTableFilterHeader::nameFilterChanged, this, [this](const QString& currentText)
-    {
-       nameFilterString = currentText;
-       m_filterRefreshDebounce->start();
-    });
-    connect(filterHeader, &ProfilesTableFilterHeader::testFilterChanged, this, [this](const QString& currentText)
-    {
-       countryFilterString = currentText;
-       m_filterRefreshDebounce->start();
-    });
-    connect(filterHeader, &ProfilesTableFilterHeader::focusTableRequested, this,
-            [this](bool selectFirst) { focusProfilesTable(selectFirst); });
 
     connect(Subscription::updater(), &Subscription::GroupUpdater::asyncUpdateCallback, this, [this](int gid) {
         if (gid >= 0) updateTabToolTip(gid);
@@ -774,10 +744,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         setTimeout([=,this] { set_selected_or_group(2); }, this, 200);
     });
     set_selected_or_group(2);
-    connect(ui->menu_share_item, &QMenu::aboutToShow, this, [=,this] {
+    auto *shareHeading = new QAction(tr("Share"), ui->menu_server);
+    shareHeading->setEnabled(false);
+    ui->menu_server->insertAction(ui->menu_qr, shareHeading);
+    connect(ui->menu_server, &QMenu::aboutToShow, this, [=,this] {
         QString name;
         auto selected = get_now_selected_list();
 
+        ui->menu_edit->setEnabled(selected.count() == 1);
         ui->menu_export_config->setVisible(false);
         if (selected.isEmpty()) return;
 

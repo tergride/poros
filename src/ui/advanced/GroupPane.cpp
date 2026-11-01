@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QPainter>
+#include <QPushButton>
 #include <QScrollBar>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -86,6 +87,15 @@ GroupPane::GroupPane(QWidget *parent) : QWidget(parent) {
     m_list->setContextMenuPolicy(Qt::CustomContextMenu);
     m_list->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     column->addWidget(m_list, 1);
+
+    auto *footer = new QHBoxLayout;
+    footer->setContentsMargins(8, 8, 8, 8);
+    auto *addBelow = new QPushButton(PorosTheme::Icon(QStringLiteral("plus")), tr("Subscription or group"), this);
+    addBelow->setIconSize({14, 14});
+    addBelow->setProperty("role", QStringLiteral("small"));
+    connect(addBelow, &QPushButton::clicked, this, &GroupPane::addRequested);
+    footer->addWidget(addBelow);
+    column->addLayout(footer);
 
     connect(m_list, &QListWidget::currentItemChanged, this, [this](QListWidgetItem *item) {
         if (!m_updating && item != nullptr) emit groupActivated(item->data(groupPaneIdRole).toInt());

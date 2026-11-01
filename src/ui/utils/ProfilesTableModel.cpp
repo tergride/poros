@@ -2,13 +2,22 @@
 #include "include/global/Configs.hpp"
 #include "include/database/entities/Profile.h"
 #include "include/configs/common/Outbound.h"
-#include <QApplication>
 #include <QMimeData>
-#include <QPalette>
 
 #include "include/configs/generate.h"
 #include "include/database/GroupsRepo.h"
 #include "include/database/ProfilesRepo.h"
+#include "include/ui/setting/PorosTheme.h"
+
+namespace {
+    QColor profilesLatencyColor(int latency) {
+        if (latency == Configs::kLatencyConnectOnly) return QColor(PorosTheme::Ok);
+        if (latency < 0) return QColor(PorosTheme::T3);
+        if (latency == 0) return {};
+        if (latency < 100) return QColor(PorosTheme::Ok);
+        return QColor(latency < 300 ? PorosTheme::Warn : PorosTheme::Bad);
+    }
+} // namespace
 
 ProfilesTableModel::ProfilesTableModel(QObject *parent)
     : QAbstractTableModel(parent) {}
@@ -96,19 +105,19 @@ QVariant ProfilesTableModel::data(const QModelIndex &index, int role) const {
     const std::shared_ptr<Configs::Profile> &profile = it.value();
     if (!profile) return {};
 
-    const int startedId = Configs::dataManager->settingsRepo->started_id;
-    const bool isRunning = (profile->id == startedId);
-    QColor linkColor = isRunning ? QApplication::palette().link().color() : QColor();
+    if (role == RunningRole) return profile->id == Configs::dataManager->settingsRepo->started_id;
+    if (role == CountryRole) return profile->test_country;
+    if (role == SecurityRole) {
+        if (!profile->outbound || !Configs::dataManager->settingsRepo->show_config_security) return QString();
+        return profile->outbound->DisplaySecurity();
+    }
 
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case ColType: {
             if (!profile->outbound) return QString();
             auto type = profile->outbound->DisplayType();
-            if (Configs::dataManager->settingsRepo->show_config_security) {
-                auto sec = profile->outbound->DisplaySecurity();
-                if (!sec.isEmpty()) type += QStringLiteral(" (%1)").arg(sec);
-            }
+            if (const auto sec = data(index, SecurityRole).toString(); !sec.isEmpty()) type += QLatin1Char(' ') + sec;
             return type;
         }
         case ColAddress: {
@@ -117,7 +126,7 @@ QVariant ProfilesTableModel::data(const QModelIndex &index, int role) const {
             return address.value();
         }
         case ColName: return profile->outbound ? profile->outbound->name : QString();
-        case ColTestResult: return profile->DisplayTestResult();
+        case ColTestResult: return profile->DisplayTestResult(false);
         case ColTraffic: return profile->DisplayTraffic();
         default: return {};
         }
@@ -130,18 +139,23 @@ QVariant ProfilesTableModel::data(const QModelIndex &index, int role) const {
         }
         return {};
     }
-    if (role == Qt::ForegroundRole) {
-        if (index.column() == ColTestResult) {
-            QColor latencyColor = profile->DisplayLatencyColor();
-            if (latencyColor.isValid()) return latencyColor;
-        }
-        if (isRunning && linkColor.isValid()) return linkColor;
+    if (role == Qt::ForegroundRole && index.column() == ColTestResult) {
+        if (const QColor color = profilesLatencyColor(profile->latency); color.isValid()) return color;
         return {};
+    }
+    if (role == Qt::FontRole && (index.column() == ColAddress || index.column() == ColTestResult || index.column() == ColTraffic)) {
+        return PorosTheme::MonoFont(12);
+    }
+    if (role == Qt::TextAlignmentRole) {
+        return static_cast<int>((index.column() == ColTraffic ? Qt::AlignRight : Qt::AlignLeft) | Qt::AlignVCenter);
     }
     return {};
 }
 
 QVariant ProfilesTableModel::headerData(int section, Qt::Orientation orientation, int role) const {
+    if (role == Qt::TextAlignmentRole && orientation == Qt::Horizontal) {
+        return static_cast<int>((section == ColTraffic ? Qt::AlignRight : Qt::AlignLeft) | Qt::AlignVCenter);
+    }
     if (role != Qt::DisplayRole) return {};
     if (orientation == Qt::Horizontal) {
         switch (section) {
@@ -288,13 +302,4 @@ GroupSortMethod::GroupSortMethod ProfilesTableModel::sortOfColumn(int column) {
     case ColTraffic: return GroupSortMethod::ByTraffic;
     default: return GroupSortMethod::Raw;
     }
-}
-
-QString ProfilesTableModel::rowLabel(int sourceRow, int displayRow) const {
-    if (sourceRow < 0 || sourceRow >= m_profileIds.size()) return {};
-    int id = m_profileIds[sourceRow];
-    if (Configs::dataManager->settingsRepo->started_id == id) {
-        return QStringLiteral("✓");
-    }
-    return QString::number(displayRow + 1) + QStringLiteral("  ");
 }

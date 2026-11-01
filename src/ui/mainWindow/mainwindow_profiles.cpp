@@ -59,6 +59,13 @@ void MainWindow::on_profilesTableView_doubleClicked(const QModelIndex &index) {
     connect(dialog, &QDialog::finished, dialog, &QDialog::deleteLater);
 }
 
+void MainWindow::on_menu_edit_triggered() {
+    const auto selected = get_now_selected_list();
+    if (selected.count() != 1) return;
+    auto dialog = new DialogEditProfile("", selected.first(), this);
+    connect(dialog, &QDialog::finished, dialog, &QDialog::deleteLater);
+}
+
 void MainWindow::on_menu_add_from_input_triggered() {
     auto dialog = new DialogEditProfile("autoselector", Configs::dataManager->settingsRepo->current_group, this);
     connect(dialog, &QDialog::finished, dialog, &QDialog::deleteLater);
@@ -148,6 +155,20 @@ void MainWindow::on_menu_reset_traffic_triggered() {
         group->calculated_column_width[ProfilesTableModel::ColTraffic] = 0;
     refresh_proxy_list(entIDs);
     Configs::RepositionLater(ents, Configs::SortInput::Traffic);
+}
+
+void MainWindow::copyGroupLinks() {
+    const auto group = Configs::dataManager->groupsRepo->CurrentGroup();
+    if (group == nullptr) return;
+    QStringList links;
+    for (const auto &ent: Configs::dataManager->profilesRepo->GetProfileBatch(group->Profiles())) {
+        auto link = ent->outbound->ExportToLink();
+        if (link.isEmpty()) link = ent->outbound->ExportJsonLink();
+        links += link;
+    }
+    if (links.length() == 0) return;
+    QApplication::clipboard()->setText(links.join("\n"));
+    MW_show_log(tr("Copied %1 item(s)").arg(links.length()));
 }
 
 void MainWindow::on_menu_copy_links_triggered() {
@@ -578,7 +599,7 @@ void MainWindow::saveProfileFocusState() {
 
     if (!profilesTableModel) return;
 
-    // hasFocus() is false while the header's filter fields hold the caret.
+    // hasFocus() is false while the search field holds the caret.
     m_profilesTableHadFocus = ui->profilesTableView->hasFocus();
     m_profilesScrollValue = ui->profilesTableView->verticalScrollBar()->value();
 

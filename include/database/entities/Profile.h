@@ -72,9 +72,8 @@ namespace Configs {
 
         [[nodiscard]] bool IsUnavailable() const { return latency < 0 && latency != kLatencyConnectOnly; }
 
-        [[nodiscard]] QString DisplayTestResult() const;
+        [[nodiscard]] QString DisplayTestResult(bool withFlag = true) const;
 
-        [[nodiscard]] QColor DisplayLatencyColor() const;
 
         [[nodiscard]] QString DisplayTraffic() const;
         void ResetTraffic();

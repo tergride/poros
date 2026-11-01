@@ -10,8 +10,8 @@ class ProfilesFilterProxyModel : public QSortFilterProxyModel {
 public:
     explicit ProfilesFilterProxyModel(QObject *parent = nullptr);
 
-    // `address` also takes "port=N", "port=MIN:MAX", "port=MIN:", "port=:MAX".
-    void setFilters(const QString &type, const QString &address, const QString &name, const QString &country);
+    // Matches the name, address, type or exit country; "port=N", "port=MIN:MAX", "port=MIN:", "port=:MAX" match the port.
+    void setSearch(const QString &text);
     bool hasActiveFilter() const;
 
     ProfilesTableModel *profilesModel() const;
@@ -25,8 +25,5 @@ protected:
 private:
     bool portMatches(int port) const;
 
-    QString m_type;
-    QString m_address;
-    QString m_name;
-    QString m_country;
+    QString m_search;
 };

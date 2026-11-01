@@ -136,7 +136,6 @@ namespace Configs {
         bool skip_delete_confirmation = false;
         bool show_config_security = false;
         // -1 until a filter column has been used.
-        int last_filter_column = -1;
 
         // Mirror of the registration we last wrote to the OS; startup re-registers only when it differs.
         QString url_scheme_mirror = "";

@@ -218,6 +218,8 @@ private slots:
 
     void on_menu_update_subscription_triggered();
 
+    void on_menu_edit_triggered();
+
     void on_profilesTableView_doubleClicked(const QModelIndex &index);
 
     void on_profilesTableView_customContextMenuRequested(const QPoint &pos);
@@ -231,7 +233,13 @@ private:
     class AdvancedPage *m_advancedPage = nullptr;
     class ConnectionBar *m_connectionBar = nullptr;
     class GroupPane *m_groupPane = nullptr;
-    class QHBoxLayout *m_profileActions = nullptr;
+    class SubscriptionInfoCard *m_groupInfo = nullptr;
+    class ProfilesSearchEdit *m_profileSearch = nullptr;
+    class QWidget *m_profilesEmpty = nullptr;
+    class QLabel *m_profilesEmptyTitle = nullptr;
+    class QLabel *m_profilesEmptyHint = nullptr;
+    class QWidget *m_profilesEmptyAdd = nullptr;
+    class QPushButton *m_profilesEmptyUpdate = nullptr;
     class QHBoxLayout *m_logActions = nullptr;
     class QHBoxLayout *m_connectionActions = nullptr;
     QList<class StartStopButton *> m_startButtons;
@@ -341,10 +349,6 @@ private:
     QList<QShortcut*> hiddenMenuShortcuts;
     GlobalHotkeys *globalHotkeys = nullptr;
 
-    QString addressFilterString;
-    QString nameFilterString;
-    QString typeFilterString;
-    QString countryFilterString;
 
     QTimer *m_filterRefreshDebounce = nullptr;
 
@@ -401,6 +405,10 @@ private:
     void setLogHighlighter(bool darkMode);
 
     void applyProfileFilters();
+
+    void refreshProfilesEmptyState();
+
+    void copyGroupLinks();
 
     QList<int> get_now_selected_list();
     void refresh_startstop_button();

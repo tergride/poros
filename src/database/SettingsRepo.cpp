@@ -87,7 +87,6 @@ namespace Configs {
 
         intMap = {
             {"current_group",          &current_group},
-            {"last_filter_column",     &last_filter_column},
             {"inbound_socks_port",     &inbound_socks_port},
             {"mux_concurrency",        &mux_concurrency},
             {"mux_max_connections",    &mux_max_connections},

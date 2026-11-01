@@ -6984,6 +6984,10 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <source>Add new Group</source>
         <translation>Добавить группу</translation>
     </message>
+    <message>
+        <source>Subscription or group</source>
+        <translation>Подписка или группа</translation>
+    </message>
 </context>
 <context>
     <name>LiveChart</name>
@@ -7132,7 +7136,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Resolve Domain for group</source>
-        <translation>Преобразовать домены группы в IP</translation>
+        <translation>Определить домены группы</translation>
     </message>
     <message>
         <source>Restart Core</source>
@@ -7144,7 +7148,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Add profile from clipboard</source>
-        <translation>Добавить профиль из буфера обмена</translation>
+        <translation>Из буфера обмена</translation>
     </message>
     <message>
         <source>Delete</source>
@@ -7164,11 +7168,11 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Resolve out IP for group</source>
-        <translation>Определить выходной IP группы</translation>
+        <translation>Определить внешний IP группы</translation>
     </message>
     <message>
         <source>Clear Test Result</source>
-        <translation>Очистить результат теста</translation>
+        <translation>Очистить результат</translation>
     </message>
     <message>
         <source>Reset Traffic</source>
@@ -7184,7 +7188,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Clear Group test result</source>
-        <translation>Очистить результат теста для группы</translation>
+        <translation>Очистить результаты</translation>
     </message>
     <message>
         <source>Scan QR Code</source>
@@ -7248,15 +7252,19 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Copy links of selected (Deep Links)</source>
-        <translation>Копировать ссылки выбранных (deep links)</translation>
+        <translation>Копировать как deep link</translation>
     </message>
     <message>
         <source>Copy links of selected</source>
-        <translation>Копировать ссылки выбранных</translation>
+        <translation>Копировать ссылки</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Изменить</translation>
     </message>
     <message>
         <source>Clone</source>
-        <translation>Дублировать</translation>
+        <translation>Клонировать</translation>
     </message>
     <message>
         <source>Update subscription</source>
@@ -7272,15 +7280,15 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Remove Insecure Configs</source>
-        <translation>Удалить небезопасные конфигурации</translation>
+        <translation>Удалить небезопасные</translation>
     </message>
     <message>
         <source>Edit current Group</source>
-        <translation>Редактировать текущую группу</translation>
+        <translation>Изменить группу</translation>
     </message>
     <message>
         <source>Delete current Group</source>
-        <translation>Удалить текущую группу</translation>
+        <translation>Удалить группу</translation>
     </message>
     <message>
         <source>Update all subscriptions</source>
@@ -7320,7 +7328,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Resolve Selected Out IP</source>
-        <translation>Определить выходной IP выбранных</translation>
+        <translation>Определить внешний IP</translation>
     </message>
     <message>
         <source>Refresh Column Widths</source>
@@ -7499,6 +7507,30 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <translation>Тесты</translation>
     </message>
     <message>
+        <source>Share links</source>
+        <translation>Поделиться ссылками</translation>
+    </message>
+    <message>
+        <source>Search profiles</source>
+        <translation>Поиск профилей</translation>
+    </message>
+    <message>
+        <source>Enter a link…</source>
+        <translation>Ввести ссылку…</translation>
+    </message>
+    <message>
+        <source>Profile links or a subscription URL</source>
+        <translation>Ссылки на профили или адрес подписки</translation>
+    </message>
+    <message>
+        <source>Import</source>
+        <translation>Импорт</translation>
+    </message>
+    <message>
+        <source>From clipboard</source>
+        <translation>Из буфера обмена</translation>
+    </message>
+    <message>
         <source>Traffic</source>
         <translation>Трафик</translation>
     </message>
@@ -7667,6 +7699,26 @@ URL: %2</translation>
     <message>
         <source>Imported %1 profile(s)</source>
         <translation>Импортировано профилей: %1</translation>
+    </message>
+    <message>
+        <source>Nothing found</source>
+        <translation>Ничего не найдено</translation>
+    </message>
+    <message>
+        <source>No profiles yet</source>
+        <translation>Профилей пока нет</translation>
+    </message>
+    <message>
+        <source>Try another search.</source>
+        <translation>Попробуйте другой запрос.</translation>
+    </message>
+    <message>
+        <source>Update the subscription to get its profiles.</source>
+        <translation>Обновите подписку, чтобы получить её профили.</translation>
+    </message>
+    <message>
+        <source>Add a profile or paste links from the clipboard.</source>
+        <translation>Добавьте профиль или вставьте ссылки из буфера обмена.</translation>
     </message>
     <message>
         <source>Not Running</source>
@@ -7890,7 +7942,7 @@ Download them now?</source>
     </message>
     <message>
         <source>Stop Testing</source>
-        <translation>Остановить тестирование</translation>
+        <translation>Остановить тесты</translation>
     </message>
     <message>
         <source>Tun device misbehaving</source>
@@ -7982,11 +8034,11 @@ Error: %1</source>
     </message>
     <message>
         <source>Url Test Selected</source>
-        <translation>Тест задержки</translation>
+        <translation>Проверить задержку</translation>
     </message>
     <message>
         <source>Url Test Group</source>
-        <translation>Тест задержки всей группы</translation>
+        <translation>Проверить задержку группы</translation>
     </message>
     <message>
         <source>Hidden menu</source>
@@ -7994,11 +8046,11 @@ Error: %1</source>
     </message>
     <message>
         <source>Resolve Selected Domain</source>
-        <translation>Преобразовать выбранный домен в IP</translation>
+        <translation>Определить домен</translation>
     </message>
     <message>
         <source>Remove Invalid</source>
-        <translation>Удалить недействительные</translation>
+        <translation>Удалить невалидные</translation>
     </message>
     <message>
         <source>If you have trouble starting VPN, you can force reset Core process here and then try starting the profile again. The error is %1</source>
@@ -8170,7 +8222,7 @@ Error: %1</source>
     </message>
     <message>
         <source>Export config</source>
-        <translation>Экспортировать конфиг</translation>
+        <translation>Экспортировать конфигурацию</translation>
     </message>
     <message>
         <source>Open Manager</source>
@@ -8242,11 +8294,11 @@ Please try again.</source>
     </message>
     <message>
         <source>Speedtest Selected</source>
-        <translation>Тест скорости</translation>
+        <translation>Замер скорости</translation>
     </message>
     <message>
         <source>Speedtest Group</source>
-        <translation>Тест скорости всей группы</translation>
+        <translation>Замер скорости группы</translation>
     </message>
     <message>
         <source>The last url test did not exit completely, please wait. If it persists, please restart the program.</source>
@@ -8274,7 +8326,7 @@ Please try again.</source>
     </message>
     <message>
         <source>Add profile from File(s)</source>
-        <translation>Добавить профиль из файла</translation>
+        <translation>Из файлов…</translation>
     </message>
     <message>
         <source>Add subscription</source>
@@ -9023,25 +9075,6 @@ Name: %1</source>
     </message>
 </context>
 <context>
-    <name>ProfilesTableFilterHeader</name>
-    <message>
-        <source>Filter...</source>
-        <translation>Фильтр...</translation>
-    </message>
-    <message>
-        <source>Filter by country...</source>
-        <translation>Фильтр по странам...</translation>
-    </message>
-    <message>
-        <source>Disable Filter</source>
-        <translation>Выключить фильтр</translation>
-    </message>
-    <message>
-        <source>Enable Filter</source>
-        <translation>Включить фильтр</translation>
-    </message>
-</context>
-<context>
     <name>ProfilesTableModel</name>
     <message>
         <source>Certificate checks are turned off by the &quot;Skip TLS certificate authentication&quot; setting.</source>
@@ -9061,11 +9094,11 @@ Name: %1</source>
     </message>
     <message>
         <source>Name</source>
-        <translation>Название</translation>
+        <translation>Имя</translation>
     </message>
     <message>
         <source>Test Result</source>
-        <translation>Результат теста</translation>
+        <translation>Результат</translation>
     </message>
     <message>
         <source>Traffic</source>
@@ -11340,14 +11373,6 @@ Remove that endpoint from this routing profile as well?</source>
 <context>
     <name>SubscriptionInfoCard</name>
     <message>
-        <source>Portal</source>
-        <translation>Портал</translation>
-    </message>
-    <message>
-        <source>Support</source>
-        <translation>Поддержка</translation>
-    </message>
-    <message>
         <source>Expired</source>
         <translation>Истекла</translation>
     </message>
@@ -11380,12 +11405,36 @@ Remove that endpoint from this routing profile as well?</source>
         <translation>Последнее обновление: %1</translation>
     </message>
     <message>
+        <source>Your own group, profiles added by hand</source>
+        <translation>Своя группа, профили добавлены вручную</translation>
+    </message>
+    <message>
+        <source>%1 of %2</source>
+        <translation>%1 из %2</translation>
+    </message>
+    <message>
         <source>Expires: %1</source>
         <translation>Истекает: %1</translation>
     </message>
     <message>
         <source>Interval provided by the server</source>
         <translation>Интервал, установленный сервером</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Обновить</translation>
+    </message>
+    <message>
+        <source>Edit group</source>
+        <translation>Изменить группу</translation>
+    </message>
+    <message>
+        <source>Group actions</source>
+        <translation>Действия с группой</translation>
+    </message>
+    <message>
+        <source>updated %1 ago</source>
+        <translation>обновлена %1 назад</translation>
     </message>
     <message>
         <source>Interval set for this group</source>
@@ -11402,10 +11451,6 @@ Remove that endpoint from this routing profile as well?</source>
             <numerusform>Сервер предлагает каждые %n часа</numerusform>
             <numerusform>Сервер предлагает каждые %n часов</numerusform>
         </translation>
-    </message>
-    <message>
-        <source>Every %1</source>
-        <translation>Раз в %1</translation>
     </message>
     <message>
         <source>Website / Portal: %1</source>

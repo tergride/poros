@@ -23,7 +23,6 @@
 #include "include/ui/setting/Icon.hpp"
 #include "include/ui/simple/ServerTreeModel.h"
 #include "include/ui/stats/dialog_auto_selector.h"
-#include "include/ui/utils/ProfilesTableFilterHeader.h"
 #include "include/ui/utils/ProfilesTableModel.h"
 #include "include/ui/widget/LiveChart.h"
 #include "include/ui/widget/StartStopButton.hpp"
@@ -126,8 +125,22 @@ void MainWindow::refresh_auto_selector_view()
 void MainWindow::applyProfileFilters()
 {
     if (!profilesFilterModel) return;
-    profilesFilterModel->setFilters(typeFilterString, addressFilterString, nameFilterString, countryFilterString);
+    profilesFilterModel->setSearch(m_profileSearch->text().trimmed());
     refresh_proxy_list_column_size();
+}
+
+void MainWindow::refreshProfilesEmptyState() {
+    const auto group = Configs::dataManager->groupsRepo->CurrentGroup();
+    const bool empty = group != nullptr && profilesFilterModel->rowCount() == 0;
+    m_profilesEmpty->setVisible(empty);
+    if (!empty) return;
+    const bool searching = profilesFilterModel->hasActiveFilter();
+    const bool subscription = !group->url.isEmpty();
+    m_profilesEmptyTitle->setText(searching ? tr("Nothing found") : tr("No profiles yet"));
+    m_profilesEmptyHint->setText(searching ? tr("Try another search.")
+                                 : subscription ? tr("Update the subscription to get its profiles.") : tr("Add a profile or paste links from the clipboard."));
+    m_profilesEmptyAdd->setVisible(!searching && !subscription);
+    m_profilesEmptyUpdate->setVisible(!searching && subscription);
 }
 
 void MainWindow::refresh_status(const QString &traffic_update) {
@@ -370,7 +383,7 @@ void MainWindow::refresh_proxy_list_column_size() {
     const auto group = Configs::dataManager->groupsRepo->CurrentGroup();
     if (!group || !ui->profilesTableView->isVisible()) return;
 
-    auto *hHeader = dynamic_cast<ProfilesTableFilterHeader*>(ui->profilesTableView->horizontalHeader());
+    auto *hHeader = ui->profilesTableView->horizontalHeader();
     QTimer::singleShot(0, ui->profilesTableView, [=, this]() {
         // The resizeSection / scrollbar-policy changes below re-enter here via valueChanged.
         if (m_adjustingColumns) return;
@@ -413,7 +426,6 @@ void MainWindow::refresh_proxy_list_column_size() {
             }
             ui->profilesTableView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         }
-        hHeader->adjustPositions();
         vBar->blockSignals(vBarBlocked);
         m_adjustingColumns = false;
     });

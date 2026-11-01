@@ -15,7 +15,7 @@ namespace Configs {
 class ProfilesTableModel : public QAbstractTableModel {
     Q_OBJECT
 public:
-    enum { ProfileIdRole = Qt::UserRole };
+    enum { ProfileIdRole = Qt::UserRole, SecurityRole, CountryRole, RunningRole };
 
     enum Column {
         ColType = 0,
@@ -57,8 +57,6 @@ public:
     void emplaceProfiles(int row1, int row2);
 
     int indexOfProfile(int id);
-
-    QString rowLabel(int sourceRow, int displayRow) const;
 
     // Null if the profile could not be loaded; valid until the next model change.
     const FilterKey *filterKeyAt(int row) const;

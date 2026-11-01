@@ -4,6 +4,7 @@
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QMenu>
 #include <QPushButton>
@@ -40,8 +41,10 @@
 #include "include/ui/simple/SimpleHome.h"
 #include "include/ui/utils/CommandPalette.h"
 #include "include/ui/utils/ConnectionModeController.h"
+#include "include/ui/utils/ProfilesSearchEdit.h"
 #include "include/ui/utils/ScreenQrScanner.h"
 #include "include/ui/widget/AdminPromptDialog.h"
+#include "include/ui/widget/SubscriptionInfoCard.hpp"
 
 namespace {
     QFrame *shellSectionHeader(const QString &title, QHBoxLayout **actions, QWidget *parent) {
@@ -70,15 +73,25 @@ namespace {
         return section;
     }
 
-    QToolButton *shellMenuButton(const QString &icon, const QString &text, QMenu *menu, QWidget *parent) {
-        auto *button = new QToolButton(parent);
-        button->setIcon(PorosTheme::Icon(icon));
-        button->setIconSize({15, 15});
-        button->setText(text);
-        button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-        button->setPopupMode(QToolButton::InstantPopup);
-        button->setMenu(menu);
+    QPushButton *shellSmallButton(const QString &icon, const QString &text, QWidget *parent) {
+        auto *button = new QPushButton(PorosTheme::Icon(icon), text, parent);
+        button->setIconSize({14, 14});
+        button->setProperty("role", QStringLiteral("small"));
         return button;
+    }
+
+    // A null action adds a separator.
+    QMenu *shellMenu(const QList<QPair<QString, QAction *>> &actions, QWidget *parent) {
+        auto *menu = new QMenu(parent);
+        for (const auto &[icon, action] : actions) {
+            if (action == nullptr) {
+                menu->addSeparator();
+                continue;
+            }
+            action->setIcon(PorosTheme::Icon(icon));
+            menu->addAction(action);
+        }
+        return menu;
     }
 
     // A section still made of the dialogs it opens.
@@ -162,31 +175,103 @@ void MainWindow::setupShell() {
     connect(m_groupPane, &GroupPane::menuRequested, this, &MainWindow::show_group_menu);
     connect(m_groupPane, &GroupPane::addRequested, ui->actionAdd_New_Group, &QAction::trigger);
 
-    auto *toolbar = new QFrame(profiles);
-    toolbar->setProperty("role", QStringLiteral("toolbar"));
-    m_profileActions = new QHBoxLayout(toolbar);
-    m_profileActions->setContentsMargins(14, 8, 14, 8);
-    m_profileActions->setSpacing(6);
-    const auto toolbarMenu = [this, toolbar](const QString &icon, const QString &text, const QList<QAction *> &actions) {
-        auto *menu = new QMenu(toolbar);
-        menu->addActions(actions);
-        m_profileActions->addWidget(shellMenuButton(icon, text, menu, toolbar));
-        return menu;
-    };
-    toolbarMenu(QStringLiteral("plus"), tr("Add"), {ui->menu_add_from_input, ui->menu_add_from_clipboard, ui->actionAdd_profile_from_File, ui->menu_scan_qr});
-    toolbarMenu(QStringLiteral("gauge"), tr("Tests"), {ui->actionUrl_Test_Group, ui->actionSpeedtest_Group, ui->actionResolve_Out_IP, ui->menu_resolve_domain,
-                                                       ui->menu_clear_test_result, ui->menu_stop_testing});
-    m_profileActions->addWidget(shellMenuButton(QStringLiteral("trash"), tr("Clean up"), ui->menu_clean_up, toolbar));
-    auto *groupMenu = toolbarMenu(QStringLiteral("layers"), tr("Group"), {ui->menu_update_subscription, ui->actionUpdate_All_Subscriptions, ui->actionEdit_Group,
-                                                                          ui->actionAdd_New_Group, ui->menu_manage_groups, ui->actionDelete_Group});
+    for (const auto &[icon, action] : QList<QPair<QString, QAction *>>{
+             {QStringLiteral("play"), ui->menu_start}, {QStringLiteral("stop"), ui->menu_stop}, {QStringLiteral("edit"), ui->menu_edit}, {QStringLiteral("copy"), ui->menu_clone},
+             {QStringLiteral("qr"), ui->menu_qr}, {QStringLiteral("download"), ui->menu_export_config}, {QStringLiteral("link"), ui->menu_copy_links},
+             {QStringLiteral("link"), ui->menu_copy_links_nkr}, {QStringLiteral("clip"), ui->actionCopy_Test_Result}, {QStringLiteral("gauge"), ui->actionUrl_Test_Selected},
+             {QStringLiteral("bolt"), ui->actionSpeedtest_Selected}, {QStringLiteral("globe"), ui->actionResolve_Selected_Out_IP}, {QStringLiteral("search"), ui->menu_resolve_selected},
+             {QStringLiteral("close"), ui->actionClear_Test_Result}, {QStringLiteral("refresh"), ui->menu_reset_traffic}, {QStringLiteral("trash"), ui->menu_delete}}) {
+        action->setIcon(PorosTheme::Icon(icon));
+    }
+
+    m_groupInfo = new SubscriptionInfoCard(profiles);
+    auto *shareLinks = new QAction(tr("Share links"), m_groupInfo);
+    connect(shareLinks, &QAction::triggered, this, &MainWindow::copyGroupLinks);
+    auto *groupMenu = shellMenu({{QStringLiteral("refresh"), ui->menu_update_subscription}, {QStringLiteral("edit"), ui->actionEdit_Group},
+                                 {QStringLiteral("share"), shareLinks}, {QStringLiteral("radar"), ui->actionUpdate_All_Subscriptions},
+                                 {QStringLiteral("layers"), ui->menu_manage_groups}, {{}, nullptr}, {QStringLiteral("trash"), ui->actionDelete_Group}}, m_groupInfo);
     connect(groupMenu, &QMenu::aboutToShow, this, [this] {
         ui->actionDelete_Group->setEnabled(Configs::dataManager->groupsRepo->GetGroupsTabOrder().size() > 1);
     });
-    m_profileActions->addStretch();
+    m_groupInfo->setActions(ui->menu_update_subscription, ui->actionEdit_Group, groupMenu);
+
+    auto *toolbar = new QFrame(profiles);
+    toolbar->setProperty("role", QStringLiteral("toolbar"));
+    auto *toolbarRow = new QHBoxLayout(toolbar);
+    toolbarRow->setContentsMargins(14, 10, 14, 10);
+    toolbarRow->setSpacing(8);
+    m_profileSearch = new ProfilesSearchEdit(toolbar);
+    m_profileSearch->setPlaceholderText(tr("Search profiles"));
+    m_profileSearch->setClearButtonEnabled(true);
+    if (auto *clear = m_profileSearch->findChild<QAction *>(QStringLiteral("_q_qlineeditclearaction"))) clear->setIcon(PorosTheme::Icon(QStringLiteral("close")));
+    m_profileSearch->addAction(PorosTheme::Icon(QStringLiteral("search")), QLineEdit::LeadingPosition);
+    toolbarRow->addWidget(m_profileSearch, 1);
+    auto *newProfile = shellSmallButton(QStringLiteral("plus"), tr("Profile"), toolbar);
+    newProfile->setProperty("variant", QStringLiteral("primary"));
+    connect(newProfile, &QPushButton::clicked, ui->menu_add_from_input, &QAction::trigger);
+    toolbarRow->addWidget(newProfile);
+    auto *enterLink = new QAction(tr("Enter a link…"), toolbar);
+    connect(enterLink, &QAction::triggered, this, [this, enterLink] {
+        bool ok = false;
+        const QString text = QInputDialog::getMultiLineText(this, enterLink->text().remove(QChar(0x2026)), tr("Profile links or a subscription URL"), {}, &ok);
+        if (ok && !text.trimmed().isEmpty()) import_or_handle_deeplink(text);
+    });
+    const auto dropButton = [toolbar, toolbarRow](const QString &icon, const QString &text, QMenu *menu) {
+        auto *button = shellSmallButton(icon, text, toolbar);
+        button->setProperty("menu", true);
+        button->setMenu(menu);
+        toolbarRow->addWidget(button);
+    };
+    dropButton(QStringLiteral("download"), tr("Import"),
+               shellMenu({{QStringLiteral("clip"), ui->menu_add_from_clipboard}, {QStringLiteral("file"), ui->actionAdd_profile_from_File},
+                          {QStringLiteral("qr"), ui->menu_scan_qr}, {QStringLiteral("edit"), enterLink}}, toolbar));
+    dropButton(QStringLiteral("gauge"), tr("Tests"),
+               shellMenu({{QStringLiteral("gauge"), ui->actionUrl_Test_Group}, {QStringLiteral("bolt"), ui->actionSpeedtest_Group},
+                          {QStringLiteral("globe"), ui->actionResolve_Out_IP}, {QStringLiteral("search"), ui->menu_resolve_domain}, {{}, nullptr},
+                          {QStringLiteral("close"), ui->menu_clear_test_result}, {QStringLiteral("stop"), ui->menu_stop_testing}}, toolbar));
+    dropButton(QStringLiteral("trash"), tr("Clean up"),
+               shellMenu({{QStringLiteral("trash"), ui->menu_remove_unavailable}, {QStringLiteral("copy"), ui->menu_delete_repeat},
+                          {QStringLiteral("warn"), ui->menu_remove_insecure}, {QStringLiteral("close"), ui->menu_remove_invalid}}, toolbar));
+
+    m_profilesEmpty = new QWidget(ui->profilesTableView->viewport());
+    auto *emptyColumn = new QVBoxLayout(m_profilesEmpty);
+    emptyColumn->setSpacing(10);
+    m_profilesEmptyTitle = new QLabel(m_profilesEmpty);
+    m_profilesEmptyTitle->setProperty("role", QStringLiteral("heading"));
+    m_profilesEmptyTitle->setAlignment(Qt::AlignCenter);
+    emptyColumn->addWidget(m_profilesEmptyTitle);
+    m_profilesEmptyHint = new QLabel(m_profilesEmpty);
+    m_profilesEmptyHint->setProperty("role", QStringLiteral("lead"));
+    m_profilesEmptyHint->setAlignment(Qt::AlignCenter);
+    emptyColumn->addWidget(m_profilesEmptyHint);
+    m_profilesEmptyAdd = new QWidget(m_profilesEmpty);
+    auto *emptyAddRow = new QHBoxLayout(m_profilesEmptyAdd);
+    emptyAddRow->setContentsMargins(0, 4, 0, 0);
+    emptyAddRow->setAlignment(Qt::AlignCenter);
+    auto *emptyProfile = shellSmallButton(QStringLiteral("plus"), tr("Profile"), m_profilesEmptyAdd);
+    emptyProfile->setProperty("variant", QStringLiteral("primary"));
+    connect(emptyProfile, &QPushButton::clicked, ui->menu_add_from_input, &QAction::trigger);
+    emptyAddRow->addWidget(emptyProfile);
+    auto *emptyClipboard = shellSmallButton(QStringLiteral("clip"), tr("From clipboard"), m_profilesEmptyAdd);
+    connect(emptyClipboard, &QPushButton::clicked, ui->menu_add_from_clipboard, &QAction::trigger);
+    emptyAddRow->addWidget(emptyClipboard);
+    emptyColumn->addWidget(m_profilesEmptyAdd);
+    m_profilesEmptyUpdate = shellSmallButton(QStringLiteral("refresh"), tr("Update"), m_profilesEmpty);
+    connect(m_profilesEmptyUpdate, &QPushButton::clicked, ui->menu_update_subscription, &QAction::trigger);
+    emptyColumn->addWidget(m_profilesEmptyUpdate, 0, Qt::AlignCenter);
+    auto *emptyPlace = new QVBoxLayout(ui->profilesTableView->viewport());
+    emptyPlace->addWidget(m_profilesEmpty, 0, Qt::AlignCenter);
+    m_profilesEmpty->hide();
 
     ui->tabWidget->tabBar()->hide();
     ui->tabWidget->setDocumentMode(true);
-    profilesRow->addWidget(shellSection(toolbar, ui->tabWidget, profiles), 1);
+    auto *profilesHead = new QWidget(profiles);
+    auto *profilesHeadColumn = new QVBoxLayout(profilesHead);
+    profilesHeadColumn->setContentsMargins(0, 0, 0, 0);
+    profilesHeadColumn->setSpacing(0);
+    profilesHeadColumn->addWidget(m_groupInfo);
+    profilesHeadColumn->addWidget(toolbar);
+    profilesRow->addWidget(shellSection(profilesHead, ui->tabWidget, profiles), 1);
     m_advancedPage->setSection(AdvancedPage::Profiles, profiles);
 
     ui->stats_widget->removeTab(ui->stats_widget->indexOf(ui->Logs));
