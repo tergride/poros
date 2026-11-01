@@ -3,9 +3,11 @@
 #include "include/database/RoutesRepo.h"
 #include "include/ui/utils/ConnectionModeController.h"
 #include "include/ui/widget/AdminPromptDialog.h"
+#include "include/ui/widget/ConnectionChoiceDialog.h"
 
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScopedValueRollback>
 
 #include "include/engine/app/ExitController.h"
 #include "include/engine/connection/ConnectionManager.h"
@@ -58,12 +60,7 @@ void MainWindow::killSwitchProblem() {
         AdminPromptDialog prompt(Engine::PrivilegeReason::KillSwitch, this);
         prompt.exec();
         m_killSwitchPromptOpen = false;
-        if (prompt.choice() == AdminPromptDialog::Choice::Restart) {
-            restartWithRights(Engine::PrivilegeReason::KillSwitch);
-        } else if (prompt.choice() == AdminPromptDialog::Choice::TryWithout) {
-            m_triedWithoutRights = Engine::PrivilegeReason::KillSwitch;
-            killSwitch->apply();
-        }
+        if (prompt.choice() == AdminPromptDialog::Choice::Restart) restartWithRights(Engine::PrivilegeReason::KillSwitch);
         return;
     }
 
@@ -186,13 +183,13 @@ Engine::SlowOperation MainWindow::slowOperation(Engine::SlowOperationKind kind, 
     });
 }
 
-Engine::PrivilegeDecision MainWindow::requestCorePrivileges(Engine::PrivilegeReason reason) {
+Engine::PrivilegeDecision MainWindow::requestCorePrivileges(Engine::PrivilegeReason reason, int profileId) {
     using Engine::PrivilegeDecision;
+    const QScopedValueRollback pending(m_pendingStart, profileId >= 0 ? profileId : m_pendingStart);
     AdminPromptDialog prompt(reason, this);
     prompt.exec();
     switch (prompt.choice()) {
         case AdminPromptDialog::Choice::TryWithout:
-            m_triedWithoutRights = reason;
             return PrivilegeDecision::TryWithout;
         case AdminPromptDialog::Choice::UseSystem:
             useSystemInsteadOfTun();
@@ -205,6 +202,23 @@ Engine::PrivilegeDecision MainWindow::requestCorePrivileges(Engine::PrivilegeRea
     }
 
     return PrivilegeDecision::Cancel;
+}
+
+bool MainWindow::settleMode(const Engine::StartRequest &request) {
+    if (!simpleModeShown()) return true;
+    using Mode = ConnectionModeController::Mode;
+    if (m_modes->mode() == Mode::Unset) {
+        if (!request.interactive) {
+            MW_show_log(tr("Not connecting: choose TUN or System first."));
+            return false;
+        }
+        ConnectionChoiceDialog dialog(this);
+        if (dialog.exec() != QDialog::Accepted) return false;
+        m_modes->choose(dialog.choice());
+    }
+    const QScopedValueRollback pending(m_pendingStart, request.profileId);
+    // The rights prompt can switch to System, which then needs no rights at all.
+    return m_modes->apply(request.interactive) || (m_modes->mode() == Mode::System && m_modes->apply(request.interactive));
 }
 
 bool MainWindow::vpnPromptOpen() const {
@@ -261,24 +275,31 @@ void MainWindow::restartWithRights(Engine::PrivilegeReason reason) {
 }
 
 void MainWindow::useSystemInsteadOfTun() {
-    if (Configs::dataManager->settingsRepo->ui_mode != QLatin1String("advanced")) m_modes->choose(ConnectionModeController::Mode::System);
-    else connection()->setSystemProxy(true);
+    setModeSwitch(ConnectionModeController::Mode::Tun, false);
+    setModeSwitch(ConnectionModeController::Mode::System, true);
+}
+
+void MainWindow::setModeSwitch(ConnectionModeController::Mode mode, bool on) {
+    using Mode = ConnectionModeController::Mode;
+    if (simpleModeShown()) {
+        // One choice instead of two switches: the next start would undo a switch it was not told about.
+        m_modes->choose(on ? mode : Mode::Unset);
+        if (on) return;
+    }
+    if (mode == Mode::Tun) connection()->setTun(on);
+    else connection()->setSystemProxy(on);
 }
 
 void MainWindow::showRightsFailure(Engine::PrivilegeReason reason) {
-    QString text;
-    QList<FailureBanner::Action> actions{{tr("Restart with rights"), [this, reason] { restartWithRights(reason); }}};
-    switch (reason) {
-        case Engine::PrivilegeReason::Tun:
-            text = tr("TUN did not start without administrator rights.");
-            actions.append({tr("Use System"), [this] { useSystemInsteadOfTun(); }});
-            break;
-        case Engine::PrivilegeReason::KillSwitch:
-            text = tr("The kill switch did not turn on without administrator rights.");
-            break;
-        case Engine::PrivilegeReason::TlsSpoof:
-            text = tr("TLS spoofing did not work without administrator rights.");
-            break;
+    QString text = tr("TLS spoofing did not work without administrator rights.");
+    QList<FailureBanner::Action> actions{{tr("Restart with rights"), [this, reason] {
+        // The start that just failed is the one to carry on with.
+        const QScopedValueRollback pending(m_pendingStart, connection()->lastProfileId());
+        restartWithRights(reason);
+    }}};
+    if (reason == Engine::PrivilegeReason::Tun) {
+        text = tr("TUN did not start without administrator rights.");
+        actions.append({tr("Use System"), [this] { useSystemInsteadOfTun(); }});
     }
     m_banner->present(text, actions);
 }

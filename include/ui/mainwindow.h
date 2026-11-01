@@ -39,6 +39,7 @@
 #include "include/engine/EngineTypes.h"
 #include "include/engine/tests/TestObserver.h"
 #include "include/ui/setting/Icon.hpp"
+#include "include/ui/utils/ConnectionModeController.h"
 #include "include/ui/utils/DataViewHtmlGenerator.h"
 #include "include/ui/utils/GuiUtils.hpp"
 #include "include/ui/utils/ProfilesFilterProxyModel.h"
@@ -292,9 +293,9 @@ private:
     int m_pendingStart = -1;
     int m_restartProfileId = -1;
     bool m_killSwitchPromptOpen = false;
-    std::optional<Engine::PrivilegeReason> m_triedWithoutRights;
     void restartWithRights(Engine::PrivilegeReason reason);
     void useSystemInsteadOfTun();
+    void setModeSwitch(ConnectionModeController::Mode mode, bool on);
     void showRightsFailure(Engine::PrivilegeReason reason);
     void showRuleSetFailure();
 
@@ -629,7 +630,9 @@ private:
 
     Engine::SlowOperation slowOperation(Engine::SlowOperationKind kind, int delayMs) override;
 
-    Engine::PrivilegeDecision requestCorePrivileges(Engine::PrivilegeReason reason) override;
+    Engine::PrivilegeDecision requestCorePrivileges(Engine::PrivilegeReason reason, int profileId) override;
+
+    bool settleMode(const Engine::StartRequest &request) override;
 
 
     bool vpnPromptOpen() const override;

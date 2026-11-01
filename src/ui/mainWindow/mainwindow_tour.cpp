@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QListWidget>
 #include <QPushButton>
+#include <QScopedValueRollback>
 #include <QStackedWidget>
 #include <QTableWidget>
 #include <QTabWidget>
@@ -316,6 +317,8 @@ void MainWindow::runUiTour(const QString &dir) {
             for (const auto &route : Configs::dataManager->routesRepo->GetAllRouteProfiles()) {
                 if (route->builtinKey == QLatin1String("blocked-only")) connection()->chooseRoute(route->id);
             }
+            // Past the simple mode's gate: a chosen mode could touch this machine's proxy, and without one the start would stop at a dialog.
+            const QScopedValueRollback mode(Configs::dataManager->settingsRepo->ui_mode, QStringLiteral("advanced"));
             profile_start(m_serverModel->groups().first().servers.first().id);
         }, 14000},
         {"ruleset-result", [] {}, 30000},

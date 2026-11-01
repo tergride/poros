@@ -540,11 +540,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         ui->menu_spmode_system_proxy->setChecked(Configs::dataManager->settingsRepo->spmode_system_proxy);
         ui->menu_spmode_vpn->setChecked(Configs::dataManager->settingsRepo->spmode_vpn);
     });
-    connect(ui->menu_spmode_system_proxy, &QAction::triggered, this, [=,this](bool checked) { connection()->setSystemProxy(checked); });
-    connect(ui->menu_spmode_vpn, &QAction::triggered, this, [=,this](bool checked) { connection()->setTun(checked); });
+    connect(ui->menu_spmode_system_proxy, &QAction::triggered, this, [=,this](bool checked) { setModeSwitch(ConnectionModeController::Mode::System, checked); });
+    connect(ui->menu_spmode_vpn, &QAction::triggered, this, [=,this](bool checked) { setModeSwitch(ConnectionModeController::Mode::Tun, checked); });
     connect(ui->menu_spmode_disabled, &QAction::triggered, this, [=,this]() {
-        connection()->setSystemProxy(false);
-        connection()->setTun(false);
+        setModeSwitch(ConnectionModeController::Mode::System, false);
+        setModeSwitch(ConnectionModeController::Mode::Tun, false);
     });
     connect(ui->menu_qr, &QAction::triggered, this, [=,this]() { display_qr_link(false); });
 

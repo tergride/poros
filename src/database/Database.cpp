@@ -534,6 +534,7 @@ namespace Configs {
                 if (!tableReplaced && !settingKeepKeys.contains(key)) settingKeepKeys << key;
             };
             keepHostId(profilesReplaced, QStringLiteral("remember_id"));
+            keepHostId(profilesReplaced, QStringLiteral("simple_server_id"));
             keepHostId(groupsReplaced, QStringLiteral("current_group"));
             keepHostId(routesReplaced, QStringLiteral("current_route_id"));
 
@@ -547,9 +548,11 @@ namespace Configs {
                 const auto keptHere = [&](const QString& key) {
                     return !settingsReplaced || settingKeepKeys.contains(key);
                 };
-                if (const auto rememberId = databaseSettingId(db, "remember_id"); rememberId && *rememberId >= 0) {
-                    if ((profilesReplaced && keptHere("remember_id")) || !databaseIdExists(db, "profiles", *rememberId))
-                        databaseSetSettingId(db, "remember_id", NoProfileId);
+                for (const char* key : {"remember_id", "simple_server_id"}) {
+                    if (const auto profileId = databaseSettingId(db, key); profileId && *profileId >= 0) {
+                        if ((profilesReplaced && keptHere(QString::fromLatin1(key))) || !databaseIdExists(db, "profiles", *profileId))
+                            databaseSetSettingId(db, key, NoProfileId);
+                    }
                 }
                 // Missing rows are written too: SettingsRepo would load hard defaults that need not resolve.
                 const auto currentGroup = databaseSettingId(db, "current_group");

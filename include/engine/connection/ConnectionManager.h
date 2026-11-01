@@ -104,6 +104,14 @@ namespace Engine {
 
         void onCoreGaveUp();
 
+        // Whatever was waiting to start no longer should, and a start under way stops when it ends.
+        void cancelPendingStart();
+
+        void setStartPending(bool pending);
+
+        // A change to what the running config says. A config being built right now predates it, so its start restarts when done.
+        bool restartForChange(bool interactive);
+
         void failStart(const StartRequest &request, const QString &title, const QString &error);
 
         void deferStartToCore(const StartRequest &request);
@@ -133,6 +141,11 @@ namespace Engine {
         bool m_profileConnecting = false;
         bool m_profileDisconnecting = false;
         StartRequest m_killSwitchDeferredStart;
+        // Bumped by every start and by a user stop: a start still waiting on ranking compares it to learn it was superseded.
+        int m_startSerial = 0;
+        bool m_startPending = false;
+        bool m_restartWhenSettled = false;
+        bool m_stopWhenSettled = false;
         // coreStarted carries only a profile id, so the rest of the request waits here.
         StartRequest m_coreStartRequest;
         bool m_killSwitchWasFailed = false;

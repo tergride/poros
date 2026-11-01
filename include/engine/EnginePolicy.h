@@ -66,8 +66,11 @@ namespace Engine {
         // Surfaces once the operation has run for delayMs; the caller dismisses it when the operation ends.
         virtual SlowOperation slowOperation(SlowOperationKind kind, int delayMs) = 0;
 
-        // Interactive callers only, once the core turned out to lack the privileges reason needs.
-        virtual PrivilegeDecision requestCorePrivileges(PrivilegeReason reason) = 0;
+        // Interactive callers only, once the core turned out to lack the privileges reason needs. profileId is the start asking, or -1.
+        virtual PrivilegeDecision requestCorePrivileges(PrivilegeReason reason, int profileId) = 0;
+
+        // Before a config is built. False keeps the start from going on: nothing would reach the server the way the user expects.
+        virtual bool settleMode(const StartRequest &request) = 0;
 
         // While a sign-in prompt is open the engine holds back new challenges and auth-failure restarts.
         virtual bool vpnPromptOpen() const = 0;

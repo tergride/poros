@@ -66,13 +66,16 @@ AdminPromptDialog::AdminPromptDialog(Engine::PrivilegeReason reason, QWidget *pa
     connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
     buttons->addWidget(cancel);
     buttons->addStretch();
-    auto *without = new QPushButton(tr("Try without rights"), this);
-    without->setAutoDefault(false);
-    connect(without, &QPushButton::clicked, this, [this] {
-        m_choice = Choice::TryWithout;
-        accept();
-    });
-    buttons->addWidget(without);
+    // The kill switch never works without rights, so a try would only bring this prompt back.
+    if (reason != Engine::PrivilegeReason::KillSwitch) {
+        auto *without = new QPushButton(tr("Try without rights"), this);
+        without->setAutoDefault(false);
+        connect(without, &QPushButton::clicked, this, [this] {
+            m_choice = Choice::TryWithout;
+            accept();
+        });
+        buttons->addWidget(without);
+    }
     auto *restart = new QPushButton(PorosTheme::Icon(QStringLiteral("shield"), Qt::white), tr("Restart with rights"), this);
     restart->setProperty("variant", QStringLiteral("primary"));
     restart->setDefault(true);

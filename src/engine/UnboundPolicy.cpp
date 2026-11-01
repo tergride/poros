@@ -84,9 +84,13 @@ namespace Engine {
         });
     }
 
-    PrivilegeDecision UnboundPolicy::requestCorePrivileges(PrivilegeReason) {
+    PrivilegeDecision UnboundPolicy::requestCorePrivileges(PrivilegeReason, int) {
         MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run Poros from an elevated prompt."));
         return PrivilegeDecision::Cancel;
+    }
+
+    bool UnboundPolicy::settleMode(const StartRequest &) {
+        return true;
     }
 
     bool UnboundPolicy::vpnPromptOpen() const {

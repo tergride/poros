@@ -141,6 +141,7 @@ void MainWindow::on_menu_exit_triggered() {
         if (!launched) {
             exitController()->setExitInProgress(false);
             exit_reason = ExitReason::None;
+            m_restartProfileId = -1;
             MW_show_log(tr("Restart as administrator was cancelled, Poros keeps running"));
             return;
         }
@@ -162,18 +163,13 @@ void MainWindow::on_menu_exit_triggered() {
 }
 
 void MainWindow::toggle_system_proxy() {
-    auto currentState = Configs::dataManager->settingsRepo->spmode_system_proxy;
-    if (currentState) {
-        connection()->setSystemProxy(false);
-    } else {
-        connection()->setSystemProxy(true);
-    }
+    setModeSwitch(ConnectionModeController::Mode::System, !Configs::dataManager->settingsRepo->spmode_system_proxy);
 }
 
 void MainWindow::toggle_tun() {
     const auto state = connection()->connectionState();
     if (state == ConnectionState::Connecting || state == ConnectionState::Stopping) return;
-    connection()->setTun(!Configs::dataManager->settingsRepo->spmode_vpn);
+    setModeSwitch(ConnectionModeController::Mode::Tun, !Configs::dataManager->settingsRepo->spmode_vpn);
 }
 
 bool MainWindow::StopVPNProcess() {

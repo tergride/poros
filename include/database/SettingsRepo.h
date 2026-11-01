@@ -177,6 +177,7 @@ namespace Configs {
         bool remember_tun = false;
         int remember_id = NoProfileId;
         bool remember_enable = false;
+        int simple_server_id = NoProfileId; // the simple mode's selection, connected or not
         bool windows_set_admin = false;
         QMap<QString, QKeySequence> shortcuts;
 

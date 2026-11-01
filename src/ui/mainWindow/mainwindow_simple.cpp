@@ -30,7 +30,6 @@
 #include "include/ui/simple/SimpleHome.h"
 #include "include/ui/utils/ConnectionModeController.h"
 #include "include/ui/widget/AdminPromptDialog.h"
-#include "include/ui/widget/ConnectionChoiceDialog.h"
 #include "include/ui/widget/StartStopButton.hpp"
 
 void MainWindow::setupSimpleMode() {
@@ -121,7 +120,7 @@ void MainWindow::setupSimpleMode() {
     });
     simpleClock->start();
 
-    m_serverModel->setSelectedId(Configs::dataManager->settingsRepo->remember_id);
+    m_serverModel->setSelectedId(Configs::dataManager->settingsRepo->simple_server_id);
     m_serverModel->reload();
 }
 
@@ -151,11 +150,13 @@ void MainWindow::showSimpleLog() {
 }
 
 void MainWindow::simplePick(int profileId) {
+    const auto state = connection()->connectionState();
+    if (state == ConnectionState::Connecting || state == ConnectionState::Stopping) return;
     m_serverModel->setSelectedId(profileId);
     auto &settings = Configs::dataManager->settingsRepo;
-    settings->remember_id = profileId;
+    settings->simple_server_id = profileId;
     settings->Save();
-    if (runningSnapshot() != nullptr) profile_start(profileId);
+    if (const auto running = runningSnapshot(); running != nullptr && running->id != profileId) profile_start(profileId);
     refreshSimplePortal();
     refresh_startstop_button();
 }
@@ -173,25 +174,18 @@ int MainWindow::simpleProfileToStart() const {
 }
 
 void MainWindow::simpleStart() {
-    if (runningSnapshot() != nullptr) {
+    const auto state = connection()->connectionState();
+    if (state == ConnectionState::Stopping) return;
+    // While connecting the big button cancels.
+    if (runningSnapshot() != nullptr || state == ConnectionState::Connecting) {
         profile_stop(false, false, true);
         return;
     }
     const int id = simpleProfileToStart();
     if (id < 0) return;
-    if (m_modes->mode() == ConnectionModeController::Mode::Unset) {
-        ConnectionChoiceDialog dialog(this);
-        if (dialog.exec() != QDialog::Accepted) return;
-        m_modes->choose(dialog.choice());
-    }
     m_banner->dismiss();
-    m_pendingStart = id;
-    // The rights prompt can switch to System, which then needs no rights at all.
-    const bool applied = m_modes->apply() || (m_modes->mode() == ConnectionModeController::Mode::System && m_modes->apply());
-    m_pendingStart = -1;
-    if (!applied) return;
     simplePick(id);
-    if (runningSnapshot() == nullptr) profile_start(id);
+    profile_start(id);
 }
 
 void MainWindow::showAddSubscription(const QString &link) {
@@ -279,7 +273,7 @@ void MainWindow::refreshSimplePortal() {
         portal->setStats({}, {}, {});
     }
 
-    const Mode mode = m_modes->mode();
+    const Mode mode = m_modes->liveMode();
     portal->modeSwitch()->setCurrent(mode == Mode::Tun ? 0 : mode == Mode::System ? 1 : -1);
     portal->setModeHint(mode == Mode::Tun ? tr("All the traffic of the computer goes through the server, games and programs included.")
                         : mode == Mode::System ? tr("Browsers and the programs that use the system proxy go through the server.")
@@ -289,5 +283,11 @@ void MainWindow::refreshSimplePortal() {
     portal->setPreset(route != nullptr ? route->name : QString());
 
     m_serverModel->setRunningId(running != nullptr ? running->id : -1);
-    if (running != nullptr) m_serverModel->setSelectedId(running->id);
+    if (running != nullptr) {
+        m_serverModel->setSelectedId(running->id);
+        if (settings->simple_server_id != running->id) {
+            settings->simple_server_id = running->id;
+            settings->Save();
+        }
+    }
 }

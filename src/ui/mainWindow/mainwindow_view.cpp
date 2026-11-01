@@ -272,7 +272,7 @@ void MainWindow::refresh_startstop_button() {
     if (connecting) state = StartStopButton::State::Connecting;
     else if (disconnecting) state = StartStopButton::State::Disconnecting;
     else if (running != nullptr) state = StartStopButton::State::Running;
-    else if (get_profile_to_start() >= 0 || simpleProfileToStart() >= 0) state = StartStopButton::State::Idle;
+    else if ((simpleModeShown() ? simpleProfileToStart() : get_profile_to_start()) >= 0) state = StartStopButton::State::Idle;
     else state = StartStopButton::State::Disabled;
 
     auto lock = StartStopButton::Lock::Hidden;
@@ -301,7 +301,7 @@ void MainWindow::refresh_startstop_button() {
             trayConnectAction->setText(running != nullptr ? tr("Disconnect") : tr("Connect"));
         }
         trayConnectAction->setEnabled(!connecting && !disconnecting &&
-                                      (running != nullptr || get_profile_to_start() >= 0));
+                                      (running != nullptr || (simpleModeShown() ? simpleProfileToStart() : get_profile_to_start()) >= 0));
     }
 
     // Here rather than in refresh_status(): the connecting/disconnecting flags only ever refresh this button.

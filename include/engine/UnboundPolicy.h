@@ -28,7 +28,9 @@ namespace Engine {
 
         SlowOperation slowOperation(SlowOperationKind kind, int delayMs) override;
 
-        PrivilegeDecision requestCorePrivileges(PrivilegeReason reason) override;
+        PrivilegeDecision requestCorePrivileges(PrivilegeReason reason, int profileId) override;
+
+        bool settleMode(const StartRequest &request) override;
 
         bool vpnPromptOpen() const override;
 

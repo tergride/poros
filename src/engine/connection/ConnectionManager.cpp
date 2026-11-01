@@ -81,11 +81,24 @@ namespace Engine {
             return;
         }
 
+        const int serial = ++m_startSerial;
+        setStartPending(false);
+        // It may ask the user, and a nested loop can bring a newer start or a stop.
+        if (!policy()->settleMode(resolved) || serial != m_startSerial) return;
+
         // Ranking must run before the config is built and it blocks, so hop off the UI thread.
-        if (m_autoSelector->rankBeforeStart(ent, resolved.interactive, [=, this] { start(resolved); })) return;
+        const bool ranking = m_autoSelector->rankBeforeStart(ent, resolved.interactive, [=, this] {
+            if (serial != m_startSerial) return;
+            setStartPending(false);
+            start(resolved);
+        });
+        if (ranking) {
+            setStartPending(true);
+            return;
+        }
 
         if (resolved.interactive && !tunPrivileged() && ent->outbound->HasTLS() && ent->outbound->GetTLS()->enabled &&
-            ent->outbound->GetTLS()->SpoofEffectivelyOn() && policy()->requestCorePrivileges(PrivilegeReason::TlsSpoof) != PrivilegeDecision::TryWithout) {
+            ent->outbound->GetTLS()->SpoofEffectivelyOn() && policy()->requestCorePrivileges(PrivilegeReason::TlsSpoof, ent->id) != PrivilegeDecision::TryWithout) {
             return;
         }
 
@@ -244,6 +257,12 @@ namespace Engine {
                 } else if (switching) {
                     emit runMarker(markerAt, RunMarker::Stopped, {});
                 }
+                const bool restart = std::exchange(m_restartWhenSettled, false);
+                if (std::exchange(m_stopWhenSettled, false)) {
+                    if (started) stop({false, false, true, resolved.interactive});
+                } else if (started && restart) {
+                    start(StartRequest{ent->id, resolved.interactive});
+                }
             });
         });
     }
@@ -253,6 +272,9 @@ namespace Engine {
         const bool block = options.block;
         const bool manual = options.manual;
         const bool interactive = options.interactive;
+
+        // The stop inside a profile switch is the start's own.
+        if (manual && !crash && !m_switchingProfile) runOnUiThread([this] { cancelPendingStart(); });
 
         const auto current = runningSnapshot();
         if (current == nullptr) {
@@ -333,6 +355,7 @@ namespace Engine {
                 if (!m_switchingProfile) emit runMarker(stoppedAt, RunMarker::Stopped, {});
 
                 m_profileDisconnecting = false;
+                if (!m_switchingProfile) m_restartWhenSettled = false;
                 clearRestartNeeded();
                 m_vpnAuth->noteRunStopped(id, manual);
                 emit statusChanged();
@@ -364,18 +387,32 @@ namespace Engine {
         }
     }
 
+    void ConnectionManager::cancelPendingStart() {
+        ++m_startSerial;
+        m_killSwitchDeferredStart = {};
+        setStartPending(false);
+        m_restartWhenSettled = false;
+        m_stopWhenSettled = m_profileConnecting;
+    }
+
+    void ConnectionManager::setStartPending(bool pending) {
+        if (m_startPending == pending) return;
+        m_startPending = pending;
+        emit busyChanged();
+    }
+
     void ConnectionManager::deferStartToCore(const StartRequest &request) {
         m_coreStartRequest = request;
     }
 
     void ConnectionManager::onCoreStarted(int profileId) {
         auto &settings = Configs::dataManager->settingsRepo;
-        // The core may just have been given rights, which the guard needs too.
-        if (Sys::KillSwitch::instance()->failedForPrivileges()) Sys::KillSwitch::instance()->apply();
-        if (settings->remember_enable && settings->remember_system_proxy) {
+        // A relaunch carries the session on, so it brings back what remember_enable would. The exit saved it just before.
+        const bool resume = settings->remember_enable || std::exchange(settings->flag_restart_profile, -1) >= 0;
+        if (resume && settings->remember_system_proxy) {
             setSystemProxy(true, ModeChange{.save = false});
         }
-        if ((settings->remember_enable && settings->remember_tun) || settings->flag_restart_tun_on) {
+        if ((resume && settings->remember_tun) || settings->flag_restart_tun_on) {
             setTun(true, ModeChange{.save = settings->flag_restart_tun_on});
             settings->flag_restart_tun_on = false;
         }
@@ -421,7 +458,7 @@ namespace Engine {
     }
 
     ConnectionState ConnectionManager::connectionState() const {
-        if (m_profileConnecting) return ConnectionState::Connecting;
+        if (m_profileConnecting || m_startPending) return ConnectionState::Connecting;
         if (m_profileDisconnecting) return ConnectionState::Stopping;
         return runningSnapshot() != nullptr ? ConnectionState::Running : ConnectionState::Idle;
     }

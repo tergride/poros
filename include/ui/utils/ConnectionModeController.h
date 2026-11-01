@@ -21,11 +21,14 @@ public:
 
     Mode mode() const;
 
+    // What a running connection really does; the saved choice while nothing runs.
+    Mode liveMode() const;
+
     // Saves it, and applies it at once only while connected: choosing is no reason to ask for rights.
     void choose(Mode mode);
 
     // Brings the engine in line before a start. False when it could not, as when the user refused the rights TUN needs.
-    bool apply();
+    bool apply(bool interactive = true);
 
     // Coming from the advanced mode, where both switches may be on or off.
     void adopt();

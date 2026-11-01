@@ -42,7 +42,7 @@ namespace Engine {
         }
         if (tunPrivileged()) return true;
         if (!interactive) return false;
-        return policy()->requestCorePrivileges(PrivilegeReason::Tun) == PrivilegeDecision::TryWithout;
+        return policy()->requestCorePrivileges(PrivilegeReason::Tun, -1) == PrivilegeDecision::TryWithout;
     }
 
     bool ConnectionManager::tunPrivileged() {
@@ -107,8 +107,17 @@ namespace Engine {
         settings->spmode_vpn = enable;
         emit statusChanged();
 
-        if (!change.restart || settings->started_id < 0) return false;
-        start(StartRequest{settings->started_id, change.interactive});
+        return change.restart && restartForChange(change.interactive);
+    }
+
+    bool ConnectionManager::restartForChange(bool interactive) {
+        if (m_profileConnecting) {
+            m_restartWhenSettled = true;
+            return false;
+        }
+        const int startedId = Configs::dataManager->settingsRepo->started_id;
+        if (startedId < 0 || m_profileDisconnecting) return false;
+        start(StartRequest{startedId, interactive});
         return true;
     }
 
@@ -118,9 +127,7 @@ namespace Engine {
         if (settings->current_route_id == routeId) return false;
         settings->current_route_id = routeId;
         settings->Save();
-        if (settings->started_id < 0) return false;
-        start(StartRequest{settings->started_id, interactive});
-        return true;
+        return restartForChange(interactive);
     }
 
     void ConnectionManager::attachKillSwitch() {

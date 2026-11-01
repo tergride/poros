@@ -8134,6 +8134,10 @@ Error: %1</source>
         <translation>Перезапустить Poros</translation>
     </message>
     <message>
+        <source>Not connecting: choose TUN or System first.</source>
+        <translation>Подключения нет: сначала выберите TUN или System.</translation>
+    </message>
+    <message>
         <source>Restart with rights</source>
         <translation>Перезапустить с правами</translation>
     </message>
@@ -8144,10 +8148,6 @@ Error: %1</source>
     <message>
         <source>Use System</source>
         <translation>Использовать System</translation>
-    </message>
-    <message>
-        <source>The kill switch did not turn on without administrator rights.</source>
-        <translation>Kill switch не включился без прав администратора.</translation>
     </message>
     <message>
         <source>TLS spoofing did not work without administrator rights.</source>

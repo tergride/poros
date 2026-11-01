@@ -95,6 +95,7 @@ namespace Configs {
             {"mux_brutal_down_mbps",   &mux_brutal_down_mbps},
             {"test_concurrent",        &test_concurrent},
             {"remember_id",            &remember_id},
+            {"simple_server_id",       &simple_server_id},
             {"language",               &language},
             {"font_size",              &font_size},
             {"max_log_line",           &max_log_line},

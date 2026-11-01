@@ -82,8 +82,12 @@ namespace Engine {
             return target(__func__)->slowOperation(kind, delayMs);
         }
 
-        PrivilegeDecision requestCorePrivileges(PrivilegeReason reason) override {
-            return target(__func__)->requestCorePrivileges(reason);
+        PrivilegeDecision requestCorePrivileges(PrivilegeReason reason, int profileId) override {
+            return target(__func__)->requestCorePrivileges(reason, profileId);
+        }
+
+        bool settleMode(const StartRequest &request) override {
+            return target(__func__)->settleMode(request);
         }
 
         bool vpnPromptOpen() const override {
