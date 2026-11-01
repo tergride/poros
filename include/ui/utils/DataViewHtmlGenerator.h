@@ -58,8 +58,8 @@ public:
         QStringList reasons;
     };
 
-    static constexpr auto RestartActionUrl = "throne-action:restart-proxy";
-    static constexpr auto DismissRestartActionUrl = "throne-action:dismiss-restart";
+    static constexpr auto RestartActionUrl = "poros-action:restart-proxy";
+    static constexpr auto DismissRestartActionUrl = "poros-action:dismiss-restart";
 
     void setDownloadReport(const DownloadProgressReport &report, bool show);
 

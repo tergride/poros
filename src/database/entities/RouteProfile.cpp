@@ -870,7 +870,7 @@ namespace Configs {
             QJsonObject obj;
             obj["action"] = "reject";
             QJsonArray jarray;
-            jarray.append("throne-adblocksingbox");
+            jarray.append("poros-adblocksingbox");
             obj["rule_set"] = jarray;
             return obj;
         };

@@ -5,7 +5,7 @@ import (
 
 	"github.com/sagernet/sing-box/include"
 
-	"ThroneCore/internal/boxbox"
+	"PorosCore/internal/boxbox"
 )
 
 func Check(content []byte) error {

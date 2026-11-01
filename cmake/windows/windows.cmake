@@ -4,7 +4,7 @@ set(PLATFORM_LIBRARIES wininet wsock32 ws2_32 user32 rasapi32 iphlpapi ntdll wbe
 include(cmake/windows/generate_product_version.cmake)
 generate_product_version(
         QV2RAY_RC
-        ICON "${CMAKE_SOURCE_DIR}/res/Throne.ico"
+        ICON "${CMAKE_SOURCE_DIR}/res/Poros.ico"
         NAME "Poros"
         BUNDLE "Poros"
         COMPANY_NAME "Poros"

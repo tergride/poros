@@ -55,9 +55,9 @@ namespace Configs {
             constexpr auto dnsIn = "dns-in";
             constexpr auto mixedIn = "mixed-in";
             constexpr auto tunIn = "tun-in";
-            constexpr auto xrayFullConfigIn = "throne-bridge";
+            constexpr auto xrayFullConfigIn = "poros-bridge";
 
-            constexpr auto adblockRuleSet = "throne-adblocksingbox";
+            constexpr auto adblockRuleSet = "poros-adblocksingbox";
 
             constexpr auto mainChainPrefix = "config";
             constexpr auto routeChainPrefix = "route";
@@ -2594,7 +2594,7 @@ namespace Configs {
                     MW_show_log("Custom Xray full config is not valid JSON");
                     return false;
                 }
-                // Throne never runs these; it prepends its own bridge inbound instead.
+                // Poros never runs these; it prepends its own bridge inbound instead.
                 xrayConf.remove("inbounds");
                 if (offline) return true;
                 bool ok;

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"ThroneCore/internal/boxbox"
-	"ThroneCore/internal/boxmain"
+	"PorosCore/internal/boxbox"
+	"PorosCore/internal/boxmain"
 
 	C "github.com/sagernet/sing-box/constant"
 	dnsfeature "github.com/xtls/xray-core/features/dns"

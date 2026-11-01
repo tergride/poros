@@ -13,15 +13,15 @@ import (
 
 	"github.com/xtls/xray-core/core"
 
-	"ThroneCore/internal/boxmain"
-	"ThroneCore/internal/guard"
-	"ThroneCore/internal/ipc"
-	"ThroneCore/internal/parentcheck"
-	"ThroneCore/internal/rpc"
+	"PorosCore/internal/boxmain"
+	"PorosCore/internal/guard"
+	"PorosCore/internal/ipc"
+	"PorosCore/internal/parentcheck"
+	"PorosCore/internal/rpc"
 
 	C "github.com/sagernet/sing-box/constant"
 
-	_ "ThroneCore/internal/distro/all"
+	_ "PorosCore/internal/distro/all"
 )
 
 const (
@@ -81,11 +81,11 @@ func writeHeapProfile() (string, error) {
 }
 
 func RunCore() {
-	socketName := os.Getenv("THRONE_CORE_SOCKET")
+	socketName := os.Getenv("POROS_CORE_SOCKET")
 	if socketName == "" {
-		log.Fatal("THRONE_CORE_SOCKET not set")
+		log.Fatal("POROS_CORE_SOCKET not set")
 	}
-	debug := os.Getenv("THRONE_CORE_DEBUG") == "1"
+	debug := os.Getenv("POROS_CORE_DEBUG") == "1"
 
 	parentcheck.CheckParentProcess()
 

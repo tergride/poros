@@ -16,7 +16,7 @@ namespace Configs {
             return value == "none" ? QString() : value;
         }
 
-        // Throne's own links write none for the empty encoding.
+        // Poros and Throne links write none for the empty encoding.
         QString vlessImportPacketEncoding(const QString &raw)
         {
             const QString value = raw.trimmed();

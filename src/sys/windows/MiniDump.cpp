@@ -29,20 +29,20 @@ typedef BOOL(WINAPI *MINIDUMPWRITEDUMP)(
 
 // Resolved from kernel32 at run time: MinGW's werapi.h lacks the flag, and wer.lib is not linked.
 typedef HRESULT(WINAPI *WERSETFLAGS)(DWORD dwFlags);
-static const DWORD THRONE_WER_FAULT_REPORTING_NO_UI = 0x20;
+static const DWORD POROS_WER_FAULT_REPORTING_NO_UI = 0x20;
 
 #if defined(_M_ARM64) || defined(__aarch64__)
-#define THRONE_ARCH L"arm64"
-#define THRONE_ARCH_A "arm64"
+#define POROS_ARCH L"arm64"
+#define POROS_ARCH_A "arm64"
 #elif defined(_M_X64) || defined(__x86_64__)
-#define THRONE_ARCH L"amd64"
-#define THRONE_ARCH_A "amd64"
+#define POROS_ARCH L"amd64"
+#define POROS_ARCH_A "amd64"
 #elif defined(_M_IX86) || defined(__i386__)
-#define THRONE_ARCH L"386"
-#define THRONE_ARCH_A "386"
+#define POROS_ARCH L"386"
+#define POROS_ARCH_A "386"
 #else
-#define THRONE_ARCH L"unknown"
-#define THRONE_ARCH_A "unknown"
+#define POROS_ARCH L"unknown"
+#define POROS_ARCH_A "unknown"
 #endif
 
 // MiniDumpWithIndirectlyReferencedMemory is what makes objects on the stacks readable.
@@ -55,14 +55,14 @@ static const MINIDUMP_TYPE DUMP_TYPE = static_cast<MINIDUMP_TYPE>(
     MiniDumpWithProcessThreadData);
 
 // Failures that reach us with no SEH record get a synthesized one carrying these.
-#define THRONE_EXC_TERMINATE    0xE0544501
-#define THRONE_EXC_PURECALL     0xE0544502
-#define THRONE_EXC_INVALIDPARAM 0xE0544503
-#define THRONE_EXC_ABORT        0xE0544504
-#define THRONE_EXC_NEWFAIL      0xE0544505
+#define POROS_EXC_TERMINATE    0xE0544501
+#define POROS_EXC_PURECALL     0xE0544502
+#define POROS_EXC_INVALIDPARAM 0xE0544503
+#define POROS_EXC_ABORT        0xE0544504
+#define POROS_EXC_NEWFAIL      0xE0544505
 
 // Streams at or above LastReservedStream are free for application use.
-static const ULONG32 THRONE_LOG_STREAM = 0x10000;
+static const ULONG32 POROS_LOG_STREAM = 0x10000;
 
 static wchar_t g_dumpPathTemplate[MAX_PATH] = L"";
 static bool g_crashDirReady = false;
@@ -86,11 +86,11 @@ static const char *ExceptionName(DWORD code) {
         case 0xE06D7363: return "C++ exception (unhandled)";
         case 0xC0000409: return "STACK_BUFFER_OVERRUN / __fastfail";
         case 0xC0000374: return "HEAP_CORRUPTION";
-        case THRONE_EXC_TERMINATE: return "std::terminate (uncaught C++ exception)";
-        case THRONE_EXC_PURECALL: return "pure virtual call";
-        case THRONE_EXC_INVALIDPARAM: return "CRT invalid parameter";
-        case THRONE_EXC_ABORT: return "abort()";
-        case THRONE_EXC_NEWFAIL: return "operator new failed";
+        case POROS_EXC_TERMINATE: return "std::terminate (uncaught C++ exception)";
+        case POROS_EXC_PURECALL: return "pure virtual call";
+        case POROS_EXC_INVALIDPARAM: return "CRT invalid parameter";
+        case POROS_EXC_ABORT: return "abort()";
+        case POROS_EXC_NEWFAIL: return "operator new failed";
         default: return "unknown";
     }
 }
@@ -146,7 +146,7 @@ static void WriteSidecar(const wchar_t *path, EXCEPTION_POINTERS *pException, bo
               st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
     AppendA(file, line);
     AppendA(file, "version   : " NKR_VERSION "\r\n");
-    AppendA(file, "arch      : " THRONE_ARCH_A "\r\n");
+    AppendA(file, "arch      : " POROS_ARCH_A "\r\n");
     AppendA(file, "built     : " __DATE__ " " __TIME__ "\r\n");
     wsprintfA(line, "pid/tid   : %lu / %lu\r\n", GetCurrentProcessId(), GetCurrentThreadId());
     AppendA(file, line);
@@ -218,10 +218,10 @@ static void WriteCrashArtifacts(EXCEPTION_POINTERS *pException) {
     wchar_t dumpPath[MAX_PATH];
     wchar_t sidecarPath[MAX_PATH];
     wsprintfW(dumpPath, L"%s\\Poros_%s_%s_%04d%02d%02d-%02d%02d%02d.dmp",
-              g_dumpPathTemplate, L"" NKR_VERSION, THRONE_ARCH,
+              g_dumpPathTemplate, L"" NKR_VERSION, POROS_ARCH,
               st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
     wsprintfW(sidecarPath, L"%s\\Poros_%s_%s_%04d%02d%02d-%02d%02d%02d.txt",
-              g_dumpPathTemplate, L"" NKR_VERSION, THRONE_ARCH,
+              g_dumpPathTemplate, L"" NKR_VERSION, POROS_ARCH,
               st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 
     bool dumpWritten = false;
@@ -239,7 +239,7 @@ static void WriteCrashArtifacts(EXCEPTION_POINTERS *pException) {
                 dumpInfo.ClientPointers = FALSE;
 
                 MINIDUMP_USER_STREAM logStream;
-                logStream.Type = THRONE_LOG_STREAM;
+                logStream.Type = POROS_LOG_STREAM;
                 logStream.BufferSize = BuildLogStream();
                 logStream.Buffer = g_logStream;
                 MINIDUMP_USER_STREAM_INFORMATION streamInfo;
@@ -276,7 +276,7 @@ static void WriteCrashArtifacts(EXCEPTION_POINTERS *pException) {
     wsprintfW(msg,
               L"Poros %s (%s) crashed.\n\nException: 0x%08X\nAddress: 0x%s\n\n"
               L"A crash report was saved to:\n%s\n\nPlease attach the .txt file (and the .dmp if you can) to a bug report.",
-              L"" NKR_VERSION, THRONE_ARCH,
+              L"" NKR_VERSION, POROS_ARCH,
               record != nullptr ? record->ExceptionCode : 0,
               addrHex,
               g_dumpPathTemplate);
@@ -314,17 +314,17 @@ static void ReportSynthetic(DWORD code) {
     TerminateProcess(GetCurrentProcess(), code);
 }
 
-static void OnTerminate() { ReportSynthetic(THRONE_EXC_TERMINATE); }
+static void OnTerminate() { ReportSynthetic(POROS_EXC_TERMINATE); }
 
-static void OnPureCall() { ReportSynthetic(THRONE_EXC_PURECALL); }
+static void OnPureCall() { ReportSynthetic(POROS_EXC_PURECALL); }
 
 static void OnInvalidParameter(const wchar_t *, const wchar_t *, const wchar_t *, unsigned int, uintptr_t) {
-    ReportSynthetic(THRONE_EXC_INVALIDPARAM);
+    ReportSynthetic(POROS_EXC_INVALIDPARAM);
 }
 
-static void OnAbort(int) { ReportSynthetic(THRONE_EXC_ABORT); }
+static void OnAbort(int) { ReportSynthetic(POROS_EXC_ABORT); }
 
-static void OnNewFailed() { ReportSynthetic(THRONE_EXC_NEWFAIL); }
+static void OnNewFailed() { ReportSynthetic(POROS_EXC_NEWFAIL); }
 
 void Windows_SetCrashHandler(bool interactive) {
     g_interactive = interactive;
@@ -336,7 +336,7 @@ void Windows_SetCrashHandler(bool interactive) {
         const WERSETFLAGS werSetFlags = kernel != nullptr
             ? reinterpret_cast<WERSETFLAGS>(reinterpret_cast<void (*)()>(GetProcAddress(kernel, "WerSetFlags")))
             : nullptr;
-        if (werSetFlags != nullptr) werSetFlags(THRONE_WER_FAULT_REPORTING_NO_UI);
+        if (werSetFlags != nullptr) werSetFlags(POROS_WER_FAULT_REPORTING_NO_UI);
 #if defined(_MSC_VER) && defined(_DEBUG)
         _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
         _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);

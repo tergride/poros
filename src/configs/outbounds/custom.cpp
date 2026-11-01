@@ -442,7 +442,7 @@ namespace Configs
             return true;
         }
 
-        // Removes what would open a port on this computer or write a file; Throne runs a full config as it is.
+        // Removes what would open a port on this computer or write a file; Poros runs a full config as it is.
         bool stripSingBoxExposure(QJsonObject& root, Validation::Issues& issues)
         {
             bool removed = false;
@@ -559,7 +559,7 @@ namespace Configs
             removed |= stripNamed(root, "env", {},
                                   QCoreApplication::translate("Validation", "Removed the environment variables from the imported configuration: they would apply to Poros's core and to the programs it starts."),
                                   false, issues);
-            // The geodata updater swaps files in the asset folder, which is Throne's own folder.
+            // The geodata updater swaps files in the asset folder, which is Poros's own folder.
             removed |= stripNamed(root, "geodata", {},
                                   QCoreApplication::translate("Validation", "Removed the geodata updater from the imported configuration: it would download files from addresses the sender chose and replace files in Poros's folder."),
                                   false, issues);

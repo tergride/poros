@@ -130,7 +130,7 @@ namespace Logging {
             if (g_ringCount < RING_CAPACITY) g_ringCount++;
         }
 
-        // Caller holds g_mutex. throne.log -> throne.log.1 -> ..., oldest dropped.
+        // Caller holds g_mutex. poros.log -> poros.log.1 -> ..., oldest dropped.
         void rotateLocked() {
             g_file.close();
             const QString oldest = g_logPath + "." + QString::number(MAX_ROTATED_FILES);

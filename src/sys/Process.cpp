@@ -36,10 +36,10 @@ namespace Configs_sys {
         failed_to_start = false;
 
         auto env = QProcessEnvironment::systemEnvironment();
-        env.insert("THRONE_CORE_SOCKET", m_socketName);
+        env.insert("POROS_CORE_SOCKET", m_socketName);
         // Turns an unrecovered Go panic into a real abort, so all goroutine stacks are dumped and WER captures the core too.
         env.insert("GOTRACEBACK", "crash");
-        if (m_debugMode) env.insert("THRONE_CORE_DEBUG", "1");
+        if (m_debugMode) env.insert("POROS_CORE_DEBUG", "1");
         // Points Xray's asset loader at our writable config dir, so a geoip.dat/geosite.dat downloaded later is found with no core restart.
         env.insert("XRAY_LOCATION_ASSET", Configs::GetBasePath());
         setProcessEnvironment(env);

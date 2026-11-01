@@ -10,7 +10,7 @@ import (
 	runtimeDebug "runtime/debug"
 	"sync"
 
-	"ThroneCore/gen"
+	"PorosCore/gen"
 
 	"google.golang.org/protobuf/proto"
 )

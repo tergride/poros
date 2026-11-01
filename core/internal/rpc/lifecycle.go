@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"time"
 
-	"ThroneCore/gen"
-	"ThroneCore/internal/boxmain"
-	"ThroneCore/internal/xray"
+	"PorosCore/gen"
+	"PorosCore/internal/boxmain"
+	"PorosCore/internal/xray"
 
 	"github.com/sagernet/sing-box/option"
 )

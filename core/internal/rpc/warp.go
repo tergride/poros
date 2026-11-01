@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"ThroneCore/gen"
-	"ThroneCore/internal/amnezia"
-	"ThroneCore/internal/warp"
+	"PorosCore/gen"
+	"PorosCore/internal/amnezia"
+	"PorosCore/internal/warp"
 )
 
 const (

@@ -45,6 +45,6 @@ namespace Engine::BackupArchive {
 
     QStringList PartNames(const Configs::BackupParts &parts);
 
-    // A unique path under <configDir>/temp, which Throne wipes at start.
+    // A unique path under <configDir>/temp, which Poros wipes at start.
     QString TempPath(const QString &prefix);
 } // namespace Engine::BackupArchive

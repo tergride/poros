@@ -464,7 +464,7 @@ set(PROJECT_SOURCES
         src/ui/setting/RouteDnsEditor.cpp
         include/ui/setting/RouteDnsEditor.h
 
-        res/Throne.qrc
+        res/App.qrc
         res/Poros.qrc
         ${QV2RAY_RC}
         src/ui/profile/edit_ssh.cpp
@@ -692,8 +692,8 @@ if (POROS_UI_TOUR)
     target_compile_definitions(Poros PRIVATE POROS_UI_TOUR)
 endif ()
 
-option(THRONE_ENGINE_LINT "Check the engine/UI boundary on every build" ON)
-if (THRONE_ENGINE_LINT)
+option(POROS_ENGINE_LINT "Check the engine/UI boundary on every build" ON)
+if (POROS_ENGINE_LINT)
     add_custom_target(engine_boundary
             COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/EngineBoundary.cmake
             COMMENT "Checking the engine/UI boundary"

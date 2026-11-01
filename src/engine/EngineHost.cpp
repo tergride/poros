@@ -186,7 +186,7 @@ namespace Engine {
             return engineHostInstance;
         }
         Sys::KillSwitch::instance();
-        Throne::PeriodicRunner::instance();
+        Poros::PeriodicRunner::instance();
         Subscription::updater();
         EngineEvents::instance();
         auto *created = new EngineHost;
@@ -285,7 +285,7 @@ namespace Engine {
             AutoRun_FixTaskIfNeeded();
         }
         auto suggestRestartProxy = settings->Save();
-        Throne::PeriodicRunner::instance()->CheckNow();
+        Poros::PeriodicRunner::instance()->CheckNow();
         if (changed(MwArg::KillSwitch) || changed(MwArg::Vpn)) Sys::KillSwitch::instance()->apply();
         if (changed(MwArg::Route)) {
             settings->Save();
@@ -328,7 +328,7 @@ namespace Engine {
     }
 
     void EngineHost::registerPeriodicJobs() {
-        auto* runner = Throne::PeriodicRunner::instance();
+        auto* runner = Poros::PeriodicRunner::instance();
         // Interval is sign-encoded in settings (negative = disabled); < 30 min counts as off.
         const auto minutesOf = [](int v) { return v >= 30 ? v : 0; };
         // Every poll while enabled: each group keeps its own schedule, persisted as its sub_last_update.

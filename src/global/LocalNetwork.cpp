@@ -60,7 +60,7 @@ namespace LocalNetwork {
             // wireless_N, tunnel_N), so our own tun is matched by its friendly name as well.
             static const QStringList devicePrefixes = {"utun", "tun", "tap", "wg", "ppp", "zt"};
             const auto device = iface.name().toLower();
-            // Windows appends a suffix ("throne-tun 2") when a stale adapter instance survives an unclean exit.
+            // Windows appends a suffix ("poros-net 2") when a stale adapter instance survives an unclean exit.
             if (device.startsWith(QStringLiteral("poros-net")) ||
                 iface.humanReadableName().toLower().startsWith(QStringLiteral("poros-net"))) return true;
             return std::any_of(devicePrefixes.cbegin(), devicePrefixes.cend(),

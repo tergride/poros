@@ -128,7 +128,7 @@ namespace Configs
         BuildResult BuildXray() override
         {
             if (type == CustomXrayOutbound) {
-                // Domain resolution is wired on at instance creation (ThroneWiring), not as sockopt.domainStrategy.
+                // Domain resolution is wired on at instance creation (xrayPreparer), not as sockopt.domainStrategy.
                 return {QString2QJsonObject(config), ""};
             }
             return {};

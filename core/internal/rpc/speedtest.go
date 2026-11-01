@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"ThroneCore/gen"
-	"ThroneCore/internal/probe"
+	"PorosCore/gen"
+	"PorosCore/internal/probe"
 )
 
 func speedTestResultToProto(res probe.SpeedTestResult) *gen.SpeedTestResult {

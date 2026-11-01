@@ -23,7 +23,7 @@ namespace {
 QIcon Icon::GetTrayIcon(TrayIconStatus status) {
     if (const auto it = g_trayIcons.constFind(status); it != g_trayIcons.cend()) return it.value();
 
-    const QIcon icon(QStringLiteral(":/Throne/") + statusName(status) + QStringLiteral(".png"));
+    const QIcon icon(QStringLiteral(":/tray/") + statusName(status) + QStringLiteral(".png"));
     g_trayIcons.insert(status, icon);
     return icon;
 }

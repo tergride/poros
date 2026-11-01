@@ -4,10 +4,10 @@ import (
 	"log"
 	"time"
 
-	"ThroneCore/internal/boxbox"
-	"ThroneCore/internal/boxmain"
-	"ThroneCore/internal/probe"
-	"ThroneCore/internal/xray"
+	"PorosCore/internal/boxbox"
+	"PorosCore/internal/boxmain"
+	"PorosCore/internal/probe"
+	"PorosCore/internal/xray"
 
 	"github.com/sagernet/sing-box/option"
 )

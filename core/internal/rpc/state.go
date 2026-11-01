@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	"ThroneCore/internal/boxbox"
-	"ThroneCore/internal/xray"
+	"PorosCore/internal/boxbox"
+	"PorosCore/internal/xray"
 
 	"github.com/sagernet/sing-box/option"
 	"github.com/xtls/xray-core/core"

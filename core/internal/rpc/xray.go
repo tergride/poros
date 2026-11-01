@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"ThroneCore/internal/boxbox"
-	"ThroneCore/internal/xray"
-	"ThroneCore/internal/xraydns"
+	"PorosCore/internal/boxbox"
+	"PorosCore/internal/xray"
+	"PorosCore/internal/xraydns"
 
 	"github.com/xtls/xray-core/core"
 	xinternet "github.com/xtls/xray-core/transport/internet"

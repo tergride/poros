@@ -32,7 +32,7 @@
 #include <limits>
 
 namespace {
-    const QColor kRuntimeThroneColor = Stats::kStatsAccentColor;
+    const QColor kRuntimePorosColor = Stats::kStatsAccentColor;
     const QColor kRuntimeCoreColor = Stats::kStatsHealthyColor;
 
     QString runningConfigName() {
@@ -69,7 +69,7 @@ RuntimeStatsWidget::RuntimeStatsWidget(QWidget* parent) : QWidget(parent), ui(ne
     ui->formRunning->setColumnStretch(3, 1);
 
     const QList<LiveChartRow> processRows{
-        LiveChartRow{QStringLiteral("poros"), QStringLiteral("Poros"), {}, kRuntimeThroneColor, 0, true},
+        LiveChartRow{QStringLiteral("poros"), QStringLiteral("Poros"), {}, kRuntimePorosColor, 0, true},
         LiveChartRow{QStringLiteral("core"), tr("Core"), {}, kRuntimeCoreColor, 0, false},
     };
     cpuChart_ = new LiveChart(LiveChartOptions::sparkline(tr("CPU"), LiveChartAxis::percent()), this);
@@ -80,8 +80,8 @@ RuntimeStatsWidget::RuntimeStatsWidget(QWidget* parent) : QWidget(parent), ui(ne
         chart->setRows(processRows);
         ui->chartsRow->addWidget(chart);
     }
-    ui->labelThroneName->setText(QStringLiteral("<span style=\"color:%1\">●</span> %2")
-                                     .arg(kRuntimeThroneColor.name(), "Poros"));
+    ui->labelPorosName->setText(QStringLiteral("<span style=\"color:%1\">●</span> %2")
+                                     .arg(kRuntimePorosColor.name(), "Poros"));
     ui->labelCoreName->setText(QStringLiteral("<span style=\"color:%1\">●</span> %2")
                                    .arg(kRuntimeCoreColor.name(), tr("Core")));
     // A lookup service's answer: as AutoText a tag in it would render as HTML.
@@ -137,8 +137,8 @@ void RuntimeStatsWidget::refreshLive() {
     auto *engine = Engine::host();
 
     const auto selfSample = metrics_.sample(QCoreApplication::applicationPid());
-    ui->vThroneRam->setText(formatRam(selfSample));
-    ui->vThroneCpu->setText(formatCpu(selfSample));
+    ui->vPorosRam->setText(formatRam(selfSample));
+    ui->vPorosCpu->setText(formatCpu(selfSample));
 
     const qint64 corePid = engine != nullptr ? engine->supervisor()->corePid() : 0;
     const auto coreSample = corePid > 0 ? metrics_.sample(corePid) : Sys::ProcessMetrics::Sample{};

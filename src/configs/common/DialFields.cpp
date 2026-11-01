@@ -15,7 +15,7 @@ namespace Configs {
             return Checks::BindAddress6(value);
         }
 
-        // sing-box DialerOptions keys (option/outbound.go) that Throne has no field for.
+        // sing-box DialerOptions keys (option/outbound.go) that Poros has no field for.
         void dialFieldsReportUnmodelled(const QJsonObject& object)
         {
             static const QStringList unmodelled = {"detour", "bind_address_no_port", "protect_path", "routing_mark", "netns",

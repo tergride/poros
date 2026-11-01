@@ -346,7 +346,7 @@ namespace Engine::SettingsRegistry {
         settings.Save();
         LOG_INFO(QStringLiteral("Settings changed: %1").arg(changed.join(QStringLiteral(", "))));
         if (effects & SettingsRegistryImpl::ApplyKillSwitch) Sys::KillSwitch::instance()->apply();
-        if (effects & SettingsRegistryImpl::CheckPeriodic) Throne::PeriodicRunner::instance()->CheckNow();
+        if (effects & SettingsRegistryImpl::CheckPeriodic) Poros::PeriodicRunner::instance()->CheckNow();
         EngineEvents::SettingsChanged(changed);
         return std::nullopt;
     }

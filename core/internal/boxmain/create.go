@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	"ThroneCore/internal/boxbox"
+	"PorosCore/internal/boxbox"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"

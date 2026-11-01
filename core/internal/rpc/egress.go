@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"ThroneCore/gen"
-	"ThroneCore/internal/netmon"
+	"PorosCore/gen"
+	"PorosCore/internal/netmon"
 
 	"github.com/sagernet/sing/common/control"
 )

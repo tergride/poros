@@ -15,7 +15,7 @@ import (
 	"time"
 	"unsafe"
 
-	"ThroneCore/internal/winipcfg"
+	"PorosCore/internal/winipcfg"
 
 	"golang.org/x/sys/windows"
 )
@@ -366,7 +366,7 @@ func findTuns(name string) ([]tunAdapter, error) {
 	return tuns, nil
 }
 
-// Windows names a new adapter "throne-tun 2" while a stale instance still holds the plain name.
+// Windows names a new adapter "poros-net 2" while a stale instance still holds the plain name.
 func isTunAlias(alias, name string) bool {
 	if len(alias) < len(name) || !strings.EqualFold(alias[:len(name)], name) {
 		return false

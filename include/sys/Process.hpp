@@ -9,7 +9,7 @@ namespace Configs_sys {
     // stops the core and the guard in order.
     void IsolateChild(QProcess *process);
 
-    // The ThroneCore process; Engine::CoreSupervisor connects its handlers and owns the restart policy.
+    // The PorosCore process; Engine::CoreSupervisor connects its handlers and owns the restart policy.
     class CoreProcess : public QProcess
     {
     public:

@@ -1154,7 +1154,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../../res/Throne.qrc"/>
+  <include location="../../res/App.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"ThroneCore/gen"
-	"ThroneCore/internal/boxbox"
+	"PorosCore/gen"
+	"PorosCore/internal/boxbox"
 
 	"github.com/sagernet/sing-box/adapter"
 	E "github.com/sagernet/sing/common/exceptions"

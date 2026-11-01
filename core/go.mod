@@ -1,4 +1,4 @@
-module ThroneCore
+module PorosCore
 
 go 1.26.0
 

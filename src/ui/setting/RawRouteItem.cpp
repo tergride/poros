@@ -136,7 +136,7 @@ RawRouteItem::RawRouteItem(QWidget* parent, const std::shared_ptr<Configs::Route
 
     jsonEdit = new RawRouteEdit(this);
     if (auto validator = JsonEdit::SingBoxValidator(JsonEdit::SingBox::Route)) {
-        // Throne writes profile ids where sing-box writes outbound tags; TranslateRawOutbounds swaps them at build time.
+        // Poros writes profile ids where sing-box writes outbound tags; TranslateRawOutbounds swaps them at build time.
         validator->AllowExtraType(QStringLiteral("outbound"), JsonEdit::ValueType::Number);
         validator->AllowExtraType(QStringLiteral("final"), JsonEdit::ValueType::Number);
         routeValidator = validator;

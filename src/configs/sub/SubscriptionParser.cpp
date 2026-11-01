@@ -656,7 +656,7 @@ namespace Subscription {
             void openVpnFile(std::string_view text);
             void openConnectProfile(std::string_view text);
             void link(std::string_view line, int depth, const QString &overrideName);
-            void jsonLink(const QString &str, bool throneAdd);
+            void jsonLink(const QString &str, bool porosAdd);
             void vpnLink(const QString &str, int depth);
         };
 
@@ -813,7 +813,7 @@ namespace Subscription {
                     if (!c.isObject()) continue;
                     auto cfg = c.toObject();
                     if (!cfg.contains("outbounds")) continue;
-                    // Throne injects its own bridge inbound; the bundled ones only risk port-bind conflicts.
+                    // Poros injects its own bridge inbound; the bundled ones only risk port-bind conflicts.
                     cfg.remove("inbounds");
                     auto ent = Configs::ProfilesRepo::NewProfile("custom");
                     ent->Custom()->type = Configs::Custom::CustomXrayFullConfig;
@@ -1066,11 +1066,11 @@ namespace Subscription {
             accept(ent, parsed, std::move(issues), [&] { return linkSource(str, ent->outbound.get()); });
         }
 
-        void Parser::jsonLink(const QString &str, bool throneAdd) {
+        void Parser::jsonLink(const QString &str, bool porosAdd) {
             QString type;
             QString name;
             const auto source = [&] {
-                QString label = throneAdd ? QStringLiteral("poros://add/") : QStringLiteral("json://");
+                QString label = porosAdd ? QStringLiteral("poros://add/") : QStringLiteral("json://");
                 label += type;
                 if (const auto shown = parserElide(name); !shown.isEmpty()) label += QStringLiteral(" #") + shown;
                 return label;
@@ -1082,10 +1082,10 @@ namespace Subscription {
                 damaged(QCoreApplication::translate("Validation", "The link is damaged: it is not a valid URL."));
                 return;
             }
-            auto dataBytes = throneAdd ? DecodeB64IfValid(link.path().mid(1))
+            auto dataBytes = porosAdd ? DecodeB64IfValid(link.path().mid(1))
                                        : DecodeB64IfValid(link.fragment().toUtf8(), QByteArray::Base64UrlEncoding);
             // ExportJsonLink emits the url-safe alphabet, which the standard decoder rejects whenever '-' or '_' occurs.
-            if (dataBytes.isEmpty() && throneAdd) dataBytes = DecodeB64IfValid(link.path().mid(1), QByteArray::Base64UrlEncoding);
+            if (dataBytes.isEmpty() && porosAdd) dataBytes = DecodeB64IfValid(link.path().mid(1), QByteArray::Base64UrlEncoding);
             if (dataBytes.isEmpty()) {
                 damaged(QCoreApplication::translate("Validation", "The link is damaged: its payload is not valid base64."));
                 return;

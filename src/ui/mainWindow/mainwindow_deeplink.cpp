@@ -124,7 +124,7 @@ void MainWindow::importFromFiles(const QStringList &paths)
 
 void MainWindow::handle_deeplink_impl(const QString &url) {
     const QUrl u(url);
-    // QUrl lowercases the host, so "throne://AddSub/" arrives with host "addsub".
+    // QUrl lowercases the host, so "poros://AddSub/" arrives with host "addsub".
     const QString cmd = u.host();
 
     if (cmd.compare("add", Qt::CaseInsensitive) == 0) {

@@ -165,7 +165,7 @@ namespace Configs {
     namespace Checks {
         QString SingBoxFingerprint(const QString& fingerprint)
         {
-            // sing-box common/tls/utls_client.go uTLSClientHelloID, case-sensitive; "unsafe" is Throne's.
+            // sing-box common/tls/utls_client.go uTLSClientHelloID, case-sensitive; "unsafe" is Poros's.
             static const QStringList names = {"", "chrome", "chrome_psk", "chrome_psk_shuffle", "chrome_padding_psk_shuffle",
                                               "chrome_pq", "chrome_pq_psk", "firefox", "edge", "safari", "360", "qq", "ios",
                                               "android", "random", "randomized", "custom", tlsUnsafeFingerprint};
@@ -338,7 +338,7 @@ namespace Configs {
     {
         if (object.client_fingerprint.empty()) return false;
         const auto value = QString::fromStdString(object.client_fingerprint);
-        // mihomo's "none" turns uTLS off, which Throne's unsafe does; empty would take the global default fingerprint.
+        // mihomo's "none" turns uTLS off, which Poros's unsafe does; empty would take the global default fingerprint.
         if (IsClashNoFingerprint(object.client_fingerprint)) fingerPrint = supported ? tlsUnsafeFingerprint : QString();
         else fingerPrint = supported ? ImportTlsFingerprint(value, "client-fingerprint") : value;
         enabled = !fingerPrint.isEmpty();

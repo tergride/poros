@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"ThroneCore/gen"
-	"ThroneCore/internal/boxbox"
+	"PorosCore/gen"
+	"PorosCore/internal/boxbox"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"

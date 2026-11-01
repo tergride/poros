@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"ThroneCore/gen"
-	"ThroneCore/internal/probe"
+	"PorosCore/gen"
+	"PorosCore/internal/probe"
 )
 
 func (s *server) Test(ctx context.Context, in *gen.TestReq) (*gen.TestResp, error) {
