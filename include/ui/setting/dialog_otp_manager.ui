@@ -14,54 +14,201 @@
    <string>OTP Manager</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
    <item>
-    <widget class="OtpListWidget" name="otp_list">
-     <property name="alternatingRowColors">
-      <bool>true</bool>
+    <widget class="QFrame" name="otp_toolbar">
+     <property name="role" stdset="false">
+      <string notr="true">toolbar</string>
      </property>
-     <property name="editTriggers">
-      <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
-     </property>
+     <layout class="QHBoxLayout" name="layout_otp_toolbar">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <property name="leftMargin">
+       <number>14</number>
+      </property>
+      <property name="topMargin">
+       <number>10</number>
+      </property>
+      <property name="rightMargin">
+       <number>14</number>
+      </property>
+      <property name="bottomMargin">
+       <number>10</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="otp_add">
+        <property name="text">
+         <string>Add</string>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>14</width>
+          <height>14</height>
+         </size>
+        </property>
+        <property name="role" stdset="false">
+         <string notr="true">small</string>
+        </property>
+        <property name="variant" stdset="false">
+         <string notr="true">primary</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="otp_import">
+        <property name="text">
+         <string>Import</string>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>14</width>
+          <height>14</height>
+         </size>
+        </property>
+        <property name="role" stdset="false">
+         <string notr="true">small</string>
+        </property>
+        <property name="menu" stdset="false">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="otp_scan">
+        <property name="text">
+         <string>Scan QR Code</string>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>14</width>
+          <height>14</height>
+         </size>
+        </property>
+        <property name="role" stdset="false">
+         <string notr="true">small</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacer_otp_toolbar">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+       </spacer>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="layout_otp_buttons">
-     <item>
-      <widget class="QPushButton" name="otp_import">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>1</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Import</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="otp_scan">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>1</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Scan QR Code</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QWidget" name="otp_codes" native="true">
+     <layout class="QVBoxLayout" name="layout_otp_codes" stretch="1,0,0">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <property name="leftMargin">
+       <number>14</number>
+      </property>
+      <property name="topMargin">
+       <number>14</number>
+      </property>
+      <property name="rightMargin">
+       <number>14</number>
+      </property>
+      <property name="bottomMargin">
+       <number>14</number>
+      </property>
+      <item>
+       <widget class="OtpListWidget" name="otp_list">
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="editTriggers">
+         <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="otp_hint">
+        <property name="text">
+         <string>Codes are also available in the tray menu.</string>
+        </property>
+        <property name="role" stdset="false">
+         <string notr="true">hint</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacer_otp_codes">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::StandardButton::Close</set>
-     </property>
+    <widget class="QWidget" name="otp_empty" native="true">
+     <layout class="QVBoxLayout" name="layout_otp_empty">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <item>
+       <spacer name="spacer_otp_empty_top">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="otp_empty_title">
+        <property name="text">
+         <string>No codes yet</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+        <property name="role" stdset="false">
+         <string notr="true">heading</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="otp_empty_hint">
+        <property name="text">
+         <string>Add a secret by hand or import it from a link, a file or a QR code.</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+        <property name="role" stdset="false">
+         <string notr="true">lead</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacer_otp_empty_bottom">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+       </spacer>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>
@@ -74,22 +221,5 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>DialogOtpManager</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>286</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

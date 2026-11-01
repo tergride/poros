@@ -3321,12 +3321,28 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>Менеджер OTP</translation>
     </message>
     <message>
+        <source>Add</source>
+        <translation>Добавить</translation>
+    </message>
+    <message>
         <source>Import</source>
         <translation>Импорт</translation>
     </message>
     <message>
         <source>Scan QR Code</source>
         <translation>Сканировать QR-код</translation>
+    </message>
+    <message>
+        <source>Codes are also available in the tray menu.</source>
+        <translation>Коды также доступны в меню трея.</translation>
+    </message>
+    <message>
+        <source>No codes yet</source>
+        <translation>Кодов пока нет</translation>
+    </message>
+    <message>
+        <source>Add a secret by hand or import it from a link, a file or a QR code.</source>
+        <translation>Добавьте секрет вручную или импортируйте его из ссылки, файла или QR-кода.</translation>
     </message>
     <message>
         <source>OTP</source>
@@ -3365,10 +3381,6 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>Все профили в JSON-файл...</translation>
     </message>
     <message>
-        <source>Add manually...</source>
-        <translation>Добавить вручную...</translation>
-    </message>
-    <message>
         <source>From link or text...</source>
         <translation>Из ссылки или из текста...</translation>
     </message>
@@ -3403,6 +3415,14 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>From QR image file...</source>
         <translation>Из файла с изображением QR-кода...</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Изменить</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Удалить</translation>
     </message>
     <message>
         <source>Unable to capture screen</source>
@@ -7543,6 +7563,42 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <translation>OTP</translation>
     </message>
     <message>
+        <source>Speed test of the current profile</source>
+        <translation>Замер скорости текущего профиля</translation>
+    </message>
+    <message>
+        <source>The mode and addresses are set in the test settings.</source>
+        <translation>Режим и адреса задаются в настройках тестов.</translation>
+    </message>
+    <message>
+        <source>Run</source>
+        <translation>Запустить</translation>
+    </message>
+    <message>
+        <source>Available while connected</source>
+        <translation>Доступно при подключении</translation>
+    </message>
+    <message>
+        <source>Rule sets</source>
+        <translation>Наборы правил</translation>
+    </message>
+    <message>
+        <source>Update geoip, geosite and remote sets.</source>
+        <translation>Обновить geoip, geosite и удалённые наборы.</translation>
+    </message>
+    <message>
+        <source>Poros updates</source>
+        <translation>Обновления Poros</translation>
+    </message>
+    <message>
+        <source>Check for a new version.</source>
+        <translation>Проверить новую версию.</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>Проверить</translation>
+    </message>
+    <message>
         <source>Other</source>
         <translation>Прочее</translation>
     </message>
@@ -8925,24 +8981,20 @@ Name: %1</source>
 <context>
     <name>OtpItem</name>
     <message>
-        <source>Edit</source>
-        <translation>Редактировать</translation>
-    </message>
-    <message>
-        <source>Export</source>
-        <translation>Экспорт</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation>Удалить</translation>
-    </message>
-    <message>
         <source>invalid</source>
         <translation>неверный</translation>
     </message>
     <message>
         <source>%1s</source>
-        <translation>%1 сек.</translation>
+        <translation>%1 с</translation>
+    </message>
+    <message>
+        <source>Copy code</source>
+        <translation>Скопировать код</translation>
+    </message>
+    <message>
+        <source>Actions</source>
+        <translation>Действия</translation>
     </message>
 </context>
 <context>

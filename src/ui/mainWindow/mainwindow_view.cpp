@@ -170,6 +170,7 @@ void MainWindow::refresh_status(const QString &traffic_update) {
     refresh_speed_label();
 
     const auto running = runningSnapshot();
+    ui->actionSpeedtest_Current->setEnabled(running != nullptr);
     QString group_name;
     if (running != nullptr) {
         auto group = Configs::dataManager->groupsRepo->GetGroup(running->gid);

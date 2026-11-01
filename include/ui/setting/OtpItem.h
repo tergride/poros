@@ -32,19 +32,11 @@ public:
     [[nodiscard]] const std::shared_ptr<Configs::OtpProfile> &Profile() const { return profile; }
 
 signals:
-    void editRequested();
+    void copyRequested();
 
-    void exportRequested();
-
-    void deleteRequested();
+    void menuRequested();
 
 protected:
-    void enterEvent(QEnterEvent *event) override;
-
-    void leaveEvent(QEvent *event) override;
-
-    void changeEvent(QEvent *event) override;
-
     void resizeEvent(QResizeEvent *event) override;
 
 private:
@@ -56,9 +48,5 @@ private:
 
     Mode mode;
 
-    void setActionsVisible(bool visible) const;
-
-    void updateNameLabel() const;
-
-    void applyIconColors() const;
+    void updateNameLabels() const;
 };

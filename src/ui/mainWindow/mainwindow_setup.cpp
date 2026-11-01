@@ -589,10 +589,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
     });
 
-    connect(ui->menuTools, &QMenu::aboutToShow, this, [=,this](){
-        ui->actionSpeedtest_Current->setEnabled(runningSnapshot() != nullptr);
-    });
-
     connect(ui->actionAdd_New_Group, &QAction::triggered, this, [=,this]{
         auto ent = Configs::dataManager->groupsRepo->NewGroup();
         auto dialog = new DialogEditGroup(ent, this);

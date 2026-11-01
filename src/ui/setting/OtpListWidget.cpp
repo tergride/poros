@@ -10,6 +10,8 @@
 #include <QMouseEvent>
 #include <QPainter>
 
+#include "include/ui/setting/PorosTheme.h"
+
 namespace {
     constexpr auto ROW_MIME_TYPE = "application/otp-row-number";
     constexpr int INDICATOR_THICKNESS = 2;
@@ -115,13 +117,19 @@ void OtpListWidget::dropEvent(QDropEvent *event) {
 
 void OtpListWidget::paintEvent(QPaintEvent *event) {
     QListWidget::paintEvent(event);
+
+    QPainter painter(viewport());
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    painter.setPen(QColor(PorosTheme::Line));
+    for (int row = 1; row < count(); ++row) {
+        const int rowTop = visualItemRect(item(row)).top();
+        painter.drawLine(0, rowTop, viewport()->width(), rowTop);
+    }
     if (dropRow < 0 || count() == 0) return;
 
     const int y = dropRow >= count() ? visualItemRect(item(count() - 1)).bottom()
                                      : visualItemRect(item(dropRow)).top();
 
-    QPainter painter(viewport());
-    painter.setRenderHint(QPainter::Antialiasing, false);
     painter.setPen(QPen(palette().color(QPalette::Highlight), INDICATOR_THICKNESS));
     painter.drawLine(INDICATOR_INSET, y, viewport()->width() - INDICATOR_INSET, y);
 }

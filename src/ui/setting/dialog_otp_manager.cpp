@@ -26,12 +26,14 @@
 #include "include/global/Utils.hpp"
 #include "include/ui/setting/OtpItem.h"
 #include "include/ui/setting/OtpListWidget.h"
+#include "include/ui/setting/PorosTheme.h"
 #include "include/ui/setting/dialog_edit_otp.h"
 #include "include/ui/utils/ScreenQrScanner.h"
 #include "include/ui/utils/NativeFileDialog.h"
 
 namespace {
     constexpr qint64 MAX_IMPORT_FILE_SIZE = 50 * 1024 * 1024;
+    constexpr int LIST_BORDER = 1;
 
     QImage RenderQr(const QString &text, bool &ok) {
         constexpr int padding = 2;
@@ -143,6 +145,21 @@ DialogOtpManager::~DialogOtpManager() {
 }
 
 void DialogOtpManager::setupOtpList() {
+    ui->otp_add->setIcon(PorosTheme::Icon(QStringLiteral("plus")));
+    ui->otp_import->setIcon(PorosTheme::Icon(QStringLiteral("download")));
+    ui->otp_scan->setIcon(PorosTheme::Icon(QStringLiteral("qr")));
+
+    auto *importMenu = new QMenu(this);
+    importMenu->addAction(PorosTheme::Icon(QStringLiteral("edit")), tr("From link or text..."), this, [this] {
+        const auto text = AskForText(this, tr("Import OTP"),
+                                     tr("Paste otpauth:// links, an otpauth-migration:// link, a JSON export, "
+                                        "or just a base32 secret."));
+        if (!text.trimmed().isEmpty()) importOtpFromText(text);
+    });
+    importMenu->addAction(PorosTheme::Icon(QStringLiteral("clip")), tr("From clipboard"), this, [this] { importOtpFromClipboard(); });
+    importMenu->addAction(PorosTheme::Icon(QStringLiteral("file")), tr("From QR image file..."), this, [this] { importOtpFromFiles(); });
+    ui->otp_import->setMenu(importMenu);
+
     auto *pasteShortcut = new QShortcut(QKeySequence::Paste, this);
     pasteShortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(pasteShortcut, &QShortcut::activated, this, [this] { importOtpFromClipboard(); });
@@ -163,11 +180,18 @@ void DialogOtpManager::reloadOtpProfiles() {
     for (const auto &profile : otpProfiles) {
         auto *item = new QListWidgetItem(ui->otp_list);
         auto *widget = new OtpItem(ui->otp_list, profile, item);
-        connect(widget, &OtpItem::editRequested, this, [this, profile] { editOtpProfile(profile); });
-        connect(widget, &OtpItem::exportRequested, this, [this, profile, widget] { showOtpExportMenu(profile, widget); });
-        connect(widget, &OtpItem::deleteRequested, this, [this, profile] { deleteOtpProfile(profile); });
+        connect(widget, &OtpItem::copyRequested, this, [this, profile] { copyOtpCode(profile); });
+        connect(widget, &OtpItem::menuRequested, this, [this, profile] { showOtpMenu(profile); });
         ui->otp_list->setItemWidget(item, widget);
     }
+
+    ui->otp_codes->setVisible(!otpProfiles.isEmpty());
+    ui->otp_empty->setVisible(otpProfiles.isEmpty());
+
+    // The card ends at its last row, and only a list longer than the page scrolls.
+    int height = 2 * LIST_BORDER;
+    for (int row = 0; row < ui->otp_list->count(); ++row) height += ui->otp_list->item(row)->sizeHint().height();
+    ui->otp_list->setMaximumHeight(height);
 }
 
 void DialogOtpManager::refreshOtpCodes() const {
@@ -229,34 +253,26 @@ void DialogOtpManager::addOtpProfile() {
     reloadOtpProfiles();
 }
 
-void DialogOtpManager::showOtpExportMenu(const std::shared_ptr<Configs::OtpProfile> &profile, QWidget *anchor) {
+void DialogOtpManager::showOtpMenu(const std::shared_ptr<Configs::OtpProfile> &profile) {
     const auto all = otpProfiles;
 
     QMenu menu(this);
-    menu.addAction(tr("This one as otpauth:// link and QR"), this, [this, profile] { exportOtpAsLink(profile); });
+    menu.addAction(PorosTheme::Icon(QStringLiteral("edit")), tr("Edit"), this, [this, profile] { editOtpProfile(profile); });
     menu.addSeparator();
-    menu.addAction(tr("All as otpauth-migration:// link and QR"), this, [this, all] { exportOtpAsMigration(all); });
-    menu.addAction(tr("All as JSON file..."), this, [this, all] { exportOtpAsJson(all); });
-    menu.exec(anchor->mapToGlobal(QPoint(0, anchor->height())));
+    menu.addAction(PorosTheme::Icon(QStringLiteral("qr")), tr("This one as otpauth:// link and QR"), this, [this, profile] { exportOtpAsLink(profile); });
+    menu.addAction(PorosTheme::Icon(QStringLiteral("share")), tr("All as otpauth-migration:// link and QR"), this, [this, all] { exportOtpAsMigration(all); });
+    menu.addAction(PorosTheme::Icon(QStringLiteral("download")), tr("All as JSON file..."), this, [this, all] { exportOtpAsJson(all); });
+    menu.addSeparator();
+    menu.addAction(PorosTheme::Icon(QStringLiteral("trash")), tr("Delete"), this, [this, profile] { deleteOtpProfile(profile); });
+    menu.exec(QCursor::pos());
+}
+
+void DialogOtpManager::on_otp_add_clicked() {
+    addOtpProfile();
 }
 
 void DialogOtpManager::on_otp_scan_clicked() {
     importOtpFromScreen();
-}
-
-void DialogOtpManager::on_otp_import_clicked() {
-    QMenu menu(this);
-    menu.addAction(tr("Add manually..."), this, [this] { addOtpProfile(); });
-    menu.addSeparator();
-    menu.addAction(tr("From link or text..."), this, [this] {
-        const auto text = AskForText(this, tr("Import OTP"),
-                                     tr("Paste otpauth:// links, an otpauth-migration:// link, a JSON export, "
-                                        "or just a base32 secret."));
-        if (!text.trimmed().isEmpty()) importOtpFromText(text);
-    });
-    menu.addAction(tr("From clipboard"), this, [this] { importOtpFromClipboard(); });
-    menu.addAction(tr("From QR image file..."), this, [this] { importOtpFromFiles(); });
-    menu.exec(ui->otp_import->mapToGlobal(QPoint(0, ui->otp_import->height())));
 }
 
 void DialogOtpManager::importOtpFromScreen() {

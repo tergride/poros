@@ -40,7 +40,7 @@ private:
 
     void editOtpProfile(const std::shared_ptr<Configs::OtpProfile> &profile);
 
-    void showOtpExportMenu(const std::shared_ptr<Configs::OtpProfile> &profile, QWidget *anchor);
+    void showOtpMenu(const std::shared_ptr<Configs::OtpProfile> &profile);
 
     void deleteOtpProfile(const std::shared_ptr<Configs::OtpProfile> &profile);
 
@@ -65,6 +65,6 @@ private:
     void exportOtpAsJson(const QList<std::shared_ptr<Configs::OtpProfile>> &profiles);
 
 private slots:
-    void on_otp_import_clicked();
+    void on_otp_add_clicked();
     void on_otp_scan_clicked();
 };

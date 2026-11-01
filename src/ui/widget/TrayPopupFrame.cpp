@@ -6,9 +6,11 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPalette>
-#include <QPushButton>
 #include <QScreen>
+#include <QToolButton>
 #include <QVBoxLayout>
+
+#include "include/ui/setting/PorosTheme.h"
 
 TrayPopupFrame::TrayPopupFrame(QWidget *parent) : QFrame(parent) {
     // Translucent so the card's rounded corners come out anti-aliased; a bitmap mask would be jagged.
@@ -44,14 +46,15 @@ TrayPopupFrame::TrayPopupFrame(QWidget *parent) : QFrame(parent) {
     m_search->setStyleSheet(QStringLiteral(
         "QLineEdit#traySearch { border:1px solid %1; border-radius:8px; padding:5px 9px; background-color:%2; }")
         .arg(border, base));
-    auto *closeBtn = new QPushButton(QStringLiteral("✕"), m_card);
-    closeBtn->setFixedWidth(28);
+    auto *closeBtn = new QToolButton(m_card);
+    closeBtn->setIcon(PorosTheme::Icon(QStringLiteral("close")));
+    closeBtn->setIconSize({14, 14});
     closeBtn->setToolTip(tr("Close"));
     searchRow->addWidget(m_search, 1);
     searchRow->addWidget(closeBtn);
     m_cardLayout->addLayout(searchRow);
 
-    connect(closeBtn, &QPushButton::clicked, this, [this] { close(); });
+    connect(closeBtn, &QToolButton::clicked, this, [this] { close(); });
 }
 
 void TrayPopupFrame::clearSearch() {

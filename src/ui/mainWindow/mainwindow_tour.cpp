@@ -15,6 +15,7 @@
 
 #include "include/configs/PresetRules.h"
 #include "include/database/GroupsRepo.h"
+#include "include/database/OtpProfilesRepo.h"
 #include "include/database/ProfilesRepo.h"
 #include "include/database/RoutesRepo.h"
 #include "include/engine/connection/ConnectionManager.h"
@@ -31,6 +32,7 @@
 #include "include/ui/utils/ProfilesSearchEdit.h"
 #include "include/ui/widget/AdminPromptDialog.h"
 #include "include/ui/widget/ConnectionChoiceDialog.h"
+#include "include/ui/widget/TrayOtpCodes.hpp"
 
 namespace {
     struct TourStep {
@@ -160,6 +162,25 @@ void MainWindow::runUiTour(const QString &dir) {
         {"routing-source", routeTab(4)},
         {"routing-raw", routeProfile(true)},
         {"otp", trigger(ui->menu_otp_manager)},
+        {"otp-codes", [this] {
+            const QList<QPair<QString, QString>> accounts{{QStringLiteral("Панель провайдера"), QStringLiteral("user@example.com")},
+                                                          {QStringLiteral("GitHub"), QStringLiteral("poros-dev")},
+                                                          {{}, QStringLiteral("Почта")}};
+            for (const auto &[issuer, name] : accounts) {
+                auto profile = Configs::OtpProfilesRepo::NewOtpProfile();
+                profile->issuer = issuer;
+                profile->name = name;
+                profile->secret = QStringLiteral("JBSWY3DPEHPK3PXP");
+                Configs::dataManager->otpProfilesRepo->AddOtpProfile(profile);
+            }
+            static_cast<EmbeddedDialog *>(m_toolTabs->widget(0))->rebuild();
+        }},
+        {"otp-tray", [this, dir] {
+            openTrayOtpCodes();
+            trayOtpCodes->grab().save(dir + QStringLiteral("/otp-tray-popup.png"));
+            trayOtpCodes->close();
+        }},
+        {"tools-other", [this] { m_toolTabs->setCurrentIndex(1); }},
         {"basic-settings", trigger(ui->menu_basic_settings)},
         {"settings-adv-inbound", [this] { m_settingsSection->showDialog(m_basicSettings, 1); }},
         {"settings-adv-tests", [this] { m_settingsSection->showDialog(m_basicSettings, 2); }},

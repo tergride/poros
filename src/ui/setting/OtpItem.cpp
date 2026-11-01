@@ -1,19 +1,20 @@
 #include "include/ui/setting/OtpItem.h"
 
-#include <QCursor>
-#include <QPainter>
+#include "include/ui/setting/PorosTheme.h"
 
 namespace {
     constexpr int READONLY_CODE_WIDTH = 110;
+    constexpr int MANAGE_ROW_HEIGHT = 56;
 
-    QIcon RecolorOtpItemIcon(const QString &path, const QColor &color) {
-        QPixmap pixmap(path);
-        if (pixmap.isNull()) return QIcon(path);
-        QPainter painter(&pixmap);
-        painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-        painter.fillRect(pixmap.rect(), color);
-        painter.end();
-        return QIcon(pixmap);
+    // The clipboard gets the code without the space.
+    QString GroupedCode(const QString &code) {
+        const int half = (code.size() + 1) / 2;
+        return code.left(half) + QLatin1Char(' ') + code.mid(half);
+    }
+
+    // QLabel clips rather than elides.
+    void SetElided(QLabel *label, const QString &text) {
+        label->setText(label->fontMetrics().elidedText(text, Qt::ElideRight, label->width()));
     }
 }
 
@@ -27,96 +28,54 @@ OtpItem::OtpItem(QWidget *parent, std::shared_ptr<Configs::OtpProfile> profile_,
         ui->actions->hide();
         ui->code->setStyleSheet(QStringLiteral("font-family: \"JetBrains Mono\", \"Consolas\"; font-size: 12pt; letter-spacing: 2px;"));
         ui->code->setMinimumWidth(READONLY_CODE_WIDTH);
+    } else {
+        ui->layout_row->setContentsMargins(0, 0, 0, 0);
     }
 
     // A child that consumes the press stops the click reaching the list, which selects, copies and drags.
-    for (QWidget *passive : {static_cast<QWidget *>(ui->name), static_cast<QWidget *>(ui->code),
-                             static_cast<QWidget *>(ui->timer_text), static_cast<QWidget *>(ui->timer_bar)})
+    for (QWidget *passive : {static_cast<QWidget *>(ui->name), static_cast<QWidget *>(ui->account),
+                             static_cast<QWidget *>(ui->code), static_cast<QWidget *>(ui->timer_text)})
         passive->setAttribute(Qt::WA_TransparentForMouseEvents);
 
-    // Hiding the bar must not reflow the row, or HOTP rows would shift the code column.
-    auto barPolicy = ui->timer_bar->sizePolicy();
-    barPolicy.setRetainSizeWhenHidden(true);
-    ui->timer_bar->setSizePolicy(barPolicy);
+    ui->copy->setIcon(PorosTheme::Icon(QStringLiteral("copy")));
+    ui->more->setIcon(PorosTheme::Icon(QStringLiteral("more")));
+    connect(ui->copy, &QToolButton::clicked, this, [this] { emit copyRequested(); });
+    connect(ui->more, &QToolButton::clicked, this, [this] { emit menuRequested(); });
 
-    connect(ui->edit, &QToolButton::clicked, this, [this] { emit editRequested(); });
-    connect(ui->share, &QToolButton::clicked, this, [this] { emit exportRequested(); });
-    connect(ui->remove, &QToolButton::clicked, this, [this] { emit deleteRequested(); });
-
-    applyIconColors();
-    setActionsVisible(false);
+    setToolTip(profile->DisplayName());
     Refresh();
 
     adjustSize();
-    if (item != nullptr) item->setSizeHint(sizeHint());
+    if (item != nullptr) item->setSizeHint(mode == Mode::Manage ? QSize(sizeHint().width(), MANAGE_ROW_HEIGHT) : sizeHint());
 }
 
 OtpItem::~OtpItem() {
     delete ui;
 }
 
-void OtpItem::setActionsVisible(const bool visible) const {
-    if (mode == Mode::ReadOnly) return;
-    ui->edit->setVisible(visible);
-    ui->share->setVisible(visible);
-    ui->remove->setVisible(visible);
-}
-
-void OtpItem::applyIconColors() const {
-    const auto color = palette().color(QPalette::ButtonText);
-    ui->edit->setIcon(RecolorOtpItemIcon(":/icon/material/pencil-outline.png", color));
-    ui->share->setIcon(RecolorOtpItemIcon(":/icon/material/qrcode.png", color));
-    ui->remove->setIcon(RecolorOtpItemIcon(":/icon/material/delete.png", color));
-}
-
-void OtpItem::changeEvent(QEvent *event) {
-    if (event->type() == QEvent::PaletteChange) applyIconColors();
-    QWidget::changeEvent(event);
-}
-
-void OtpItem::enterEvent(QEnterEvent *event) {
-    setActionsVisible(true);
-    QWidget::enterEvent(event);
-}
-
-void OtpItem::leaveEvent(QEvent *event) {
-    // Moving onto a child button sends Leave here, so re-check the cursor before hiding.
-    if (!rect().contains(mapFromGlobal(QCursor::pos()))) setActionsVisible(false);
-    QWidget::leaveEvent(event);
-}
-
-void OtpItem::updateNameLabel() const {
-    // QLabel clips rather than elides.
-    const QFontMetrics metrics(ui->name->font());
-    ui->name->setText(metrics.elidedText(profile->name, Qt::ElideRight, ui->name->width()));
-    ui->name->setToolTip(profile->DisplayName());
+void OtpItem::updateNameLabels() const {
+    const bool twoLines = mode == Mode::Manage && !profile->issuer.isEmpty() && !profile->name.isEmpty();
+    SetElided(ui->name, twoLines ? profile->issuer : profile->DisplayName());
+    ui->account->setVisible(twoLines);
+    if (twoLines) SetElided(ui->account, profile->name);
 }
 
 void OtpItem::resizeEvent(QResizeEvent *event) {
-    updateNameLabel();
+    updateNameLabels();
     QWidget::resizeEvent(event);
 }
 
 void OtpItem::Refresh() const {
-    updateNameLabel();
+    updateNameLabels();
 
     const auto code = profile->CurrentCode();
+    ui->timer_text->setVisible(!code.isEmpty());
     if (code.isEmpty()) {
         ui->code->setText(tr("invalid"));
-        ui->timer_text->clear();
-        ui->timer_bar->hide();
         return;
     }
 
-    ui->code->setText(code);
-    if (profile->type == OTP::Type::HOTP) {
-        ui->timer_text->setText("#" + QString::number(profile->counter));
-        ui->timer_bar->hide();
-        return;
-    }
-
-    const int remaining = profile->SecondsRemaining();
-    ui->timer_bar->show();
-    ui->timer_bar->setValue(profile->period > 0 ? remaining * 1000 / profile->period : 0);
-    ui->timer_text->setText(tr("%1s").arg(remaining));
+    ui->code->setText(GroupedCode(code));
+    ui->timer_text->setText(profile->type == OTP::Type::HOTP ? "#" + QString::number(profile->counter)
+                                                             : tr("%1s").arg(profile->SecondsRemaining()));
 }

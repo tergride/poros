@@ -94,26 +94,31 @@ namespace {
         return menu;
     }
 
-    // A section still made of the dialogs it opens.
-    QWidget *shellActionSection(const QString &title, const QList<QAction *> &actions, QWidget *parent) {
-        auto *page = new QWidget(parent);
-        auto *grid = new QGridLayout(page);
-        grid->setContentsMargins(22, 20, 22, 20);
-        grid->setHorizontalSpacing(8);
-        grid->setVerticalSpacing(8);
-        auto *label = new QLabel(title, page);
-        label->setProperty("role", QStringLiteral("sectionTitle"));
-        grid->addWidget(label, 0, 0, 1, 2);
-        int row = 1;
-        for (auto *action : actions) {
-            if (action->isSeparator() || action->text().isEmpty()) continue;
-            auto *button = new QPushButton(QString(action->text()).remove('&'), page);
-            QObject::connect(button, &QPushButton::clicked, action, &QAction::trigger);
-            grid->addWidget(button, row++, 0);
-        }
-        grid->setColumnStretch(1, 1);
-        grid->setRowStretch(row, 1);
-        return page;
+    QPushButton *shellToolCard(QGridLayout *grid, int row, int column, const QString &title, const QString &hint, const QString &icon, const QString &text) {
+        auto *card = new QFrame(grid->parentWidget());
+        card->setProperty("role", QStringLiteral("card"));
+        auto *content = new QVBoxLayout(card);
+        content->setContentsMargins(16, 12, 16, 14);
+        content->setSpacing(8);
+        auto *heading = new QLabel(title, card);
+        heading->setProperty("role", QStringLiteral("cardTitle"));
+        content->addWidget(heading);
+        auto *note = new QLabel(hint, card);
+        note->setProperty("role", QStringLiteral("hint"));
+        note->setWordWrap(true);
+        content->addWidget(note);
+        auto *button = new QPushButton(PorosTheme::Icon(icon), text, card);
+        button->setIconSize({15, 15});
+        content->addWidget(button, 0, Qt::AlignLeft);
+        grid->addWidget(card, row, column);
+        return button;
+    }
+
+    // A disabled action must not leave a button that silently does nothing.
+    void shellFollowAction(QPushButton *button, QAction *action) {
+        button->setEnabled(action->isEnabled());
+        QObject::connect(action, &QAction::enabledChanged, button, &QPushButton::setEnabled);
+        QObject::connect(button, &QPushButton::clicked, action, &QAction::trigger);
     }
 } // namespace
 
@@ -298,7 +303,20 @@ void MainWindow::setupShell() {
 
     m_toolTabs = new QTabWidget(m_advancedPage);
     m_toolTabs->addTab(new EmbeddedDialog([](QWidget *parent) -> QDialog * { return new DialogOtpManager(parent); }, m_toolTabs), tr("OTP"));
-    m_toolTabs->addTab(shellActionSection(tr("Other"), {ui->actionSpeedtest_Current, ui->actionUpdate_Rule_Sets, ui->menu_open_config_folder, ui->actionCheck_For_Update}, m_toolTabs), tr("Other"));
+    auto *otherTools = new QWidget(m_toolTabs);
+    auto *toolGrid = new QGridLayout(otherTools);
+    toolGrid->setContentsMargins(14, 14, 14, 14);
+    toolGrid->setSpacing(12);
+    toolGrid->setColumnStretch(0, 1);
+    toolGrid->setColumnStretch(1, 1);
+    toolGrid->setRowStretch(2, 1);
+    auto *speedTest = shellToolCard(toolGrid, 0, 0, tr("Speed test of the current profile"), tr("The mode and addresses are set in the test settings."), QStringLiteral("bolt"), tr("Run"));
+    speedTest->setToolTip(tr("Available while connected"));
+    shellFollowAction(speedTest, ui->actionSpeedtest_Current);
+    auto *ruleSets = shellToolCard(toolGrid, 0, 1, tr("Rule sets"), tr("Update geoip, geosite and remote sets."), QStringLiteral("refresh"), tr("Update"));
+    connect(ruleSets, &QPushButton::clicked, this, &MainWindow::updateRuleSets);
+    shellFollowAction(shellToolCard(toolGrid, 1, 0, tr("Poros updates"), tr("Check for a new version."), QStringLiteral("download"), tr("Check")), ui->actionCheck_For_Update);
+    m_toolTabs->addTab(otherTools, tr("Other"));
     m_advancedPage->setSection(AdvancedPage::Tools, m_toolTabs);
 
     m_settingsSection = new SettingsSection(m_advancedPage);

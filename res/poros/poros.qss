@@ -14,6 +14,7 @@ QLabel[role="mono"] { font-family: "JetBrains Mono", "Consolas"; }
 QPlainTextEdit[role="mono"], QTextBrowser[role="mono"] { font-family: "JetBrains Mono", "Consolas"; font-size: 12px; }
 QLabel[role="note"] { background-color: @s3; color: @t2; font-size: 12px; padding: 7px 14px; }
 QLabel[role="quota"] { color: @t2; font-size: 12px; }
+QLabel[role="tag"] { background-color: @s4; color: @t2; font-size: 12px; border-radius: 6px; padding: 3px 8px; }
 QLabel[role="hint"][level="danger"] { color: @bad; }
 QToolTip { background-color: @s3; color: @t1; border: 1px solid @line2; padding: 4px 8px; }
 
@@ -201,6 +202,8 @@ QHeaderView::section {
     padding: 5px 8px;
 }
 QHeaderView::section:hover { color: @t1; }
+OtpListWidget { background-color: @s2; border: 1px solid @line; border-radius: 12px; padding: 0 16px; }
+OtpListWidget::item, OtpListWidget::item:hover { background: transparent; padding: 0; }
 QTableWidget[role="table"] { background-color: @s1; }
 ProfilesTableView { background-color: @s1; border: none; border-radius: 0; }
 ProfilesTableView QHeaderView::section { background-color: @s1; border: none; border-bottom: 1px solid @line; padding: 7px 10px; }
