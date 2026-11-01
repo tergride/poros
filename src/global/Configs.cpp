@@ -55,10 +55,6 @@ namespace Configs {
 
     short isAdminCache = -1;
 
-    bool isSetuidSet(const std::string& path) {
-        return false;
-    }
-
     // IsAdmin 主要判断：有无权限启动 Tun
     bool IsAdmin(bool forceRenew) {
         if (isAdminCache >= 0 && !forceRenew) return isAdminCache;
@@ -74,26 +70,6 @@ namespace Configs {
         if (isAdminCache >= 0) return isAdminCache != 0;
         // Local and cheap; unlike IsAdmin it leaves windows_set_admin alone.
         return Windows_IsInAdmin();
-    }
-
-    void SetKnownAdmin(bool admin) {
-        isAdminCache = admin ? 1 : 0;
-    }
-
-    namespace {
-        std::optional<API::PrivilegeInfo> configsKnownCapabilities;
-    } // namespace
-
-    std::optional<API::PrivilegeInfo> KnownCapabilities() {
-        return configsKnownCapabilities;
-    }
-
-    void SetKnownCapabilities(const API::PrivilegeInfo &info) {
-        configsKnownCapabilities = info;
-    }
-
-    void RefreshStaleTunDevice(int timeoutMs) {
-        Q_UNUSED(timeoutMs);
     }
 
     namespace {

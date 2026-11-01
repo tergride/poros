@@ -1,6 +1,5 @@
 #include "include/sys/Process.hpp"
 #include "include/global/Configs.hpp"
-#include "include/sys/KillSwitch.hpp"
 
 namespace Configs_sys {
     namespace {
@@ -43,10 +42,6 @@ namespace Configs_sys {
         if (m_debugMode) env.insert("THRONE_CORE_DEBUG", "1");
         // Points Xray's asset loader at our writable config dir, so a geoip.dat/geosite.dat downloaded later is found with no core restart.
         env.insert("XRAY_LOCATION_ASSET", Configs::GetBasePath());
-        // Never inherited: only guard_identity decides, or an identity exit would repeat with the flag already handled.
-        env.remove("THRONE_GUARD");
-        guard_identity = Configs::dataManager->settingsRepo->kill_switch && !Sys::KillSwitch::instance()->identityUnsupported();
-        if (guard_identity) env.insert("THRONE_GUARD", "1");
         setProcessEnvironment(env);
         IsolateChild(this);
         start(program, {});

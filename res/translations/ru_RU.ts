@@ -8017,10 +8017,6 @@ Error: %1</source>
         <translation>Отключить kill switch? Трафик, идущий не через Poros, больше не будет блокироваться.</translation>
     </message>
     <message>
-        <source>[Kill switch] Restarting the core so that its own traffic passes the kill switch...</source>
-        <translation>[Kill switch] Перезапуск ядра, чтобы его собственный трафик проходил через kill switch...</translation>
-    </message>
-    <message>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
@@ -8471,10 +8467,6 @@ Name: %1</source>
     <message>
         <source>Geo asset files are already being downloaded.</source>
         <translation>Файлы геоданных уже загружаются.</translation>
-    </message>
-    <message>
-        <source>Kill switch is blocking traffic</source>
-        <translation>Kill switch блокирует трафик</translation>
     </message>
     <message>
         <source>Search Settings</source>
@@ -11172,10 +11164,6 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>Stopping…</source>
         <translation>Отключаемся…</translation>
-    </message>
-    <message>
-        <source>Kill switch is blocking traffic</source>
-        <translation>Kill switch блокирует трафик</translation>
     </message>
     <message>
         <source>Kill switch: starting…</source>

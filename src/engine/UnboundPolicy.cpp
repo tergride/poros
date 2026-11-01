@@ -38,8 +38,6 @@ namespace Engine {
     void UnboundPolicy::killSwitchProblem() {
         const auto *killSwitch = Sys::KillSwitch::instance();
         if (killSwitch->state() != Sys::KillSwitch::State::Failed) return;
-        // failIdentity already logged "Profiles refused"; the guard still blocks, so "Not active" would be wrong.
-        if (killSwitch->failedForIdentity()) return;
         QString hint;
         if (killSwitch->failedForPrivileges()) hint = QStringLiteral("run Poros elevated");
         MW_show_log(QStringLiteral("[Kill switch] Not active (%1): %2%3")

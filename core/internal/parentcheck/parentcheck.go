@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -27,14 +26,7 @@ func CheckParentProcess() {
 	parentDir := filepath.Dir(parentPath)
 	parentBase := filepath.Base(parentPath)
 
-	if runtime.GOOS == "windows" {
-		if !strings.EqualFold(parentDir, selfDir) || !strings.EqualFold(parentBase, "Poros.exe") {
-			log.Fatalf("parent check failed: unexpected parent %q, selfPath is %q", parentPath, selfPath)
-		}
-		return
-	}
-
-	if parentDir != selfDir || parentBase != "Poros" {
+	if !strings.EqualFold(parentDir, selfDir) || !strings.EqualFold(parentBase, "Poros.exe") {
 		log.Fatalf("parent check failed: unexpected parent %q, selfPath is %q", parentPath, selfPath)
 	}
 }

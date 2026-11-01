@@ -19,10 +19,6 @@ namespace Sys {
     public:
         enum class State { Disabled, Arming, Armed, Failed };
 
-        // ThroneCore's exit code when THRONE_GUARD is set but it cannot adopt the guard group (no CAP_SETGID, or the GID is not
-        // mapped in this user namespace). Must match guard.IdentityExitCode in core/internal/guard/guard.go.
-        static constexpr int kCoreIdentityExitCode = 86;
-
         static KillSwitch *instance();
 
         [[nodiscard]] State state() const { return state_.load(); }
@@ -32,18 +28,7 @@ namespace Sys {
         [[nodiscard]] bool failedForPrivileges() const;
         // Failed with a code a respawn cannot fix while nothing changes: privilege, unsupported, config.
         [[nodiscard]] bool failedPersistently() const;
-        // UI thread. Failed (unsupported) only because the core cannot adopt the guard group while a guard still runs and blocks:
-        // profiles are refused, but the kill switch is not "not active".
-        [[nodiscard]] bool failedForIdentity() const;
         [[nodiscard]] QString failureText() const;
-
-        // Any thread. Set by noteIdentityUnsupported(); CoreProcess::Start then omits THRONE_GUARD.
-        [[nodiscard]] bool identityUnsupported() const { return identityUnsupported_.load(); }
-
-        // Main thread, when a core exited with kCoreIdentityExitCode. Sticky until kill_switch is turned off (never saved): the
-        // guard keeps being armed and blocking, but the state reports Failed with code "unsupported" (detail as the message), so
-        // starts stay refused and the process lives.
-        void noteIdentityUnsupported(const QString &detail);
 
         void apply();
 
@@ -75,14 +60,10 @@ namespace Sys {
         void armFailed(const QString &code, const QString &message);
         void protectionLost(const QString &code, const QString &message);
         void fail(const QString &code, const QString &message);
-        // Identity unsupported: report Failed (unsupported) while any guard keeps running and blocking.
-        void failIdentity();
         void setState(State state);
         void settle();
 
         std::atomic<State> state_ = State::Disabled;
-        std::atomic<bool> identityUnsupported_ = false;
-        QString identityDetail_;
         GuardProcess *active_ = nullptr;
         GuardProcess *pending_ = nullptr;
         QString failureCode_;

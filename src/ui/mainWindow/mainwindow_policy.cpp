@@ -46,9 +46,8 @@ void MainWindow::killSwitchProblem() {
     auto *killSwitch = Sys::KillSwitch::instance();
     if (killSwitch->state() != Sys::KillSwitch::State::Failed) return;
     const bool privilege = killSwitch->failedForPrivileges();
-    const bool identity = killSwitch->failedForIdentity();
     if (m_killSwitchDialog) {
-        if (m_killSwitchDialog->property("privilege").toBool() == privilege && m_killSwitchDialog->property("identity").toBool() == identity) {
+        if (m_killSwitchDialog->property("privilege").toBool() == privilege) {
             m_killSwitchDialog->setText(killSwitch->failureText());
             return;
         }
@@ -69,20 +68,14 @@ void MainWindow::killSwitchProblem() {
         return;
     }
 
-    auto *box = new QMessageBox(QMessageBox::Warning, identity ? tr("Kill switch is blocking traffic") : tr("Kill switch is not active"),
-                                killSwitch->failureText(), QMessageBox::NoButton, this);
+    auto *box = new QMessageBox(QMessageBox::Warning, tr("Kill switch is not active"), killSwitch->failureText(), QMessageBox::NoButton, this);
     box->setTextFormat(Qt::PlainText);
     box->setAttribute(Qt::WA_DeleteOnClose);
     box->setProperty("privilege", privilege);
-    box->setProperty("identity", identity);
-    // The guard still blocks and the core cannot join its group: neither a retry nor more privileges changes that.
-    QPushButton *fix = nullptr;
-    if (!identity) {
-        fix = box->addButton(privilege ? tr("Restart as Administrator") : tr("Retry"), QMessageBox::AcceptRole);
-    }
+    auto *fix = box->addButton(privilege ? tr("Restart as Administrator") : tr("Retry"), QMessageBox::AcceptRole);
     auto *disable = box->addButton(tr("Disable Kill Switch"), QMessageBox::DestructiveRole);
     auto *cancel = box->addButton(QMessageBox::Cancel);
-    box->setDefaultButton(fix != nullptr ? fix : cancel);
+    box->setDefaultButton(fix);
     box->setEscapeButton(cancel);
     m_killSwitchDialog = box;
 
@@ -94,7 +87,7 @@ void MainWindow::killSwitchProblem() {
             connection()->disableKillSwitch();
             return;
         }
-        if (fix == nullptr || clicked != fix) return;
+        if (clicked != fix) return;
         if (!privilege) {
             Sys::KillSwitch::instance()->apply();
             return;

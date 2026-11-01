@@ -9,7 +9,6 @@ import (
 	"ThroneCore/internal/probe"
 	"ThroneCore/internal/xray"
 
-	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -79,7 +78,6 @@ func prepareTestEnv(current bool, needXray bool, xrayConfig string, xrayFullConf
 	cleanups = append(cleanups, func() { closeXrayInstances(fullXray) })
 
 	box, cancel, err := boxmain.Create([]byte(coreConfig), boxCtx.publish, func(options *option.Options) {
-		applyAutoRedirectMark(options, autoRedirectMark.Load())
 		probe.LimitWireGuardWorkers(options)
 	})
 	if err != nil {
@@ -95,23 +93,4 @@ func prepareTestEnv(current bool, needXray bool, xrayConfig string, xrayFullConf
 		outTags = []string{box.Outbound().Default().Tag()}
 	}
 	return &testEnv{box: box, tags: outTags, close: unwind}, nil
-}
-
-// A probe box has no tun to mark its sockets, so the running Tun's auto_redirect nftables rules would capture them.
-func applyAutoRedirectMark(options *option.Options, mark uint32) {
-	if mark == 0 {
-		return
-	}
-	for _, inbound := range options.Inbounds {
-		// sing-box refuses route.default_mark next to its own tun auto_redirect.
-		if inbound.Type == C.TypeTun {
-			return
-		}
-	}
-	if options.Route == nil {
-		options.Route = &option.RouteOptions{}
-	}
-	if options.Route.DefaultMark == 0 {
-		options.Route.DefaultMark = option.FwMark(mark)
-	}
 }

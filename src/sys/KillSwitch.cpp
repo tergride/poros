@@ -29,21 +29,9 @@ namespace Sys {
         const QString kCrash = QStringLiteral("crash");
         const QString kTimeout = QStringLiteral("timeout");
 
-        QString killSwitchIdentityMessage(const QString &detail) {
-            auto message = QStringLiteral("the core cannot adopt the kill-switch group 1950896719 here (it needs CAP_SETGID and that GID "
-                                          "mapped in this user namespace); the kill switch keeps blocking traffic, and profiles stay "
-                                          "refused until kill_switch is turned off");
-            if (!detail.isEmpty()) message += QStringLiteral("; the core reported: %1").arg(detail);
-            return message;
-        }
-
-        // Must match genTunName() and the l3-direct outbound's bridge_name in generate.cpp.
+        // Must match genTunName() in generate.cpp.
         QString tunName() {
             return QStringLiteral("poros-net");
-        }
-
-        QString bridgeName() {
-            return {};
         }
 
         void stopHard(QProcess *process) {
@@ -68,7 +56,6 @@ namespace Sys {
                 {"allow_lan", !settings->disable_private_range_bypass},
                 {"tun_name", tunName()},
                 {"tun_cidrs", QJsonArray{settings->vpn_tun_ipv4_cidr, settings->vpn_tun_ipv6_cidr}},
-                {"bridge_name", bridgeName()},
             };
             return QJsonDocument(object).toJson(QJsonDocument::Compact);
         }
@@ -81,8 +68,6 @@ namespace Sys {
         }
 
         QByteArray config;
-        // What the guard reads on stdin: config plus launch-only keys, never compared.
-        QByteArray launch;
         QByteArray stderrTail;
         QTimer *readyTimer;
         bool ready = false;
@@ -113,10 +98,6 @@ namespace Sys {
         return failureCode_ == kPrivilege || failureCode_ == kUnsupported || failureCode_ == kConfig;
     }
 
-    bool KillSwitch::failedForIdentity() const {
-        return state() == State::Failed && failureCode_ == kUnsupported && identityUnsupported_ && (active_ != nullptr || pending_ != nullptr);
-    }
-
     QString KillSwitch::failureText() const {
         QString text;
         if (failureCode_ == kPrivilege) {
@@ -134,17 +115,9 @@ namespace Sys {
         return text;
     }
 
-    void KillSwitch::noteIdentityUnsupported(const QString &detail) {
-        identityDetail_ = detail;
-        identityUnsupported_ = true;
-        apply();
-    }
-
     void KillSwitch::apply() {
         if (shutdown_) return;
         if (!Configs::dataManager->settingsRepo->kill_switch) {
-            identityUnsupported_ = false;
-            identityDetail_.clear();
             const bool wasOn = state() != State::Disabled;
             closeGuard(std::exchange(pending_, nullptr));
             closeGuard(std::exchange(active_, nullptr));
@@ -153,7 +126,6 @@ namespace Sys {
             settle();
             return;
         }
-        if (identityUnsupported_ && state() == State::Armed) failIdentity();
         const auto config = buildConfig();
         if (pending_ != nullptr && pending_->config == config) return;
         if (active_ != nullptr && active_->config == config) {
@@ -205,19 +177,12 @@ namespace Sys {
         closeGuard(std::exchange(pending_, nullptr));
         auto *guard = new GuardProcess(this);
         guard->config = config;
-        guard->launch = config;
-        if (active_ != nullptr) {
-            // The READY guard's anchor stays loaded until this one is ready, so no state formed outside the block.
-            auto object = QJsonDocument::fromJson(config).object();
-            object.insert(QStringLiteral("keep_states"), true);
-            guard->launch = QJsonDocument(object).toJson(QJsonDocument::Compact);
-        }
         pending_ = guard;
 
         connect(guard->readyTimer, &QTimer::timeout, this, [this, guard] { onReadyTimeout(guard); });
         // The write channel stays open for the guard's whole life: EOF is its signal to remove the rules.
         connect(guard, &QProcess::started, this, [guard] {
-            if (!guard->closing) guard->write(guard->launch + '\n');
+            if (!guard->closing) guard->write(guard->config + '\n');
         });
         connect(guard, &QProcess::readyReadStandardOutput, this, [this, guard] { readOutput(guard); });
         connect(guard, &QProcess::readyReadStandardError, this, [this, guard] { readErrors(guard, false); });
@@ -232,10 +197,9 @@ namespace Sys {
             onFinished(guard, exitCode, status == QProcess::CrashExit);
         });
 
-        LOG_INFO("kill switch: starting a guard with " + QString::fromUtf8(guard->launch));
+        LOG_INFO("kill switch: starting a guard with " + QString::fromUtf8(guard->config));
         // Before start(): Windows reports a failed start synchronously, and that must move Arming on to Failed.
-        // Under an identity failure the state stays Failed (unsupported) whatever the guard does.
-        if (active_ == nullptr && !identityUnsupported()) setState(State::Arming);
+        if (active_ == nullptr) setState(State::Arming);
         guard->readyTimer->start(kReadyTimeoutMs);
         Configs_sys::IsolateChild(guard);
         guard->start(Configs::FindCoreRealPath(), {QStringLiteral("--guard")});
@@ -315,10 +279,6 @@ namespace Sys {
         LOG_INFO("kill switch: armed with " + QString::fromUtf8(guard->config));
         MW_show_log(previous == nullptr ? tr("[Kill switch] On: only traffic through Poros can leave this device.")
                                         : tr("[Kill switch] New settings applied."));
-        if (identityUnsupported_) {
-            failIdentity();
-            return;
-        }
         setState(State::Armed);
         settle();
     }
@@ -394,7 +354,7 @@ namespace Sys {
             return;
         }
         if (pending_ != nullptr) {
-            if (!identityUnsupported()) setState(State::Arming);
+            setState(State::Arming);
             settle();
             return;
         }
@@ -413,18 +373,6 @@ namespace Sys {
         failureMessage_ = message;
         MW_show_log(tr("[Kill switch] Not active: %1").arg(message.isEmpty() ? code : message));
         setState(State::Failed);
-        settle();
-    }
-
-    void KillSwitch::failIdentity() {
-        const auto message = killSwitchIdentityMessage(identityDetail_);
-        if (state() != State::Failed || failureCode_ != kUnsupported || failureMessage_ != message) {
-            failureCode_ = kUnsupported;
-            failureMessage_ = message;
-            // Not fail(): its "Not active" would be wrong while a guard still blocks.
-            MW_show_log(QStringLiteral("[Kill switch] Profiles refused (%1): %2").arg(kUnsupported, message));
-            setState(State::Failed);
-        }
         settle();
     }
 

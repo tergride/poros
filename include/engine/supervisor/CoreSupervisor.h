@@ -31,7 +31,6 @@ namespace Engine {
         static constexpr int kGiveUpAfter = 5;
         static constexpr qint64 kProfileCrashWindowMs = 10000;
         static constexpr int kIntentRestartDelayMs = 200;
-        static constexpr int kPrivilegeProbeTimeoutMs = 5000;
 
         explicit CoreSupervisor(QObject *parent = nullptr);
         ~CoreSupervisor() override;
@@ -53,19 +52,11 @@ namespace Engine {
         bool resetCore();
         // The core is not listening: restart it and start profileId once it connects.
         bool restartNotListening(int profileId);
-        // Crash-stops the running profile and restarts the core; the profile set by setStartWhenUp() starts once it connects.
-        void restartForGuard();
         // Any thread; waits until a running core is killed. The core restarts and resumes the started profile.
         void killForPrivilegeChange();
 
-        // Main thread. The profile to start once the next core connects. False when no core process exists yet.
-        bool setStartWhenUp(int profileId);
         // Main thread. A user stop while nothing runs: the profile waiting for the core to come back is not started.
         void cancelResume();
-        // Main thread. True from a Linux/macOS accept until its coreStarted, while the privilege probe runs; never on Windows.
-        bool awaitingCoreStarted() const;
-        // Main thread. The profile the next coreStarted carries; -1 when none.
-        int startWhenUp() const;
 
         // Any thread. False after a listen failure or once shutting down.
         bool canStartCore() const;
@@ -81,12 +72,11 @@ namespace Engine {
         int restartCount() const;
         // Main thread. The failures counted towards giving up.
         int consecutiveFailures() const;
-        bool runningWithoutGuardIdentity() const; // any thread; always false on Windows
 
     signals:
         // Main thread, on every core connection, right after the RPC client was reconnected to it.
         void rpcConnected();
-        // Main thread, once a verified core connected and, on Linux/macOS, answered the privilege probe; profileId < 0 when nothing should start.
+        // Main thread, once a verified core connected; profileId < 0 when nothing should start.
         void coreStarted(int profileId);
         // Main thread. The core kept exiting and is no longer restarted until a restart is requested.
         void coreGaveUp(const QString &reason);
@@ -101,21 +91,15 @@ namespace Engine {
 
     private:
         static constexpr qint64 kLogWindowMs = 1000;
-        static constexpr int kPrivilegeProbeRetries = 2;
-        static constexpr int kPrivilegeProbeRetryMs = 10000;
 
         bool verifyCorePid(QLocalSocket *socket) const;
         void onNewConnection();
         void setupRpc(QLocalSocket *socket);
-        // attempt > 0 is a retry after a probe that got no answer: it only refreshes the cached answer.
-        void startPrivilegeProbe(quint64 gen, int attempt = 0);
-        void onPrivilegeProbed(quint64 gen, bool ok, bool privileged, int attempt);
         void emitCoreStarted();
         void attachProcess(Configs_sys::CoreProcess *process);
 
         void onCoreSpawned(quint64 gen);
-        // exitCode: the process exit code, -1 for a crash or a failed start.
-        void onCoreExited(quint64 gen, bool failedToStart, int exitCode);
+        void onCoreExited(quint64 gen, bool failedToStart);
         // Main thread, queued from DS_cores in order with the exit post: a candidate cause line of core generation gen.
         void noteCoreError(quint64 gen, const QString &line);
         void onConnectTimeout();
@@ -141,8 +125,6 @@ namespace Engine {
 
         // Main thread only.
         int m_startWhenUp = -1;
-        // The accepted core's privilege probe is running, so its coreStarted is still to come.
-        bool m_probing = false;
         int m_failures = 0;
         // Consecutive exits of cores that never connected.
         int m_startFailures = 0;

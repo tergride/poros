@@ -77,7 +77,7 @@ void StartStopButton::updateToolTip() {
         case Lock::Blocking: tip += "\n" + tr("Kill switch: Tun is not running, so most traffic is blocked"); break;
         case Lock::Passing: tip += "\n" + tr("Kill switch: on — traffic only flows through Poros's Tun"); break;
         case Lock::Fault:
-            tip += "\n" + (Sys::KillSwitch::instance()->failedForIdentity() ? tr("Kill switch is blocking traffic") : tr("Kill switch is not active"));
+            tip += "\n" + tr("Kill switch is not active");
             break;
     }
     setToolTip(tip);

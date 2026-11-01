@@ -30,9 +30,6 @@ namespace Configs_sys {
 
         void Restart();
 
-        // A core adopts the kill switch group only at startup; this records whether the running one was asked to.
-        std::atomic<bool> guard_identity = false;
-
         // Bumped by each Start(), so an exit or connection can be matched to the attempt that produced it.
         std::atomic<quint64> generation = 0;
 

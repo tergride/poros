@@ -98,8 +98,6 @@ namespace Engine {
         void restartReasonsChanged();
 
     private:
-        static constexpr qint64 kGuardRestartWindowMs = 15000;
-
         EnginePolicy *policy() const { return m_policy; }
 
         void onCoreStarted(int profileId);
@@ -117,10 +115,6 @@ namespace Engine {
 
         // ConnectionModes.cpp.
         void onKillSwitchStateChanged();
-
-        bool guardRestartPending() const;
-
-        void restartCoreForGuard(const StartRequest &request);
 
         EnginePolicy *m_policy;
         CoreSupervisor *m_coreSupervisor;
@@ -141,9 +135,7 @@ namespace Engine {
         StartRequest m_killSwitchDeferredStart;
         // coreStarted carries only a profile id, so the rest of the request waits here.
         StartRequest m_coreStartRequest;
-        QElapsedTimer m_guardCoreRestart;
         bool m_killSwitchWasFailed = false;
-        bool m_killSwitchWasArmed = false;
         QList<RestartReason> m_restartReasons;
 
         // Locked and unlocked on different threads by design; no owner tracking.

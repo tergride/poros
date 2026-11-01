@@ -31,11 +31,6 @@
 #include <memory>
 #include <utility>
 
-namespace {
-    constexpr bool kConnectionManagerWindows = true;
-
-} // namespace
-
 namespace Engine {
     ConnectionManager::ConnectionManager(EnginePolicy *policy, CoreSupervisor *coreSupervisor, StatsService *stats, QObject *parent)
         : QObject(parent), m_policy(policy), m_coreSupervisor(coreSupervisor), m_stats(stats) {
@@ -81,19 +76,8 @@ namespace Engine {
             return;
         }
         if (!killSwitch->allowsStart()) {
-            if (killSwitch->failedForIdentity()) {
-                MW_show_log(QStringLiteral("[Kill switch] Not starting %1: profiles are refused while the core cannot adopt the "
-                                           "kill-switch group (the kill switch keeps blocking).")
-                                .arg(ent->outbound->DisplayTypeAndName()));
-            } else {
-                MW_show_log(MainWindowTr::tr("[Kill switch] Not starting %1: the kill switch is not active.").arg(ent->outbound->DisplayTypeAndName()));
-            }
+            MW_show_log(MainWindowTr::tr("[Kill switch] Not starting %1: the kill switch is not active.").arg(ent->outbound->DisplayTypeAndName()));
             if (request.interactive) policy()->killSwitchProblem();
-            return;
-        }
-        if (guardRestartPending() ||
-            (killSwitch->state() == Sys::KillSwitch::State::Armed && m_coreSupervisor->runningWithoutGuardIdentity())) {
-            restartCoreForGuard(resolved);
             return;
         }
 
@@ -210,14 +194,6 @@ namespace Engine {
         }
         mu_stopping.unlock();
 
-        if (m_coreSupervisor->awaitingCoreStarted()) {
-            // coreStarted for the accepted core is still to come, and the start it carries would switch away from this one.
-            deferStartToCore(resolved);
-            m_coreSupervisor->setStartWhenUp(resolved.profileId);
-            mu_starting.unlock();
-            return;
-        }
-
         if (!Configs::dataManager->settingsRepo->core_running) {
             if (!m_coreSupervisor->canStartCore()) {
                 mu_starting.unlock();
@@ -232,7 +208,7 @@ namespace Engine {
         }
 
         // Wintun spends 15 s on a leftover adapter before failing; a restart from the prompt inside that window strands a new one.
-        const int slowStartMs = kConnectionManagerWindows && !result->tunIPv4CIDR.isEmpty() ? 20000 : 10000;
+        const int slowStartMs = !result->tunIPv4CIDR.isEmpty() ? 20000 : 10000;
         const Engine::SlowOperation slowStart = resolved.interactive
             ? policy()->slowOperation(Engine::SlowOperationKind::Start, slowStartMs)
             : Engine::SlowOperation{};
@@ -394,8 +370,7 @@ namespace Engine {
 
     void ConnectionManager::onCoreStarted(int profileId) {
         auto &settings = Configs::dataManager->settingsRepo;
-        m_guardCoreRestart.invalidate();
-        // The core may just have been given root, which the guard needs too.
+        // The core may just have been given rights, which the guard needs too.
         if (Sys::KillSwitch::instance()->failedForPrivileges()) Sys::KillSwitch::instance()->apply();
         if (settings->remember_enable && settings->remember_system_proxy) {
             setSystemProxy(true, ModeChange{.save = false});
@@ -410,8 +385,6 @@ namespace Engine {
     }
 
     void ConnectionManager::onCoreGaveUp() {
-        // Otherwise a start within the window would wait on a guard restart that is not coming.
-        m_guardCoreRestart.invalidate();
         m_coreStartRequest = {};
     }
 

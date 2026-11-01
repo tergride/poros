@@ -9,18 +9,15 @@ import (
 	runtimeDebug "runtime/debug"
 	"runtime/metrics"
 	"runtime/pprof"
-	"syscall"
 	"time"
 
 	"github.com/xtls/xray-core/core"
 
 	"ThroneCore/internal/boxmain"
-	"ThroneCore/internal/capcheck"
 	"ThroneCore/internal/guard"
 	"ThroneCore/internal/ipc"
 	"ThroneCore/internal/parentcheck"
 	"ThroneCore/internal/rpc"
-	"ThroneCore/internal/sysdns"
 
 	C "github.com/sagernet/sing-box/constant"
 
@@ -91,31 +88,14 @@ func RunCore() {
 	debug := os.Getenv("THRONE_CORE_DEBUG") == "1"
 
 	parentcheck.CheckParentProcess()
-	if err := guard.ApplyIdentity(); err != nil {
-		fmt.Fprintf(os.Stderr, "kill switch: cannot adopt the guard group: %v\n", err)
-		os.Exit(guard.IdentityExitCode)
-	}
-	guard.CleanupStale()
-	sysdns.RestoreStale()
 
 	go func() {
 		parent, err := os.FindProcess(parentcheck.ParentPID)
 		if err != nil {
 			log.Fatalln("find parent:", err)
 		}
-		if runtime.GOOS == "windows" {
-			state, err := parent.Wait()
-			log.Fatalln("parent exited:", state, err)
-		} else {
-			for {
-				time.Sleep(time.Second * 10)
-				err = parent.Signal(syscall.Signal(0))
-				if err != nil {
-					sysdns.Release()
-					log.Fatalln("parent exited:", err)
-				}
-			}
-		}
+		state, err := parent.Wait()
+		log.Fatalln("parent exited:", state, err)
 	}()
 
 	boxmain.DisableColor()
@@ -136,29 +116,14 @@ func RunCore() {
 
 	fmt.Println("Core Has Successfully Connected to Poros!")
 	rpc.Serve(conn, debug)
-	sysdns.Release()
 	log.Fatal("IPC connection dropped, exiting")
 }
 
 func main() {
-	// Before anything prints: stdout is the guard's protocol channel and the --check line.
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "--guard":
-			parentcheck.CheckParentProcess()
-			guard.Run(parentcheck.ParentPID)
-		case "--check":
-			parentcheck.CheckParentProcess()
-			if err := capcheck.Print(os.Stdout); err != nil {
-				fmt.Fprintf(os.Stderr, "check: %v\n", err)
-				os.Exit(1)
-			}
-			os.Exit(0)
-		case "--restore-dns":
-			parentcheck.CheckParentProcess()
-			sysdns.RestoreStale()
-			os.Exit(0)
-		}
+	// Before anything prints: stdout is the guard's protocol channel.
+	if len(os.Args) > 1 && os.Args[1] == "--guard" {
+		parentcheck.CheckParentProcess()
+		guard.Run(parentcheck.ParentPID)
 	}
 
 	defer func() {

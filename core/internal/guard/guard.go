@@ -1,5 +1,5 @@
 // Package guard is the kill switch: a privileged process the GUI spawns with --guard that blocks every
-// packet not sent by Throne or routed into its tun, for exactly as long as the GUI keeps its stdin open.
+// packet not sent by Poros or routed into its tun, for exactly as long as the GUI keeps its stdin open.
 package guard
 
 import (
@@ -12,9 +12,7 @@ import (
 	"net/netip"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"regexp"
-	"runtime"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -24,15 +22,6 @@ import (
 	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/logger"
 )
-
-// GID marks Throne's sockets on Linux and macOS; it sits outside systemd's nspawn range (524288–1879048191).
-const GID = 0x7448524F
-
-// EnvIdentity makes a root core adopt GID before it opens any socket.
-const EnvIdentity = "THRONE_GUARD"
-
-// IdentityExitCode is the core's exit code when ApplyIdentity fails; it must match Sys::KillSwitch::kCoreIdentityExitCode.
-const IdentityExitCode = 86
 
 const (
 	CodePrivilege   = "privilege"
@@ -44,25 +33,15 @@ const (
 
 // Config is the single JSON line the GUI writes to the guard's stdin.
 type Config struct {
-	AllowLAN   bool     `json:"allow_lan"`
-	TunName    string   `json:"tun_name"`
-	TunCIDRs   []string `json:"tun_cidrs"`
-	ExtraPaths []string `json:"extra_paths"`
-	BridgeName string   `json:"bridge_name"`
-	// APIPort is the Throne API's TCP port, 0 when it does not listen; replies on connections peers open to it pass.
-	APIPort uint16 `json:"api_port"`
-	// KeepStates skips macOS's global pf state flush; set only when replacing a READY guard whose anchor stays loaded meanwhile.
-	KeepStates bool `json:"keep_states"`
+	AllowLAN bool     `json:"allow_lan"`
+	TunName  string   `json:"tun_name"`
+	TunCIDRs []string `json:"tun_cidrs"`
 }
 
 type config struct {
 	AllowLAN    bool
 	TunName     string
 	TunPrefixes []netip.Prefix
-	ExtraPaths  []string
-	BridgeName  string
-	APIPort     uint16
-	KeepStates  bool
 }
 
 // Event is a runtime report from a backend; a Fatal one makes the guard disarm and exit.
@@ -127,10 +106,7 @@ func parseConfig(line string) (*config, error) {
 	if len(raw.TunName) > 15 || !interfaceNamePattern.MatchString(raw.TunName) {
 		return nil, newError(CodeConfig, "invalid tun name %q", raw.TunName)
 	}
-	if len(raw.BridgeName) > 12 || !interfaceNamePattern.MatchString(raw.BridgeName) {
-		return nil, newError(CodeConfig, "invalid bridge name %q", raw.BridgeName)
-	}
-	cfg := &config{AllowLAN: raw.AllowLAN, TunName: raw.TunName, BridgeName: raw.BridgeName, APIPort: raw.APIPort, KeepStates: raw.KeepStates}
+	cfg := &config{AllowLAN: raw.AllowLAN, TunName: raw.TunName}
 	for _, cidr := range raw.TunCIDRs {
 		if strings.TrimSpace(cidr) == "" {
 			continue
@@ -140,21 +116,6 @@ func parseConfig(line string) (*config, error) {
 			return nil, newError(CodeConfig, "invalid tun address %q", cidr)
 		}
 		cfg.TunPrefixes = append(cfg.TunPrefixes, prefix)
-	}
-	seen := make(map[string]bool)
-	for _, path := range raw.ExtraPaths {
-		path = filepath.Clean(strings.TrimSpace(path))
-		if path == "." || !filepath.IsAbs(path) {
-			continue
-		}
-		key := path
-		if runtime.GOOS == "windows" {
-			key = strings.ToLower(path)
-		}
-		if !seen[key] {
-			seen[key] = true
-			cfg.ExtraPaths = append(cfg.ExtraPaths, path)
-		}
 	}
 	return cfg, nil
 }
@@ -173,12 +134,10 @@ func (r *reporter) line(fields ...string) {
 
 // Run never returns. Stdout carries READY, ERROR <code> <message>, WARN <message> and FAIL <code> <message> lines.
 func Run(parentPID int) {
-	signal.Ignore(syscall.SIGPIPE)
 	log.SetOutput(os.Stderr)
 	out := &reporter{}
-	// Registered before Arm: a default-action SIGTERM mid-Arm would leave macOS pf rules behind.
 	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 
 	var active backend
 	defer func() {
@@ -262,27 +221,18 @@ func readConfig(reader *bufio.Reader, timeout time.Duration) (*config, error) {
 	}
 }
 
-// A reparented guard means the GUI died without its pipe closing, e.g. while a descendant still held it.
+// The GUI may die without its pipe closing, e.g. while a descendant still holds it.
 func watchParent(parentPID int, done chan<- string) {
 	if parentPID <= 1 {
 		return
 	}
-	if runtime.GOOS == "windows" {
-		parent, err := os.FindProcess(parentPID)
-		if err != nil {
-			done <- "parent not found"
-			return
-		}
-		_, _ = parent.Wait()
-		done <- "parent exited"
+	parent, err := os.FindProcess(parentPID)
+	if err != nil {
+		done <- "parent not found"
 		return
 	}
-	for range time.Tick(time.Second) {
-		if os.Getppid() != parentPID {
-			done <- "parent exited"
-			return
-		}
-	}
+	_, _ = parent.Wait()
+	done <- "parent exited"
 }
 
 // goSafe runs fn on its own goroutine; a panic there must disarm through Run, not kill the process with rules installed.

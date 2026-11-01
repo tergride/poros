@@ -2434,8 +2434,7 @@ namespace Configs {
             if (custom->type == Custom::CustomFullConfig)
             {
                 res->coreConfig = custom->Build().object;
-                // macOS points the system DNS at the TUN address once the core starts; a custom config
-                // brings its own tun inbound, so read the address from there like the generated one.
+                // A custom config brings its own tun inbound, so read the address from there like the generated one.
                 for (const auto item : res->coreConfig["inbounds"].toArray()) {
                     const auto inbound = item.toObject();
                     if (inbound["type"].toString() != "tun") continue;

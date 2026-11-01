@@ -130,7 +130,7 @@ func (h *boxContextHolder) get() context.Context {
 // Must run between core.New and Start; both settings keep the instance off an active TUN.
 func xrayPreparer(dnsStrategy string, boxCtx xraydns.BoxProvider) func(*core.Instance) error {
 	return func(instance *core.Instance) error {
-		instance.SetEgress(currentEgress())
+		instance.SetEgress(defaultInterfaceName(), 0)
 		if dnsStrategy == "" || boxCtx == nil {
 			return nil
 		}

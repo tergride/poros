@@ -51,15 +51,3 @@ func (s *server) GenQuicSignature(ctx context.Context, in *gen.GenQuicSignatureR
 	}
 	return &gen.GenQuicSignatureResponse{Packets: packets}, nil
 }
-
-func (s *server) GenWgKeyPair(ctx context.Context, _ *gen.EmptyReq) (out *gen.GenWgKeyPairResponse, _ error) {
-	var res gen.GenWgKeyPairResponse
-	privateKey, err := warp.GeneratePrivateKey()
-	if err != nil {
-		res.Error = To(err.Error())
-		return &res, nil
-	}
-	res.PrivateKey = To(privateKey.String())
-	res.PublicKey = To(privateKey.PublicKey().String())
-	return &res, nil
-}

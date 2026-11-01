@@ -21,8 +21,6 @@
 #include <utility>
 
 namespace {
-    constexpr int kConnectionModesCapsRefreshMs = 1000;
-
     // Profile start and stop call in from their own threads.
     QThread *connectionModesSystemProxyThread() {
         static auto *thread = [] {
@@ -33,16 +31,6 @@ namespace {
         return thread;
     }
 
-    // From the core's capability report, why Tun fails whatever is granted: a privileged core that still lacks the device or
-    // CAP_NET_ADMIN, or (canElevate false) any core lacking them. An unprivileged core may still gain them through elevation.
-    QString connectionModesTunCapsBlocker(bool canElevate) {
-        const auto caps = Configs::KnownCapabilities();
-        if (!caps || (caps->tunDevice != false && caps->netAdmin != false)) return {};
-        if (canElevate && !caps->privileged) return {};
-        if (!caps->detail.isEmpty()) return caps->detail;
-        return caps->tunDevice == false ? QStringLiteral("the core cannot open /dev/net/tun")
-                                        : QStringLiteral("the core lacks CAP_NET_ADMIN");
-    }
 }
 
 namespace Engine {
@@ -51,11 +39,6 @@ namespace Engine {
         {
             MW_show_log(MainWindowTr::tr("User opted for no privilege req, some features may not work"));
             return true;
-        }
-        if (const auto blocker = connectionModesTunCapsBlocker(interactive); !blocker.isEmpty()) {
-            MW_show_log(QStringLiteral("[Tun] The core cannot use Tun: %1").arg(blocker));
-            if (interactive) PostNotice({NoticeLevel::Warning, MainWindowTr::tr("Tun Mode"), blocker});
-            return false;
         }
         if (tunPrivileged()) return true;
         if (!interactive) return false;
@@ -110,9 +93,7 @@ namespace Engine {
         const auto &settings = Configs::dataManager->settingsRepo;
         if (enable == settings->spmode_vpn) return false;
 
-        if (enable) Configs::RefreshStaleTunDevice(kConnectionModesCapsRefreshMs);
-        if (enable && (!tunPrivileged() || !connectionModesTunCapsBlocker(true).isEmpty()) &&
-            !ensureTunPrivileges(change.interactive)) {
+        if (enable && !tunPrivileged() && !ensureTunPrivileges(change.interactive)) {
             emit statusChanged();
             return false;
         }
@@ -150,43 +131,18 @@ namespace Engine {
     void ConnectionManager::onKillSwitchStateChanged() {
         const auto state = Sys::KillSwitch::instance()->state();
         const bool failed = state == Sys::KillSwitch::State::Failed;
-        const bool armed = state == Sys::KillSwitch::State::Armed;
         const bool enteredFailed = failed && !m_killSwitchWasFailed;
-        const bool enteredArmed = armed && !m_killSwitchWasArmed;
         m_killSwitchWasFailed = failed;
-        m_killSwitchWasArmed = armed;
 
         emit statusChanged();
         if (!failed) policy()->killSwitchProblemResolved();
         if (enteredFailed) policy()->killSwitchProblem();
-        if (enteredArmed && !guardRestartPending() && m_coreSupervisor->runningWithoutGuardIdentity()) {
-            StartRequest request{Configs::dataManager->settingsRepo->started_id};
-            if (m_coreSupervisor->awaitingCoreStarted() && m_coreSupervisor->startWhenUp() >= 0) {
-                // The start waiting for the probing core has not run yet; the guard restart carries it over.
-                request = m_coreStartRequest.profileId >= 0 ? std::exchange(m_coreStartRequest, StartRequest{})
-                                                            : StartRequest{m_coreSupervisor->startWhenUp()};
-            }
-            restartCoreForGuard(request);
-        }
     }
 
     void ConnectionManager::disableKillSwitch() {
         Configs::dataManager->settingsRepo->kill_switch = false;
         Configs::dataManager->settingsRepo->Save();
         Sys::KillSwitch::instance()->apply();
-    }
-
-    bool ConnectionManager::guardRestartPending() const {
-        return m_guardCoreRestart.isValid() && !m_guardCoreRestart.hasExpired(kGuardRestartWindowMs);
-    }
-
-    void ConnectionManager::restartCoreForGuard(const StartRequest &request) {
-        if (!m_coreSupervisor->setStartWhenUp(request.profileId)) return;
-        deferStartToCore(request);
-        if (guardRestartPending()) return;
-        m_guardCoreRestart.start();
-        MW_show_log(MainWindowTr::tr("[Kill switch] Restarting the core so that its own traffic passes the kill switch..."));
-        m_coreSupervisor->restartForGuard();
     }
 
     void ConnectionManager::noteRestartNeeded(RestartReason reason) {
