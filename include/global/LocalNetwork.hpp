@@ -15,6 +15,9 @@ namespace LocalNetwork {
     // Address of the default route's interface, never our own tun; empty when none can be determined.
     QString LanAddress();
 
+    // "Ethernet" or "Wi-Fi" for LanAddress()'s interface, its system name for anything else; empty with no network.
+    QString LanInterfaceKind();
+
     // True for loopback and for every address this machine currently holds, tun addresses included.
     bool IsOwnAddress(const QString &host);
 }

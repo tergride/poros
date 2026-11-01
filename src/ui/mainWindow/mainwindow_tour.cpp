@@ -4,6 +4,7 @@
 
 #include <QApplication>
 #include <QDateTime>
+#include <cmath>
 #include <QDir>
 #include <QFile>
 #include <QListWidget>
@@ -26,10 +27,11 @@
 #include "include/ui/advanced/SettingsSection.h"
 #include "include/ui/mainWindow/MainWindowInternal.h"
 #include "include/ui/onboarding/OnboardingPage.h"
+#include "include/ui/shell/SegmentSwitch.h"
 #include "include/ui/simple/PresetEditor.h"
 #include "include/ui/simple/ServerTreeModel.h"
 #include "include/ui/utils/ConnectionModeController.h"
-#include "include/ui/utils/ProfilesSearchEdit.h"
+#include "include/ui/utils/TableSearchEdit.h"
 #include "include/ui/widget/AdminPromptDialog.h"
 #include "include/ui/widget/ConnectionChoiceDialog.h"
 #include "include/ui/widget/TrayOtpCodes.hpp"
@@ -90,6 +92,29 @@ void MainWindow::runUiTour(const QString &dir) {
     });
 
     const auto trigger = [](QAction *action) { return [action] { action->trigger(); }; };
+    const auto fakeConnections = [] {
+        const auto connection = [](const QString &id, const QString &process, const QString &domain, const QString &protocol, const QString &outbound, long long bytes) {
+            Stats::ConnectionMetadata meta;
+            meta.id = id;
+            meta.createdAtMs = 0;
+            meta.upload = bytes / 10;
+            meta.download = bytes;
+            meta.uploadSpeed = bytes / 500;
+            meta.downloadSpeed = bytes / 50;
+            meta.outbound = outbound;
+            meta.outboundName = outbound;
+            meta.network = QStringLiteral("tcp");
+            meta.protocol = protocol;
+            meta.domain = domain;
+            meta.dest = domain + QStringLiteral(":443");
+            meta.process = process;
+            return meta;
+        };
+        return QList<Stats::ConnectionMetadata>{connection(QStringLiteral("1"), QStringLiteral("chrome.exe"), QStringLiteral("www.example.com"), QStringLiteral("tls"), QStringLiteral("nl2"), 64 << 20),
+                                                connection(QStringLiteral("2"), QStringLiteral("chrome.exe"), QStringLiteral("cdn.example.net"), QStringLiteral("quic"), QStringLiteral("nl2"), 23 << 20),
+                                                connection(QStringLiteral("3"), QStringLiteral("telegram.exe"), QStringLiteral("api.example.org"), QStringLiteral("tls"), QStringLiteral("nl2"), 12 << 20),
+                                                connection(QStringLiteral("4"), QStringLiteral("steam.exe"), QStringLiteral("cache1.example.com"), QStringLiteral("tls"), QStringLiteral("direct"), 1400 << 20)};
+    };
     const auto routingTab = [this](int tab) {
         return [this, tab] { m_routingPage->dialog()->findChild<QTabWidget *>(QStringLiteral("tabWidget"))->setCurrentIndex(tab); };
     };
@@ -132,9 +157,38 @@ void MainWindow::runUiTour(const QString &dir) {
             ui->menu_server->grab().save(dir + QStringLiteral("/profiles-context.png"));
         }},
         {"connections", [this] { m_advancedPage->showSection(AdvancedPage::Connections); }},
-        {"routing-section", [this] { m_advancedPage->showSection(AdvancedPage::Routing); }},
+        {"connections-data", [this, fakeConnections] {
+            UpdateConnectionList(fakeConnections());
+            ui->connections->expandAll();
+            const qint64 now = MonotonicMs();
+            for (int second = 0; second < 110; ++second) {
+                const double wave = 1.6 + std::sin(second / 7.0) + std::sin(second / 3.0) / 2;
+                add_traffic_point(now + second * 1000, true, {wave * (3 << 20), wave * (200 << 10), wave * (1 << 20), wave * (60 << 10)}, 0, 0, 0, 0);
+            }
+        }},
+        {"connections-list-empty", [this] {
+            ui->connections_tab->findChild<SegmentSwitch *>()->setCurrent(1);
+            setConnectionsFlat(true);
+        }},
+        {"connections-list", [this, fakeConnections] { UpdateConnectionList(fakeConnections()); }},
+        {"routing-section", [this] {
+            ui->connections_tab->findChild<SegmentSwitch *>()->setCurrent(0);
+            setConnectionsFlat(false);
+            m_advancedPage->showSection(AdvancedPage::Routing);
+        }},
         {"logs", [this] { m_advancedPage->showSection(AdvancedPage::Logs); }},
-        {"statistics", [this] { m_advancedPage->showSection(AdvancedPage::Statistics); }},
+        {"logs-levels", [this] {
+            MW_show_log(QStringLiteral("+0300 2026-11-01 12:00:01 INFO [1 0ms] outbound/vless[proxy]: connected\n"
+                                       "+0300 2026-11-01 12:00:02 WARN [2 3ms] dns: exchange timed out\n"
+                                       "+0300 2026-11-01 12:00:03 ERROR [3 9ms] router: connection refused\n"));
+            ui->logLevel->setCurrentIndex(1);
+        }},
+        {"statistics", [this] {
+            ui->logLevel->setCurrentIndex(0);
+            m_advancedPage->showSection(AdvancedPage::Statistics);
+            ui->stats_widget->setCurrentWidget(ui->runtime_tab);
+        }},
+        {"statistics-auto", [this] { ui->actionAuto_Selector->trigger(); }},
         {"tools", [this] { m_advancedPage->showSection(AdvancedPage::Tools); }},
         {"settings-section", [this] { m_advancedPage->showSection(AdvancedPage::Settings); }},
         {"traffic", trigger(ui->actionTraffic_Stats)},

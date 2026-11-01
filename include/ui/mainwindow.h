@@ -234,14 +234,12 @@ private:
     class ConnectionBar *m_connectionBar = nullptr;
     class GroupPane *m_groupPane = nullptr;
     class SubscriptionInfoCard *m_groupInfo = nullptr;
-    class ProfilesSearchEdit *m_profileSearch = nullptr;
+    class TableSearchEdit *m_profileSearch = nullptr;
     class QWidget *m_profilesEmpty = nullptr;
     class QLabel *m_profilesEmptyTitle = nullptr;
     class QLabel *m_profilesEmptyHint = nullptr;
     class QWidget *m_profilesEmptyAdd = nullptr;
     class QPushButton *m_profilesEmptyUpdate = nullptr;
-    class QHBoxLayout *m_logActions = nullptr;
-    class QHBoxLayout *m_connectionActions = nullptr;
     QList<class StartStopButton *> m_startButtons;
     QString m_routeChoiceKey;
 
@@ -327,7 +325,9 @@ private:
     ExitReason exit_reason = ExitReason::None;
     class ConnectionsTreeModel *connectionsModel = nullptr;
     class ConnectionsTreeFilterProxyModel *connectionsFilterModel = nullptr;
-    class ConnectionsFilterHeader *connectionFilterHeader = nullptr;
+    class ConnectionsHeader *connectionHeader = nullptr;
+    class TableSearchEdit *connectionSearch = nullptr;
+    class QLabel *connectionCount = nullptr;
     QHash<QString, bool> m_processExpanded; // per-process choices; the rest follow m_processesExpandedByDefault
     bool m_processesExpandedByDefault = false;
     QTimer *connectionFilterDebounce = nullptr;
@@ -338,6 +338,7 @@ private:
     QIcon connectionCollapseIcon;
     int toolTipID;
     class LiveChart *trafficChart = nullptr;
+    class LiveChart *connectionChart = nullptr;
     QList<Stats::TrafficLine> m_trafficLines;
     QTimer *m_trafficGraphSaveDebounce = nullptr;
     QAction *m_trafficStatsChartAction = nullptr;
@@ -374,9 +375,8 @@ private:
     std::deque<QString> m_logHeld;
     bool m_logFollow = true;
     QRegularExpression m_logSearch;
+    QRegularExpression m_logLevel;
     QTimer *m_logSearchDebounce = nullptr;
-    QToolButton *logFilterButton = nullptr;
-    QToolButton *logJumpLatestButton = nullptr;
 
     void append_log(const QString &log);
 
@@ -396,7 +396,9 @@ private:
 
     void applyLogSearch();
 
-    void setLogFilterVisible(bool visible);
+    [[nodiscard]] bool logLineShown(const QString &text) const;
+
+    void clearLogs();
 
     void updateLogStatus();
 
@@ -498,7 +500,6 @@ private:
 
     void dropEvent(QDropEvent* event) override;
 
-    void applyLogBrowserFont();
 
     QTimer *m_proxyListRefreshDebounce = nullptr;
     void scheduleProxyListRefresh();
@@ -583,6 +584,8 @@ private:
     void syncConnectionExpansion();
 
     void setConnectionGroupsExpanded(bool expanded);
+
+    void setConnectionsFlat(bool flat);
 
     bool connectionGroupsExpanded() const;
 

@@ -1,17 +1,16 @@
 #include "include/ui/stats/dialog_auto_selector.h"
 
+#include "include/ui/setting/PorosTheme.h"
 #include "include/ui/utils/GuiUtils.hpp"
 
 #include <QCheckBox>
 #include <QDateTime>
-#include <QGuiApplication>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QItemSelectionModel>
 #include <QLabel>
 #include <QPushButton>
-#include <QScreen>
-#include <QScrollBar>
 #include <QTableWidget>
 #include <QVBoxLayout>
 #include <algorithm>
@@ -19,17 +18,15 @@
 namespace
 {
     enum Column {
-        ColRank = 0,
-        ColName,
+        ColName = 0,
         ColState,
         ColLatency,
-        ColJitter,
-        ColChecks,
-        ColDials,
         ColLastOK,
         ColNote,
         ColCount
     };
+
+    constexpr int kLatencyFontPx = 13;
 
     QString agoText(qint64 ms)
     {
@@ -66,21 +63,14 @@ namespace
     };
 
     Key latencyKey(const Stats::AutoSelectorMemberView &m) { return {m.samples > 0 && m.averageMs > 0, static_cast<double>(m.averageMs)}; }
-    Key jitterKey(const Stats::AutoSelectorMemberView &m) { return {m.samples > 0, static_cast<double>(m.deviationMs)}; }
-
-    Key checksKey(const Stats::AutoSelectorMemberView &m)
-    {
-        if (m.samples <= 0) return {};
-        return {true, static_cast<double>(m.samples - m.failures) / m.samples};
-    }
-
-    Key dialsKey(const Stats::AutoSelectorMemberView &m)
-    {
-        if (m.dialTotal <= 0) return {};
-        return {true, static_cast<double>(m.dialTotal - m.dialFail) / m.dialTotal};
-    }
-
     Key lastOKKey(const Stats::AutoSelectorMemberView &m) { return {m.lastOKms > 0, static_cast<double>(m.lastOKms)}; }
+
+    QPushButton *smallButton(const QString &text, QWidget *parent)
+    {
+        auto *button = new QPushButton(text, parent);
+        button->setProperty("role", QStringLiteral("small"));
+        return button;
+    }
 
     QString noteText(const Stats::AutoSelectorMemberView &member)
     {
@@ -111,25 +101,30 @@ DialogAutoSelector::DialogAutoSelector(QWidget *parent) : QDialog(parent)
     setWindowTitle(tr("Auto Selector Stats"));
 
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
 
-    m_headline = new QLabel(this);
-    auto headlineFont = m_headline->font();
-    headlineFont.setBold(true);
-    m_headline->setFont(headlineFont);
-    m_headline->setWordWrap(true);
-    layout->addWidget(m_headline);
+    auto *toolbar = new QFrame(this);
+    toolbar->setProperty("role", QStringLiteral("toolbar"));
+    auto *controls = new QHBoxLayout(toolbar);
+    controls->setContentsMargins(14, 10, 14, 10);
+    controls->setSpacing(8);
 
-    m_detail = new QLabel(this);
-    m_detail->setWordWrap(true);
-    layout->addWidget(m_detail);
+    m_headline = new QLabel(toolbar);
+    m_headline->setTextFormat(Qt::PlainText);
+    m_headline->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    controls->addWidget(m_headline, 1);
 
-    auto *controls = new QHBoxLayout();
-    m_onlyProblems = new QCheckBox(tr("Only show profiles with problems"), this);
+    m_count = new QLabel(toolbar);
+    m_count->setProperty("role", QStringLiteral("tag"));
+    m_count->setProperty("level", QStringLiteral("ok"));
+    controls->addWidget(m_count);
+
+    m_onlyProblems = new QCheckBox(tr("Only show profiles with problems"), toolbar);
     connect(m_onlyProblems, &QCheckBox::toggled, this, [this] { refresh(); });
     controls->addWidget(m_onlyProblems);
-    controls->addStretch();
 
-    m_pin = new QPushButton(tr("Use this profile"), this);
+    m_pin = smallButton(tr("Use this profile"), toolbar);
     m_pin->setToolTip(tr("Keep the selected profile in use instead of letting the ranking choose. "
                          "Useful when several profiles measure much the same and you prefer one of "
                          "them.\n\nIt stays a preference, not a lock: if that profile stops working "
@@ -138,38 +133,42 @@ DialogAutoSelector::DialogAutoSelector(QWidget *parent) : QDialog(parent)
     connect(m_pin, &QPushButton::clicked, this, [this] { applySelection(highlightedTag()); });
     controls->addWidget(m_pin);
 
-    m_release = new QPushButton(tr("Back to automatic"), this);
+    m_release = smallButton(tr("Back to automatic"), toolbar);
     m_release->setToolTip(tr("Stop preferring a particular profile and let the ranking decide again."));
     connect(m_release, &QPushButton::clicked, this, [this] { applySelection({}); });
     controls->addWidget(m_release);
 
-    m_recheck = new QPushButton(tr("Check all now"), this);
+    m_recheck = smallButton(tr("Check all now"), toolbar);
+    m_recheck->setIcon(PorosTheme::Icon(QStringLiteral("refresh")));
+    m_recheck->setIconSize({14, 14});
     m_recheck->setToolTip(tr("Re-measure every running profile immediately instead of waiting for the "
                              "next scheduled check."));
     connect(m_recheck, &QPushButton::clicked, this, [this] {
         Stats::autoSelectorMonitor->RequestRecheck();
         m_footer->setText(tr("Re-checking every profile..."));
+        m_footer->show();
     });
     controls->addWidget(m_recheck);
-    layout->addLayout(controls);
+    layout->addWidget(toolbar);
 
     m_table = new QTableWidget(this);
+    m_table->setProperty("role", QStringLiteral("table"));
+    m_table->setProperty("flush", true);
     m_table->setColumnCount(ColCount);
-    m_table->setHorizontalHeaderLabels({"#", tr("Profile"), tr("Status"), tr("Latency"), tr("Jitter"),
-                                        tr("Checks"), tr("Connects"), tr("Last OK"), tr("Notes")});
+    m_table->setHorizontalHeaderLabels({tr("Profile"), tr("Status"), tr("Latency"), tr("Last OK"), tr("Notes")});
     m_table->verticalHeader()->setVisible(false);
+    m_table->verticalHeader()->setDefaultSectionSize(36);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_table->setAlternatingRowColors(true);
+    m_table->setShowGrid(false);
 
     auto *header = m_table->horizontalHeader();
+    header->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     header->setSectionsClickable(true);
-    header->setSortIndicatorShown(true);
-    header->setSortIndicator(m_sortColumn, m_sortOrder);
     connect(header, &QHeaderView::sectionClicked, this, &DialogAutoSelector::onHeaderClicked);
-    // Stretch would fight the user's column widths on every poll.
-    header->setSectionResizeMode(QHeaderView::Interactive);
-    header->setStretchLastSection(true);
+    header->setSectionResizeMode(QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(ColName, QHeaderView::Stretch);
+    header->setSectionResizeMode(ColNote, QHeaderView::Stretch);
     connect(m_table, &QTableWidget::itemSelectionChanged, this, [this] {
         m_pin->setEnabled(!highlightedTag().isEmpty() && highlightedTag() != m_pinnedTag);
     });
@@ -179,22 +178,12 @@ DialogAutoSelector::DialogAutoSelector(QWidget *parent) : QDialog(parent)
     layout->addWidget(m_table, 1);
 
     m_footer = new QLabel(this);
+    m_footer->setProperty("role", QStringLiteral("hint"));
     m_footer->setWordWrap(true);
+    m_footer->setContentsMargins(14, 8, 14, 8);
     layout->addWidget(m_footer);
 
     refresh();
-    fitToColumns();
-}
-
-// A QTableWidget's size hint is a fixed default unrelated to its column count.
-void DialogAutoSelector::fitToColumns()
-{
-    int needed = 2 * m_table->frameWidth() + m_table->verticalScrollBar()->sizeHint().width() + 24;
-    for (int column = 0; column < ColCount; column++) needed += m_table->columnWidth(column);
-
-    const auto available = QGuiApplication::primaryScreen()->availableGeometry().size();
-    const QSize target(std::max({needed, sizeHint().width(), 900}), std::max(sizeHint().height(), 620));
-    resize(target.boundedTo(available));
 }
 
 QString DialogAutoSelector::highlightedTag() const
@@ -211,6 +200,7 @@ void DialogAutoSelector::applySelection(const QString &tag)
 {
     if (tag.isEmpty() && m_pinnedTag.isEmpty()) return;
     const auto error = Stats::autoSelectorMonitor->RequestSelect(tag);
+    m_footer->show();
     if (!error.isEmpty()) {
         m_footer->setText(tr("Could not change the profile: %1").arg(error));
         return;
@@ -228,8 +218,8 @@ void DialogAutoSelector::refresh()
     const auto view = Stats::autoSelectorMonitor->Snapshot();
     if (!view.valid) {
         m_headline->setText(tr("No auto selector is running."));
-        m_detail->clear();
-        m_footer->clear();
+        m_count->hide();
+        m_footer->hide();
         m_table->setRowCount(0);
         m_recheck->setEnabled(false);
         m_pin->setEnabled(false);
@@ -241,7 +231,10 @@ void DialogAutoSelector::refresh()
     m_pin->setEnabled(!highlightedTag().isEmpty() && highlightedTag() != m_pinnedTag);
     m_release->setEnabled(!m_pinnedTag.isEmpty());
     m_headline->setText(view.summary());
-    m_detail->setText(view.detail());
+    m_headline->setToolTip(view.summary());
+    m_count->setText(tr("Profiles: %1").arg(view.membersTotal));
+    m_count->setToolTip(view.detail());
+    m_count->show();
 
     QStringList footer;
     if (view.suspended) {
@@ -271,6 +264,7 @@ void DialogAutoSelector::refresh()
                      "next best profiles.");
     }
     m_footer->setText(footer.join(" "));
+    m_footer->setVisible(!footer.isEmpty());
 
     buildRows(view);
 }
@@ -304,17 +298,13 @@ void DialogAutoSelector::sortRows(QList<Stats::AutoSelectorMemberView> &rows) co
                     return ascending ? stateOrder(a) < stateOrder(b) : stateOrder(a) > stateOrder(b);
                 break;
             case ColLatency: result = compareKeys(latencyKey(a), latencyKey(b), decided); break;
-            case ColJitter: result = compareKeys(jitterKey(a), jitterKey(b), decided); break;
-            case ColChecks: result = compareKeys(checksKey(a), checksKey(b), decided); break;
-            case ColDials: result = compareKeys(dialsKey(a), dialsKey(b), decided); break;
             case ColLastOK: result = compareKeys(lastOKKey(a), lastOKKey(b), decided); break;
             case ColNote: {
                 const int cmp = QString::compare(noteText(a), noteText(b), Qt::CaseInsensitive);
                 if (cmp != 0) return ascending ? cmp < 0 : cmp > 0;
                 break;
             }
-            default: // ColRank
-                if (a.rank != b.rank) return ascending ? a.rank < b.rank : a.rank > b.rank;
+            default:
                 break;
         }
         if (decided) return result;
@@ -329,10 +319,9 @@ void DialogAutoSelector::onHeaderClicked(int column)
         m_sortOrder = m_sortOrder == Qt::AscendingOrder ? Qt::DescendingOrder : Qt::AscendingOrder;
     } else {
         m_sortColumn = column;
-        m_sortOrder = (column == ColLastOK || column == ColChecks || column == ColDials)
-                          ? Qt::DescendingOrder
-                          : Qt::AscendingOrder;
+        m_sortOrder = column == ColLastOK ? Qt::DescendingOrder : Qt::AscendingOrder;
     }
+    m_table->horizontalHeader()->setSortIndicatorShown(true);
     m_table->horizontalHeader()->setSortIndicator(m_sortColumn, m_sortOrder);
     refresh();
 }
@@ -362,21 +351,14 @@ void DialogAutoSelector::buildRows(const Stats::AutoSelectorView &view)
 
     for (int row = 0; row < rows.size(); row++) {
         const auto &member = rows[row];
-        setCell(row, ColRank, QString::number(member.rank));
         setCell(row, ColName, member.name.isEmpty() ? member.tag : member.name, member.tag);
-        setCell(row, ColState, stateText(member));
-        setCell(row, ColLatency, member.averageMs > 0 ? tr("%1 ms").arg(member.averageMs) : QStringLiteral("-"),
-                member.samples > 0 ? tr("Best %1 ms, worst %2 ms").arg(member.minMs).arg(member.maxMs) : QString());
-        setCell(row, ColJitter, member.samples > 0 ? tr("%1 ms").arg(member.deviationMs) : QStringLiteral("-"),
-                tr("How much the latency moves around. The selector prefers steady profiles over "
-                   "fast but erratic ones."));
-        setCell(row, ColChecks,
-                member.samples > 0 ? tr("%1 / %2 ok").arg(member.samples - member.failures).arg(member.samples)
-                                   : QStringLiteral("-"));
-        setCell(row, ColDials,
-                member.dialTotal > 0 ? tr("%1 / %2 ok").arg(member.dialTotal - member.dialFail).arg(member.dialTotal)
-                                     : QStringLiteral("-"),
-                tr("Real connection attempts made by apps through this profile."));
+        QStringList stateTip;
+        if (member.samples > 0) stateTip << tr("Checks: %1 of %2 ok").arg(member.samples - member.failures).arg(member.samples);
+        if (member.dialTotal > 0) stateTip << tr("Connections from apps: %1 of %2 ok").arg(member.dialTotal - member.dialFail).arg(member.dialTotal);
+        setCell(row, ColState, stateText(member), stateTip.join(QLatin1Char('\n')));
+        setCell(row, ColLatency, member.averageMs > 0 ? tr("%1 ms").arg(member.averageMs) : tr("no response"),
+                member.samples > 0 ? tr("Best %1 ms, worst %2 ms, jitter %3 ms").arg(member.minMs).arg(member.maxMs).arg(member.deviationMs) : QString());
+        m_table->item(row, ColLatency)->setFont(PorosTheme::MonoFont(kLatencyFontPx));
         setCell(row, ColLastOK, agoText(member.lastOKms));
         setCell(row, ColNote, noteText(member));
 
@@ -388,17 +370,5 @@ void DialogAutoSelector::buildRows(const Stats::AutoSelectorView &view)
             font.setItalic(member.pinned);
             nameItem->setFont(font);
         }
-    }
-    if (!m_columnsSized && !rows.isEmpty()) {
-        m_columnsSized = true;
-        auto *header = m_table->horizontalHeader();
-        // With the stretch on, the last column reports the table's current width, not its content's.
-        header->setStretchLastSection(false);
-        m_table->resizeColumnsToContents();
-        m_table->setColumnWidth(ColName, std::max(m_table->columnWidth(ColName), 220));
-        m_table->setColumnWidth(ColNote, std::max(m_table->columnWidth(ColNote), 260));
-        // The first poll can land after the dialog is already up, so re-fit here.
-        fitToColumns();
-        header->setStretchLastSection(true);
     }
 }

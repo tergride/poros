@@ -1,13 +1,12 @@
 #include "include/ui/stats/dialog_traffic_stats.h"
 
-#include "include/ui/stats/TrafficChartWidget.h"
-
 #include "include/database/DatabaseManager.h"
 #include "include/database/ProfilesRepo.h"
 #include "include/database/TrafficStatsRepo.h"
 #include "include/database/entities/Profile.h"
 #include "include/stats/traffic/TrafficStatsManager.hpp"
 #include "include/global/Utils.hpp"
+#include "include/ui/setting/PorosTheme.h"
 
 #include <QComboBox>
 #include <QDateTime>
@@ -15,7 +14,6 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
-#include <QTabWidget>
 #include <QTableWidget>
 
 #include <algorithm>
@@ -32,6 +30,7 @@ namespace {
         TrafficStatsSizeItem(const QString& text, long long value) : QTableWidgetItem(text) {
             QTableWidgetItem::setData(Qt::UserRole, QVariant::fromValue<qlonglong>(value));
             setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            setFont(PorosTheme::MonoFont(13));
         }
         bool operator<(const QTableWidgetItem& other) const override {
             return data(Qt::UserRole).toLongLong() < other.data(Qt::UserRole).toLongLong();
@@ -42,22 +41,24 @@ namespace {
 DialogTrafficStats::DialogTrafficStats(QWidget* parent) : QDialog(parent), ui(new Ui::DialogTrafficStats) {
     ui->setupUi(this);
 
-    // Box-layout stretch factors don't round-trip through uic, so they live here, not in the .ui.
-    ui->verticalLayout->setStretch(1, 2); // chart
-    ui->verticalLayout->setStretch(2, 3); // tabs
+    ui->refreshBtn->setIcon(PorosTheme::Icon(QStringLiteral("refresh")));
 
-    ui->profileTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->profileTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    for (int c = 2; c <= 4; ++c)
-        ui->profileTable->horizontalHeader()->setSectionResizeMode(c, QHeaderView::ResizeToContents);
-
-    ui->appTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    for (int c = 1; c <= 3; ++c)
-        ui->appTable->horizontalHeader()->setSectionResizeMode(c, QHeaderView::ResizeToContents);
+    const auto fitColumns = [](QTableWidget *table, int firstNumber) {
+        table->verticalHeader()->setDefaultSectionSize(36);
+        auto *header = table->horizontalHeader();
+        header->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        for (int c = 0; c < table->columnCount(); ++c) {
+            header->setSectionResizeMode(c, c < firstNumber ? QHeaderView::Stretch : QHeaderView::ResizeToContents);
+            if (c >= firstNumber) table->horizontalHeaderItem(c)->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        }
+    };
+    fitColumns(ui->profileTable, 2);
+    fitColumns(ui->appTable, 1);
+    // The table sorts by this column, which the mockup leaves out next to the applications' total.
+    ui->profileTable->setColumnHidden(4, true);
 
     connect(ui->refreshBtn, &QPushButton::clicked, this, [this] { refresh(); });
     connect(ui->periodCombo, &QComboBox::currentIndexChanged, this, [this](int) { refresh(); });
-    connect(ui->tabs, &QTabWidget::currentChanged, this, [this](int) { refresh(); });
 
     refresh();
 }
@@ -76,60 +77,16 @@ long long DialogTrafficStats::selectedWindowSecs() const {
     }
 }
 
-long long DialogTrafficStats::selectedBucketSecs() const {
-    return ui->periodCombo->currentIndex() == 0 ? 3600LL : 86400LL;
-}
-
 void DialogTrafficStats::refresh() {
-    auto* repo = Configs::dataManager ? Configs::dataManager->trafficStatsRepo.get() : nullptr;
-    if (!repo) return;
+    if (!Configs::dataManager || !Configs::dataManager->trafficStatsRepo) return;
 
     // The in-progress minute lives in memory until flushed.
     Stats::trafficStatsManager->Flush();
 
     const long long now = QDateTime::currentSecsSinceEpoch();
-    const long long window = selectedWindowSecs();
-    const long long bucket = selectedBucketSecs();
-    const long long from = now - window;
-    // Buckets are stored on UTC boundaries; this shifts them onto the viewer's local calendar.
-    const long long tzOffset = QDateTime::currentDateTime().offsetFromUtc();
-
+    const long long from = now - selectedWindowSecs();
     populateProfileTable(from, now);
     populateAppTable(from, now);
-
-    const bool byApp = ui->tabs->currentIndex() == 1;
-    const auto series = byApp ? repo->QueryAppSeries(from, now, bucket, tzOffset)
-                              : repo->QueryConfigSeries(from, now, bucket, tzOffset);
-
-    QHash<long long, Configs::TrafficSeriesPoint> byBucket;
-    byBucket.reserve(series.size());
-    long long totalUp = 0, totalDown = 0;
-    for (const auto& pt : series) {
-        byBucket.insert(pt.bucket_start, pt);
-        totalUp += pt.up;
-        totalDown += pt.down;
-    }
-
-    // Must align with the same offset the query used, or a bar's key won't match a series point.
-    const long long alignedFrom = ((from + tzOffset) / bucket) * bucket - tzOffset;
-    QList<TrafficChartWidget::Bar> bars;
-    for (long long b = alignedFrom; b < now; b += bucket) {
-        TrafficChartWidget::Bar bar;
-        bar.bucketStart = b;
-        if (const auto it = byBucket.constFind(b); it != byBucket.constEnd()) {
-            bar.down = it->down;
-            bar.up = it->up;
-        }
-        bar.label = bucket >= 86400LL ? QDateTime::fromSecsSinceEpoch(b).toString("MM/dd")
-                                      : QDateTime::fromSecsSinceEpoch(b).toString("HH:mm");
-        bars.append(bar);
-    }
-    const int stride = qMax(1, (static_cast<int>(bars.size()) + 7) / 8);
-    ui->chart->setData(bars, stride, bucket);
-
-    ui->summaryLabel->setText(tr("Download: %1     Upload: %2     Total: %3")
-                               .arg(ReadableSize(totalDown), ReadableSize(totalUp),
-                                    ReadableSize(totalDown + totalUp)));
 }
 
 void DialogTrafficStats::populateProfileTable(long long fromSecs, long long toSecs) {
@@ -145,11 +102,17 @@ void DialogTrafficStats::populateProfileTable(long long fromSecs, long long toSe
     const int count = static_cast<int>(usage.size());
     const int shown = qMin(count, kMaxBreakdownRows);
     const bool hasOther = count > kMaxBreakdownRows;
-    long long otherDown = 0, otherUp = 0;
-    for (int i = shown; i < count; ++i) {
-        otherDown += usage[i].down;
-        otherUp += usage[i].up;
+    long long otherDown = 0, otherUp = 0, totalDown = 0, totalUp = 0;
+    for (int i = 0; i < count; ++i) {
+        totalDown += usage[i].down;
+        totalUp += usage[i].up;
+        if (i >= shown) {
+            otherDown += usage[i].down;
+            otherUp += usage[i].up;
+        }
     }
+    ui->summaryLabel->setText(tr("Download: %1  ·  Upload: %2  ·  Total: %3")
+                                  .arg(ReadableSize(totalDown), ReadableSize(totalUp), ReadableSize(totalDown + totalUp)));
 
     ui->profileTable->setSortingEnabled(false);
     ui->profileTable->setRowCount(shown + (hasOther ? 1 : 0));

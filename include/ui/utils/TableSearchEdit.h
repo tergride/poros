@@ -1,14 +1,21 @@
 #pragma once
 
+#include <QAction>
 #include <QEvent>
 #include <QKeyEvent>
 #include <QLineEdit>
 
-// The search above the profile table: it keeps its keys from the window's shortcuts and hands the focus over to the table.
-class ProfilesSearchEdit : public QLineEdit {
+#include "include/ui/setting/PorosTheme.h"
+
+// The search above a table or a log: it keeps its keys from the window's shortcuts and hands the focus over to what it filters.
+class TableSearchEdit : public QLineEdit {
     Q_OBJECT
 public:
-    using QLineEdit::QLineEdit;
+    explicit TableSearchEdit(QWidget *parent = nullptr) : QLineEdit(parent) {
+        setClearButtonEnabled(true);
+        if (auto *clear = findChild<QAction *>(QStringLiteral("_q_qlineeditclearaction"))) clear->setIcon(PorosTheme::Icon(QStringLiteral("close")));
+        addAction(PorosTheme::Icon(QStringLiteral("search")), QLineEdit::LeadingPosition);
+    }
 
 signals:
     void focusTableRequested(bool selectFirst);

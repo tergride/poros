@@ -23,7 +23,6 @@ private:
     void populateAppTable(long long fromSecs, long long toSecs);
 
     long long selectedWindowSecs() const;
-    long long selectedBucketSecs() const;
 
     Ui::DialogTrafficStats* ui;
 };

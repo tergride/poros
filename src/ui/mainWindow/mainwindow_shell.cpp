@@ -41,26 +41,12 @@
 #include "include/ui/simple/SimpleHome.h"
 #include "include/ui/utils/CommandPalette.h"
 #include "include/ui/utils/ConnectionModeController.h"
-#include "include/ui/utils/ProfilesSearchEdit.h"
+#include "include/ui/utils/TableSearchEdit.h"
 #include "include/ui/utils/ScreenQrScanner.h"
 #include "include/ui/widget/AdminPromptDialog.h"
 #include "include/ui/widget/SubscriptionInfoCard.hpp"
 
 namespace {
-    QFrame *shellSectionHeader(const QString &title, QHBoxLayout **actions, QWidget *parent) {
-        auto *header = new QFrame(parent);
-        header->setProperty("role", QStringLiteral("toolbar"));
-        auto *row = new QHBoxLayout(header);
-        row->setContentsMargins(14, 8, 14, 8);
-        row->setSpacing(6);
-        auto *label = new QLabel(title, header);
-        label->setProperty("role", QStringLiteral("subheading"));
-        row->addWidget(label);
-        row->addStretch();
-        *actions = row;
-        return header;
-    }
-
     QWidget *shellSection(QWidget *header, QWidget *content, QWidget *parent) {
         auto *section = new QWidget(parent);
         auto *column = new QVBoxLayout(section);
@@ -68,7 +54,6 @@ namespace {
         column->setSpacing(0);
         column->addWidget(header);
         column->addWidget(content, 1);
-        // A page taken out of a tab widget stays explicitly hidden.
         content->show();
         return section;
     }
@@ -205,11 +190,8 @@ void MainWindow::setupShell() {
     auto *toolbarRow = new QHBoxLayout(toolbar);
     toolbarRow->setContentsMargins(14, 10, 14, 10);
     toolbarRow->setSpacing(8);
-    m_profileSearch = new ProfilesSearchEdit(toolbar);
+    m_profileSearch = new TableSearchEdit(toolbar);
     m_profileSearch->setPlaceholderText(tr("Search profiles"));
-    m_profileSearch->setClearButtonEnabled(true);
-    if (auto *clear = m_profileSearch->findChild<QAction *>(QStringLiteral("_q_qlineeditclearaction"))) clear->setIcon(PorosTheme::Icon(QStringLiteral("close")));
-    m_profileSearch->addAction(PorosTheme::Icon(QStringLiteral("search")), QLineEdit::LeadingPosition);
     toolbarRow->addWidget(m_profileSearch, 1);
     auto *newProfile = shellSmallButton(QStringLiteral("plus"), tr("Profile"), toolbar);
     newProfile->setProperty("variant", QStringLiteral("primary"));
@@ -281,10 +263,11 @@ void MainWindow::setupShell() {
 
     ui->stats_widget->removeTab(ui->stats_widget->indexOf(ui->Logs));
     ui->stats_widget->removeTab(ui->stats_widget->indexOf(ui->connections_tab));
-    auto *logsHeader = shellSectionHeader(tr("Logs"), &m_logActions, m_advancedPage);
-    m_advancedPage->setSection(AdvancedPage::Logs, shellSection(logsHeader, ui->Logs, m_advancedPage));
-    auto *connectionsHeader = shellSectionHeader(tr("Connections"), &m_connectionActions, m_advancedPage);
-    m_advancedPage->setSection(AdvancedPage::Connections, shellSection(connectionsHeader, ui->connections_tab, m_advancedPage));
+    // A page taken out of a tab widget stays explicitly hidden.
+    ui->Logs->show();
+    m_advancedPage->setSection(AdvancedPage::Logs, ui->Logs);
+    ui->connections_tab->show();
+    m_advancedPage->setSection(AdvancedPage::Connections, ui->connections_tab);
     m_advancedPage->setSection(AdvancedPage::Statistics, ui->stats_widget);
 
     m_trafficPage = new EmbeddedDialog([](QWidget *parent) -> QDialog * { return new DialogTrafficStats(parent); }, ui->stats_widget);

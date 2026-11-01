@@ -1,6 +1,8 @@
 #include "include/ui/utils/ConnectionsTreeModel.h"
 #include "include/global/Utils.hpp"
+#include "include/ui/setting/PorosTheme.h"
 
+#include <QGuiApplication>
 #include <QHash>
 
 #include <algorithm>
@@ -13,6 +15,7 @@ namespace {
     using Groups = std::vector<std::unique_ptr<ProcessGroupItem>>;
 
     constexpr int kOutboundNameGraphemes = 40;
+    constexpr int kMonoFontPx = 13;
 
     TreeItem *itemOf(const QModelIndex &index) {
         return static_cast<TreeItem *>(index.internalPointer());
@@ -40,6 +43,23 @@ namespace {
     QString routeTarget(const Stats::ConnectionMetadata &meta) {
         static const QStringList plainTags{QStringLiteral("proxy"), QStringLiteral("direct"), QStringLiteral("warp-bypass")};
         return plainTags.contains(meta.outbound) || meta.outboundName.isEmpty() ? meta.outbound : meta.outboundName;
+    }
+
+    QString upDownText(long long up, long long down, const QString &suffix = {}) {
+        return QStringLiteral("↑ %1%3   ↓ %2%3").arg(ReadableSize(up), ReadableSize(down), suffix);
+    }
+
+    QVariant cellFont(int column, bool strong) {
+        if (column != ConnectionsTreeModel::ColTarget) return PorosTheme::MonoFont(kMonoFontPx);
+        if (!strong) return {};
+        auto font = QGuiApplication::font();
+        font.setWeight(QFont::DemiBold);
+        return font;
+    }
+
+    QVariant cellAlignment(int column) {
+        if (column != ConnectionsTreeModel::ColTraffic && column != ConnectionsTreeModel::ColSpeed) return {};
+        return QVariant::fromValue(Qt::AlignRight | Qt::AlignVCenter);
     }
 
     // The rule's entries that matched, else the whole rule, else sing-box's fallback.
@@ -88,7 +108,7 @@ QModelIndex ConnectionsTreeModel::parent(const QModelIndex &child) const {
 int ConnectionsTreeModel::rowCount(const QModelIndex &parent) const {
     if (!parent.isValid()) return static_cast<int>(m_groups.size());
     auto *item = itemOf(parent);
-    if (parent.column() != 0 || !item->isProcess()) return 0;
+    if (m_flat || parent.column() != 0 || !item->isProcess()) return 0;
     return static_cast<int>(static_cast<ProcessGroupItem *>(item)->children.size());
 }
 
@@ -99,7 +119,7 @@ int ConnectionsTreeModel::columnCount(const QModelIndex &) const {
 Qt::ItemFlags ConnectionsTreeModel::flags(const QModelIndex &index) const {
     if (!index.isValid()) return Qt::NoItemFlags;
     const Qt::ItemFlags flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-    return itemOf(index)->isProcess() ? flags : flags | Qt::ItemNeverHasChildren;
+    return !m_flat && itemOf(index)->isProcess() ? flags : flags | Qt::ItemNeverHasChildren;
 }
 
 QString ConnectionsTreeModel::displayProcessName(const QString &processName) {
@@ -112,6 +132,7 @@ QVariant ConnectionsTreeModel::data(const QModelIndex &index, int role) const {
 
     if (item->isProcess()) {
         const auto *group = static_cast<const ProcessGroupItem *>(item);
+        if (m_flat) return leafData(group->children.front().get(), index.column(), role);
         switch (role) {
         case IsProcessRole:
             return true;
@@ -119,25 +140,29 @@ QVariant ConnectionsTreeModel::data(const QModelIndex &index, int role) const {
             return group->processName;
         case ConnIdsRole:
             return group->connectionIds();
+        case Qt::FontRole:
+            return cellFont(index.column(), true);
+        case Qt::TextAlignmentRole:
+            return cellAlignment(index.column());
         case Qt::DisplayRole:
             switch (index.column()) {
             case ColTarget:
-                return QStringLiteral("%1 (%2)").arg(displayProcessName(group->processName), QString::number(group->totalConnections));
+                return displayProcessName(group->processName);
             case ColSource:
-                return group->sameSource ? group->commonSource : QStringLiteral("-");
-            case ColProtocol:
-                return QStringLiteral("-");
+                return group->sameSource ? group->commonSource : QString();
             case ColOutbound:
-                return group->sameOutbound ? group->commonOutboundText : QStringLiteral("-");
+                return group->sameOutbound ? group->commonOutboundText : QString();
             case ColTraffic:
-                return ReadableSize(group->totalUpload) + "↑ " + ReadableSize(group->totalDownload) + "↓";
+                return ReadableSize(group->totalUpload + group->totalDownload);
             case ColSpeed:
-                return ReadableSize(group->totalUploadSpeed) + "/s↑ " + ReadableSize(group->totalDownloadSpeed) + "/s↓";
+                return ReadableSize(group->totalUploadSpeed + group->totalDownloadSpeed) + "/s";
             default:
                 return {};
             }
         case Qt::ToolTipRole:
             if (index.column() == ColOutbound && group->sameOutbound) return group->commonOutbound;
+            if (index.column() == ColTraffic) return upDownText(group->totalUpload, group->totalDownload);
+            if (index.column() == ColSpeed) return upDownText(group->totalUploadSpeed, group->totalDownloadSpeed, QStringLiteral("/s"));
             if (index.column() != ColTarget) return {};
             return tr("Process: %1\nActive connections: %2\nTotal traffic: %3↑ %4↓\nTotal speed: %5/s↑ %6/s↓")
                 .arg(displayProcessName(group->processName), QString::number(group->totalConnections),
@@ -148,7 +173,10 @@ QVariant ConnectionsTreeModel::data(const QModelIndex &index, int role) const {
         }
     }
 
-    const auto *leaf = static_cast<const ConnectionLeafItem *>(item);
+    return leafData(static_cast<const ConnectionLeafItem *>(item), index.column(), role);
+}
+
+QVariant ConnectionsTreeModel::leafData(const ConnectionLeafItem *leaf, int column, int role) const {
     switch (role) {
     case IsProcessRole:
         return false;
@@ -156,10 +184,16 @@ QVariant ConnectionsTreeModel::data(const QModelIndex &index, int role) const {
         return leaf->parent->processName;
     case ConnIdsRole:
         return leaf->connectionIds;
+    case Qt::FontRole:
+        return cellFont(column, false);
+    case Qt::TextAlignmentRole:
+        return cellAlignment(column);
     case Qt::DisplayRole:
-        switch (index.column()) {
-        case ColTarget:
-            return leaf->count > 1 ? QStringLiteral("%1 (%2)").arg(leaf->destText, QString::number(leaf->count)) : leaf->destText;
+        switch (column) {
+        case ColTarget: {
+            const QString dest = leaf->count > 1 ? QStringLiteral("%1 (%2)").arg(leaf->destText, QString::number(leaf->count)) : leaf->destText;
+            return m_flat ? QStringLiteral("%1 · %2").arg(displayProcessName(leaf->parent->processName), dest) : dest;
+        }
         case ColSource:
             return leaf->meta.sourceDisplay;
         case ColProtocol:
@@ -167,16 +201,18 @@ QVariant ConnectionsTreeModel::data(const QModelIndex &index, int role) const {
         case ColOutbound:
             return leaf->outboundText;
         case ColTraffic:
-            return ReadableSize(leaf->upload) + "↑ " + ReadableSize(leaf->download) + "↓";
+            return ReadableSize(leaf->upload + leaf->download);
         case ColSpeed:
-            return ReadableSize(leaf->uploadSpeed) + "/s↑ " + ReadableSize(leaf->downloadSpeed) + "/s↓";
+            return ReadableSize(leaf->uploadSpeed + leaf->downloadSpeed) + "/s";
         default:
             return {};
         }
     case Qt::ToolTipRole: {
-        if (index.column() == ColOutbound) return matchedRuleToolTip(leaf->meta);
+        if (column == ColOutbound) return matchedRuleToolTip(leaf->meta);
+        if (column == ColTraffic) return upDownText(leaf->upload, leaf->download);
+        if (column == ColSpeed) return upDownText(leaf->uploadSpeed, leaf->downloadSpeed, QStringLiteral("/s"));
         const QString outbound = outboundToolTip(leaf->meta.outboundName, leaf->meta.outbound);
-        if (index.column() != ColTarget) return {};
+        if (column != ColTarget) return {};
         const QString process = displayProcessName(leaf->parent->processName);
         if (leaf->count > 1) {
             return tr("Destination: %1\nConnections: %2\nProcess: %3\nProtocol: %4\nOutbound: %5\nTotal traffic: %6↑ %7↓\nTotal speed: %8/s↑ %9/s↓")
@@ -194,6 +230,8 @@ QVariant ConnectionsTreeModel::data(const QModelIndex &index, int role) const {
 
 QVariant ConnectionsTreeModel::headerData(int section, Qt::Orientation orientation, int role) const {
     if (orientation != Qt::Horizontal) return {};
+
+    if (role == Qt::TextAlignmentRole) return cellAlignment(section);
 
     if (role == Qt::DisplayRole) {
         switch (section) {
@@ -236,9 +274,14 @@ void ConnectionsTreeModel::setConnections(const QList<Stats::ConnectionMetadata>
 
     for (const auto &c : connections) {
         const QString process = c.process.trimmed();
-        ProcessGroupItem *&group = groupByName[process];
+        const QString dest = DisplayDest(c.dest, c.domain);
+        const QString protocol = c.protocol.isEmpty() ? c.network : c.network + " (" + c.protocol + ")";
+        const QString key = dest + "\t" + protocol + "\t" + c.outbound + "\t" + c.sourceDisplay + "\t" + c.rule + "\t" + c.ruleItem;
+        const QString groupKey = m_flat ? process + "\n" + key : process;
+        ProcessGroupItem *&group = groupByName[groupKey];
         if (group == nullptr) {
             group = groups.emplace_back(std::make_unique<ProcessGroupItem>()).get();
+            group->key = groupKey;
             group->processName = process;
             group->commonOutbound = c.outboundName;
             group->commonOutboundText = outboundText(c.outboundName);
@@ -252,9 +295,6 @@ void ConnectionsTreeModel::setConnections(const QList<Stats::ConnectionMetadata>
         group->totalUploadSpeed += c.uploadSpeed;
         group->totalDownloadSpeed += c.downloadSpeed;
 
-        const QString dest = DisplayDest(c.dest, c.domain);
-        const QString protocol = c.protocol.isEmpty() ? c.network : c.network + " (" + c.protocol + ")";
-        const QString key = dest + "\t" + protocol + "\t" + c.outbound + "\t" + c.sourceDisplay + "\t" + c.rule + "\t" + c.ruleItem;
         ConnectionLeafItem *&leaf = leafByKey[process + "\n" + key];
         if (leaf == nullptr) {
             leaf = group->children.emplace_back(std::make_unique<ConnectionLeafItem>()).get();
@@ -323,7 +363,7 @@ void ConnectionsTreeModel::setConnections(const QList<Stats::ConnectionMetadata>
         const auto *item = itemOf(index);
         TreeItem *moved = nullptr;
         if (item->isProcess()) {
-            moved = groupByName.value(static_cast<const ProcessGroupItem *>(item)->processName);
+            moved = groupByName.value(static_cast<const ProcessGroupItem *>(item)->key);
         } else {
             const auto *leaf = static_cast<const ConnectionLeafItem *>(item);
             moved = leafByKey.value(leaf->parent->processName + "\n" + leaf->key);
@@ -335,8 +375,16 @@ void ConnectionsTreeModel::setConnections(const QList<Stats::ConnectionMetadata>
     emit layoutChanged();
 }
 
+void ConnectionsTreeModel::setFlat(bool flat) {
+    if (m_flat == flat) return;
+    beginResetModel();
+    m_groups.clear();
+    m_flat = flat;
+    endResetModel();
+}
+
 bool ConnectionsTreeModel::isProcessIndex(const QModelIndex &index) const {
-    return index.isValid() && itemOf(index)->isProcess();
+    return index.isValid() && !m_flat && itemOf(index)->isProcess();
 }
 
 QString ConnectionsTreeModel::processNameAt(const QModelIndex &index) const {
@@ -347,7 +395,8 @@ QString ConnectionsTreeModel::processNameAt(const QModelIndex &index) const {
 }
 
 const Stats::ConnectionMetadata *ConnectionsTreeModel::metaAt(const QModelIndex &index) const {
-    if (!index.isValid() || itemOf(index)->isProcess()) return nullptr;
+    if (!index.isValid() || isProcessIndex(index)) return nullptr;
+    if (m_flat) return &static_cast<ProcessGroupItem *>(itemOf(index))->children.front()->meta;
     return &static_cast<ConnectionLeafItem *>(itemOf(index))->meta;
 }
 

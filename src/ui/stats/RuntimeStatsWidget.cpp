@@ -12,7 +12,7 @@
 #include "include/database/SettingsRepo.h"
 #include "include/global/Utils.hpp"
 #include "include/global/ExitLookup.hpp"
-#include "include/ui/widget/LiveChart.h"
+#include "include/global/LocalNetwork.hpp"
 
 #include <QBrush>
 #include <QColor>
@@ -32,14 +32,15 @@
 #include <limits>
 
 namespace {
-    const QColor kRuntimePorosColor = Stats::kStatsAccentColor;
-    const QColor kRuntimeCoreColor = Stats::kStatsHealthyColor;
-
-    QString runningConfigName() {
+    std::shared_ptr<Configs::Profile> runningProfile() {
         auto *engine = Engine::host();
         const auto running = engine != nullptr ? engine->connection()->runningSnapshot() : nullptr;
-        if (running == nullptr || running->outbound == nullptr) return {};
-        return running->outbound->DisplayTypeAndName();
+        return running != nullptr && running->outbound != nullptr ? running : nullptr;
+    }
+
+    QString runningConfigName() {
+        const auto running = runningProfile();
+        return running != nullptr ? running->outbound->DisplayTypeAndName() : QString();
     }
 
     QString formatCpu(const Sys::ProcessMetrics::Sample& s) {
@@ -48,6 +49,12 @@ namespace {
 
     QString formatRam(const Sys::ProcessMetrics::Sample& s) {
         return s.ok ? ReadableSize(s.rssBytes) : QStringLiteral("—");
+    }
+
+    // QLabel clips rather than elides, and these values are as long as the user's profile names.
+    void setElided(QLabel* label, const QString& text) {
+        label->setText(label->fontMetrics().elidedText(text, Qt::ElideRight, label->width()));
+        label->setToolTip(text);
     }
 
     // The provider the exit lookup asks, or empty while the lookup is off.
@@ -61,29 +68,6 @@ namespace {
 RuntimeStatsWidget::RuntimeStatsWidget(QWidget* parent) : QWidget(parent), ui(new Ui::RuntimeStatsWidget) {
     ui->setupUi(this);
 
-    ui->rootGrid->setColumnStretch(0, 1);
-    ui->rootGrid->setRowStretch(0, 1);
-    ui->processLayout->setStretch(1, 1);
-    // Without this the slack spreads over the label columns too, stranding each value far from its caption.
-    ui->formRunning->setColumnStretch(1, 1);
-    ui->formRunning->setColumnStretch(3, 1);
-
-    const QList<LiveChartRow> processRows{
-        LiveChartRow{QStringLiteral("poros"), QStringLiteral("Poros"), {}, kRuntimePorosColor, 0, true},
-        LiveChartRow{QStringLiteral("core"), tr("Core"), {}, kRuntimeCoreColor, 0, false},
-    };
-    cpuChart_ = new LiveChart(LiveChartOptions::sparkline(tr("CPU"), LiveChartAxis::percent()), this);
-    ramChart_ = new LiveChart(LiveChartOptions::sparkline(tr("RAM"), LiveChartAxis::bytes()), this);
-    for (auto *chart : {cpuChart_, ramChart_}) {
-        chart->setMinimumHeight(100);
-        chart->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        chart->setRows(processRows);
-        ui->chartsRow->addWidget(chart);
-    }
-    ui->labelPorosName->setText(QStringLiteral("<span style=\"color:%1\">●</span> %2")
-                                     .arg(kRuntimePorosColor.name(), "Poros"));
-    ui->labelCoreName->setText(QStringLiteral("<span style=\"color:%1\">●</span> %2")
-                                   .arg(kRuntimeCoreColor.name(), tr("Core")));
     // A lookup service's answer: as AutoText a tag in it would render as HTML.
     ui->vOutIp->setTextFormat(Qt::PlainText);
     ui->vCountry->setTextFormat(Qt::PlainText);
@@ -91,6 +75,8 @@ RuntimeStatsWidget::RuntimeStatsWidget(QWidget* parent) : QWidget(parent), ui(ne
     ui->groupEndpoints->setVisible(false);
     auto* endpoints = ui->endpointsTable;
     endpoints->verticalHeader()->setVisible(false);
+    endpoints->verticalHeader()->setDefaultSectionSize(36);
+    endpoints->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     endpoints->setEditTriggers(QAbstractItemView::NoEditTriggers);
     endpoints->setSelectionBehavior(QAbstractItemView::SelectRows);
     endpoints->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -110,6 +96,10 @@ RuntimeStatsWidget::~RuntimeStatsWidget() {
     delete ui;
 }
 
+void RuntimeStatsWidget::setSpeedChart(QWidget* chart) {
+    ui->speedLayout->addWidget(chart);
+}
+
 // A splitter collapses a pane by moving it off-screen, never by hiding it, so isVisible() alone still reads true.
 bool RuntimeStatsWidget::panelActive() const {
     return isVisible() && !window()->isMinimized() && !visibleRegion().isEmpty();
@@ -122,7 +112,8 @@ void RuntimeStatsWidget::showEvent(QShowEvent *event) {
     // The panel outlives a visit now, so the egress snapshot has to go stale with it; lastProbeSecs_ still rate-limits.
     egressSnapshotDone_ = false;
     timer_->start();
-    refreshLive();
+    // After the layout: the elided values need their labels' real width.
+    QTimer::singleShot(0, this, [this] { refreshLive(); });
 }
 
 void RuntimeStatsWidget::hideEvent(QHideEvent *event) {
@@ -137,37 +128,18 @@ void RuntimeStatsWidget::refreshLive() {
     auto *engine = Engine::host();
 
     const auto selfSample = metrics_.sample(QCoreApplication::applicationPid());
-    ui->vPorosRam->setText(formatRam(selfSample));
-    ui->vPorosCpu->setText(formatCpu(selfSample));
-
     const qint64 corePid = engine != nullptr ? engine->supervisor()->corePid() : 0;
     const auto coreSample = corePid > 0 ? metrics_.sample(corePid) : Sys::ProcessMetrics::Sample{};
-    ui->vCoreRam->setText(formatRam(coreSample));
-    ui->vCoreCpu->setText(formatCpu(coreSample));
 
-    const auto cpu = [](const Sys::ProcessMetrics::Sample &s) {
-        return s.ok && s.cpuValid ? s.cpuPercent : std::numeric_limits<double>::quiet_NaN();
-    };
-    const auto ram = [](const Sys::ProcessMetrics::Sample &s) {
-        return s.ok ? static_cast<double>(s.rssBytes) : std::numeric_limits<double>::quiet_NaN();
-    };
-    const qint64 sampledAt = MonotonicMs();
-    cpuChart_->addPoint(sampledAt, true, {cpu(selfSample), cpu(coreSample)});
-    ramChart_->addPoint(sampledAt, true, {ram(selfSample), ram(coreSample)});
+    const QString coreVersion = engine != nullptr ? engine->supervisor()->coreVersion() : QString();
+    setElided(ui->vCore, coreVersion.isEmpty() ? QStringLiteral("—") : QStringLiteral("sing-box %1").arg(coreVersion));
 
-    const auto rate = [](double bps) { return ReadableSize(static_cast<qint64>(bps)) + QStringLiteral("/s"); };
-    if (Stats::trafficLooper && Stats::trafficLooper->proxy) {
-        const auto p = Stats::trafficLooper->proxy;
-        ui->vSpeedProxy->setText(QStringLiteral("↓ %1   ↑ %2").arg(rate(p->downlink_rate), rate(p->uplink_rate)));
-    } else {
-        ui->vSpeedProxy->setText(QStringLiteral("—"));
-    }
-    if (Stats::trafficLooper && Stats::trafficLooper->direct) {
-        const auto dct = Stats::trafficLooper->direct;
-        ui->vSpeedDirect->setText(QStringLiteral("↓ %1   ↑ %2").arg(rate(dct->downlink_rate), rate(dct->uplink_rate)));
-    } else {
-        ui->vSpeedDirect->setText(QStringLiteral("—"));
-    }
+    const qint64 ram = (selfSample.ok ? selfSample.rssBytes : 0) + (coreSample.ok ? coreSample.rssBytes : 0);
+    ui->vMemory->setText(ReadableSize(ram));
+    ui->vMemory->setToolTip(tr("Poros: %1\nCore: %2").arg(formatRam(selfSample), formatRam(coreSample)));
+    const double cpu = (selfSample.ok ? selfSample.cpuPercent : 0) + (coreSample.ok ? coreSample.cpuPercent : 0);
+    ui->vCpu->setText(QString::number(cpu, 'f', 1) + QStringLiteral("%"));
+    ui->vCpu->setToolTip(tr("Poros: %1\nCore: %2").arg(formatCpu(selfSample), formatCpu(coreSample)));
 
     const auto nextUpd = [](int interval, qint64 last) -> QString {
         if (interval < 30) return RuntimeStatsWidget::tr("Disabled");
@@ -206,14 +178,16 @@ void RuntimeStatsWidget::refreshLive() {
     const QString cfgName = runningConfigName();
     const qint64 nowSecs = QDateTime::currentSecsSinceEpoch();
     if (cfgName.isEmpty()) {
-        ui->vCfgName->setText(tr("No active config"));
+        ui->vCfgName->setText(QStringLiteral("—"));
+        ui->vEndpoint->setText(QStringLiteral("—"));
         ui->vOutIp->setText(QStringLiteral("—"));
         ui->vCountry->setText(QStringLiteral("—"));
         ui->vPing->setText(QStringLiteral("—"));
         lastProbedConfig_.clear();
         egressSnapshotDone_ = false;
     } else {
-        ui->vCfgName->setText(cfgName);
+        setElided(ui->vCfgName, cfgName);
+        setElided(ui->vEndpoint, runningProfile()->outbound->DisplayAddress());
         if (cfgName != lastProbedConfig_) {
             lastProbedConfig_ = cfgName;
             egressSnapshotDone_ = false;
@@ -233,17 +207,21 @@ void RuntimeStatsWidget::refreshLive() {
         QPointer<RuntimeStatsWidget> self(this);
         runOnNewThread([self]() {
             const auto conns = API::defaultClient->QueryConnections();
-            int tcp = 0, udp = 0, total = 0;
+            int proxied = 0, direct = 0, system = 0;
             for (const auto& c : conns.active) {
-                ++total;
-                const QString net = QString::fromStdString(c.network.value());
-                if (net == QStringLiteral("tcp")) ++tcp;
-                else if (net == QStringLiteral("udp")) ++udp;
+                const QString outbound = QString::fromStdString(c.outbound.value());
+                if (outbound.isEmpty()) ++system;
+                else if (outbound == QStringLiteral("direct")) ++direct;
+                else ++proxied;
             }
-            runOnUiThread([self, tcp, udp, total]() {
+            const QString networkKind = LocalNetwork::LanInterfaceKind();
+            runOnUiThread([self, proxied, direct, system, networkKind]() {
                 if (!self) return;
-                self->ui->vConns->setText(
-                    RuntimeStatsWidget::tr("%1 active   ·   %2 TCP   ·   %3 UDP").arg(total).arg(tcp).arg(udp));
+                self->ui->vState->setText(networkKind.isEmpty() ? RuntimeStatsWidget::tr("Offline") : RuntimeStatsWidget::tr("Online"));
+                self->ui->vNetworkKind->setText(networkKind.isEmpty() ? QStringLiteral("—") : networkKind);
+                self->ui->vViaProxy->setText(QString::number(proxied));
+                self->ui->vDirect->setText(QString::number(direct));
+                self->ui->vSystem->setText(QString::number(system));
                 self->connBusy_.store(false);
             });
         });

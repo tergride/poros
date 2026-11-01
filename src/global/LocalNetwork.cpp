@@ -211,6 +211,23 @@ namespace LocalNetwork {
         return c.address;
     }
 
+    QString LanInterfaceKind() {
+        auto address = LanAddress();
+        address.remove('[').remove(']');
+        if (address.isEmpty()) return {};
+        const auto interfaces = QNetworkInterface::allInterfaces();
+        for (const auto &iface : interfaces) {
+            const auto entries = iface.addressEntries();
+            for (const auto &entry : entries) {
+                if (Normalize(entry.ip()) != address) continue;
+                if (iface.type() == QNetworkInterface::Wifi) return QStringLiteral("Wi-Fi");
+                if (iface.type() == QNetworkInterface::Ethernet) return QStringLiteral("Ethernet");
+                return iface.humanReadableName();
+            }
+        }
+        return {};
+    }
+
     // Deliberately cheaper than the LanAddress() scan: this one runs per connection per poll.
     bool IsOwnAddress(const QString &host) {
         auto bare = host.trimmed();

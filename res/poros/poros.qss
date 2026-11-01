@@ -15,6 +15,9 @@ QPlainTextEdit[role="mono"], QTextBrowser[role="mono"] { font-family: "JetBrains
 QLabel[role="note"] { background-color: @s3; color: @t2; font-size: 12px; padding: 7px 14px; }
 QLabel[role="quota"] { color: @t2; font-size: 12px; }
 QLabel[role="tag"] { background-color: @s4; color: @t2; font-size: 12px; border-radius: 6px; padding: 3px 8px; }
+QLabel[role="tag"][level="ok"] { color: @ok; }
+QLabel[role="kvKey"] { color: @t3; font-size: 13px; }
+QLabel[role="kvValue"] { font-family: "JetBrains Mono", "Consolas"; font-size: 13px; }
 QLabel[role="hint"][level="danger"] { color: @bad; }
 QToolTip { background-color: @s3; color: @t1; border: 1px solid @line2; padding: 4px 8px; }
 
@@ -84,6 +87,7 @@ QLineEdit:disabled, QPlainTextEdit:disabled, QTextEdit:disabled, QAbstractSpinBo
     border-color: @line;
 }
 QTextBrowser { background-color: @s0; border: 1px solid @line; border-radius: 8px; }
+QTextBrowser#masterLogBrowser { color: @t2; font-family: "JetBrains Mono", "Consolas"; font-size: 13px; border: none; border-radius: 0; padding: 6px 10px; }
 
 QComboBox:hover, QLineEdit:hover, QAbstractSpinBox:hover { border-color: @t3; }
 QComboBox:focus, QLineEdit:focus, QAbstractSpinBox:focus { border-color: @blue; }
@@ -142,6 +146,7 @@ QGroupBox {
     font-weight: 600;
 }
 QGroupBox > QWidget { font-weight: 400; }
+QGroupBox[role="metric"] { font-size: 12px; font-weight: 500; }
 QGroupBox::title {
     subcontrol-origin: padding;
     subcontrol-position: top left;
@@ -150,6 +155,7 @@ QGroupBox::title {
     padding: 0;
     color: @t1;
 }
+QGroupBox[role="metric"]::title { left: 14px; color: @t3; }
 QScrollArea { background: transparent; border: none; }
 QScrollArea > QWidget > QWidget { background: transparent; }
 QStackedWidget { background: transparent; }
@@ -205,6 +211,7 @@ QHeaderView::section:hover { color: @t1; }
 OtpListWidget { background-color: @s2; border: 1px solid @line; border-radius: 12px; padding: 0 16px; }
 OtpListWidget::item, OtpListWidget::item:hover { background: transparent; padding: 0; }
 QTableWidget[role="table"] { background-color: @s1; }
+QTableWidget[role="table"][flush="true"] { border: none; border-radius: 0; }
 ProfilesTableView { background-color: @s1; border: none; border-radius: 0; }
 ProfilesTableView QHeaderView::section { background-color: @s1; border: none; border-bottom: 1px solid @line; padding: 7px 10px; }
 QTableWidget[role="table"]::item { border-bottom: 1px solid @line; padding: 0 10px; }
@@ -213,6 +220,12 @@ QTableWidget[role="table"]::item:selected { background-color: @s3; color: @t1; }
 QTableWidget[role="table"]::indicator { width: 30px; height: 18px; image: url(:/poros/qss/switch-off.svg); }
 QTableWidget[role="table"]::indicator:checked { image: url(:/poros/qss/switch-on.svg); }
 QTableWidget[role="table"] QHeaderView::section { background-color: @s1; border: none; border-bottom: 1px solid @line; padding: 7px 10px; }
+QTreeView#connections { background-color: @s1; border: none; border-radius: 0; }
+QTreeView#connections::item { border-bottom: 1px solid @line; min-height: 35px; padding: 0 10px; }
+QTreeView#connections::item:hover { background-color: @s2; }
+QTreeView#connections::item:selected { background-color: @s3; color: @t1; }
+QTreeView#connections::branch { border-bottom: 1px solid @line; }
+QTreeView#connections QHeaderView::section { background-color: @s1; border: none; border-bottom: 1px solid @line; padding: 7px 10px; }
 QHeaderView::down-arrow { image: url(:/poros/qss/chevron-down.svg); width: 10px; height: 10px; }
 QHeaderView::up-arrow { image: url(:/poros/qss/chevron-up.svg); width: 10px; height: 10px; }
 QTreeView::branch { background: transparent; }

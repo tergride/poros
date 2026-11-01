@@ -24,6 +24,8 @@
 #include "include/engine/services/ReleaseUpdates.h"
 #include "include/global/Configs.hpp"
 #include "include/ui/utils/ConnectionModeController.h"
+#include "include/ui/utils/ConnectionsTreeFilterProxyModel.h"
+#include "include/ui/utils/ConnectionsTreeModel.h"
 
 namespace {
     std::shared_ptr<Configs::RouteProfile> routeByKey(const QString &key) {
@@ -411,6 +413,53 @@ private slots:
     void releaseFeedRefusesWhatWouldReachAPath() {
         QFETCH(QByteArray, json);
         QVERIFY(!Engine::ParseReleaseFeed(json).has_value());
+    }
+
+    void connectionsListByProcessOrFlat() {
+        const auto connection = [](const QString &id, const QString &process, const QString &domain, const QString &outbound) {
+            Stats::ConnectionMetadata meta;
+            meta.id = id;
+            meta.createdAtMs = 0;
+            meta.upload = 1;
+            meta.download = 2;
+            meta.outbound = outbound;
+            meta.outboundName = outbound;
+            meta.network = "tcp";
+            meta.dest = domain + ":443";
+            meta.domain = domain;
+            meta.process = process;
+            return meta;
+        };
+        const QList<Stats::ConnectionMetadata> connections{connection("1", "chrome.exe", "a.example", "proxy"),
+                                                           connection("2", "chrome.exe", "b.example", "proxy"),
+                                                           connection("3", "steam.exe", "c.example", "direct")};
+
+        ConnectionsTreeModel model;
+        ConnectionsTreeFilterProxyModel filter;
+        filter.setSourceModel(&model);
+
+        model.setConnections(connections, Stats::Default, false);
+        QCOMPARE(filter.rowCount(), 2);
+        QCOMPARE(filter.rowCount(filter.index(0, 0)), 2);
+        filter.setSearch("DIRECT");
+        QCOMPARE(filter.rowCount(), 1);
+        filter.setSearch("b.example");
+        QCOMPARE(filter.rowCount(filter.index(0, 0)), 1);
+        filter.setSearch({});
+
+        model.setFlat(true);
+        QCOMPARE(filter.rowCount(), 0);
+        model.setConnections(connections, Stats::Default, false);
+        QCOMPARE(filter.rowCount(), 3);
+        const auto first = filter.index(0, 0);
+        QCOMPARE(filter.rowCount(first), 0);
+        QCOMPARE(first.data(ConnectionsTreeModel::ConnIdsRole).toStringList(), QStringList{"1"});
+        QVERIFY(!first.data(ConnectionsTreeModel::IsProcessRole).toBool());
+        QVERIFY(first.data().toString().startsWith("chrome.exe"));
+        QVERIFY(first.data().toString().contains("a.example"));
+        QCOMPARE(model.metaAt(model.index(2, 0))->id, QString("3"));
+        filter.setSearch("steam");
+        QCOMPARE(filter.rowCount(), 1);
     }
 
     void cleanStartIsSimple() {

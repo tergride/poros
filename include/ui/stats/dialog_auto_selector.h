@@ -25,15 +25,13 @@ private:
 
     void onHeaderClicked(int column);
 
-    void fitToColumns();
-
     // An empty `tag` releases the pin.
     void applySelection(const QString &tag);
 
     [[nodiscard]] QString highlightedTag() const;
 
     QLabel *m_headline = nullptr;
-    QLabel *m_detail = nullptr;
+    QLabel *m_count = nullptr;
     QLabel *m_footer = nullptr;
     QTableWidget *m_table = nullptr;
     QPushButton *m_recheck = nullptr;
@@ -43,7 +41,7 @@ private:
 
     QString m_pinnedTag;
 
-    int m_sortColumn = 0;
+    // -1 keeps the selector's own ranking.
+    int m_sortColumn = -1;
     Qt::SortOrder m_sortOrder = Qt::AscendingOrder;
-    bool m_columnsSized = false;
 };

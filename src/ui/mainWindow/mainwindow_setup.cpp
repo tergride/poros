@@ -35,6 +35,7 @@
 #include "include/ui/simple/ServerTreeModel.h"
 #include "include/ui/stats/dialog_traffic_stats.h"
 #include "include/ui/stats/RuntimeStatsWidget.h"
+#include "include/ui/setting/PorosTheme.h"
 #include "include/ui/widget/LiveChart.h"
 #include "include/ui/widget/StartStopButton.hpp"
 
@@ -45,7 +46,7 @@
 #include "include/database/RoutesRepo.h"
 #include "include/global/Common.h"
 
-#include "include/ui/utils/ProfilesSearchEdit.h"
+#include "include/ui/utils/TableSearchEdit.h"
 #include "include/ui/utils/ProfilesTableModel.h"
 
 #include "include/ui/group/dialog_edit_group.h"
@@ -271,6 +272,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     setupTrafficGraph();
 
     runtimeStatsWidget = new RuntimeStatsWidget(this);
+    runtimeStatsWidget->setSpeedChart(trafficChart);
     auto* runtimeScroll = new QScrollArea(this);
     runtimeScroll->setFrameShape(QFrame::NoFrame);
     runtimeScroll->setWidgetResizable(true);
@@ -465,7 +467,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(m_filterRefreshDebounce, &QTimer::timeout, this, [this] { applyProfileFilters(); });
 
     connect(m_profileSearch, &QLineEdit::textChanged, m_filterRefreshDebounce, qOverload<>(&QTimer::start));
-    connect(m_profileSearch, &ProfilesSearchEdit::focusTableRequested, this, [this](bool selectFirst) { focusProfilesTable(selectFirst); });
+    connect(m_profileSearch, &TableSearchEdit::focusTableRequested, this, [this](bool selectFirst) { focusProfilesTable(selectFirst); });
     connect(ui->profilesTableView, &ProfilesTableView::focusSearchRequested, m_profileSearch, [this] { m_profileSearch->setFocus(); });
     auto *searchShortcut = new QShortcut(QKeySequence::Find, m_profileSearch);
     connect(searchShortcut, &QShortcut::activated, m_profileSearch, [this] {
@@ -841,7 +843,24 @@ MainWindow::~MainWindow() {
 void MainWindow::setupTrafficGraph() {
     auto &settings = Configs::dataManager->settingsRepo;
     trafficChart = new LiveChart(LiveChartOptions::trafficGraph(), this);
-    ui->graph_tab->layout()->addWidget(trafficChart);
+    trafficChart->setFixedHeight(240);
+    auto chartPalette = trafficChart->palette();
+    chartPalette.setColor(QPalette::Base, QColor(PorosTheme::S2));
+    trafficChart->setPalette(chartPalette);
+
+    auto stripOptions = LiveChartOptions::sparkline({}, LiveChartAxis::rateBytes());
+    stripOptions.windowSeconds = 120;
+    stripOptions.capacity = 130;
+    connectionChart = new LiveChart(stripOptions, ui->connections_tab);
+    connectionChart->setRows({LiveChartRow{QStringLiteral("down"), tr("Download"), {}, QColor(PorosTheme::Blue), 0, true},
+                              LiveChartRow{QStringLiteral("up"), tr("Upload"), {}, QColor(PorosTheme::Ok), 0, false}});
+    connectionChart->setFixedHeight(120);
+    auto *stripHolder = new QWidget(ui->connections_tab);
+    auto *stripColumn = new QVBoxLayout(stripHolder);
+    stripColumn->setContentsMargins(14, 14, 14, 0);
+    stripColumn->addWidget(connectionChart);
+    ui->connectionsLayout->insertWidget(0, stripHolder);
+
     set_traffic_lines({
         {QStringLiteral("proxy"), tr("Proxy"), Stats::TrafficLineKind::Proxy},
         {QStringLiteral("direct"), tr("Direct"), Stats::TrafficLineKind::Direct},

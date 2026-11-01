@@ -68,6 +68,7 @@ namespace Engine {
         QString lastCoreError() const;
 
         qint64 corePid() const;                   // any thread
+        QString coreVersion() const { return m_coreVersion; } // main thread; empty until the core has reported it
         // Main thread. Every respawn, counted where they all funnel (postProcessRestart).
         int restartCount() const;
         // Main thread. The failures counted towards giving up.
@@ -90,6 +91,7 @@ namespace Engine {
         void resumeCancelled();
 
     private:
+        QString m_coreVersion;
         static constexpr qint64 kLogWindowMs = 1000;
 
         bool verifyCorePid(QLocalSocket *socket) const;

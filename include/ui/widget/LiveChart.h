@@ -50,8 +50,6 @@ struct LiveChartAxis {
 
     static LiveChartAxis rateBytes();
     static LiveChartAxis rateBits();
-    static LiveChartAxis bytes();
-    static LiveChartAxis percent();
 };
 
 struct LiveChartOptions {

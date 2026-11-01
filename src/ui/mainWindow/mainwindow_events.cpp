@@ -58,7 +58,6 @@ void MainWindow::changeEvent(QEvent *event) {
             qApp->setStyleSheet(appSheet);
         }
         // After the repolish: with no font rule, QStyleSheetStyle resets a setFont() font to the parent's.
-        applyLogBrowserFont();
 
         // Qt skips setFont when unchanged, so bump the point size to force a real FontChange.
         auto forceFontReapply = [](QWidget *w) {
@@ -192,14 +191,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
     const QEvent::Type type = event->type();
-
-    // Accepting the override keeps any window-level Esc shortcut from taking the key first.
-    if ((type == QEvent::ShortcutOverride || type == QEvent::KeyPress) && static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape
-        && obj->isWidgetType() && ui->logToolbar->isAncestorOf(static_cast<QWidget *>(obj))) {
-        if (type == QEvent::ShortcutOverride) event->accept();
-        else logFilterButton->setChecked(false);
-        return true;
-    }
 
     // The viewport, not the window: splitter moves and scrollbar toggles change its width too.
     if (type == QEvent::Resize && obj == ui->profilesTableView->viewport()) {

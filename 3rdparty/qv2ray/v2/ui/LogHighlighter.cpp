@@ -1,5 +1,7 @@
 #include "LogHighlighter.hpp"
 
+#include "include/ui/setting/PorosTheme.h"
+
 #define TO_EOL "(([\\s\\S]*)|([\\d\\D]*)|([\\w\\W]*))$"
 #define REGEX_IPV6_ADDR \
     R"(\[\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*\])"
@@ -12,10 +14,10 @@ namespace Qv2ray::ui {
         HighlightingRule rule;
 
         if (darkMode) {
-            tcpudpFormat.setForeground(QColor(0, 200, 230));
-            ipHostFormat.setForeground(Qt::yellow);
-            warningFormat.setForeground(QColor(255, 160, 15));
-            warningFormat2.setForeground(Qt::cyan);
+            tcpudpFormat.setForeground(QColor(PorosTheme::T1));
+            ipHostFormat.setForeground(QColor(PorosTheme::T1));
+            warningFormat.setForeground(QColor(PorosTheme::Warn));
+            warningFormat2.setForeground(QColor(PorosTheme::Warn));
         } else {
             ipHostFormat.setForeground(QColor(0, 52, 130));
             tcpudpFormat.setForeground(QColor(0, 52, 130));
@@ -32,20 +34,17 @@ namespace Qv2ray::ui {
         rule.format = acceptedFormat;
         highlightingRules.append(rule);
         //
-        rejectedFormat.setFontWeight(QFont::Bold);
-        rejectedFormat.setBackground(Qt::red);
-        rejectedFormat.setForeground(Qt::white);
-        rejectedFormat.setFontWeight(QFont::Bold);
+        rejectedFormat.setForeground(QColor(PorosTheme::Bad));
         rule.pattern = QRegularExpression("\\srejected\\s" TO_EOL);
         rule.format = rejectedFormat;
         highlightingRules.append(rule);
         //
-        dateFormat.setForeground(darkMode ? Qt::cyan : Qt::darkCyan);
+        dateFormat.setForeground(darkMode ? QColor(PorosTheme::T3) : Qt::darkCyan);
         rule.pattern = QRegularExpression("\\d\\d\\d\\d/\\d\\d/\\d\\d");
         rule.format = dateFormat;
         highlightingRules.append(rule);
         //
-        timeFormat.setForeground(darkMode ? Qt::cyan : Qt::darkCyan);
+        timeFormat.setForeground(darkMode ? QColor(PorosTheme::T3) : Qt::darkCyan);
         rule.pattern = QRegularExpression("\\d\\d:\\d\\d:\\d\\d");
         rule.format = timeFormat;
         highlightingRules.append(rule);
@@ -55,13 +54,11 @@ namespace Qv2ray::ui {
         rule.format = debugFormat;
         highlightingRules.append(rule);
         //
-        infoFormat.setForeground(darkMode ? Qt::lightGray : Qt::darkCyan);
+        infoFormat.setForeground(darkMode ? QColor(0x6F, 0xB6, 0xFF) : Qt::darkCyan);
         rule.pattern = QRegularExpression(R"(\bI[Nn][Ff][Oo]\b)");
         rule.format = infoFormat;
         highlightingRules.append(rule);
         //
-        warningFormat.setFontWeight(QFont::Bold);
-        warningFormat2.setFontWeight(QFont::Bold);
         rule.pattern = QRegularExpression(R"(\bW[Aa][Rr][Nn]([Ii][Nn][Gg])?\b)");
         rule.format = warningFormat2;
         highlightingRules.append(rule);
@@ -71,7 +68,7 @@ namespace Qv2ray::ui {
         highlightingRules.append(rule);
 
         //
-        v2rayComponentFormat.setForeground(darkMode ? darkGreenColor : Qt::darkYellow);
+        v2rayComponentFormat.setForeground(darkMode ? QColor(PorosTheme::T2) : Qt::darkYellow);
         rule.pattern = QRegularExpression(R"( (\w+\/)+\w+: )");
         rule.format = v2rayComponentFormat;
         highlightingRules.append(rule);
@@ -103,13 +100,12 @@ namespace Qv2ray::ui {
         }
 
         for (const auto &pattern: {"tcp:", "udp:"}) {
-            tcpudpFormat.setFontWeight(QFont::Bold);
             rule.pattern = QRegularExpression(pattern);
             rule.format = tcpudpFormat;
             highlightingRules.append(rule);
         }
 
-        searchFormat.setBackground(darkMode ? QColor(150, 110, 0) : QColor(255, 225, 90));
+        searchFormat.setBackground(darkMode ? QColor(0x3B, 0x2F, 0x7A) : QColor(255, 225, 90));
         searchFormat.setForeground(darkMode ? Qt::white : Qt::black);
     }
 

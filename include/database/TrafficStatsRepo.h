@@ -35,12 +35,6 @@ namespace Configs {
         long long down = 0;
     };
 
-    struct TrafficSeriesPoint {
-        long long bucket_start = 0;
-        long long up = 0;
-        long long down = 0;
-    };
-
     // Kept so deleted/renamed configs and moved apps still resolve in the dashboard.
     struct ConfigMetaRow {
         int profile_id = 0;
@@ -83,8 +77,6 @@ namespace Configs {
         QList<AppMetaRow> GetAllAppMeta();
 
         // Empty buckets are omitted; utcOffsetSecs (east of UTC) shifts the UTC-aligned grouping so bucket_start is the local boundary epoch.
-        QList<TrafficSeriesPoint> QueryConfigSeries(long long fromSecs, long long toSecs, long long bucketSecs, long long utcOffsetSecs);
-        QList<TrafficSeriesPoint> QueryAppSeries(long long fromSecs, long long toSecs, long long bucketSecs, long long utcOffsetSecs);
 
         [[nodiscard]] bool Disabled() const { return disabled.load(); }
 
@@ -98,7 +90,6 @@ namespace Configs {
 
         void createTables();
         // A member, not a file-local helper: the unity build would collide the symbol with another TU's.
-        static std::string bucketExpr(long long bucketSecs, long long utcOffsetSecs);
 
         // Failure handling runs after mu is released, so a notice can never nest an event loop under the lock.
         template<typename F>

@@ -267,8 +267,8 @@ set(PROJECT_SOURCES
         src/ui/utils/ProfilesFilterProxyModel.cpp
         include/ui/utils/ProfilesTableView.h
         src/ui/utils/ProfilesTableView.cpp
-        include/ui/utils/ProfilesSearchEdit.h
-        include/ui/utils/ConnectionsFilterHeader.h
+        include/ui/utils/TableSearchEdit.h
+        include/ui/utils/ConnectionsHeader.h
         include/ui/utils/ConnectionsTreeModel.h
         src/ui/utils/ConnectionsTreeModel.cpp
         include/ui/utils/ConnectionsTreeFilterProxyModel.h
@@ -433,8 +433,6 @@ set(PROJECT_SOURCES
         src/ui/stats/dialog_traffic_stats.cpp
         include/ui/stats/dialog_traffic_stats.h
         include/ui/stats/dialog_traffic_stats.ui
-        src/ui/stats/TrafficChartWidget.cpp
-        include/ui/stats/TrafficChartWidget.h
 
         src/ui/stats/RuntimeStatsWidget.cpp
         include/ui/stats/RuntimeStatsWidget.h

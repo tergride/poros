@@ -2,6 +2,7 @@
 #include "NkrVersion.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include <QApplication>
 #include <QHeaderView>
@@ -355,6 +356,15 @@ void MainWindow::add_traffic_point(qint64 monoMs, bool coreRunning, const QVecto
     if (trafficChart == nullptr) return;
     if (coreRunning && values.size() != m_trafficLines.size() * 2) return;
     trafficChart->addPoint(monoMs, coreRunning, values);
+
+    QVector<double> total;
+    if (coreRunning) {
+        total = {0, 0};
+        for (int i = 0; i < values.size(); ++i) {
+            if (!std::isnan(values[i])) total[i % 2] += values[i];
+        }
+    }
+    connectionChart->addPoint(monoMs, coreRunning, total);
 }
 
 void MainWindow::addRunMarker(qint64 monoMs, Engine::RunMarker kind, const QString &name) {
@@ -372,6 +382,7 @@ void MainWindow::refresh_traffic_graph_settings() {
     const auto &settings = Configs::dataManager->settingsRepo;
     if (m_trafficStatsChartAction != nullptr) m_trafficStatsChartAction->setVisible(!settings->disable_traffic_aggregation);
     if (trafficChart == nullptr) return;
+    connectionChart->parentWidget()->setVisible(!settings->disable_traffic_stats);
     if (settings->disable_traffic_stats) {
         trafficChart->setBlocked(tr("Traffic statistics are disabled"),
                                  tr("Untick “Disable Traffic Stats” in Basic Settings → Miscellaneous to record speeds again."));

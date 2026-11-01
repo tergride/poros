@@ -241,7 +241,7 @@
               <bool>false</bool>
              </property>
              <property name="movable">
-              <bool>true</bool>
+              <bool>false</bool>
              </property>
              <property name="tabBarAutoHide">
               <bool>false</bool>
@@ -273,35 +273,35 @@
                 <number>0</number>
                </property>
                <item>
-                <widget class="QWidget" name="logToolbar" native="true">
-                 <layout class="QHBoxLayout" name="logToolbarLayout">
+                <widget class="QFrame" name="logToolbar">
+                 <property name="role" stdset="false">
+                  <string notr="true">toolbar</string>
+                 </property>
+                 <layout class="QHBoxLayout" name="logToolbarLayout" stretch="1,0,0,0,0,0,0,0">
                   <property name="spacing">
-                   <number>4</number>
+                   <number>8</number>
                   </property>
                   <property name="leftMargin">
-                   <number>4</number>
+                   <number>14</number>
                   </property>
                   <property name="topMargin">
-                   <number>4</number>
+                   <number>10</number>
                   </property>
                   <property name="rightMargin">
-                   <number>4</number>
+                   <number>14</number>
                   </property>
                   <property name="bottomMargin">
-                   <number>4</number>
+                   <number>10</number>
                   </property>
                   <item>
-                   <widget class="QLineEdit" name="logSearchEdit">
+                   <widget class="TableSearchEdit" name="logSearchEdit">
                     <property name="placeholderText">
                      <string>Filter logs</string>
-                    </property>
-                    <property name="clearButtonEnabled">
-                     <bool>true</bool>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QToolButton" name="logSearchCase">
+                   <widget class="QPushButton" name="logSearchCase">
                     <property name="toolTip">
                      <string>Match case</string>
                     </property>
@@ -311,10 +311,13 @@
                     <property name="checkable">
                      <bool>true</bool>
                     </property>
+                    <property name="role" stdset="false">
+                     <string notr="true">small</string>
+                    </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QToolButton" name="logSearchRegex">
+                   <widget class="QPushButton" name="logSearchRegex">
                     <property name="toolTip">
                      <string>Regular expression</string>
                     </property>
@@ -324,10 +327,78 @@
                     <property name="checkable">
                      <bool>true</bool>
                     </property>
+                    <property name="role" stdset="false">
+                     <string notr="true">small</string>
+                    </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QLabel" name="logMatchCount"/>
+                   <widget class="QComboBox" name="logLevel">
+                    <item>
+                     <property name="text">
+                      <string>All levels</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Warn and above</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Errors only</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="logMatchCount">
+                    <property name="role" stdset="false">
+                     <string notr="true">hint</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="logJumpLatest">
+                    <property name="toolTip">
+                     <string>New logs are held while the view is scrolled up</string>
+                    </property>
+                    <property name="role" stdset="false">
+                     <string notr="true">small</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="logCopy">
+                    <property name="text">
+                     <string>Copy</string>
+                    </property>
+                    <property name="iconSize">
+                     <size>
+                      <width>14</width>
+                      <height>14</height>
+                     </size>
+                    </property>
+                    <property name="role" stdset="false">
+                     <string notr="true">small</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="logClear">
+                    <property name="text">
+                     <string>Clear</string>
+                    </property>
+                    <property name="iconSize">
+                     <size>
+                      <width>14</width>
+                      <height>14</height>
+                     </size>
+                    </property>
+                    <property name="role" stdset="false">
+                     <string notr="true">small</string>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </widget>
@@ -348,7 +419,7 @@
               <attribute name="title">
                <string>Connections</string>
               </attribute>
-              <layout class="QHBoxLayout" name="horizontalLayout_4">
+              <layout class="QVBoxLayout" name="connectionsLayout">
                <property name="spacing">
                 <number>0</number>
                </property>
@@ -376,34 +447,9 @@
                </item>
               </layout>
              </widget>
-             <widget class="QWidget" name="graph_tab">
-              <attribute name="title">
-               <string>Traffic Graph</string>
-              </attribute>
-              <layout class="QHBoxLayout" name="horizontalLayout_6">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="sizeConstraint">
-                <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
-               </property>
-               <property name="leftMargin">
-                <number>0</number>
-               </property>
-               <property name="topMargin">
-                <number>0</number>
-               </property>
-               <property name="rightMargin">
-                <number>0</number>
-               </property>
-               <property name="bottomMargin">
-                <number>0</number>
-               </property>
-              </layout>
-             </widget>
              <widget class="QWidget" name="runtime_tab">
               <attribute name="title">
-               <string>Runtime Stats</string>
+               <string>Now</string>
               </attribute>
               <layout class="QHBoxLayout" name="horizontalLayout_7">
                <property name="spacing">
@@ -1132,6 +1178,11 @@
    <class>ProfilesTableView</class>
    <extends>QTableView</extends>
    <header>include/ui/utils/ProfilesTableView.h</header>
+  </customwidget>
+  <customwidget>
+   <class>TableSearchEdit</class>
+   <extends>QLineEdit</extends>
+   <header>include/ui/utils/TableSearchEdit.h</header>
   </customwidget>
   <customwidget>
    <class>StartStopButton</class>

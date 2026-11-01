@@ -15,9 +15,7 @@ class ConnectionsTreeFilterProxyModel : public QSortFilterProxyModel {
 public:
     explicit ConnectionsTreeFilterProxyModel(QObject *parent = nullptr);
 
-    void setFilters(const QString &source, const QString &target, const QString &protocol, const QString &outbound);
-
-    bool hasActiveFilter() const;
+    void setSearch(const QString &text);
 
     ConnectionsTreeModel *treeModel() const;
 
@@ -27,8 +25,5 @@ protected:
 private:
     bool leafMatches(const ConnectionsTree::ProcessGroupItem *group, const ConnectionsTree::ConnectionLeafItem *leaf) const;
 
-    QString m_source;
-    QString m_target;
-    QString m_protocol;
-    QString m_outbound;
+    QString m_search;
 };

@@ -12,9 +12,11 @@
 #include "include/global/Common.h"
 #include "include/global/LocalNetwork.hpp"
 #include "include/global/Utils.hpp"
-#include "include/ui/utils/ConnectionsFilterHeader.h"
+#include "include/ui/shell/SegmentSwitch.h"
+#include "include/ui/utils/ConnectionsHeader.h"
 #include "include/ui/utils/ConnectionsTreeFilterProxyModel.h"
 #include "include/ui/utils/ConnectionsTreeModel.h"
+#include "include/ui/utils/TableSearchEdit.h"
 
 #include <QHostAddress>
 
@@ -177,10 +179,10 @@ void MainWindow::setupConnectionList()
     ui->connections->setModel(connectionsFilterModel);
 
     // Order matters: setModel() after this would re-init the sections and drop the resize modes below.
-    connectionFilterHeader = new ConnectionsFilterHeader(ui->connections);
-    ui->connections->setHeader(connectionFilterHeader);
+    connectionHeader = new ConnectionsHeader(ui->connections);
+    ui->connections->setHeader(connectionHeader);
     // QTreeView::setHeader() re-applies setSortingEnabled(false), which switches section clicks back off.
-    connectionFilterHeader->setSectionsClickable(true);
+    connectionHeader->setSectionsClickable(true);
 
     auto* header = ui->connections->header();
     header->setHighlightSections(false);
@@ -196,7 +198,6 @@ void MainWindow::setupConnectionList()
     ui->connections->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->connections->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->connections->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->connections->setAlternatingRowColors(true);
     ui->connections->setWordWrap(false);
     ui->connections->setUniformRowHeights(true);
     ui->connections->setAnimated(false);
@@ -260,7 +261,7 @@ void MainWindow::restoreConnectionSort()
     // Runs before the first core connection spawns the lister thread, so writing the pair unguarded is safe.
     Stats::connection_lister->restoreSort(static_cast<Stats::ConnectionSort>(stored), settings->connection_sort_asc);
     const auto restored = Stats::connection_lister->getSort();
-    connectionFilterHeader->setSortSection(ColumnForSort(restored), Stats::SortIsDescending(restored, Stats::connection_lister->isSortAscending()));
+    connectionHeader->setSortSection(ColumnForSort(restored), Stats::SortIsDescending(restored, Stats::connection_lister->isSortAscending()));
 }
 
 void MainWindow::applyConnectionSort(Stats::ConnectionSort sort)
@@ -273,44 +274,62 @@ void MainWindow::applyConnectionSort(Stats::ConnectionSort sort)
     Stats::connection_lister->ForceUpdate();
 
     const auto applied = Stats::connection_lister->getSort();
-    connectionFilterHeader->setSortSection(ColumnForSort(applied), Stats::SortIsDescending(applied, Stats::connection_lister->isSortAscending()));
+    connectionHeader->setSortSection(ColumnForSort(applied), Stats::SortIsDescending(applied, Stats::connection_lister->isSortAscending()));
 }
 
 void MainWindow::setupConnectionFilter()
 {
-    auto* btnFilter = new QToolButton(this);
-    btnFilter->setIcon(QIcon(":/icon/filter.png"));
-    btnFilter->setToolTip(tr("Enable Filter"));
-    btnFilter->setCheckable(true);
-    connect(btnFilter, &QToolButton::toggled, connectionFilterHeader, &ConnectionsFilterHeader::setFiltersVisible);
-    connect(connectionFilterHeader, &ConnectionsFilterHeader::closeRequested, btnFilter, [btnFilter] { btnFilter->setChecked(false); });
+    auto* toolbar = new QFrame(ui->connections_tab);
+    toolbar->setProperty("role", QStringLiteral("toolbar"));
+    auto* row = new QHBoxLayout(toolbar);
+    row->setContentsMargins(14, 10, 14, 10);
+    row->setSpacing(8);
 
-    connectionExpandButton = new QToolButton(this);
+    connectionSearch = new TableSearchEdit(toolbar);
+    connectionSearch->setPlaceholderText(tr("Filter by process, address or outbound"));
+    connect(connectionSearch, &TableSearchEdit::focusTableRequested, this, [this] { ui->connections->setFocus(); });
+    row->addWidget(connectionSearch, 1);
+
+    auto* grouping = new SegmentSwitch({tr("By process"), tr("List")}, toolbar);
+    grouping->setCurrent(0);
+    connect(grouping, &SegmentSwitch::activated, this, [this](int index) { setConnectionsFlat(index == 1); });
+    row->addWidget(grouping);
+
+    connectionCount = new QLabel(tr("Active: %1").arg(0), toolbar);
+    connectionCount->setProperty("role", QStringLiteral("tag"));
+    row->addWidget(connectionCount);
+
+    connectionExpandButton = new QToolButton(toolbar);
     connect(connectionExpandButton, &QToolButton::clicked, this, [this] { setConnectionGroupsExpanded(!connectionGroupsExpanded()); });
+    row->addWidget(connectionExpandButton);
 
-    connectionCloseAllButton = new QToolButton(this);
+    connectionCloseAllButton = new QToolButton(toolbar);
     connectionCloseAllButton->setIcon(connectionCloseIcon);
     connectionCloseAllButton->setToolTip(tr("Close every connection listed below"));
     connect(connectionCloseAllButton, &QToolButton::clicked, this, [this] { closeConnections(listedConnectionIds()); });
+    row->addWidget(connectionCloseAllButton);
 
-    m_connectionActions->addWidget(btnFilter);
-    m_connectionActions->addWidget(connectionExpandButton);
-    m_connectionActions->addWidget(connectionCloseAllButton);
+    ui->connectionsLayout->insertWidget(0, toolbar);
+    ui->connectionsLayout->setStretchFactor(ui->connections, 1);
 
     connectionFilterDebounce = new QTimer(this);
     connectionFilterDebounce->setSingleShot(true);
     connectionFilterDebounce->setInterval(50);
-    connect(connectionFilterDebounce, &QTimer::timeout, this, [this] { applyConnectionFilters(); });
-    connect(connectionFilterHeader, &ConnectionsFilterHeader::filtersChanged, this, [this] { connectionFilterDebounce->start(); });
+    connect(connectionFilterDebounce, &QTimer::timeout, this, [this] {
+        connectionsFilterModel->setSearch(connectionSearch->text());
+        syncConnectionExpansion();
+    });
+    connect(connectionSearch, &QLineEdit::textChanged, connectionFilterDebounce, qOverload<>(&QTimer::start));
 
     syncConnectionExpandButton();
 }
 
-void MainWindow::applyConnectionFilters()
+void MainWindow::setConnectionsFlat(bool flat)
 {
-    const auto filters = connectionFilterHeader->filters();
-    connectionsFilterModel->setFilters(filters.source, filters.target, filters.protocol, filters.outbound);
-    syncConnectionExpansion();
+    connectionsModel->setFlat(flat);
+    ui->connections->setRootIsDecorated(!flat);
+    connectionExpandButton->setVisible(!flat);
+    Stats::connection_lister->ForceUpdate();
 }
 
 void MainWindow::syncConnectionSourceColumn()
@@ -320,13 +339,8 @@ void MainWindow::syncConnectionSourceColumn()
     if (ui->connections->isColumnHidden(ConnectionsTreeModel::ColSource) == !show) return;
 
     ui->connections->setColumnHidden(ConnectionsTreeModel::ColSource, !show);
-    connectionFilterHeader->adjustPositions();
-    // Both must be cleared here: a hidden header can be reached by neither the filter field nor a sort click.
-    if (!show) {
-        connectionFilterHeader->clearFilterFor(ConnectionsTreeModel::ColSource);
-        if (Stats::connection_lister->getSort() == Stats::BySource) applyConnectionSort(Stats::Default);
-    }
-    applyConnectionFilters();
+    // A hidden header cannot take the sort click that would undo this sort.
+    if (!show && Stats::connection_lister->getSort() == Stats::BySource) applyConnectionSort(Stats::Default);
 }
 
 void MainWindow::setupConnectionSortMenu()
@@ -389,6 +403,7 @@ QStringList MainWindow::listedConnectionIds() const
     {
         const QModelIndex group = connectionsFilterModel->index(row, 0);
         const int leaves = connectionsFilterModel->rowCount(group);
+        if (leaves == 0) ids << group.data(ConnectionsTreeModel::ConnIdsRole).toStringList();
         for (int leaf = 0; leaf < leaves; leaf++)
             ids << connectionsFilterModel->index(leaf, 0, group).data(ConnectionsTreeModel::ConnIdsRole).toStringList();
     }
@@ -404,9 +419,10 @@ void MainWindow::UpdateConnectionList(const QList<Stats::ConnectionMetadata>& co
 {
     if (connectionsModel == nullptr) return;
     connectionsModel->setConnections(connections, Stats::connection_lister->getSort(), Stats::connection_lister->isSortAscending());
+    connectionCount->setText(tr("Active: %1").arg(connections.size()));
     syncConnectionExpansion();
     for (const int column : {ConnectionsTreeModel::ColTraffic, ConnectionsTreeModel::ColSpeed})
-        connectionFilterHeader->growSection(column);
+        connectionHeader->growSection(column);
 }
 
 void MainWindow::syncConnectionExpansion()

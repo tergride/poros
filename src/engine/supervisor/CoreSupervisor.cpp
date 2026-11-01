@@ -47,6 +47,16 @@ namespace {
                         .arg(adapter)});
     }
 
+    // The line the core prints once on start, see core/main.go.
+    QString coreSupervisorVersionIn(const QByteArray &log) {
+        static const QByteArray marker = QByteArrayLiteral("sing-box: v");
+        const auto at = log.indexOf(marker);
+        if (at < 0) return {};
+        const auto from = at + marker.size();
+        const auto end = log.indexOf('\n', from);
+        return QString::fromUtf8(log.mid(from, end < 0 ? -1 : end - from)).trimmed();
+    }
+
     constexpr qsizetype kCoreSupervisorErrorMaxChars = 300;
     constexpr qsizetype kCoreSupervisorStderrLineCap = 4096;
 
@@ -355,6 +365,9 @@ namespace Engine {
         connect(process, &QProcess::readyReadStandardOutput, process, [this, process] {
             auto log = process->readAllStandardOutput();
             coreSupervisorWarnEgressForwarding(log);
+            if (const auto version = coreSupervisorVersionIn(log); !version.isEmpty()) {
+                QMetaObject::invokeMethod(this, [this, version] { m_coreVersion = version; }, Qt::QueuedConnection);
+            }
             // The window opens at the first chunk after the last one expired; the pre-add count is compared, so the crossing chunk still shows.
             const qint64 now = MonotonicMs();
             if (now - m_logWindowStartMs >= kLogWindowMs) {

@@ -211,21 +211,6 @@
     </message>
 </context>
 <context>
-    <name>ConnectionsFilterHeader</name>
-    <message>
-        <source>Disable Filter</source>
-        <translation>Выключить фильтр</translation>
-    </message>
-    <message>
-        <source>Enable Filter</source>
-        <translation>Включить фильтр</translation>
-    </message>
-    <message>
-        <source>Filter...</source>
-        <translation>Фильтр...</translation>
-    </message>
-</context>
-<context>
     <name>ConnectionsTreeModel</name>
     <message>
         <source>Source</source>
@@ -277,7 +262,7 @@ Outbound: %4</translation>
     </message>
     <message>
         <source>Process / Destination</source>
-        <translation>Процесс / Пункт назначения</translation>
+        <translation>Процесс / назначение</translation>
     </message>
     <message>
         <source>Protocol</source>
@@ -352,7 +337,7 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <source>Check all now</source>
-        <translation>Проверить все сейчас</translation>
+        <translation>Проверить сейчас</translation>
     </message>
     <message>
         <source>Re-measure every running profile immediately instead of waiting for the next scheduled check.</source>
@@ -364,35 +349,23 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <source>Profile</source>
-        <translation>Профиль</translation>
+        <translation>Сервер</translation>
     </message>
     <message>
         <source>Status</source>
-        <translation>Статус</translation>
+        <translation>Состояние</translation>
     </message>
     <message>
         <source>Latency</source>
         <translation>Задержка</translation>
     </message>
     <message>
-        <source>Jitter</source>
-        <translation>Джиттер</translation>
-    </message>
-    <message>
-        <source>Checks</source>
-        <translation>Проверки</translation>
-    </message>
-    <message>
-        <source>Connects</source>
-        <translation>Подключения</translation>
-    </message>
-    <message>
         <source>Last OK</source>
-        <translation>Последний успех</translation>
+        <translation>Проверен</translation>
     </message>
     <message>
         <source>Notes</source>
-        <translation>Примечания</translation>
+        <translation>Примечание</translation>
     </message>
     <message>
         <source>Could not change the profile: %1</source>
@@ -409,6 +382,10 @@ It stays a preference, not a lock: if that profile stops working the selector st
     <message>
         <source>No auto selector is running.</source>
         <translation>Автовыбор не запущен.</translation>
+    </message>
+    <message>
+        <source>Profiles: %1</source>
+        <translation>Профилей: %1</translation>
     </message>
     <message>
         <source>Checks are paused because this machine has no network connection. No profile is being blamed for it, and the ranking is frozen until the connection returns.</source>
@@ -439,24 +416,24 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Сейчас ничего не работает — если так и останется, автовыбор пересоберет пул из следующих по качеству профилей.</translation>
     </message>
     <message>
+        <source>Checks: %1 of %2 ok</source>
+        <translation>Проверки: %1 из %2 успешно</translation>
+    </message>
+    <message>
+        <source>Connections from apps: %1 of %2 ok</source>
+        <translation>Соединения приложений: %1 из %2 успешно</translation>
+    </message>
+    <message>
         <source>%1 ms</source>
         <translation>%1 мс</translation>
     </message>
     <message>
-        <source>Best %1 ms, worst %2 ms</source>
-        <translation>Лучший %1 мс, худший %2 мс</translation>
+        <source>no response</source>
+        <translation>нет ответа</translation>
     </message>
     <message>
-        <source>How much the latency moves around. The selector prefers steady profiles over fast but erratic ones.</source>
-        <translation>Насколько сильно колеблется задержка. Автовыбор отдаёт предпочтение стабильным профилям перед быстрыми, но нестабильными.</translation>
-    </message>
-    <message>
-        <source>%1 / %2 ok</source>
-        <translation>%1 / %2 ок</translation>
-    </message>
-    <message>
-        <source>Real connection attempts made by apps through this profile.</source>
-        <translation>Реальные попытки подключения, предпринятые приложениями через этот профиль.</translation>
+        <source>Best %1 ms, worst %2 ms, jitter %3 ms</source>
+        <translation>Лучшая %1 мс, худшая %2 мс, разброс %3 мс</translation>
     </message>
 </context>
 <context>
@@ -3649,8 +3626,8 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
 <context>
     <name>DialogTrafficStats</name>
     <message>
-        <source>Download: %1     Upload: %2     Total: %3</source>
-        <translation>Получено (↓): %1     Отправлено (↑): %2     Всего: %3</translation>
+        <source>Download: %1  ·  Upload: %2  ·  Total: %3</source>
+        <translation>Загрузка: %1  ·  Отдача: %2  ·  Всего: %3</translation>
     </message>
     <message>
         <source>Direct</source>
@@ -3673,24 +3650,20 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>Статистика трафика</translation>
     </message>
     <message>
-        <source>Period:</source>
-        <translation>Период:</translation>
-    </message>
-    <message>
         <source>Last 24 hours</source>
         <translation>Последние 24 часа</translation>
     </message>
     <message>
-        <source>Last 7 days</source>
-        <translation>Последние 7 дней</translation>
+        <source>7 days</source>
+        <translation>7 дней</translation>
     </message>
     <message>
-        <source>Last 30 days</source>
-        <translation>Последние 30 дней</translation>
+        <source>30 days</source>
+        <translation>30 дней</translation>
     </message>
     <message>
-        <source>Last 90 days</source>
-        <translation>Последние 90 дней</translation>
+        <source>90 days</source>
+        <translation>90 дней</translation>
     </message>
     <message>
         <source>Refresh</source>
@@ -3710,11 +3683,11 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     </message>
     <message>
         <source>Download</source>
-        <translation>Получено (↓)</translation>
+        <translation>Загрузка</translation>
     </message>
     <message>
         <source>Upload</source>
-        <translation>Отправлено (↑)</translation>
+        <translation>Отдача</translation>
     </message>
     <message>
         <source>Total</source>
@@ -7224,7 +7197,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Filter logs</source>
-        <translation>Фильтр логов</translation>
+        <translation>Фильтр журнала</translation>
     </message>
     <message>
         <source>Match case</source>
@@ -7233,6 +7206,22 @@ Improves hole-punching reliability. Requires IPv4.</source>
     <message>
         <source>Regular expression</source>
         <translation>Регулярное выражение</translation>
+    </message>
+    <message>
+        <source>All levels</source>
+        <translation>Все уровни</translation>
+    </message>
+    <message>
+        <source>Warn and above</source>
+        <translation>Warn и выше</translation>
+    </message>
+    <message>
+        <source>Errors only</source>
+        <translation>Только ошибки</translation>
+    </message>
+    <message>
+        <source>Now</source>
+        <translation>Сейчас</translation>
     </message>
     <message>
         <source>Remove Duplicates</source>
@@ -7833,10 +7822,6 @@ URL: %2</translation>
         <translation>Новые записи не выводятся, пока лог прокручен вверх</translation>
     </message>
     <message>
-        <source>Disable Filter</source>
-        <translation>Выключить фильтр</translation>
-    </message>
-    <message>
         <source>Jump to latest</source>
         <translation>К последним записям</translation>
     </message>
@@ -8121,10 +8106,6 @@ Error: %1</source>
         <translation>Удалить %1 неверных записей?</translation>
     </message>
     <message>
-        <source>Enable Filter</source>
-        <translation>Включить фильтр</translation>
-    </message>
-    <message>
         <source>Include:</source>
         <translation>Показывать:</translation>
     </message>
@@ -8195,6 +8176,14 @@ Error: %1</source>
     <message>
         <source>Config files (*.json *.conf *.txt *.yaml *.yml *.ini *.ovpn *.xml)</source>
         <translation>Файлы конфигурации (*.json *.conf *.txt *.yaml *.yml *.ini *.ovpn *.xml)</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>Загрузка</translation>
+    </message>
+    <message>
+        <source>Upload</source>
+        <translation>Отдача</translation>
     </message>
     <message>
         <source>No insecure configs found.</source>
@@ -8341,10 +8330,6 @@ Please try again.</source>
         <translation>Скопировано</translation>
     </message>
     <message>
-        <source>Traffic Graph</source>
-        <translation>График</translation>
-    </message>
-    <message>
         <source>Speedtest Current</source>
         <translation>Тест скорости текущего профиля</translation>
     </message>
@@ -8477,6 +8462,22 @@ Name: %1</source>
     <message>
         <source>IPC error</source>
         <translation>Ошибка IPC</translation>
+    </message>
+    <message>
+        <source>Filter by process, address or outbound</source>
+        <translation>Фильтр по процессу, адресу или исходящему</translation>
+    </message>
+    <message>
+        <source>By process</source>
+        <translation>По процессам</translation>
+    </message>
+    <message>
+        <source>List</source>
+        <translation>Список</translation>
+    </message>
+    <message>
+        <source>Active: %1</source>
+        <translation>Активно: %1</translation>
     </message>
     <message>
         <source>Collapse All</source>
@@ -10837,20 +10838,14 @@ Remove that endpoint from this routing profile as well?</source>
 <context>
     <name>RuntimeStatsWidget</name>
     <message>
-        <source>%1 active   ·   %2 TCP   ·   %3 UDP</source>
-        <translation>Активных: %1   ·   TCP: %2   ·   UDP: %3</translation>
-    </message>
-    <message>
-        <source>No active config</source>
-        <translation>Нет активного подключения</translation>
-    </message>
-    <message>
         <source>CPU</source>
         <translation>ЦП</translation>
     </message>
     <message>
-        <source>RAM</source>
-        <translation>ОЗУ</translation>
+        <source>Poros: %1
+Core: %2</source>
+        <translation>Poros: %1
+Ядро: %2</translation>
     </message>
     <message>
         <source>Disabled</source>
@@ -10867,6 +10862,14 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>Off</source>
         <translation>Выкл.</translation>
+    </message>
+    <message>
+        <source>Offline</source>
+        <translation>Нет сети</translation>
+    </message>
+    <message>
+        <source>Online</source>
+        <translation>В сети</translation>
     </message>
     <message>
         <source>Details</source>
@@ -10889,28 +10892,44 @@ Remove that endpoint from this routing profile as well?</source>
         <translation>Ядро</translation>
     </message>
     <message>
+        <source>Memory</source>
+        <translation>Память</translation>
+    </message>
+    <message>
+        <source>Configuration</source>
+        <translation>Конфигурация</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>Профиль</translation>
+    </message>
+    <message>
         <source>Network</source>
         <translation>Сеть</translation>
     </message>
     <message>
-        <source>Connections</source>
-        <translation>Подключения</translation>
+        <source>Through proxy</source>
+        <translation>Через прокси</translation>
     </message>
     <message>
-        <source>Proxy</source>
-        <translation>Прокси</translation>
+        <source>Endpoints</source>
+        <translation>Конечные точки</translation>
+    </message>
+    <message>
+        <source>Speed</source>
+        <translation>Скорость</translation>
+    </message>
+    <message>
+        <source>Next subscription update</source>
+        <translation>Следующее обновление подписок</translation>
+    </message>
+    <message>
+        <source>Next route update</source>
+        <translation>Следующее обновление маршрутов</translation>
     </message>
     <message>
         <source>Direct</source>
         <translation>Напрямую</translation>
-    </message>
-    <message>
-        <source>Next sub update</source>
-        <translation>След. обновл. подписки</translation>
-    </message>
-    <message>
-        <source>Next remote route update</source>
-        <translation>След. обновл. удаленной маршрутизации</translation>
     </message>
     <message>
         <source>System</source>
@@ -10922,27 +10941,19 @@ Remove that endpoint from this routing profile as well?</source>
     </message>
     <message>
         <source>Uptime</source>
-        <translation>Время работы</translation>
-    </message>
-    <message>
-        <source>Running Config</source>
-        <translation>Текущая конфигурация</translation>
+        <translation>Работает</translation>
     </message>
     <message>
         <source>Country</source>
         <translation>Страна</translation>
     </message>
     <message>
-        <source>Config</source>
-        <translation>Конфигурация</translation>
-    </message>
-    <message>
         <source>Out IP</source>
-        <translation>Выходной IP</translation>
+        <translation>Внешний IP</translation>
     </message>
     <message>
         <source>Ping</source>
-        <translation>Задержка</translation>
+        <translation>Ping</translation>
     </message>
     <message>
         <source>Endpoint</source>
@@ -11613,21 +11624,6 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>Maximize</source>
         <translation>Развернуть</translation>
-    </message>
-</context>
-<context>
-    <name>TrafficChartWidget</name>
-    <message>
-        <source>Download</source>
-        <translation>Получено (↓)</translation>
-    </message>
-    <message>
-        <source>Upload</source>
-        <translation>Отправлено (↑)</translation>
-    </message>
-    <message>
-        <source>No traffic recorded for this period</source>
-        <translation>Нет данных о трафике за этот период</translation>
     </message>
 </context>
 <context>

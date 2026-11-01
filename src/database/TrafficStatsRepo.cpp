@@ -11,13 +11,6 @@ namespace Configs {
         createTables();
     }
 
-    std::string TrafficStatsRepo::bucketExpr(long long bucketSecs, long long utcOffsetSecs) {
-        const std::string b = std::to_string(bucketSecs);
-        const std::string off = std::to_string(utcOffsetSecs);
-        // floor((bucket_start + off) / b) * b - off; the parens around off keep a negative (west-of-UTC) offset valid.
-        return "((bucket_start + (" + off + ")) / " + b + ") * " + b + " - (" + off + ")";
-    }
-
     void TrafficStatsRepo::createTables() {
         write("createTables", [&] {
             db.execThrow(R"(
@@ -203,57 +196,6 @@ namespace Configs {
                 u.up = q->getColumn(1).getInt64();
                 u.down = q->getColumn(2).getInt64();
                 out.append(u);
-            }
-        });
-        return out;
-    }
-
-    QList<TrafficSeriesPoint> TrafficStatsRepo::QueryConfigSeries(long long fromSecs, long long toSecs, long long bucketSecs, long long utcOffsetSecs) {
-        QList<TrafficSeriesPoint> out;
-        if (bucketSecs <= 0) return out;
-        // bucketSecs/utcOffsetSecs are internal numbers, safe to inline; shifting before the floor-divide snaps each bucket to the local calendar boundary, subtracting back returns that boundary's epoch.
-        const std::string bkt = bucketExpr(bucketSecs, utcOffsetSecs);
-        read("QueryConfigSeries", [&] {
-            auto q = db.queryThrow(
-                "SELECT " + bkt + " AS bkt, SUM(u), SUM(d) FROM ("
-                "  SELECT bucket_start, up AS u, down AS d FROM config_traffic_minute "
-                "    WHERE bucket_start >= ? AND bucket_start < ? "
-                "  UNION ALL "
-                "  SELECT bucket_start, up AS u, down AS d FROM config_traffic_hour "
-                "    WHERE bucket_start >= ? AND bucket_start < ? "
-                ") GROUP BY bkt ORDER BY bkt",
-                fromSecs, toSecs, fromSecs, toSecs);
-            while (q->executeStep()) {
-                TrafficSeriesPoint p;
-                p.bucket_start = q->getColumn(0).getInt64();
-                p.up = q->getColumn(1).getInt64();
-                p.down = q->getColumn(2).getInt64();
-                out.append(p);
-            }
-        });
-        return out;
-    }
-
-    QList<TrafficSeriesPoint> TrafficStatsRepo::QueryAppSeries(long long fromSecs, long long toSecs, long long bucketSecs, long long utcOffsetSecs) {
-        QList<TrafficSeriesPoint> out;
-        if (bucketSecs <= 0) return out;
-        const std::string bkt = bucketExpr(bucketSecs, utcOffsetSecs);
-        read("QueryAppSeries", [&] {
-            auto q = db.queryThrow(
-                "SELECT " + bkt + " AS bkt, SUM(u), SUM(d) FROM ("
-                "  SELECT bucket_start, up AS u, down AS d FROM app_traffic_minute "
-                "    WHERE bucket_start >= ? AND bucket_start < ? "
-                "  UNION ALL "
-                "  SELECT bucket_start, up AS u, down AS d FROM app_traffic_hour "
-                "    WHERE bucket_start >= ? AND bucket_start < ? "
-                ") GROUP BY bkt ORDER BY bkt",
-                fromSecs, toSecs, fromSecs, toSecs);
-            while (q->executeStep()) {
-                TrafficSeriesPoint p;
-                p.bucket_start = q->getColumn(0).getInt64();
-                p.up = q->getColumn(1).getInt64();
-                p.down = q->getColumn(2).getInt64();
-                out.append(p);
             }
         });
         return out;

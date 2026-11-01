@@ -37,6 +37,7 @@ struct ConnectionLeafItem : public TreeItem {
 
 struct ProcessGroupItem : public TreeItem {
     bool isProcess() const override { return true; }
+    QString key;         // the process, or the process and the leaf in a flat list
     QString processName; // empty when the core could not attribute the sockets to a process
     std::vector<std::unique_ptr<ConnectionLeafItem>> children;
     long long totalUpload = 0;
@@ -90,6 +91,9 @@ public:
 
     void setConnections(const QList<Stats::ConnectionMetadata> &connections, Stats::ConnectionSort sort, bool ascending);
 
+    // A flat list gives every leaf a top-level row of its own. Empty until the next setConnections.
+    void setFlat(bool flat);
+
     static QString displayProcessName(const QString &processName);
     // The menu's "Matched: <entries> → <proxy|direct|server>": the rule's entries that matched, else the whole rule,
     // else "final", shortened to maxGraphemes.
@@ -105,6 +109,8 @@ public:
 
 private:
     QModelIndex indexOf(ConnectionsTree::TreeItem *item, int column) const;
+    QVariant leafData(const ConnectionsTree::ConnectionLeafItem *leaf, int column, int role) const;
 
     std::vector<std::unique_ptr<ConnectionsTree::ProcessGroupItem>> m_groups;
+    bool m_flat = false;
 };

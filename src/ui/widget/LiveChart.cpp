@@ -214,24 +214,6 @@ LiveChartAxis LiveChartAxis::rateBits() {
                              {QStringLiteral("1000 Kbps"), QStringLiteral("8.88 Mbps")});
 }
 
-LiveChartAxis LiveChartAxis::bytes() {
-    return liveChartUnitAxis(1024, {QStringLiteral("B"), QStringLiteral("KiB"), QStringLiteral("MiB"), QStringLiteral("GiB")}, 1, 1024 * 1024,
-                             {QStringLiteral("1000 KiB"), QStringLiteral("888 MiB")});
-}
-
-LiveChartAxis LiveChartAxis::percent() {
-    LiveChartAxis axis;
-    axis.widest = {QStringLiteral("88.8%"), QStringLiteral("100%")};
-    axis.format = [](double v) { return QString::number(v, 'f', v < 10 ? 1 : 0) + QLatin1Char('%'); };
-    axis.scale = [](double maxValue) {
-        const double v = std::max(maxValue, 5.0);
-        const double step = liveChartNiceStep(v / 4);
-        return LiveChartScale{std::min(100.0, std::ceil(v / step - 1e-9) * step), step,
-                              [](double g) { return liveChartTrimmed(g, 1) + QLatin1Char('%'); }};
-    };
-    return axis;
-}
-
 LiveChartOptions LiveChartOptions::trafficGraph() {
     LiveChartOptions o;
     o.columns = {
