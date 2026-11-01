@@ -18,6 +18,7 @@
 #include "include/engine/services/GroupService.h"
 #include "include/engine/services/ImportService.h"
 #include "include/ui/advanced/AdvancedPage.h"
+#include "include/ui/advanced/SettingsSection.h"
 #include "include/ui/onboarding/OnboardingPage.h"
 #include "include/ui/simple/PresetEditor.h"
 #include "include/ui/simple/ServerTreeModel.h"
@@ -92,6 +93,16 @@ void MainWindow::runUiTour(const QString &dir) {
         {"routing", trigger(ui->menu_routing_settings)},
         {"otp", trigger(ui->menu_otp_manager)},
         {"basic-settings", trigger(ui->menu_basic_settings)},
+        {"settings-adv-inbound", [this] { m_settingsSection->showDialog(m_basicSettings, 1); }},
+        {"settings-adv-tests", [this] { m_settingsSection->showDialog(m_basicSettings, 2); }},
+        {"settings-adv-subscriptions", [this] { m_settingsSection->showDialog(m_basicSettings, 3); }},
+        {"settings-adv-appearance", [this] { m_settingsSection->showDialog(m_basicSettings, 4); }},
+        {"settings-adv-log", [this] { m_settingsSection->showDialog(m_basicSettings, 5); }},
+        {"settings-adv-core", [this] { m_settingsSection->showDialog(m_basicSettings, 6); }},
+        {"settings-adv-network", [this] { m_settingsSection->showDialog(m_basicSettings, 7); }},
+        {"settings-adv-security", [this] { m_settingsSection->showDialog(m_basicSettings, 8); }},
+        {"settings-adv-backups", [this] { m_settingsSection->showDialog(m_basicSettings, 9); }},
+        {"settings-adv-diagnostics", [this] { m_settingsSection->showDialog(m_basicSettings, 10); }},
         {"vpn-settings", trigger(ui->menu_vpn_settings)},
         {"preset-settings", trigger(ui->menu_preset_settings)},
         {"integration", trigger(ui->menu_integration_settings)},

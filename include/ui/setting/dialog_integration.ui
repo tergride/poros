@@ -14,147 +14,228 @@
    <string>Integration Settings</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <property name="spacing">
+    <number>0</number>
+   </property>
    <item>
-    <widget class="QTabWidget" name="tabWidget">
-     <property name="currentIndex">
-      <number>0</number>
+    <layout class="QVBoxLayout" name="column_hotkeys" stretch="0,0,1">
+     <property name="leftMargin">
+      <number>28</number>
      </property>
-     <widget class="QWidget" name="tab">
-      <attribute name="title">
-       <string>Global Hotkeys</string>
-      </attribute>
-      <layout class="QFormLayout" name="formLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Trigger main window</string>
-         </property>
-         <property name="buddy">
-          <cstring>show_mainwindow</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QtExtKeySequenceEdit" name="show_mainwindow"/>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Show groups</string>
-         </property>
-         <property name="buddy">
-          <cstring>show_groups</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QtExtKeySequenceEdit" name="show_groups"/>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Show routes</string>
-         </property>
-         <property name="buddy">
-          <cstring>show_routes</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QtExtKeySequenceEdit" name="show_routes"/>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Proxy mode</string>
-         </property>
-         <property name="buddy">
-          <cstring>system_proxy</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QtExtKeySequenceEdit" name="system_proxy"/>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="toggle_proxy_l">
-         <property name="text">
-          <string>Toggle System Proxy</string>
-         </property>
-         <property name="buddy">
-          <cstring>toggle_proxy</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QtExtKeySequenceEdit" name="toggle_proxy"/>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="toggle_connection_l">
-         <property name="text">
-          <string>Start/Stop Profile</string>
-         </property>
-         <property name="buddy">
-          <cstring>toggle_connection</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QtExtKeySequenceEdit" name="toggle_connection"/>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="toggle_tun_l">
-         <property name="text">
-          <string>Toggle Tun Mode</string>
-         </property>
-         <property name="buddy">
-          <cstring>toggle_tun</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QtExtKeySequenceEdit" name="toggle_tun"/>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="tab_2">
-      <attribute name="title">
-       <string>Shortcuts</string>
-      </attribute>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QScrollArea" name="shortcut_area">
-         <property name="horizontalScrollBarPolicy">
-          <enum>Qt::ScrollBarPolicy::ScrollBarAsNeeded</enum>
-         </property>
-         <property name="widgetResizable">
-          <bool>true</bool>
-         </property>
-         <widget class="QWidget" name="scrollAreaWidgetContents">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>0</y>
-            <width>59</width>
-            <height>16</height>
-           </rect>
+     <property name="topMargin">
+      <number>22</number>
+     </property>
+     <property name="rightMargin">
+      <number>28</number>
+     </property>
+     <property name="bottomMargin">
+      <number>16</number>
+     </property>
+     <property name="spacing">
+      <number>12</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="title_hotkeys">
+       <property name="text">
+        <string>Hotkeys</string>
+       </property>
+       <property name="role" stdset="false">
+        <string notr="true">sectionTitle</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="global_box">
+       <property name="title">
+        <string>Global</string>
+       </property>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Trigger main window</string>
+          </property>
+          <property name="buddy">
+           <cstring>show_mainwindow</cstring>
           </property>
          </widget>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QtExtKeySequenceEdit" name="show_mainwindow" />
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Show groups</string>
+          </property>
+          <property name="buddy">
+           <cstring>show_groups</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QtExtKeySequenceEdit" name="show_groups" />
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Show routes</string>
+          </property>
+          <property name="buddy">
+           <cstring>show_routes</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QtExtKeySequenceEdit" name="show_routes" />
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Proxy mode</string>
+          </property>
+          <property name="buddy">
+           <cstring>system_proxy</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QtExtKeySequenceEdit" name="system_proxy" />
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="toggle_proxy_l">
+          <property name="text">
+           <string>Toggle System Proxy</string>
+          </property>
+          <property name="buddy">
+           <cstring>toggle_proxy</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QtExtKeySequenceEdit" name="toggle_proxy" />
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="toggle_connection_l">
+          <property name="text">
+           <string>Start/Stop Profile</string>
+          </property>
+          <property name="buddy">
+           <cstring>toggle_connection</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QtExtKeySequenceEdit" name="toggle_connection" />
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="toggle_tun_l">
+          <property name="text">
+           <string>Toggle Tun Mode</string>
+          </property>
+          <property name="buddy">
+           <cstring>toggle_tun</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QtExtKeySequenceEdit" name="toggle_tun" />
+        </item>
+        <property name="leftMargin">
+         <number>16</number>
+        </property>
+        <property name="topMargin">
+         <number>6</number>
+        </property>
+        <property name="rightMargin">
+         <number>16</number>
+        </property>
+        <property name="bottomMargin">
+         <number>14</number>
+        </property>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="menu_box">
+       <property name="title">
+        <string>Menu shortcuts</string>
+       </property>
+       <layout class="QVBoxLayout" name="menu_layout">
+        <property name="leftMargin">
+         <number>16</number>
+        </property>
+        <property name="topMargin">
+         <number>6</number>
+        </property>
+        <property name="rightMargin">
+         <number>16</number>
+        </property>
+        <property name="bottomMargin">
+         <number>14</number>
+        </property>
+        <item>
+         <widget class="QScrollArea" name="shortcut_area">
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarPolicy::ScrollBarAsNeeded</enum>
+          </property>
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>59</width>
+             <height>16</height>
+            </rect>
+           </property>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="focusPolicy">
-      <enum>Qt::FocusPolicy::StrongFocus</enum>
+    <layout class="QVBoxLayout" name="outer">
+     <property name="leftMargin">
+      <number>28</number>
      </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     <property name="topMargin">
+      <number>0</number>
      </property>
-    </widget>
+     <property name="rightMargin">
+      <number>28</number>
+     </property>
+     <property name="bottomMargin">
+      <number>12</number>
+     </property>
+     <item>
+      <widget class="QDialogButtonBox" name="buttonBox">
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
@@ -165,10 +246,7 @@
    <header>3rdparty/QtExtKeySequenceEdit.h</header>
   </customwidget>
  </customwidgets>
- <tabstops>
-  <tabstop>buttonBox</tabstop>
- </tabstops>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>buttonBox</sender>

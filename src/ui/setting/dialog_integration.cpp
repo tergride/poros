@@ -45,7 +45,7 @@ DialogIntegration::DialogIntegration(QWidget *parent, const QList<QAction*>& act
 
     GetMainWindow()->RegisterHotkey(true);
     if (!GetMainWindow()->IsGlobalHotkeySupported()) {
-        auto note = new QLabel(QCoreApplication::translate("GlobalHotkeys", "Global hotkeys are not supported in this desktop session."), ui->tab);
+        auto note = new QLabel(QCoreApplication::translate("GlobalHotkeys", "Global hotkeys are not supported in this desktop session."), ui->global_box);
         note->setWordWrap(true);
         ui->formLayout->insertRow(0, note);
     }

@@ -6,12 +6,15 @@
 #include "include/global/DeviceDetailsHelper.hpp"
 #include "include/global/ExitLookup.hpp"
 #include "include/global/Validation.hpp"
+#include "include/engine/EngineEvents.h"
 #include "include/database/entities/Group.h"
 #include "include/engine/services/AssetUpdates.h"
 #include "include/engine/services/BackupArchive.h"
 #include "include/engine/services/ReleaseUpdates.h"
+#include "include/sys/AutoRun.hpp"
 #include "include/ui/utils/ValidationForm.h"
 
+#include <QDesktopServices>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -139,6 +142,18 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
 
     D_LOAD_STRING(inbound_address)
     D_LOAD_INT(inbound_socks_port)
+    const auto syncAllowLan = [this] { ui->allow_lan->setChecked(QStringList{"::", "0.0.0.0"}.contains(ui->inbound_address->text().trimmed())); };
+    syncAllowLan();
+    connect(ui->inbound_address, &QLineEdit::textChanged, this, syncAllowLan);
+    connect(ui->allow_lan, &QCheckBox::clicked, this, [this](bool on) { ui->inbound_address->setText(on ? QStringLiteral("::") : QStringLiteral("127.0.0.1")); });
+    ui->remember_last->setChecked(Configs::dataManager->settingsRepo->remember_enable);
+    ui->start_with_windows->setChecked(AutoRun_IsEnabled());
+    connect(ui->start_with_windows, &QCheckBox::clicked, this, [this](bool on) {
+        if (QString error; !AutoRun_SetEnabled(on, &error)) QMessageBox::warning(this, ui->start_with_windows->text(), error);
+        ui->start_with_windows->setChecked(AutoRun_IsEnabled());
+        Engine::EngineEvents::SettingsChanged({QStringLiteral("auto_run")});
+    });
+    connect(ui->diag_open_folder, &QPushButton::clicked, this, [] { QDesktopServices::openUrl(QUrl::fromLocalFile(QDir::currentPath() + "/config")); });
     ui->random_listen_port->setChecked(Configs::dataManager->settingsRepo->random_inbound_port);
     D_LOAD_INT(test_concurrent)
     D_LOAD_STRING(test_latency_url)
@@ -402,6 +417,7 @@ void DialogBasicSettings::accept() {
     D_SAVE_BOOL(exit_country_lookup)
     Configs::dataManager->settingsRepo->exit_lookup_provider = ui->exit_lookup_provider->currentData().toString();
     D_SAVE_BOOL(disable_tray)
+    Configs::dataManager->settingsRepo->remember_enable = ui->remember_last->isChecked();
     Configs::dataManager->settingsRepo->speed_test_mode = ui->speedtest_mode->currentIndex();
     Configs::dataManager->settingsRepo->simple_dl_url = ui->simple_down_url->text().trimmed();
     Configs::dataManager->settingsRepo->url_test_timeout_ms = ui->url_timeout->text().trimmed().toInt();

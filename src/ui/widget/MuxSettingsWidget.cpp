@@ -24,13 +24,18 @@ namespace {
 MuxSettingsWidget::MuxSettingsWidget(QWidget *parent) : QWidget(parent) {
     auto *grid = new QGridLayout(this);
     grid->setContentsMargins(0, 0, 0, 0);
+    grid->setHorizontalSpacing(16);
+    grid->setVerticalSpacing(6);
+    grid->setColumnStretch(0, 1);
+    grid->setColumnStretch(1, 1);
     // Named so the settings search can index and reveal them.
     const auto addField = [this, grid](int row, int column, const QString &name, const QString &text, QWidget *field) {
         auto *label = new QLabel(text, this);
         label->setObjectName(name);
         label->setBuddy(field);
+        label->setProperty("role", QStringLiteral("field"));
         grid->addWidget(label, row, column);
-        grid->addWidget(field, row, column + 1);
+        grid->addWidget(field, row + 1, column);
         return label;
     };
     const auto numberEdit = [this] {
@@ -44,31 +49,32 @@ MuxSettingsWidget::MuxSettingsWidget(QWidget *parent) : QWidget(parent) {
     addField(0, 0, "mux_protocol_l", tr("Protocol"), m_protocol);
     m_mode = new QComboBox(this);
     m_mode->addItems({tr("Max Streams"), tr("Max Connections")});
-    m_modeLabel = addField(0, 2, "mux_mode_l", tr("Mode"), m_mode);
+    m_modeLabel = addField(0, 1, "mux_mode_l", tr("Mode"), m_mode);
     m_modeLabel->setToolTip(tr("<html><head/><body><p><b>Max Streams</b>: reuse a connection until it carries this many streams, then open another.</p>"
                                "<p><b>Max Connections</b>: keep at most this many connections, and open a new one only while the least busy "
                                "connection already carries Min Streams streams.</p></body></html>"));
 
     m_maxStreams = numberEdit();
-    m_maxStreamsLabel = addField(1, 0, "mux_max_streams_l", tr("Max Streams"), m_maxStreams);
+    m_maxStreamsLabel = addField(2, 0, "mux_max_streams_l", tr("Max Streams"), m_maxStreams);
     m_maxConnections = numberEdit();
-    m_maxConnectionsLabel = addField(2, 0, "mux_max_connections_l", tr("Max Connections"), m_maxConnections);
+    m_maxConnectionsLabel = addField(4, 0, "mux_max_connections_l", tr("Max Connections"), m_maxConnections);
     m_minStreams = numberEdit();
-    m_minStreamsLabel = addField(2, 2, "mux_min_streams_l", tr("Min Streams"), m_minStreams);
+    m_minStreamsLabel = addField(4, 1, "mux_min_streams_l", tr("Min Streams"), m_minStreams);
 
     m_padding = new QCheckBox(tr("Padding"), this);
     m_padding->setObjectName("mux_padding");
-    grid->addWidget(m_padding, 3, 0, 1, 4);
+    m_padding->setProperty("role", QStringLiteral("switch"));
+    grid->addWidget(m_padding, 6, 0);
     m_brutal = new QCheckBox(tr("TCP Brutal"), this);
     m_brutal->setObjectName("mux_brutal");
     m_brutal->setToolTip(tr("<html><head/><body><p>TCP Brutal congestion control at the speeds below; the server must support it. "
                             "Every stream then shares one connection, so the mode is ignored.</p></body></html>"));
-    grid->addWidget(m_brutal, 4, 0, 1, 4);
+    m_brutal->setProperty("role", QStringLiteral("switch"));
+    grid->addWidget(m_brutal, 6, 1);
     m_brutalUp = numberEdit();
-    m_brutalUpLabel = addField(5, 0, "mux_brutal_up_l", tr("Upload (Mb/s)"), m_brutalUp);
+    m_brutalUpLabel = addField(7, 0, "mux_brutal_up_l", tr("Upload (Mb/s)"), m_brutalUp);
     m_brutalDown = numberEdit();
-    m_brutalDownLabel = addField(5, 2, "mux_brutal_down_l", tr("Download (Mb/s)"), m_brutalDown);
-    grid->setColumnStretch(4, 1);
+    m_brutalDownLabel = addField(7, 1, "mux_brutal_down_l", tr("Download (Mb/s)"), m_brutalDown);
 
     connect(m_mode, &QComboBox::currentIndexChanged, this, &MuxSettingsWidget::updateControls);
     connect(m_brutal, &QCheckBox::toggled, this, &MuxSettingsWidget::updateControls);

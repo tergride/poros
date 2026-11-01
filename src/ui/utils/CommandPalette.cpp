@@ -276,6 +276,11 @@ void CommandPalette::present(const Blocker &blocker) {
     edit->setFocus(Qt::OtherFocusReason);
 }
 
+void CommandPalette::setQuery(const QString &text) {
+    edit->setText(text);
+    edit->setFocus(Qt::OtherFocusReason);
+}
+
 void CommandPalette::refreshCommands() {
     // Each menu's own aboutToShow handler brings its actions' enabled and checked state up to date.
     QSet<QMenu *> refreshed;

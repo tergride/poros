@@ -466,10 +466,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Основные настройки</translation>
     </message>
     <message>
-        <source>Common</source>
-        <translation>Общие</translation>
-    </message>
-    <message>
         <source>Listen Address</source>
         <translation>Прослушиваемый адрес</translation>
     </message>
@@ -494,10 +490,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Предотвращает сворачивание приложения в системный трей при закрытии окна. Вместо этого приложение завершит работу</translation>
     </message>
     <message>
-        <source>Style</source>
-        <translation>Интерфейс</translation>
-    </message>
-    <message>
         <source>Connection statistics</source>
         <translation>Статистика подключений</translation>
     </message>
@@ -508,10 +500,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
     <message>
         <source>Max log lines</source>
         <translation>Макс. кол-во строк в логах</translation>
-    </message>
-    <message>
-        <source>Subscription</source>
-        <translation>Подписка</translation>
     </message>
     <message>
         <source>User Agent</source>
@@ -562,10 +550,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Через какой outbound отправляется NTP-запрос&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <source>Xray Core</source>
-        <translation>Ядро Xray</translation>
-    </message>
-    <message>
         <source>poros:// links</source>
         <translation>Ссылки poros://</translation>
     </message>
@@ -592,10 +576,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;In minutes&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;В минутах&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>Xray Geo Assets</source>
-        <translation>Geo-файлы Xray</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;URL for geoip.dat, downloaded when a full Xray config&apos;s routing needs geoip: rules.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -626,10 +606,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Загрузить файл geosite.dat прямо сейчас по ссылке слева</translation>
     </message>
     <message>
-        <source>Backup and Restore</source>
-        <translation>Резервное копирование и восстановление</translation>
-    </message>
-    <message>
         <source>Create a portable backup file. Choose which parts to include:</source>
         <translation>Создайте переносимый файл резервной копии. Выберите, какие разделы включить:</translation>
     </message>
@@ -658,6 +634,10 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Безопасность</translation>
     </message>
     <message>
+        <source>Protection</source>
+        <translation>Защита</translation>
+    </message>
+    <message>
         <source>While Poros is running, block all traffic that does not go through Poros, including when no profile is running.
 The local network stays reachable unless Private Range Bypass is turned off in Tun Settings.</source>
         <translation>Пока Poros запущен, блокировать весь трафик, идущий не через Poros, даже если ни один профиль не запущен.
@@ -670,6 +650,10 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>Skip TLS certificate authentication by default (allowInsecure)</source>
         <translation>Не проверять TLS-сертификаты по умолчанию (allowInsecure)</translation>
+    </message>
+    <message>
+        <source>Rights</source>
+        <translation>Права</translation>
     </message>
     <message>
         <source>Always Start as Standard User</source>
@@ -698,14 +682,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>Restart Proxy On System Proxy Disable</source>
         <translation>Перезапускать прокси при отключении системного прокси</translation>
-    </message>
-    <message>
-        <source>Inbound Settings</source>
-        <translation>Настройки inbound</translation>
-    </message>
-    <message>
-        <source>Testing</source>
-        <translation>Проверка</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Fetched &lt;span style=&quot; font-weight:600;&quot;&gt;without&lt;/span&gt; any proxy, so features that must tell a dead internet connection apart from dead servers — such as the auto selector — can check the connection itself, and notice the moment it comes back.&lt;/p&gt;&lt;p&gt;Only put a URL here that is reachable &lt;span style=&quot; font-weight:600;&quot;&gt;directly&lt;/span&gt; on your network. Leave it empty to rely on the operating system&apos;s network state instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -750,10 +726,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>Uninstall</source>
         <translation>Удалить</translation>
-    </message>
-    <message>
-        <source>Logging</source>
-        <translation>Логирование</translation>
     </message>
     <message>
         <source>Sing-box Log level</source>
@@ -848,10 +820,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
         <translation>Автообновление профилей маршрутизации</translation>
     </message>
     <message>
-        <source>Miscellaneous</source>
-        <translation>Прочее</translation>
-    </message>
-    <message>
         <source>Looks for a new version at launch and every four hours, and downloads it. When off, Poros updates only when you check by hand.</source>
         <translation>Poros ищет новую версию при запуске и раз в четыре часа и сразу скачивает её. Если выключить, обновления будут только по ручной проверке.</translation>
     </message>
@@ -862,6 +830,102 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Might Improve Ping and Performance&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Может улучшить пинг и производительность&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <source>Startup</source>
+        <translation>Запуск</translation>
+    </message>
+    <message>
+        <source>On launch</source>
+        <translation>При запуске</translation>
+    </message>
+    <message>
+        <source>Start with Windows</source>
+        <translation>Запускать вместе с Windows</translation>
+    </message>
+    <message>
+        <source>Connect to the last profile</source>
+        <translation>Подключаться к последнему профилю</translation>
+    </message>
+    <message>
+        <source>Inbound</source>
+        <translation>Входящие</translation>
+    </message>
+    <message>
+        <source>Local port</source>
+        <translation>Локальный порт</translation>
+    </message>
+    <message>
+        <source>Let other devices connect</source>
+        <translation>Разрешить подключаться другим устройствам</translation>
+    </message>
+    <message>
+        <source>Authorization</source>
+        <translation>Авторизация</translation>
+    </message>
+    <message>
+        <source>Tests</source>
+        <translation>Тесты</translation>
+    </message>
+    <message>
+        <source>Latency</source>
+        <translation>Задержка</translation>
+    </message>
+    <message>
+        <source>Speed</source>
+        <translation>Скорость</translation>
+    </message>
+    <message>
+        <source>Exit country</source>
+        <translation>Страна выхода</translation>
+    </message>
+    <message>
+        <source>Subscriptions</source>
+        <translation>Подписки</translation>
+    </message>
+    <message>
+        <source>Auto update</source>
+        <translation>Автообновление</translation>
+    </message>
+    <message>
+        <source>Request</source>
+        <translation>Запрос</translation>
+    </message>
+    <message>
+        <source>Behaviour</source>
+        <translation>Поведение</translation>
+    </message>
+    <message>
+        <source>Appearance</source>
+        <translation>Внешний вид</translation>
+    </message>
+    <message>
+        <source>Interface</source>
+        <translation>Интерфейс</translation>
+    </message>
+    <message>
+        <source>Log</source>
+        <translation>Журнал</translation>
+    </message>
+    <message>
+        <source>Levels</source>
+        <translation>Уровни</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>Статистика</translation>
+    </message>
+    <message>
+        <source>Xray</source>
+        <translation>Xray</translation>
+    </message>
+    <message>
+        <source>Network</source>
+        <translation>Сеть</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>Общее</translation>
     </message>
     <message>
         <source>Disable Traffic Stats</source>
@@ -890,6 +954,18 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>sync interval</source>
         <translation>Интервал синхронизации</translation>
+    </message>
+    <message>
+        <source>Diagnostics</source>
+        <translation>Диагностика</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Сведения</translation>
+    </message>
+    <message>
+        <source>Open config folder</source>
+        <translation>Открыть папку конфигурации</translation>
     </message>
     <message>
         <source>Listen Port</source>
@@ -948,10 +1024,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
         <translation>Случайный порт</translation>
     </message>
     <message>
-        <source>Network Settings</source>
-        <translation>Настройки сети</translation>
-    </message>
-    <message>
         <source>Only Country</source>
         <translation>Только проверка страны</translation>
     </message>
@@ -966,6 +1038,10 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout for URLtest in ms&lt;br/&gt;Note that muxed connections take a much longer time for their initial request, and setting this value too low will cause the test to falsely report that the config is not working&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Таймаут теста задержки в мс&lt;br/&gt;Учтите, что при мультиплексировании первый запрос выполняется намного дольше, поэтому при слишком малом значении тест может ошибочно показать, что конфигурация не работает&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <source>Backups</source>
+        <translation>Резервные копии</translation>
     </message>
     <message>
         <source>Create Backup</source>
@@ -2524,8 +2600,12 @@ Poros will restart to complete the restore.</source>
         <translation>Настройки интеграции</translation>
     </message>
     <message>
-        <source>Global Hotkeys</source>
-        <translation>Глобальные горячие клавиши</translation>
+        <source>Hotkeys</source>
+        <translation>Горячие клавиши</translation>
+    </message>
+    <message>
+        <source>Global</source>
+        <translation>Глобальные</translation>
     </message>
     <message>
         <source>Trigger main window</source>
@@ -2548,8 +2628,8 @@ Poros will restart to complete the restore.</source>
         <translation>Вкл./выкл. режим TUN</translation>
     </message>
     <message>
-        <source>Shortcuts</source>
-        <translation>Сочетания клавиш</translation>
+        <source>Menu shortcuts</source>
+        <translation>Сочетания меню</translation>
     </message>
 </context>
 <context>
@@ -3374,10 +3454,6 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>Предустановленные настройки</translation>
     </message>
     <message>
-        <source>Multiplex</source>
-        <translation>Мультиплексирование</translation>
-    </message>
-    <message>
         <source>Concurrency</source>
         <translation>Кол-во потоков</translation>
     </message>
@@ -3412,6 +3488,18 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>Sleep</source>
         <translation>Пауза</translation>
+    </message>
+    <message>
+        <source>Protocols and bypass</source>
+        <translation>Протоколы и обход</translation>
+    </message>
+    <message>
+        <source>Multiplex: sing-box</source>
+        <translation>Мультиплекс: sing-box</translation>
+    </message>
+    <message>
+        <source>Multiplex: Xray</source>
+        <translation>Мультиплекс: Xray</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Custom implementation only: milliseconds to sleep between fragment bursts, as a range min-max (e.g. 2-5).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -3460,10 +3548,6 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Spoof profiles whose TLS Spoof setting is left on &amp;quot;Keep Default&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Применять подмену TLS к профилям, у которых параметр «Подмена TLS» оставлен в значении &amp;quot;По умолчанию&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>HTTP/2 &amp;&amp; QUIC</source>
-        <translation>HTTP/2 &amp;&amp; QUIC</translation>
     </message>
     <message>
         <source>HTTP/2 parameters also apply to Hysteria, Hysteria2 and TUIC. Empty keeps the core&apos;s default.</source>
@@ -3594,6 +3678,14 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>Tun Settings</source>
         <translation>Настройки режима TUN</translation>
+    </message>
+    <message>
+        <source>TUN</source>
+        <translation>TUN</translation>
+    </message>
+    <message>
+        <source>Adapter</source>
+        <translation>Адаптер</translation>
     </message>
     <message>
         <source>Tun Enable IPv6</source>
@@ -7368,7 +7460,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Tests</source>
-        <translation>Проверки</translation>
+        <translation>Тесты</translation>
     </message>
     <message>
         <source>Traffic</source>
@@ -7395,12 +7487,28 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <translation>Основное</translation>
     </message>
     <message>
+        <source>Startup</source>
+        <translation>Запуск</translation>
+    </message>
+    <message>
+        <source>Inbound</source>
+        <translation>Входящие</translation>
+    </message>
+    <message>
         <source>Appearance</source>
         <translation>Внешний вид</translation>
     </message>
     <message>
+        <source>Diagnostics</source>
+        <translation>Диагностика</translation>
+    </message>
+    <message>
         <source>Subscriptions</source>
         <translation>Подписки</translation>
+    </message>
+    <message>
+        <source>Connection</source>
+        <translation>Подключение</translation>
     </message>
     <message>
         <source>Core</source>
@@ -7411,12 +7519,16 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <translation>Сеть</translation>
     </message>
     <message>
+        <source>Data</source>
+        <translation>Данные</translation>
+    </message>
+    <message>
         <source>Backups</source>
         <translation>Резервные копии</translation>
     </message>
     <message>
         <source>Security</source>
-        <translation>Безопасности</translation>
+        <translation>Безопасность</translation>
     </message>
     <message>
         <source>Protocols and bypass</source>
@@ -7425,10 +7537,6 @@ Improves hole-punching reliability. Requires IPv4.</source>
     <message>
         <source>Hotkeys</source>
         <translation>Горячие клавиши</translation>
-    </message>
-    <message>
-        <source>Shortcuts</source>
-        <translation>Сочетания клавиш</translation>
     </message>
     <message>
         <source>Simple mode</source>
@@ -7445,10 +7553,6 @@ Improves hole-punching reliability. Requires IPv4.</source>
     <message>
         <source>Log</source>
         <translation>Журнал</translation>
-    </message>
-    <message>
-        <source>Protection</source>
-        <translation>Безопасность</translation>
     </message>
     <message>
         <source>Quick setup…</source>
@@ -10781,6 +10885,13 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>Add another subscription</source>
         <translation>Добавить другую подписку</translation>
+    </message>
+</context>
+<context>
+    <name>SettingsSection</name>
+    <message>
+        <source>Search settings</source>
+        <translation>Поиск настроек</translation>
     </message>
 </context>
 <context>

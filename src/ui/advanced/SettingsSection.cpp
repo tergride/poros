@@ -2,6 +2,9 @@
 
 #include <QDialog>
 #include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QScrollArea>
 #include <QStackedWidget>
 #include <QTabBar>
 #include <QTabWidget>
@@ -14,24 +17,33 @@ SettingsSection::SettingsSection(QWidget *parent) : QWidget(parent) {
     auto *row = new QHBoxLayout(this);
     row->setContentsMargins(0, 0, 0, 0);
     row->setSpacing(0);
-    auto *nav = new QWidget(this);
-    nav->setObjectName(QStringLiteral("settingsNav"));
-    nav->setAttribute(Qt::WA_StyledBackground);
-    nav->setFixedWidth(212);
+    auto *scroll = new QScrollArea(this);
+    scroll->setObjectName(QStringLiteral("settingsNav"));
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setFixedWidth(212);
+    auto *nav = new QWidget(scroll);
     m_list = new QVBoxLayout(nav);
     m_list->setContentsMargins(10, 10, 10, 10);
-    m_list->setSpacing(2);
+    m_list->setSpacing(1);
+    auto *search = new QLineEdit(nav);
+    search->setPlaceholderText(tr("Search settings"));
+    connect(search, &QLineEdit::textEdited, this, [this, search](const QString &text) {
+        search->clear();
+        emit searchRequested(text);
+    });
+    m_list->addWidget(search);
     m_list->addStretch();
-    row->addWidget(nav);
+    scroll->setWidget(nav);
+    row->addWidget(scroll);
     m_pages = new QStackedWidget(this);
     row->addWidget(m_pages, 1);
 }
 
-void SettingsSection::addDialog(EmbeddedDialog *dialog, const QList<Entry> &entries) {
+void SettingsSection::addDialog(EmbeddedDialog *dialog) {
     m_pages->addWidget(dialog);
-    const bool tabsAreEntries = entries.size() > 1;
-    connect(dialog, &EmbeddedDialog::built, this, [this, dialog, tabsAreEntries](QDialog *built) {
-        if (auto *tabs = built->findChild<QTabWidget *>(); tabs != nullptr && tabsAreEntries) {
+    connect(dialog, &EmbeddedDialog::built, this, [this, dialog](QDialog *built) {
+        if (auto *tabs = built->findChild<QTabWidget *>()) {
             tabs->tabBar()->hide();
             // Search opens a setting by switching the tab itself.
             connect(tabs, &QTabWidget::currentChanged, this, [this, dialog](int tab) {
@@ -44,13 +56,19 @@ void SettingsSection::addDialog(EmbeddedDialog *dialog, const QList<Entry> &entr
         }
         if (m_current >= 0 && m_targets[m_current].dialog == dialog) applyTab(m_targets[m_current]);
     });
+}
+
+void SettingsSection::addGroup(const QString &title, const QList<Entry> &entries) {
+    auto *label = new QLabel(title, m_list->parentWidget());
+    label->setProperty("role", QStringLiteral("navGroup"));
+    m_list->insertWidget(m_list->count() - 1, label);
     for (const auto &entry : entries) {
         const int index = m_buttons.size();
         auto *button = new SimpleSettingsNavButton(entry.icon, entry.title, m_list->parentWidget());
         connect(button, &QAbstractButton::clicked, this, [this, index] { show(index); });
-        m_list->insertWidget(index, button);
+        m_list->insertWidget(m_list->count() - 1, button);
         m_buttons << button;
-        m_targets.append({dialog, entry.tab});
+        m_targets.append({entry.dialog, entry.tab});
     }
     if (m_current < 0) show(0);
 }

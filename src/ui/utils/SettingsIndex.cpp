@@ -136,7 +136,7 @@ namespace SettingsIndex {
                         text = CommandPalette::plainText(button->text());
                         if (!text.contains(' ')) text.clear();
                     } else if (auto *label = qobject_cast<QLabel *>(child)) {
-                        if (!Qt::mightBeRichText(label->text())) text = labelText(label);
+                        if (!Qt::mightBeRichText(label->text()) && label->property("role") != QStringLiteral("sectionTitle")) text = labelText(label);
                     }
                     if (!text.isEmpty()) {
                         QString caption = rowCaption(child);

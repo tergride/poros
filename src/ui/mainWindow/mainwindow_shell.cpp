@@ -38,6 +38,7 @@
 #include "include/ui/shell/TitleBar.h"
 #include "include/ui/shell/WindowFrame.h"
 #include "include/ui/simple/SimpleHome.h"
+#include "include/ui/utils/CommandPalette.h"
 #include "include/ui/utils/ConnectionModeController.h"
 #include "include/ui/utils/ScreenQrScanner.h"
 #include "include/ui/widget/AdminPromptDialog.h"
@@ -220,22 +221,34 @@ void MainWindow::setupShell() {
 
     m_settingsSection = new SettingsSection(m_advancedPage);
     m_basicSettings = new EmbeddedDialog([](QWidget *parent) -> QDialog * { return new DialogBasicSettings(parent); }, m_settingsSection);
-    m_settingsSection->addDialog(m_basicSettings, {
-        {QStringLiteral("power"), tr("General"), 0},
-        {QStringLiteral("log"), tr("Log"), 1},
-        {QStringLiteral("app"), tr("Appearance"), 2},
-        {QStringLiteral("link"), tr("Subscriptions"), 3},
-        {QStringLiteral("bolt"), tr("Core"), 4},
-        {QStringLiteral("globe"), tr("Network"), 5},
-        {QStringLiteral("download"), tr("Backups"), 6},
-        {QStringLiteral("shield"), tr("Protection"), 7},
-    });
     m_vpnSettings = new EmbeddedDialog([](QWidget *parent) -> QDialog * { return new DialogVPNSettings(parent); }, m_settingsSection);
-    m_settingsSection->addDialog(m_vpnSettings, {{QStringLiteral("conn"), QStringLiteral("TUN"), -1}});
     m_presetSettings = new EmbeddedDialog([](QWidget *parent) -> QDialog * { return new DialogPresetSettings(parent); }, m_settingsSection);
-    m_settingsSection->addDialog(m_presetSettings, {{QStringLiteral("layers"), tr("Protocols and bypass"), -1}});
     m_hotkeySettings = new EmbeddedDialog([this](QWidget *parent) -> QDialog * { return new DialogIntegration(parent, getActionsForShortcut()); }, m_settingsSection);
-    m_settingsSection->addDialog(m_hotkeySettings, {{QStringLiteral("key"), tr("Hotkeys"), 0}, {QStringLiteral("key"), tr("Shortcuts"), 1}});
+    for (auto *page : {m_basicSettings, m_vpnSettings, m_presetSettings, m_hotkeySettings}) m_settingsSection->addDialog(page);
+    m_settingsSection->addGroup(tr("General"), {
+        {QStringLiteral("power"), tr("Startup"), m_basicSettings, 0},
+        {QStringLiteral("server"), tr("Inbound"), m_basicSettings, 1},
+        {QStringLiteral("gauge"), tr("Tests"), m_basicSettings, 2},
+        {QStringLiteral("link"), tr("Subscriptions"), m_basicSettings, 3},
+        {QStringLiteral("app"), tr("Appearance"), m_basicSettings, 4},
+        {QStringLiteral("log"), tr("Log"), m_basicSettings, 5},
+        {QStringLiteral("key"), tr("Hotkeys"), m_hotkeySettings, -1},
+    });
+    m_settingsSection->addGroup(tr("Connection"), {
+        {QStringLiteral("conn"), QStringLiteral("TUN"), m_vpnSettings, -1},
+        {QStringLiteral("layers"), tr("Protocols and bypass"), m_presetSettings, -1},
+        {QStringLiteral("bolt"), tr("Core"), m_basicSettings, 6},
+        {QStringLiteral("globe"), tr("Network"), m_basicSettings, 7},
+        {QStringLiteral("shield"), tr("Security"), m_basicSettings, 8},
+    });
+    m_settingsSection->addGroup(tr("Data"), {
+        {QStringLiteral("download"), tr("Backups"), m_basicSettings, 9},
+        {QStringLiteral("tool"), tr("Diagnostics"), m_basicSettings, 10},
+    });
+    connect(m_settingsSection, &SettingsSection::searchRequested, this, [this](const QString &text) {
+        showCommandPalette();
+        commandPalette->setQuery(text);
+    });
     m_advancedPage->setSection(AdvancedPage::Settings, m_settingsSection);
 
     connect(m_advancedPage, &AdvancedPage::sectionChanged, this, [this](AdvancedPage::Section section) {

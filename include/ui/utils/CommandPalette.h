@@ -48,6 +48,9 @@ public:
     // Refreshes the menus' state, collects the commands again if a menu changed, then shows an empty query.
     void present(const Blocker &blocker);
 
+    // Replaces what the open palette searches for.
+    void setQuery(const QString &text);
+
     // Drops "&" mnemonics, keeping "&&" as a literal ampersand, and a trailing colon or ellipsis.
     static QString plainText(QString text);
 

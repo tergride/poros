@@ -135,6 +135,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         const QSignalBlocker rememberBlocker(ui->actionRemember_last_proxy);
         const QSignalBlocker lanBlocker(ui->actionAllow_LAN);
         ui->actionRemember_last_proxy->setChecked(settings->remember_enable);
+        ui->actionStart_with_system->setChecked(AutoRun_IsEnabled());
         ui->actionAllow_LAN->setChecked(QStringList{"::", "0.0.0.0"}.contains(settings->inbound_address));
     };
 

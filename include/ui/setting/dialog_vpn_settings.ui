@@ -14,227 +14,355 @@
    <string>Tun Settings</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <property name="spacing">
+    <number>0</number>
+   </property>
    <item>
-    <widget class="QGroupBox" name="groupBox">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+    <widget class="QScrollArea" name="scroll_tun">
+     <property name="frameShape">
+      <enum>QFrame::Shape::NoFrame</enum>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_5">
-      <item>
-       <widget class="QLabel" name="label_10">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string notr="true">MTU</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="vpn_mtu">
-        <property name="editable">
-         <bool>true</bool>
-        </property>
-        <item>
-         <property name="text">
-          <string notr="true">9000</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">1500</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="horizontalGroupBox_2">
-     <layout class="QVBoxLayout" name="checksVLayout">
-      <item>
-       <layout class="QHBoxLayout" name="checksRow1">
-        <item>
-         <widget class="QCheckBox" name="vpn_ipv6">
-          <property name="text">
-           <string>Tun Enable IPv6</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="strict_route">
-          <property name="text">
-           <string>Strict Route</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="tun_routing">
-          <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When enabled, Direct IP CIDRs and rule sets will also be added to the Tun setting to be excluded at OS routing level. IMPORTANT: Large rule sets have been reported to cause massive CPU usage in windows, please enable this option with caution.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="text">
-           <string>Enable Tun Routing</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="checksRow1Spacer">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="checksRow2">
-        <item>
-         <widget class="QCheckBox" name="l3_bridge">
-          <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Forwards bypassed traffic straight out of the network interface instead of rebuilding it as a new connection, which is faster and keeps NAT intact for games and P2P. Applies to UDP and ICMP only; TCP still needs to be sniffed and keeps taking the normal direct path.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="text">
-           <string>L3 Bridge Bypass</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="checksRow2Spacer">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="tunAddressGroupBox">
-     <property name="title">
-      <string>Tun Address</string>
+     <property name="horizontalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
      </property>
-     <layout class="QFormLayout" name="formLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_tun_ipv4">
-        <property name="text">
-         <string>IPv4 CIDR</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="tun_ipv4_cidr">
-        <property name="placeholderText">
-         <string notr="true">172.19.1.1/24</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_tun_ipv6">
-        <property name="text">
-         <string>IPv6 CIDR</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="tun_ipv6_cidr">
-        <property name="placeholderText">
-         <string notr="true">fdfe:dcba:9877::1/96</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QPushButton" name="restore_default_addresses">
-        <property name="text">
-         <string>Restore default addresses</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="privRangeGroupBox">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address ranges handed straight to the physical NIC instead of being routed through the core, one CIDR per line. Uncheck to let the core hijack private range traffic instead. Loopback and broadcast are always bypassed and cannot be listed here.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="title">
-      <string>Private Range Bypass</string>
-     </property>
-     <property name="checkable">
+     <property name="widgetResizable">
       <bool>true</bool>
      </property>
-     <layout class="QVBoxLayout" name="privRangeLayout">
-      <item>
-       <widget class="QPlainTextEdit" name="priv_ranges">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="placeholderText">
-         <string notr="true">10.0.0.0/8</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="privRangeButtonsRow">
-        <item>
-         <spacer name="privRangeButtonsSpacer">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
+     <widget class="QWidget" name="body_tun">
+      <layout class="QVBoxLayout" name="column_tun">
+       <property name="leftMargin">
+        <number>28</number>
+       </property>
+       <property name="topMargin">
+        <number>22</number>
+       </property>
+       <property name="rightMargin">
+        <number>28</number>
+       </property>
+       <property name="bottomMargin">
+        <number>16</number>
+       </property>
+       <property name="spacing">
+        <number>12</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="title_tun">
+         <property name="text">
+          <string>TUN</string>
+         </property>
+         <property name="role" stdset="false">
+          <string notr="true">sectionTitle</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string>Adapter</string>
+         </property>
+         <layout class="QGridLayout" name="grid_groupBox" columnstretch="1,1">
+          <property name="leftMargin">
+           <number>16</number>
           </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
+          <property name="rightMargin">
+           <number>16</number>
           </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QPushButton" name="restore_default_ranges">
-          <property name="text">
-           <string>Restore default ranges</string>
+          <property name="topMargin">
+           <number>6</number>
           </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
+          <property name="bottomMargin">
+           <number>14</number>
+          </property>
+          <property name="horizontalSpacing">
+           <number>16</number>
+          </property>
+          <property name="verticalSpacing">
+           <number>6</number>
+          </property>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="label_10">
+            <property name="text">
+             <string notr="true">MTU</string>
+            </property>
+            <property name="role" stdset="false">
+             <string notr="true">field</string>
+            </property>
+            <property name="buddy">
+             <cstring>vpn_mtu</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QComboBox" name="vpn_mtu">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+            <item>
+             <property name="text">
+              <string notr="true">9000</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string notr="true">1500</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="vpn_ipv6">
+            <property name="text">
+             <string>Tun Enable IPv6</string>
+            </property>
+            <property name="role" stdset="false">
+             <string notr="true">switch</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QCheckBox" name="strict_route">
+            <property name="text">
+             <string>Strict Route</string>
+            </property>
+            <property name="role" stdset="false">
+             <string notr="true">switch</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QCheckBox" name="tun_routing">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When enabled, Direct IP CIDRs and rule sets will also be added to the Tun setting to be excluded at OS routing level. IMPORTANT: Large rule sets have been reported to cause massive CPU usage in windows, please enable this option with caution.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Enable Tun Routing</string>
+            </property>
+            <property name="role" stdset="false">
+             <string notr="true">switch</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QCheckBox" name="l3_bridge">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Forwards bypassed traffic straight out of the network interface instead of rebuilding it as a new connection, which is faster and keeps NAT intact for games and P2P. Applies to UDP and ICMP only; TCP still needs to be sniffed and keeps taking the normal direct path.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>L3 Bridge Bypass</string>
+            </property>
+            <property name="role" stdset="false">
+             <string notr="true">switch</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="tunAddressGroupBox">
+         <property name="title">
+          <string>Tun Address</string>
+         </property>
+         <layout class="QGridLayout" name="grid_tunAddressGroupBox" columnstretch="1,1">
+          <property name="leftMargin">
+           <number>16</number>
+          </property>
+          <property name="rightMargin">
+           <number>16</number>
+          </property>
+          <property name="topMargin">
+           <number>6</number>
+          </property>
+          <property name="bottomMargin">
+           <number>14</number>
+          </property>
+          <property name="horizontalSpacing">
+           <number>16</number>
+          </property>
+          <property name="verticalSpacing">
+           <number>6</number>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_tun_ipv4">
+            <property name="text">
+             <string>IPv4 CIDR</string>
+            </property>
+            <property name="role" stdset="false">
+             <string notr="true">field</string>
+            </property>
+            <property name="buddy">
+             <cstring>tun_ipv4_cidr</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_tun_ipv6">
+            <property name="text">
+             <string>IPv6 CIDR</string>
+            </property>
+            <property name="role" stdset="false">
+             <string notr="true">field</string>
+            </property>
+            <property name="buddy">
+             <cstring>tun_ipv6_cidr</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLineEdit" name="tun_ipv4_cidr">
+            <property name="placeholderText">
+             <string notr="true">172.19.1.1/24</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="tun_ipv6_cidr">
+            <property name="placeholderText">
+             <string notr="true">fdfe:dcba:9877::1/96</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="row_1">
+            <item>
+             <widget class="QPushButton" name="restore_default_addresses">
+              <property name="text">
+               <string>Restore default addresses</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="spacer_2">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="privRangeGroupBox">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address ranges handed straight to the physical NIC instead of being routed through the core, one CIDR per line. Uncheck to let the core hijack private range traffic instead. Loopback and broadcast are always bypassed and cannot be listed here.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="title">
+          <string>Private Range Bypass</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <layout class="QGridLayout" name="grid_privRangeGroupBox" columnstretch="1,1">
+          <property name="leftMargin">
+           <number>16</number>
+          </property>
+          <property name="rightMargin">
+           <number>16</number>
+          </property>
+          <property name="topMargin">
+           <number>6</number>
+          </property>
+          <property name="bottomMargin">
+           <number>14</number>
+          </property>
+          <property name="horizontalSpacing">
+           <number>16</number>
+          </property>
+          <property name="verticalSpacing">
+           <number>6</number>
+          </property>
+          <item row="0" column="0" colspan="2">
+           <widget class="QPlainTextEdit" name="priv_ranges">
+            <property name="placeholderText">
+             <string notr="true">10.0.0.0/8</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <layout class="QHBoxLayout" name="row_3">
+            <item>
+             <widget class="QPushButton" name="restore_default_ranges">
+              <property name="text">
+               <string>Restore default ranges</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="troubleshooting">
+              <property name="text">
+               <string>Troubleshooting</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="spacer_4">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="end_tun">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QPushButton" name="troubleshooting">
-       <property name="text">
-        <string>Troubleshooting</string>
-       </property>
-      </widget>
-     </item>
+    <layout class="QVBoxLayout" name="outer">
+     <property name="leftMargin">
+      <number>28</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>28</number>
+     </property>
+     <property name="bottomMargin">
+      <number>12</number>
+     </property>
      <item>
       <widget class="QDialogButtonBox" name="buttonBox">
        <property name="standardButtons">
@@ -246,16 +374,7 @@
    </item>
   </layout>
  </widget>
- <tabstops>
-  <tabstop>vpn_mtu</tabstop>
-  <tabstop>vpn_ipv6</tabstop>
-  <tabstop>tun_ipv4_cidr</tabstop>
-  <tabstop>tun_ipv6_cidr</tabstop>
-  <tabstop>restore_default_addresses</tabstop>
-  <tabstop>strict_route</tabstop>
-  <tabstop>troubleshooting</tabstop>
- </tabstops>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>buttonBox</sender>
