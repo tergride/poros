@@ -609,9 +609,9 @@ set(PROJECT_SOURCES
         src/ui/app/GuiStartup.cpp
 )
 
-list(APPEND PROJECT_SOURCES res/EmojiFont.qrc res/EmojiFontWin.qrc)
+list(APPEND PROJECT_SOURCES res/EmojiFont.qrc res/EmojiFontWin.qrc res/PorosFonts.qrc)
 # rcc's default threshold leaves these TTFs uncompressed.
-set_property(SOURCE res/EmojiFont.qrc res/EmojiFontWin.qrc
+set_property(SOURCE res/EmojiFont.qrc res/EmojiFontWin.qrc res/PorosFonts.qrc
         PROPERTY AUTORCC_OPTIONS "--compress-algo;zlib;--compress;9;--threshold;5")
 
 # Appended last so engine TUs form trailing MSVC unity batches: adding one never regroups the batches above.

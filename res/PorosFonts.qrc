@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/font">
+        <file alias="Onest">font/Onest-Variable.ttf</file>
+        <file alias="Unbounded">font/Unbounded-Variable.ttf</file>
+        <file alias="JetBrainsMono">font/JetBrainsMono-Variable.ttf</file>
+    </qresource>
+</RCC>

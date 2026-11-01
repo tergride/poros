@@ -15,6 +15,8 @@ namespace GuiStartup {
 
     void LoadEmojiFont();
 
+    void LoadUiFonts();
+
     void HandleLaunchLine(QLocalSocket *socket, const QString &line);
 
     void SetupIconTheme();

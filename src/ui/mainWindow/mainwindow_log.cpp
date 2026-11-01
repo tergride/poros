@@ -48,7 +48,7 @@ namespace {
 
 void MainWindow::applyLogBrowserFont() {
     QFont logFont;
-    logFont.setFamilies({QStringLiteral("Consolas"), QStringLiteral("Courier New")});
+    logFont.setFamilies({QStringLiteral("JetBrains Mono"), QStringLiteral("Consolas")});
     logFont.setStyleHint(QFont::Monospace);
     logFont.setFixedPitch(true);
     int pt = qApp->font().pointSize();

@@ -1045,7 +1045,10 @@ qreal LiveChart::Impl::layoutSide(qreal W, qreal H) {
     }
     nameW = std::ceil(nameW);
     const int nc = int(o.columns.size());
-    const qreal colW = valueWidth + 12;
+    qreal colW = valueWidth + 12;
+    if (nc > 1) {
+        for (const qreal headerWidth : columnHeaderWidths) colW = std::max(colW, headerWidth + 28);
+    }
     const qreal sideW = 30 + nameW + nc * colW + 10;
     const qreal x0 = W - sideW;
     view.sideX0 = x0;

@@ -53,6 +53,10 @@ Unless automatic updates are turned off in the settings, Poros checks for a new 
 
 To release, add a section to `CHANGELOG.md` with `<!-- ru -->` and `<!-- en -->` parts, push `main`, and run `script\release_windows.ps1`. It builds the version, uploads the archive and `latest.json` as a draft, and publishes only when both are there. With `-DryRun` it builds and publishes nothing.
 
+## Fonts
+
+The interface uses [Onest](https://github.com/googlefonts/onest), [Unbounded](https://github.com/googlefonts/unbounded) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) under the SIL Open Font License 1.1. The fonts and their license texts are in `res/font`.
+
 ## Upstream
 
 Poros does not follow Throne release by release. Fixes for performance, security and the connection itself are ported by hand, while the interface and the feature set are its own. The Go module, code identifiers, comments and `THRONE_*` variables keep their names for now. `throne://` links and `throne-route-profile` data stay importable.

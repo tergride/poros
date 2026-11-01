@@ -5,10 +5,10 @@ QWidget:disabled { color: @tdis; }
 QMainWindow, QDialog { background-color: @s2; }
 QMainWindow > QWidget#centralwidget { background-color: @s1; }
 QLabel { background: transparent; }
-QLabel[role="heading"] { font-family: "Bahnschrift", "Segoe UI Semibold"; font-size: 20px; }
-QLabel[role="subheading"] { font-family: "Bahnschrift", "Segoe UI Semibold"; font-size: 15px; }
+QLabel[role="heading"] { font-family: "Unbounded", "Onest", "Segoe UI"; font-size: 20px; }
+QLabel[role="subheading"] { font-family: "Unbounded", "Onest", "Segoe UI"; font-size: 15px; }
 QLabel[role="hint"] { color: @t3; font-size: 12px; }
-QLabel[role="mono"] { font-family: "Consolas"; }
+QLabel[role="mono"] { font-family: "JetBrains Mono", "Consolas"; }
 QToolTip { background-color: @s3; color: @t1; border: 1px solid @line2; padding: 4px 8px; }
 
 QFrame[frameShape="4"], QFrame[frameShape="5"] { color: @line; }
@@ -247,7 +247,7 @@ NavRail QToolButton#railSearch { color: @t3; border: 1px solid @line2; padding: 
 ConnectionBar { background-color: @s2; border: none; border-bottom: 1px solid @line; }
 ConnectionBar QLabel#label_running { font-weight: 600; }
 ConnectionBar QLabel#label_inbound { color: @t3; font-size: 12px; }
-ConnectionBar QLabel#label_speed { color: @t2; font-family: "Consolas"; font-size: 12px; }
+ConnectionBar QLabel#label_speed { color: @t2; font-family: "JetBrains Mono", "Consolas"; font-size: 12px; }
 
 GroupPane { background-color: @s1; border-right: 1px solid @line; }
 QListWidget#groupList { background: transparent; border: none; padding: 0 8px 8px 8px; }
@@ -277,7 +277,7 @@ QFrame#failureBanner { background-color: @s3; border: 1px solid @warn; border-ra
 QLabel[role="cardTitle"] { font-weight: 600; font-size: 14px; }
 
 QWidget#wizardMain { background-color: @s1; }
-QLabel[role="wizardTitle"] { font-family: "Bahnschrift", "Segoe UI Semibold"; font-size: 24px; }
+QLabel[role="wizardTitle"] { font-family: "Unbounded", "Onest", "Segoe UI"; font-size: 24px; }
 QLabel[role="lead"] { color: @t2; }
 QFrame[role="checkRow"] { background-color: @s2; border: 1px solid @line; border-radius: 12px; }
 QFrame[role="checkRow"]:hover { border-color: @line2; }
@@ -290,4 +290,4 @@ QWidget#settingsNav { background-color: @s0; border-right: 1px solid @line; }
 QDialog[embedded="true"] { background-color: @s1; }
 
 QFrame[role="toolbar"] { background: transparent; border: none; border-bottom: 1px solid @line; }
-QLabel[role="sectionTitle"] { font-family: "Bahnschrift", "Segoe UI Semibold"; font-size: 19px; }
+QLabel[role="sectionTitle"] { font-family: "Unbounded", "Onest", "Segoe UI"; font-size: 19px; }

@@ -54,7 +54,7 @@
       </size>
      </property>
      <property name="styleSheet">
-      <string notr="true">font-family: monospace; font-size: 14pt; letter-spacing: 2px;</string>
+      <string notr="true">font-family: &quot;JetBrains Mono&quot;, &quot;Consolas&quot;; font-size: 14pt; letter-spacing: 2px;</string>
      </property>
      <property name="text">
       <string notr="true"/>

@@ -92,14 +92,14 @@ namespace PorosTheme {
 
     QFont HeadingFont(int pixelSize) {
         QFont font;
-        font.setFamilies({QStringLiteral("Bahnschrift"), QStringLiteral("Segoe UI Semibold")});
+        font.setFamilies({QStringLiteral("Unbounded"), QStringLiteral("Onest"), QStringLiteral("Segoe UI")});
         font.setPixelSize(pixelSize);
         return font;
     }
 
     QFont MonoFont(int pixelSize) {
         QFont font;
-        font.setFamilies({QStringLiteral("Consolas"), QStringLiteral("Courier New")});
+        font.setFamilies({QStringLiteral("JetBrains Mono"), QStringLiteral("Consolas")});
         font.setPixelSize(pixelSize);
         return font;
     }

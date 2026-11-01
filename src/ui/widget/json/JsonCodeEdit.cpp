@@ -1,6 +1,6 @@
 #include "include/ui/widget/json/JsonCodeEdit.h"
 
-#include <QFontDatabase>
+#include <QFont>
 #include <QHelpEvent>
 #include <QJsonDocument>
 #include <QKeyEvent>
@@ -133,7 +133,9 @@ namespace JsonEdit {
 
     JsonCodeEdit::JsonCodeEdit(QWidget* parent) : QPlainTextEdit(parent) {
         setLineWrapMode(NoWrap);
-        auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+        QFont font;
+        font.setFamilies({QStringLiteral("JetBrains Mono"), QStringLiteral("Consolas")});
+        font.setStyleHint(QFont::Monospace);
         font.setPointSize(QFontInfo(QPlainTextEdit::font()).pointSize());
         setFont(font);
         setTabStopDistance(4 * QFontMetricsF(font).horizontalAdvance(QLatin1Char(' ')));

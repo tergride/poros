@@ -25,7 +25,7 @@ OtpItem::OtpItem(QWidget *parent, std::shared_ptr<Configs::OtpProfile> profile_,
 
     if (mode == Mode::ReadOnly) {
         ui->actions->hide();
-        ui->code->setStyleSheet(QStringLiteral("font-family: monospace; font-size: 12pt; letter-spacing: 2px;"));
+        ui->code->setStyleSheet(QStringLiteral("font-family: \"JetBrains Mono\", \"Consolas\"; font-size: 12pt; letter-spacing: 2px;"));
         ui->code->setMinimumWidth(READONLY_CODE_WIDTH);
     }
 

@@ -80,6 +80,12 @@ namespace GuiStartup {
         }
     }
 
+    void LoadUiFonts() {
+        for (const auto &font : {QStringLiteral(":/font/Onest"), QStringLiteral(":/font/Unbounded"), QStringLiteral(":/font/JetBrainsMono")}) {
+            if (QFontDatabase::addApplicationFont(font) < 0) qDebug() << "could not load font" << font;
+        }
+    }
+
     void HandleLaunchLine([[maybe_unused]] QLocalSocket *socket, const QString &line) {
         if (IsAppDeeplink(line)) {
             Deeplink_Submit(line);

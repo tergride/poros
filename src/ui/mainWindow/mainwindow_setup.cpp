@@ -203,7 +203,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         UpdateDataView(!show);
     });
 
-    QFont appFont(QStringLiteral("Segoe UI"), 10);
+    QFont appFont;
+    appFont.setFamilies({QStringLiteral("Onest"), QStringLiteral("Segoe UI")});
+    appFont.setPointSize(10);
     if (!Configs::dataManager->settingsRepo->font.isEmpty()) appFont.setFamily(Configs::dataManager->settingsRepo->font);
     if (Configs::dataManager->settingsRepo->font_size != 0) appFont.setPointSize(Configs::dataManager->settingsRepo->font_size);
     qApp->setFont(appFont);

@@ -28,7 +28,7 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_mux">
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_mux">
+        <layout class="QVBoxLayout" name="verticalLayout_mux_boxes">
          <item>
           <widget class="QGroupBox" name="mux_singbox_box">
            <property name="title">

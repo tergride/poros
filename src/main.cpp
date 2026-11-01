@@ -62,6 +62,7 @@ int main(int argc, char* argv[]) {
     Engine::Bootstrap::SetSoftwareNames();
 
     GuiStartup::LoadEmojiFont();
+    GuiStartup::LoadUiFonts();
 
     QStringList arguments = QApplication::arguments();
     const Engine::Bootstrap::RelaunchParent relaunchParent(arguments);
