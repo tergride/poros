@@ -5,8 +5,12 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include "include/configs/AutoSelectorPlan.h"
 #include "include/configs/PresetCatalog.h"
 #include "include/configs/PresetRules.h"
+#include "include/configs/outbounds/autoselector.h"
+#include "include/configs/outbounds/hysteria.h"
+#include "include/configs/outbounds/vless.h"
 #include "include/configs/sub/LinkKind.h"
 #include "include/database/Database.h"
 #include "include/database/GroupsRepo.h"
@@ -246,6 +250,79 @@ private slots:
         QVERIFY(!Engine::AutoGroupService::HasEligibleServers(gid));
         QCOMPARE(Engine::AutoGroupService::Ensure(gid), -1);
         QVERIFY(!Engine::GroupService::Delete(gid).has_value());
+    }
+
+    void autoSelectorStartsOnWorkingMembers() {
+        int gid = -1;
+        QVERIFY(!Engine::GroupService::Add({"Pool", "https://sub.example.com/s/4", false}, &gid).has_value());
+        auto &profiles = Configs::dataManager->profilesRepo;
+        QList<std::shared_ptr<Configs::Profile>> members;
+        for (int i = 0; i < 4; ++i) {
+            auto server = Configs::ProfilesRepo::NewProfile("socks");
+            server->outbound->server = QStringLiteral("198.51.100.%1").arg(i + 1);
+            server->outbound->server_port = 1080;
+            QVERIFY(profiles->AddProfile(server, gid));
+            members << server;
+        }
+        members[0]->SetLatency(300);
+        members[1]->SetLatency(100);
+        QVERIFY(profiles->Save(members[0]));
+        QVERIFY(profiles->Save(members[1]));
+
+        auto ent = Configs::ProfilesRepo::NewProfile("autoselector");
+        auto *selector = ent->AutoSelector();
+        selector->gids = {gid};
+        selector->expected = 2;
+        selector->activeSize = 2;
+        selector->buildLimit = 2;
+        QVERIFY(profiles->AddProfile(ent, gid));
+        QCOMPARE(Configs::AutoSelectorStartQuorum(ent), 2);
+
+        int working = 0;
+        const auto needed = Configs::AutoSelectorUnmeasuredCandidates(ent, {members[0]->id}, &working);
+        QCOMPARE(needed.size(), 3);
+        QVERIFY(!needed.contains(members[1]->id));
+        QCOMPARE(working, 1);
+
+        QCOMPARE(Configs::RerankAutoSelectorPool(ent, {members[1]->id}).first(), members[0]->id);
+        QCOMPARE(Configs::RerankAutoSelectorPool(ent).first(), members[1]->id);
+
+        selector->lastBuilt = {members[1]->id, members[0]->id};
+        QVERIFY(!Configs::AutoSelectorBuildChanged(ent));
+        selector->lastBuilt = {members[1]->id, members[2]->id};
+        QVERIFY(Configs::AutoSelectorBuildChanged(ent));
+
+        QVERIFY(!Engine::GroupService::Delete(gid).has_value());
+    }
+
+    void hysteriaLinkWithUnitsOrNoSpeeds() {
+        auto given = Configs::ProfilesRepo::NewProfile("hysteria");
+        QVERIFY(given->outbound->ParseFromLink("hysteria://h.example.com:443?upmbps=55Mbps&downmbps=100"));
+        const auto built = given->outbound->Build();
+        QCOMPARE(built.object["up_mbps"].toInt(), 55);
+        QCOMPARE(built.object["down_mbps"].toInt(), 100);
+
+        auto missing = Configs::ProfilesRepo::NewProfile("hysteria");
+        QVERIFY(missing->outbound->ParseFromLink("hysteria://h.example.com:443"));
+        const auto defaults = missing->outbound->Build();
+        QCOMPARE(defaults.object["up_mbps"].toInt(), Configs::kHysteriaV1DefaultUpMbps);
+        QCOMPARE(defaults.object["down_mbps"].toInt(), Configs::kHysteriaV1DefaultDownMbps);
+    }
+
+    void vlessLinkKeepsOnlyAUsableFlow_data() {
+        QTest::addColumn<QString>("query");
+        QTest::addColumn<QString>("flow");
+        QTest::newRow("unknown") << "security=tls&flow=bogus" << "";
+        QTest::newRow("vision without tls") << "flow=xtls-rprx-vision" << "";
+        QTest::newRow("vision over tls") << "security=tls&flow=xtls-rprx-vision" << "xtls-rprx-vision";
+    }
+
+    void vlessLinkKeepsOnlyAUsableFlow() {
+        QFETCH(QString, query);
+        QFETCH(QString, flow);
+        auto profile = Configs::ProfilesRepo::NewProfile("vless");
+        QVERIFY(profile->outbound->ParseFromLink("vless://11111111-2222-3333-4444-555555555555@v.example.com:443?" + query));
+        QCOMPARE(dynamic_cast<Configs::vless *>(profile->outbound.get())->flow, flow);
     }
 
     void presetLinesFromWhatTheUserTypes_data() {

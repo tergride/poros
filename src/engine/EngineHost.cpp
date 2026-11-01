@@ -216,6 +216,11 @@ namespace Engine {
             // The job's own count: the global may already belong to the next job.
             MW_show_log(MainWindowTr::tr("Imported %1 profile(s)").arg(importedCount >= 0 ? importedCount : Configs::dataManager->settingsRepo->imported_count));
         });
+        connect(EngineEvents::instance(), &EngineEvents::subscriptionReplacedRunning, this, [this](int profileId) {
+            // Whatever the user started since the refresh stopped the old profile wins.
+            if (m_connection->connectionState() != ConnectionState::Idle) return;
+            m_connection->start(StartRequest{profileId, false});
+        });
 
         runOnNewThread([] { GetDeviceDetails(); });
 

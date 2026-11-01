@@ -4358,8 +4358,8 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
         <translation>Профилей с недавним результатом теста (он будет использован повторно): %1.</translation>
     </message>
     <message>
-        <source>The rest will be measured before the selector starts.</source>
-        <translation>Остальные профили будут измерены до запуска автовыбора.</translation>
+        <source>The rest will be measured as the selector starts: it runs as soon as enough profiles work, and switches to the full ranking once all are measured.</source>
+        <translation>Остальные профили будут измерены при запуске: автовыбор заработает, как только наберётся достаточно рабочих профилей, и перейдёт на полный рейтинг, когда измерены все.</translation>
     </message>
 </context>
 <context>
@@ -8203,8 +8203,16 @@ Name: %1</source>
         <translation>[Автовыбор] Замер ещё не протестированных профилей: %1...</translation>
     </message>
     <message>
+        <source>[Auto selector] %1 working profiles found; starting now while the remaining %2 are still being measured.</source>
+        <translation>[Автовыбор] Найдено рабочих профилей: %1; запуск сейчас, остальные (%2) ещё измеряются.</translation>
+    </message>
+    <message>
         <source>[Auto selector] Ranked %1 profiles.</source>
         <translation>[Автовыбор] Ранжировано профилей: %1.</translation>
+    </message>
+    <message>
+        <source>[Auto selector] Every profile is measured and the best ones changed — rebuilding with the full ranking.</source>
+        <translation>[Автовыбор] Все профили измерены, и лучшие изменились — пересборка по полному рейтингу.</translation>
     </message>
     <message>
         <source>[Auto selector] The subscription replaced profiles it was running on — rebuilding.</source>
@@ -9034,6 +9042,14 @@ How to update?</source>
     <message>
         <source>Removed %1 duplicate profiles:</source>
         <translation>Удалено дубликатов профилей (%1):</translation>
+    </message>
+    <message>
+        <source>%1 was removed by the update and stays stopped: no single profile with the same name replaces it.</source>
+        <translation>%1 удалён при обновлении и остаётся остановленным: нет единственного профиля с тем же названием, который бы его заменил.</translation>
+    </message>
+    <message>
+        <source>%1 was replaced by the update; connecting to the profile with the same name.</source>
+        <translation>%1 заменён при обновлении; подключение к профилю с тем же названием.</translation>
     </message>
     <message>
         <source>Removed %1 insecure profiles:</source>
@@ -11197,16 +11213,16 @@ Remove that endpoint from this routing profile as well?</source>
         <translation>Истекла</translation>
     </message>
     <message>
+        <source>%1d %2h left</source>
+        <translation>Осталось %1 д. %2 ч.</translation>
+    </message>
+    <message>
+        <source>%1h %2m left</source>
+        <translation>Осталось %1 ч. %2 мин.</translation>
+    </message>
+    <message>
         <source>%1m left</source>
         <translation>Осталось %1 мин.</translation>
-    </message>
-    <message>
-        <source>%1h left</source>
-        <translation>Осталось %1 ч.</translation>
-    </message>
-    <message>
-        <source>%1d left</source>
-        <translation>Осталось %1 д.</translation>
     </message>
     <message>
         <source>Announcement - %1</source>
@@ -11938,8 +11954,8 @@ Remove that endpoint from this routing profile as well?</source>
         <translation>Игнорируется без «Hop Interval»; задайте и его, например 30s при максимуме 60s.</translation>
     </message>
     <message>
-        <source>Hysteria v1 needs both Up Mbps and Down Mbps, for example 100.</source>
-        <translation>Для Hysteria v1 нужны и «Up Mbps», и «Down Mbps», например 100.</translation>
+        <source>Hysteria v1 needs both Up Mbps and Down Mbps; %1 up and %2 down is used for a missing one. Set your real line speed for the best results.</source>
+        <translation>Для Hysteria v1 нужны и «Up Mbps», и «Down Mbps»; вместо отсутствующего значения используется %1 на отдачу и %2 на загрузку. Для лучшего результата укажите реальную скорость канала.</translation>
     </message>
     <message>
         <source>Packet sizes must be from 0 to 2048; 0 uses the default.</source>
