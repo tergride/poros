@@ -2108,7 +2108,7 @@
               <item row="3" column="1">
                <widget class="QLabel" name="ntp_outbound_l">
                 <property name="text">
-                 <string>outbound</string>
+                 <string>Outbound</string>
                 </property>
                 <property name="role" stdset="false">
                  <string notr="true">field</string>

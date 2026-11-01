@@ -49,7 +49,6 @@ struct LiveChartAxis {
     QStringList widest;
 
     static LiveChartAxis rateBytes();
-    static LiveChartAxis rateBits();
 };
 
 struct LiveChartOptions {

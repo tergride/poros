@@ -203,7 +203,7 @@ void MainWindow::refresh_status(const QString &traffic_update) {
             display_socks = DisplayAddress(lan, settings->inbound_socks_port);
         }
     }
-    ui->label_inbound->setText(QString("Mixed: %1").arg(display_socks));
+    ui->label_inbound->setText(tr("Local port: %1").arg(display_socks));
     ui->label_inbound->setToolTip(inbound_tip);
     syncConnectionSourceColumn();
     ui->checkBox_VPN->setChecked(settings->spmode_vpn);
@@ -522,7 +522,7 @@ void MainWindow::url_test_current() {
             if (latency <= 0) {
                 ui->label_running->setText(tr("Test Result") + ": " + (vpnText.isEmpty() ? tr("Unavailable") : vpnText));
             } else if (latency > 0) {
-                ui->label_running->setText(tr("Test Result") + ": " + QString("%1 ms").arg(latency));
+                ui->label_running->setText(tr("Test Result") + ": " + tr("%1 ms").arg(latency));
             }
         });
     });

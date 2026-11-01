@@ -225,6 +225,10 @@
         <translation>Сработало: %1 → %2</translation>
     </message>
     <message>
+        <source>/s</source>
+        <translation>/с</translation>
+    </message>
+    <message>
         <source>Process: %1
 Active connections: %2
 Total traffic: %3↑ %4↓
@@ -232,7 +236,7 @@ Total speed: %5/s↑ %6/s↓</source>
         <translation>Процесс: %1
 Активные подключения: %2
 Общий трафик: %3↑ %4↓
-Общая скорость: %5/s↑ %6/s↓</translation>
+Общая скорость: %5/с↑ %6/с↓</translation>
     </message>
     <message>
         <source>Destination: %1
@@ -246,9 +250,9 @@ Total speed: %8/s↑ %9/s↓</source>
 Подключения: %2
 Процесс: %3
 Протокол: %4
-Outbound: %5
+Исходящий: %5
 Общий трафик: %6↑ %7↓
-Общая скорость: %8/s↑ %9/s↓</translation>
+Общая скорость: %8/с↑ %9/с↓</translation>
     </message>
     <message>
         <source>Destination: %1
@@ -258,7 +262,7 @@ Outbound: %4</source>
         <translation>Пункт назначения: %1
 Процесс: %2
 Протокол: %3
-Outbound: %4</translation>
+Исходящий: %4</translation>
     </message>
     <message>
         <source>Process / Destination</source>
@@ -270,7 +274,7 @@ Outbound: %4</translation>
     </message>
     <message>
         <source>Outbound</source>
-        <translation>Outbound</translation>
+        <translation>Исходящий</translation>
     </message>
     <message>
         <source>Traffic</source>
@@ -294,7 +298,7 @@ Outbound: %4</translation>
     </message>
     <message>
         <source>Click To Sort By Outbound</source>
-        <translation>Нажмите для сортировки по Outbound</translation>
+        <translation>Нажмите для сортировки по исходящему</translation>
     </message>
     <message>
         <source>Click to sort by traffic; right-click to choose total/down/up</source>
@@ -397,7 +401,7 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <source>Next in %1s.</source>
-        <translation>Следующая через %1 сек.</translation>
+        <translation>Следующая через %1 с.</translation>
     </message>
     <message>
         <source>Using %1 because you chose it.</source>
@@ -444,7 +448,7 @@ It stays a preference, not a lock: if that profile stops working the selector st
     </message>
     <message>
         <source>Listen Address</source>
-        <translation>Прослушиваемый адрес</translation>
+        <translation>Адрес прослушивания</translation>
     </message>
     <message>
         <source>Enable</source>
@@ -519,12 +523,8 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Ядро</translation>
     </message>
     <message>
-        <source>outbound</source>
-        <translation>outbound</translation>
-    </message>
-    <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Which outbound the NTP query is sent through&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Через какой outbound отправляется NTP-запрос&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Через какой исходящий отправляется NTP-запрос&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>poros:// links</source>
@@ -642,11 +642,11 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     </message>
     <message>
         <source>Inbound Username</source>
-        <translation>Имя пользователя для inbound</translation>
+        <translation>Имя пользователя</translation>
     </message>
     <message>
         <source>Inbound Password</source>
-        <translation>Пароль для inbound</translation>
+        <translation>Пароль</translation>
     </message>
     <message>
         <source>Enable Authorization</source>
@@ -666,7 +666,7 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     </message>
     <message>
         <source>Direct Test URL</source>
-        <translation>URL проверки Direct</translation>
+        <translation>URL проверки без прокси</translation>
     </message>
     <message>
         <source>optional — use the OS network state</source>
@@ -933,6 +933,10 @@ The local network stays reachable unless Private Range Bypass is turned off in T
         <translation>Интервал синхронизации</translation>
     </message>
     <message>
+        <source>Outbound</source>
+        <translation>Исходящий</translation>
+    </message>
+    <message>
         <source>Diagnostics</source>
         <translation>Диагностика</translation>
     </message>
@@ -946,7 +950,7 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     </message>
     <message>
         <source>Listen Port</source>
-        <translation>Прослушиваемый порт</translation>
+        <translation>Порт</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Socks
@@ -1128,7 +1132,7 @@ Select which parts to restore:</source>
     </message>
     <message>
         <source>Mixed inbound</source>
-        <translation>Mixed inbound</translation>
+        <translation>Локальный порт</translation>
     </message>
     <message>
         <source>DNS server</source>
@@ -1464,6 +1468,10 @@ Poros will restart to complete the restore.</source>
         <translation>Новая группа</translation>
     </message>
     <message>
+        <source>None</source>
+        <translation>Нет</translation>
+    </message>
+    <message>
         <source>No profile named &quot;%1&quot;. Pick one from the list.</source>
         <translation>Профиля с названием &quot;%1&quot; нет. Выберите профиль из списка.</translation>
     </message>
@@ -1481,7 +1489,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source> min</source>
-        <translation> мин.</translation>
+        <translation> мин</translation>
     </message>
     <message>
         <source>Keep Default (%1)</source>
@@ -1489,7 +1497,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>%1 min</source>
-        <translation>%1 мин.</translation>
+        <translation>%1 мин</translation>
     </message>
     <message>
         <source>This server last sent %1 h.</source>
@@ -1624,7 +1632,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>Current code: %1 (%2s)</source>
-        <translation>Текущий код: %1 (%2 сек.)</translation>
+        <translation>Текущий код: %1 (%2 с)</translation>
     </message>
 </context>
 <context>
@@ -2019,7 +2027,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>Custom (%1 outbound)</source>
-        <translation>Пользовательский (%1 outbound)</translation>
+        <translation>Пользовательский (исходящий %1)</translation>
     </message>
     <message>
         <source>Custom (%1 config)</source>
@@ -2027,7 +2035,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>Custom (Xray outbound)</source>
-        <translation>Пользовательский (Xray outbound)</translation>
+        <translation>Пользовательский (исходящий Xray)</translation>
     </message>
     <message>
         <source>Custom (Xray config)</source>
@@ -2689,7 +2697,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When enabled, domains destined for direct outbound will also be resolved using direct dns&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Если включено, домены, трафик к которым идет напрямую (Direct), также разрешаются через «DNS для прямых запросов»&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Если включено, домены, трафик к которым идет напрямую, также разрешаются через «DNS для прямых запросов»&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Enable DNS Routing</source>
@@ -2973,7 +2981,7 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     </message>
     <message>
         <source>Failed to generate warp config</source>
-        <translation>Не удалось сгенерировать конфигурацию Warp</translation>
+        <translation>Не удалось сгенерировать конфигурацию WARP</translation>
     </message>
     <message>
         <source>Success!</source>
@@ -3201,7 +3209,7 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     </message>
     <message>
         <source>Required while WARP is on: click Generate Warp Config, or fill it in.</source>
-        <translation>Обязательно, пока включен WARP: нажмите «Сгенерировать конфигурацию Warp» или заполните поле вручную.</translation>
+        <translation>Обязательно, пока включен WARP: нажмите «Получить конфигурацию WARP» или заполните поле вручную.</translation>
     </message>
     <message>
         <source>Download Profiles</source>
@@ -3545,7 +3553,7 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable mixed-case SNI for profiles whose TLS Tricks setting is left on &amp;quot;Keep Default&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Включать SNI в смешанном регистре (mixed-case) для профилей, у которых параметр «TLS Tricks» оставлен в значении &amp;quot;По умолчанию&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Включать SNI в смешанном регистре для профилей, у которых параметр «TLS Tricks» оставлен в значении &amp;quot;По умолчанию&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Default Fingerprint</source>
@@ -4397,11 +4405,11 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
     </message>
     <message>
         <source>optional — inherits the Direct Test URL</source>
-        <translation>необязательно — наследует «URL проверки Direct»</translation>
+        <translation>необязательно — наследует «URL проверки без прокси»</translation>
     </message>
     <message>
         <source>Fetched WITHOUT the proxy to tell a dead internet connection apart from dead servers, and to notice the moment it comes back. Leave empty to inherit the Direct Test URL from Basic Settings, and empty there too to rely on the operating system&apos;s network state. A URL that turns out to be blocked can only delay a resume by a few minutes; it can never keep the selector paused.</source>
-        <translation>Запрашивается БЕЗ прокси, чтобы отличить отсутствие интернета от неработающих серверов и сразу заметить, когда связь вернется. Оставьте пустым, чтобы использовать «URL проверки Direct» из основных настроек; если пусто и там, используется состояние сети операционной системы. Если этот URL окажется заблокирован, это лишь задержит возобновление на несколько минут, но никогда не оставит автовыбор на паузе.</translation>
+        <translation>Запрашивается БЕЗ прокси, чтобы отличить отсутствие интернета от неработающих серверов и сразу заметить, когда связь вернется. Оставьте пустым, чтобы использовать «URL проверки без прокси» из основных настроек; если пусто и там, используется состояние сети операционной системы. Если этот URL окажется заблокирован, это лишь задержит возобновление на несколько минут, но никогда не оставит автовыбор на паузе.</translation>
     </message>
     <message>
         <source>Rotate on a timer (keeps sessions stable)</source>
@@ -4492,7 +4500,7 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
     </message>
     <message>
         <source>A custom %1 config cannot be a hop; only custom outbounds can.</source>
-        <translation>Пользовательская конфигурация %1 не может быть звеном; звеньями могут быть только пользовательские outbound.</translation>
+        <translation>Пользовательская конфигурация %1 не может быть звеном; звеньями могут быть только пользовательские исходящие.</translation>
     </message>
     <message>
         <source>Only one custom Xray config can be in a chain.</source>
@@ -4547,15 +4555,15 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
     </message>
     <message>
         <source>Outbound JSON, please read the documentation.</source>
-        <translation>Outbound JSON — пожалуйста, прочтите документацию.</translation>
+        <translation>JSON исходящего — прочтите документацию.</translation>
     </message>
     <message>
         <source>Xray outbound JSON, please read the Xray documentation.</source>
-        <translation>Xray Outbound JSON — пожалуйста, прочтите документацию Xray.</translation>
+        <translation>JSON исходящего Xray — прочтите документацию Xray.</translation>
     </message>
     <message>
         <source>Xray full config (Poros adds a socks inbound and uses sing-box for tun/routing).</source>
-        <translation>Полная конфигурация Xray (Poros добавляет socks inbound и использует sing-box для tun / маршрутизации).</translation>
+        <translation>Полная конфигурация Xray (Poros добавляет входящий socks и использует sing-box для TUN и маршрутизации).</translation>
     </message>
     <message>
         <source>Please fill the complete config.</source>
@@ -6399,7 +6407,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Restrict this outbound to one network. Leave empty to carry both TCP and UDP.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ограничить этот outbound одной сетью. Оставьте пустым, чтобы передавать и TCP, и UDP.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ограничить этот профиль одной сетью. Оставьте пустым, чтобы передавать и TCP, и UDP.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Network</source>
@@ -6612,7 +6620,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Generate Warp Config</source>
-        <translation>Сгенерировать конфиг Warp</translation>
+        <translation>Сгенерировать конфигурацию WARP</translation>
     </message>
     <message>
         <source>Pre Shared Key</source>
@@ -6656,7 +6664,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Failed to generate warp config</source>
-        <translation>Не удалось сгенерировать конфигурацию Warp</translation>
+        <translation>Не удалось сгенерировать конфигурацию WARP</translation>
     </message>
     <message>
         <source>Success!</source>
@@ -6983,11 +6991,11 @@ Improves hole-punching reliability. Requires IPv4.</source>
     <name>LiveChart</name>
     <message>
         <source>Down</source>
-        <translation>Входящий</translation>
+        <translation>Загрузка</translation>
     </message>
     <message>
         <source>Up</source>
-        <translation>Исходящий</translation>
+        <translation>Отдача</translation>
     </message>
     <message>
         <source>Waiting for traffic</source>
@@ -7003,7 +7011,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Click an outbound or a direction in the legend to show it.</source>
-        <translation>Нажмите на outbound или направление в легенде, чтобы показать его.</translation>
+        <translation>Нажмите на исходящий или направление в легенде, чтобы показать его.</translation>
     </message>
     <message>
         <source>Total</source>
@@ -7016,6 +7024,38 @@ Improves hole-punching reliability. Requires IPv4.</source>
     <message>
         <source>Stopped</source>
         <translation>Остановлено</translation>
+    </message>
+    <message>
+        <source>B/s</source>
+        <translation>Б/с</translation>
+    </message>
+    <message>
+        <source>KiB/s</source>
+        <translation>КБ/с</translation>
+    </message>
+    <message>
+        <source>MiB/s</source>
+        <translation>МБ/с</translation>
+    </message>
+    <message>
+        <source>GiB/s</source>
+        <translation>ГБ/с</translation>
+    </message>
+    <message>
+        <source>1 min</source>
+        <translation>1 мин</translation>
+    </message>
+    <message>
+        <source>2 min</source>
+        <translation>2 мин</translation>
+    </message>
+    <message>
+        <source>5 min</source>
+        <translation>5 мин</translation>
+    </message>
+    <message>
+        <source>10 min</source>
+        <translation>10 мин</translation>
     </message>
     <message>
         <source>Not running</source>
@@ -7686,7 +7726,7 @@ Improves hole-punching reliability. Requires IPv4.</source>
     </message>
     <message>
         <source>Enable Warp</source>
-        <translation>Включить Warp</translation>
+        <translation>Включить WARP</translation>
     </message>
     <message>
         <source>Add this subscription?
@@ -7769,6 +7809,10 @@ URL: %2</translation>
     <message>
         <source>Listening on all interfaces (%1)</source>
         <translation>Прослушивание на всех интерфейсах (%1)</translation>
+    </message>
+    <message>
+        <source>Local port: %1</source>
+        <translation>Локальный порт: %1</translation>
     </message>
     <message>
         <source>Select</source>
@@ -8518,7 +8562,7 @@ Name: %1</source>
     </message>
     <message>
         <source>Warp-bypass</source>
-        <translation>Warp-bypass</translation>
+        <translation>WARP</translation>
     </message>
     <message>
         <source>Modify rules in &quot;%1&quot;</source>
@@ -8616,7 +8660,7 @@ Name: %1</source>
     </message>
     <message>
         <source>Proxy</source>
-        <translation>Прокси</translation>
+        <translation>Через прокси</translation>
     </message>
     <message>
         <source>Block</source>
@@ -9213,7 +9257,7 @@ Name: %1</source>
     <message>
         <source>Proxy: %1
 Direct: %2</source>
-        <translation>Прокси: %1
+        <translation>Через прокси: %1
 Напрямую: %2</translation>
     </message>
     <message>
@@ -9292,7 +9336,7 @@ How to update?</source>
     </message>
     <message>
         <source>Subscription server update interval: %1 hour(s)</source>
-        <translation>Интервал обновления, заданный сервером подписки: %1 ч.</translation>
+        <translation>Интервал обновления, заданный сервером подписки: %1 ч</translation>
     </message>
     <message>
         <source>Process complete, applying...</source>
@@ -9688,15 +9732,15 @@ Move the Poros folder somewhere you can write to.</source>
     </message>
     <message>
         <source>%1s ago</source>
-        <translation>%1 сек. назад</translation>
+        <translation>%1 с назад</translation>
     </message>
     <message>
         <source>%1m ago</source>
-        <translation>%1 мин. назад</translation>
+        <translation>%1 мин назад</translation>
     </message>
     <message>
         <source>%1h ago</source>
-        <translation>%1 ч. назад</translation>
+        <translation>%1 ч назад</translation>
     </message>
     <message>
         <source>Auto selector paused — no network connection (%1 profiles held)</source>
@@ -9804,7 +9848,7 @@ Move the Poros folder somewhere you can write to.</source>
     </message>
     <message>
         <source>failed to connect, retrying in %1s</source>
-        <translation>не удалось установить соединение, повтор через %1 сек.</translation>
+        <translation>не удалось установить соединение, повтор через %1 с</translation>
     </message>
     <message>
         <source>failed to connect</source>
@@ -9839,6 +9883,10 @@ Move the Poros folder somewhere you can write to.</source>
         <translation>Недоступен</translation>
     </message>
     <message>
+        <source>%1 ms</source>
+        <translation>%1 мс</translation>
+    </message>
+    <message>
         <source>%1 route prefer</source>
         <translation>%1 — предпочтительный маршрут</translation>
     </message>
@@ -9861,6 +9909,22 @@ Move the Poros folder somewhere you can write to.</source>
     <message>
         <source>Unknown</source>
         <translation>Неизвестно</translation>
+    </message>
+    <message>
+        <source>%1d</source>
+        <translation>%1 д</translation>
+    </message>
+    <message>
+        <source>%1h</source>
+        <translation>%1 ч</translation>
+    </message>
+    <message>
+        <source>%1m</source>
+        <translation>%1 мин</translation>
+    </message>
+    <message>
+        <source>%1s</source>
+        <translation>%1 с</translation>
     </message>
     <message>
         <source>Too much data to fit in a QR code.</source>
@@ -10348,11 +10412,11 @@ Move the Poros folder somewhere you can write to.</source>
     </message>
     <message>
         <source>Proxy</source>
-        <translation>Прокси</translation>
+        <translation>Через прокси</translation>
     </message>
     <message>
         <source>Other outbounds</source>
-        <translation>Прочие outbound</translation>
+        <translation>Прочие исходящие</translation>
     </message>
     <message>
         <source>Download stalled: no data arrived for %1 seconds.</source>
@@ -10455,7 +10519,7 @@ Move the Poros folder somewhere you can write to.</source>
         <source>Use the route object exactly as written (outbound ids are still resolved to tags).
 Poros will NOT add its DNS-hijack or xray bridge plumbing, so DNS, chained/xray
 outbounds and other Poros features may break. For advanced users only.</source>
-        <translation>Использовать объект route точно в том виде, как он написан (ID outbound по-прежнему преобразуются в теги).
+        <translation>Использовать объект route точно в том виде, как он написан (ID исходящих по-прежнему преобразуются в теги).
 Poros НЕ будет добавлять свой перехват DNS (DNS-hijack) и мост xray, поэтому DNS, цепочки/xray
 outbound и другие функции Poros могут не работать. Только для опытных пользователей.</translation>
     </message>
@@ -10497,6 +10561,45 @@ outbound и другие функции Poros могут не работать. 
     </message>
 </context>
 <context>
+    <name>ReadableSize</name>
+    <message>
+        <source>B</source>
+        <translation>Б</translation>
+    </message>
+    <message>
+        <source>KiB</source>
+        <translation>КБ</translation>
+    </message>
+    <message>
+        <source>MiB</source>
+        <translation>МБ</translation>
+    </message>
+    <message>
+        <source>GiB</source>
+        <translation>ГБ</translation>
+    </message>
+    <message>
+        <source>TiB</source>
+        <translation>ТБ</translation>
+    </message>
+    <message>
+        <source>PiB</source>
+        <translation>ПБ</translation>
+    </message>
+    <message>
+        <source>EiB</source>
+        <translation>ЭБ</translation>
+    </message>
+    <message>
+        <source>ZiB</source>
+        <translation>ЗБ</translation>
+    </message>
+    <message>
+        <source>YiB</source>
+        <translation>ИБ</translation>
+    </message>
+</context>
+<context>
     <name>RouteDnsEditor</name>
     <message>
         <source>These servers replace the global ones while this routing profile is in use.</source>
@@ -10533,6 +10636,14 @@ outbound и другие функции Poros могут не работать. 
     <message>
         <source>Default DNS server</source>
         <translation>DNS-сервер по умолчанию</translation>
+    </message>
+    <message>
+        <source>Remote</source>
+        <translation>Удалённый</translation>
+    </message>
+    <message>
+        <source>Direct</source>
+        <translation>Прямой</translation>
     </message>
     <message>
         <source>Enable DNS Routing</source>
@@ -11454,15 +11565,15 @@ Core: %2</source>
     </message>
     <message>
         <source>%1d %2h left</source>
-        <translation>Осталось %1 д. %2 ч.</translation>
+        <translation>Осталось %1 д %2 ч</translation>
     </message>
     <message>
         <source>%1h %2m left</source>
-        <translation>Осталось %1 ч. %2 мин.</translation>
+        <translation>Осталось %1 ч %2 мин</translation>
     </message>
     <message>
         <source>%1m left</source>
-        <translation>Осталось %1 мин.</translation>
+        <translation>Осталось %1 мин</translation>
     </message>
     <message>
         <source>Announcement - %1</source>
@@ -12128,7 +12239,7 @@ Core: %2</source>
     </message>
     <message>
         <source>Removed this inbound from the imported configuration: it could let other devices connect through this computer. Only tun inbounds and local proxies that listen on 127.0.0.1 or ::1 are kept.</source>
-        <translation>Этот inbound удален из импортированной конфигурации: он мог бы позволить другим устройствам подключаться через этот компьютер. Сохраняются только tun inbound и локальные прокси, слушающие 127.0.0.1 или ::1.</translation>
+        <translation>Этот входящий удалён из импортированной конфигурации: он мог бы позволить другим устройствам подключаться через этот компьютер. Сохраняются только входящие tun и локальные прокси, слушающие 127.0.0.1 или ::1.</translation>
     </message>
     <message>
         <source>Removed the Clash API from the imported configuration: web pages and programs on this computer could use it to control the core, and its external_ui setting downloads files.</source>
@@ -12140,7 +12251,7 @@ Core: %2</source>
     </message>
     <message>
         <source>Removed the inbounds from the imported configuration: Poros adds its own local inbound, and these could let other devices connect through this computer.</source>
-        <translation>Inbound удалены из импортированной конфигурации: Poros добавляет собственный локальный inbound, а эти могли бы позволить другим устройствам подключаться через этот компьютер.</translation>
+        <translation>Входящие удалены из импортированной конфигурации: Poros добавляет собственный локальный входящий, а эти могли бы позволить другим устройствам подключаться через этот компьютер.</translation>
     </message>
     <message>
         <source>Removed the environment variables from the imported configuration: they would apply to Poros&apos;s core and to the programs it starts.</source>
@@ -12160,7 +12271,7 @@ Core: %2</source>
     </message>
     <message>
         <source>Add the outbound type, for example &quot;type&quot;: &quot;socks&quot;.</source>
-        <translation>Добавьте тип outbound, например &quot;type&quot;: &quot;socks&quot;.</translation>
+        <translation>Добавьте тип исходящего, например &quot;type&quot;: &quot;socks&quot;.</translation>
     </message>
     <message>
         <source>Add the protocol, for example &quot;protocol&quot;: &quot;vless&quot;.</source>
@@ -12920,19 +13031,19 @@ Core: %2</source>
     </message>
     <message>
         <source>sing-box outbound #%1</source>
-        <translation>Outbound sing-box #%1</translation>
+        <translation>Исходящий sing-box #%1</translation>
     </message>
     <message>
         <source>sing-box outbound &quot;%1&quot;</source>
-        <translation>Outbound sing-box &quot;%1&quot;</translation>
+        <translation>Исходящий sing-box &quot;%1&quot;</translation>
     </message>
     <message>
         <source>Xray outbound #%1</source>
-        <translation>Outbound Xray #%1</translation>
+        <translation>Исходящий Xray #%1</translation>
     </message>
     <message>
         <source>Xray outbound &quot;%1&quot;</source>
-        <translation>Outbound Xray &quot;%1&quot;</translation>
+        <translation>Исходящий Xray &quot;%1&quot;</translation>
     </message>
     <message>
         <source>Xray config #%1</source>
@@ -12968,7 +13079,7 @@ Core: %2</source>
     </message>
     <message>
         <source>A VLESS profile cannot store this setting, so it was ignored. Such an outbound is kept as written only when nothing else in it needs fixing.</source>
-        <translation>Профиль VLESS не может хранить этот параметр, поэтому он проигнорирован. Такой outbound сохраняется как есть, только если в нем больше нечего исправлять.</translation>
+        <translation>Профиль VLESS не может хранить этот параметр, поэтому он проигнорирован. Такой исходящий сохраняется как есть, только если в нем больше нечего исправлять.</translation>
     </message>
     <message>
         <source>Rename this key to &quot;%1&quot;: Poros reads only that spelling, and dropping its value would weaken the connection&apos;s security.</source>
@@ -13000,7 +13111,7 @@ Core: %2</source>
     </message>
     <message>
         <source>Imported as a custom Xray outbound to keep %1, which a VLESS profile would drop.</source>
-        <translation>Импортировано как пользовательский Xray outbound, чтобы сохранить %1 — в профиле VLESS это было бы отброшено.</translation>
+        <translation>Импортировано как пользовательский исходящий Xray, чтобы сохранить %1 — в профиле VLESS это было бы отброшено.</translation>
     </message>
     <message>
         <source>SIP008 server #%1</source>
@@ -13128,7 +13239,7 @@ Core: %2</source>
     </message>
     <message>
         <source>Rule &quot;%1&quot; now uses the proxy outbound: %2</source>
-        <translation>Правило &quot;%1&quot; теперь использует outbound proxy: %2</translation>
+        <translation>Правило &quot;%1&quot; теперь использует исходящий proxy: %2</translation>
     </message>
     <message>
         <source>Rule &quot;%1&quot;: %2 was cleared: %3</source>
@@ -13136,7 +13247,7 @@ Core: %2</source>
     </message>
     <message>
         <source>Rule &quot;%1&quot;: the outbound is neither a profile name nor an id, so it uses proxy.</source>
-        <translation>Правило &quot;%1&quot;: outbound не является ни именем, ни ID профиля, поэтому используется proxy.</translation>
+        <translation>Правило &quot;%1&quot;: исходящий не является ни именем, ни ID профиля, поэтому используется proxy.</translation>
     </message>
     <message>
         <source>Rule &quot;%1&quot; was dropped: %2 holds something other than text, numbers or booleans.</source>
@@ -13164,7 +13275,7 @@ Core: %2</source>
     </message>
     <message>
         <source>The default outbound &quot;%1&quot; is unknown, so proxy is used.</source>
-        <translation>Outbound по умолчанию &quot;%1&quot; неизвестен, поэтому используется proxy.</translation>
+        <translation>Исходящий по умолчанию &quot;%1&quot; неизвестен, поэтому используется proxy.</translation>
     </message>
     <message>
         <source>Rule #%1 is not a JSON object and was skipped.</source>
@@ -13228,23 +13339,23 @@ Core: %2</source>
     </message>
     <message>
         <source>Not a valid outbound; pick another one.</source>
-        <translation>Недопустимый outbound; выберите другой.</translation>
+        <translation>Недопустимый исходящий; выберите другой.</translation>
     </message>
     <message>
         <source>The outbound profile no longer exists; pick another one.</source>
-        <translation>Профиль outbound больше не существует; выберите другой.</translation>
+        <translation>Профиль исходящего больше не существует; выберите другой.</translation>
     </message>
     <message>
         <source>The chain &quot;%1&quot; has no hops; pick another outbound.</source>
-        <translation>В цепочке &quot;%1&quot; нет звеньев; выберите другой outbound.</translation>
+        <translation>В цепочке &quot;%1&quot; нет звеньев; выберите другой исходящий.</translation>
     </message>
     <message>
         <source>Routing rules cannot use &quot;%1&quot;: full configs are not supported. Pick another outbound.</source>
-        <translation>В правилах маршрутизации нельзя использовать &quot;%1&quot;: полные конфигурации не поддерживаются. Выберите другой outbound.</translation>
+        <translation>В правилах маршрутизации нельзя использовать &quot;%1&quot;: полные конфигурации не поддерживаются. Выберите другой исходящий.</translation>
     </message>
     <message>
         <source>Routing rules cannot use the chain &quot;%1&quot;: a hop of it is missing, another chain or a full config. Pick another outbound.</source>
-        <translation>В правилах маршрутизации нельзя использовать цепочку &quot;%1&quot;: одно из её звеньев отсутствует, является другой цепочкой или полной конфигурацией. Выберите другой outbound.</translation>
+        <translation>В правилах маршрутизации нельзя использовать цепочку &quot;%1&quot;: одно из её звеньев отсутствует, является другой цепочкой или полной конфигурацией. Выберите другой исходящий.</translation>
     </message>
     <message>
         <source>A range goes in port_range, written like 1000:2000.</source>

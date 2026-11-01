@@ -10,6 +10,8 @@
 #include <QLabel>
 #include <QVBoxLayout>
 
+#include <algorithm>
+
 namespace DnsServerHistory {
     constexpr int maxEntries = 8;
 
@@ -117,7 +119,8 @@ RouteDnsEditor::RouteDnsEditor(const Configs::RouteProfile& profile, QWidget* pa
 
     auto* finalLabel = fieldLabel(new QLabel(tr("Default DNS server"), fields));
     finalOut = new QComboBox(fields);
-    finalOut->addItems({QStringLiteral("remote"), QStringLiteral("direct")});
+    finalOut->addItem(tr("Remote"), QStringLiteral("remote"));
+    finalOut->addItem(tr("Direct"), QStringLiteral("direct"));
     finalLabel->setBuddy(finalOut);
     dnsRouting = switchBox(new QCheckBox(tr("Enable DNS Routing"), fields));
     dnsRouting->setToolTip(tr("Domains this profile sends direct are resolved with the direct DNS too."));
@@ -183,7 +186,7 @@ void RouteDnsEditor::showDns(const Configs::RouteDns& dns) const {
     remoteDisableIPv6->setChecked(dns.remote_dns_disable_ipv6);
     directDns->setCurrentText(dns.direct_dns);
     directDisableIPv6->setChecked(dns.direct_dns_disable_ipv6);
-    finalOut->setCurrentText(dns.dns_final_out);
+    finalOut->setCurrentIndex(std::max(0, finalOut->findData(dns.dns_final_out)));
     dnsRouting->setChecked(dns.enable_dns_routing);
     fakeIP->setChecked(dns.fake_dns);
     fakeIPDisableIPv6->setChecked(dns.fakeip_disable_ipv6);
@@ -195,7 +198,7 @@ Configs::RouteDns RouteDnsEditor::shownDns() const {
     dns.remote_dns_disable_ipv6 = remoteDisableIPv6->isChecked();
     dns.direct_dns = directDns->currentText().trimmed();
     dns.direct_dns_disable_ipv6 = directDisableIPv6->isChecked();
-    dns.dns_final_out = finalOut->currentText();
+    dns.dns_final_out = finalOut->currentData().toString();
     dns.enable_dns_routing = dnsRouting->isChecked();
     dns.fake_dns = fakeIP->isChecked();
     dns.fakeip_disable_ipv6 = fakeIPDisableIPv6->isChecked();

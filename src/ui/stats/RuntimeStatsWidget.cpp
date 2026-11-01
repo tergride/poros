@@ -22,6 +22,7 @@
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QItemSelectionModel>
+#include <QLocale>
 #include <QPointer>
 #include <QStringList>
 #include <QPushButton>
@@ -44,7 +45,7 @@ namespace {
     }
 
     QString formatCpu(const Sys::ProcessMetrics::Sample& s) {
-        return s.ok ? QString::number(s.cpuPercent, 'f', 1) + QStringLiteral("%") : QStringLiteral("—");
+        return s.ok ? QLocale().toString(s.cpuPercent, 'f', 1) + QStringLiteral("%") : QStringLiteral("—");
     }
 
     QString formatRam(const Sys::ProcessMetrics::Sample& s) {
@@ -138,7 +139,7 @@ void RuntimeStatsWidget::refreshLive() {
     ui->vMemory->setText(ReadableSize(ram));
     ui->vMemory->setToolTip(tr("Poros: %1\nCore: %2").arg(formatRam(selfSample), formatRam(coreSample)));
     const double cpu = (selfSample.ok ? selfSample.cpuPercent : 0) + (coreSample.ok ? coreSample.cpuPercent : 0);
-    ui->vCpu->setText(QString::number(cpu, 'f', 1) + QStringLiteral("%"));
+    ui->vCpu->setText(QLocale().toString(cpu, 'f', 1) + QStringLiteral("%"));
     ui->vCpu->setToolTip(tr("Poros: %1\nCore: %2").arg(formatCpu(selfSample), formatCpu(coreSample)));
 
     const auto nextUpd = [](int interval, qint64 last) -> QString {

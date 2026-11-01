@@ -4,6 +4,7 @@
 #include "3rdparty/QThreadCreateThread.hpp"
 
 #include <atomic>
+#include <cmath>
 #include <mutex>
 #include <random>
 #include <utility>
@@ -277,25 +278,20 @@ QList<int> MkManyPorts(int num, const QString &address) {
 }
 
 QString ReadableSize(const qint64 &size) {
+    static const QList<const char *> measures{
+        QT_TRANSLATE_NOOP("ReadableSize", "B"),   QT_TRANSLATE_NOOP("ReadableSize", "KiB"), QT_TRANSLATE_NOOP("ReadableSize", "MiB"),
+        QT_TRANSLATE_NOOP("ReadableSize", "GiB"), QT_TRANSLATE_NOOP("ReadableSize", "TiB"), QT_TRANSLATE_NOOP("ReadableSize", "PiB"),
+        QT_TRANSLATE_NOOP("ReadableSize", "EiB"), QT_TRANSLATE_NOOP("ReadableSize", "ZiB"), QT_TRANSLATE_NOOP("ReadableSize", "YiB"),
+    };
     double sizeAsDouble = size;
-    static QStringList measures;
-    if (measures.isEmpty())
-        measures << "B"
-                 << "KiB"
-                 << "MiB"
-                 << "GiB"
-                 << "TiB"
-                 << "PiB"
-                 << "EiB"
-                 << "ZiB"
-                 << "YiB";
-    QStringListIterator it(measures);
-    QString measure(it.next());
-    while (sizeAsDouble >= 1024.0 && it.hasNext()) {
-        measure = it.next();
+    qsizetype measure = 0;
+    while (sizeAsDouble >= 1024.0 && measure + 1 < measures.size()) {
+        ++measure;
         sizeAsDouble /= 1024.0;
     }
-    return QString::fromLatin1("%1 %2").arg(sizeAsDouble, 0, 'f', 2).arg(measure);
+    // One decimal at most: 84 MiB, 2.4 MiB.
+    return QStringLiteral("%1 %2").arg(QLocale().toString(std::round(sizeAsDouble * 10) / 10, 'f', QLocale::FloatingPointShortest),
+                                       QCoreApplication::translate("ReadableSize", measures[measure]));
 }
 
 QString ShortDisplayName(const QString &name, int maxGraphemes) {

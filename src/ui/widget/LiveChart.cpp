@@ -9,6 +9,7 @@
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QFontMetricsF>
+#include <QLocale>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPaintEvent>
@@ -47,7 +48,7 @@ namespace {
             while (s.endsWith(QLatin1Char('0'))) s.chop(1);
             if (s.endsWith(QLatin1Char('.'))) s.chop(1);
         }
-        return s;
+        return s.replace(QLatin1Char('.'), QLocale().decimalPoint());
     }
 
     LiveChartAxis liveChartUnitAxis(double base, const QStringList &units, double mult, double floorValue, const QStringList &widest) {
@@ -62,7 +63,7 @@ namespace {
                 ++u;
             }
             const int decimals = u == 0 || x >= 100 ? 0 : x >= 10 ? 1 : 2;
-            return QString::number(x, 'f', decimals) + QLatin1Char(' ') + units[u];
+            return QLocale().toString(x, 'f', decimals) + QLatin1Char(' ') + units[u];
         };
         axis.scale = [=](double maxValue) {
             double v = std::max(maxValue * mult, floorValue);
@@ -205,13 +206,8 @@ namespace {
 } // namespace
 
 LiveChartAxis LiveChartAxis::rateBytes() {
-    return liveChartUnitAxis(1024, {QStringLiteral("B/s"), QStringLiteral("KiB/s"), QStringLiteral("MiB/s"), QStringLiteral("GiB/s")}, 1, 1024,
-                             {QStringLiteral("1000 KiB/s"), QStringLiteral("8.88 MiB/s")});
-}
-
-LiveChartAxis LiveChartAxis::rateBits() {
-    return liveChartUnitAxis(1000, {QStringLiteral("bps"), QStringLiteral("Kbps"), QStringLiteral("Mbps"), QStringLiteral("Gbps")}, 8, 1000,
-                             {QStringLiteral("1000 Kbps"), QStringLiteral("8.88 Mbps")});
+    const QStringList units{LiveChart::tr("B/s"), LiveChart::tr("KiB/s"), LiveChart::tr("MiB/s"), LiveChart::tr("GiB/s")};
+    return liveChartUnitAxis(1024, units, 1, 1024, {QStringLiteral("1000 ") + units[1], QStringLiteral("8.88 ") + units[2]});
 }
 
 LiveChartOptions LiveChartOptions::trafficGraph() {
@@ -222,10 +218,10 @@ LiveChartOptions LiveChartOptions::trafficGraph() {
     };
     o.legend = Legend::Side;
     o.ranges = {
-        LiveChartRange{60, QStringLiteral("1m"), 15},
-        LiveChartRange{120, QStringLiteral("2m"), 30},
-        LiveChartRange{300, QStringLiteral("5m"), 60},
-        LiveChartRange{600, QStringLiteral("10m"), 120},
+        LiveChartRange{60, LiveChart::tr("1 min"), 15},
+        LiveChartRange{120, LiveChart::tr("2 min"), 30},
+        LiveChartRange{300, LiveChart::tr("5 min"), 60},
+        LiveChartRange{600, LiveChart::tr("10 min"), 120},
     };
     o.windowSeconds = 120;
     o.pointIntervalMs = 1000;

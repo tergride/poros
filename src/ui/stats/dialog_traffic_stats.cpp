@@ -24,7 +24,7 @@ namespace {
     // Named rows per breakdown table; the rest is folded into one "Other" row.
     constexpr int kMaxBreakdownRows = 9;
 
-    // Sorts on the raw byte value; the default compares the formatted text, ranking "900 MiB" above "1.00 GiB".
+    // Sorts on the raw byte value; the default compares the formatted text, ranking "900 MiB" above "1 GiB".
     class TrafficStatsSizeItem : public QTableWidgetItem {
     public:
         TrafficStatsSizeItem(const QString& text, long long value) : QTableWidgetItem(text) {

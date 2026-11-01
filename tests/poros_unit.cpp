@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -453,6 +454,18 @@ private slots:
         QVERIFY(cellHolds(0, 1, fields[2]));
         QVERIFY(cellHolds(1, 0, check));
         QVERIFY(cellHolds(2, 0, note));
+    }
+
+    void readableSizeKeepsOneDecimalAtMost() {
+        const QLocale saved;
+        QLocale::setDefault(QLocale::c());
+        QCOMPARE(ReadableSize(0), QStringLiteral("0 B"));
+        QCOMPARE(ReadableSize(1024), QStringLiteral("1 KiB"));
+        QCOMPARE(ReadableSize(88 << 20), QStringLiteral("88 MiB"));
+        QCOMPARE(ReadableSize(2516582), QStringLiteral("2.4 MiB"));
+        QLocale::setDefault(QLocale(QLocale::Russian));
+        QCOMPARE(ReadableSize(2516582), QStringLiteral("2,4 MiB"));
+        QLocale::setDefault(saved);
     }
 
     void connectionsListByProcessOrFlat() {

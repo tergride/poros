@@ -135,7 +135,6 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
     form->attachStatus(ui->buttonBox);
     ADD_ASTERISK(this);
 
-    ui->inbound_socks_port_l->setText(ui->inbound_socks_port_l->text().replace("Socks", "Mixed (SOCKS+HTTP)"));
     ui->log_level->addItems(QString("trace debug info warn error fatal panic").split(" "));
     ui->xray_loglevel->addItems(Configs::Xray::XrayLogLevels);
     ui->disable_stats->setChecked(Configs::dataManager->settingsRepo->disable_traffic_stats);

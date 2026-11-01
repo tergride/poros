@@ -94,10 +94,10 @@ namespace Stats {
         const qint64 h = seconds / 3600;  seconds %= 3600;
         const qint64 m = seconds / 60;    seconds %= 60;
         QStringList parts;
-        if (d > 0) parts << QStringLiteral("%1d").arg(d);
-        if (h > 0) parts << QStringLiteral("%1h").arg(h);
-        if (m > 0) parts << QStringLiteral("%1m").arg(m);
-        if (d == 0 && h == 0) parts << QStringLiteral("%1s").arg(seconds);
+        if (d > 0) parts << QObject::tr("%1d").arg(d);
+        if (h > 0) parts << QObject::tr("%1h").arg(h);
+        if (m > 0) parts << QObject::tr("%1m").arg(m);
+        if (d == 0 && h == 0) parts << QObject::tr("%1s").arg(seconds);
         return parts.join(QLatin1Char(' '));
     }
 

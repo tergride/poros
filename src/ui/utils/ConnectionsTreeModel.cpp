@@ -155,14 +155,14 @@ QVariant ConnectionsTreeModel::data(const QModelIndex &index, int role) const {
             case ColTraffic:
                 return ReadableSize(group->totalUpload + group->totalDownload);
             case ColSpeed:
-                return ReadableSize(group->totalUploadSpeed + group->totalDownloadSpeed) + "/s";
+                return ReadableSize(group->totalUploadSpeed + group->totalDownloadSpeed) + tr("/s");
             default:
                 return {};
             }
         case Qt::ToolTipRole:
             if (index.column() == ColOutbound && group->sameOutbound) return group->commonOutbound;
             if (index.column() == ColTraffic) return upDownText(group->totalUpload, group->totalDownload);
-            if (index.column() == ColSpeed) return upDownText(group->totalUploadSpeed, group->totalDownloadSpeed, QStringLiteral("/s"));
+            if (index.column() == ColSpeed) return upDownText(group->totalUploadSpeed, group->totalDownloadSpeed, tr("/s"));
             if (index.column() != ColTarget) return {};
             return tr("Process: %1\nActive connections: %2\nTotal traffic: %3↑ %4↓\nTotal speed: %5/s↑ %6/s↓")
                 .arg(displayProcessName(group->processName), QString::number(group->totalConnections),
@@ -203,14 +203,14 @@ QVariant ConnectionsTreeModel::leafData(const ConnectionLeafItem *leaf, int colu
         case ColTraffic:
             return ReadableSize(leaf->upload + leaf->download);
         case ColSpeed:
-            return ReadableSize(leaf->uploadSpeed + leaf->downloadSpeed) + "/s";
+            return ReadableSize(leaf->uploadSpeed + leaf->downloadSpeed) + tr("/s");
         default:
             return {};
         }
     case Qt::ToolTipRole: {
         if (column == ColOutbound) return matchedRuleToolTip(leaf->meta);
         if (column == ColTraffic) return upDownText(leaf->upload, leaf->download);
-        if (column == ColSpeed) return upDownText(leaf->uploadSpeed, leaf->downloadSpeed, QStringLiteral("/s"));
+        if (column == ColSpeed) return upDownText(leaf->uploadSpeed, leaf->downloadSpeed, tr("/s"));
         const QString outbound = outboundToolTip(leaf->meta.outboundName, leaf->meta.outbound);
         if (column != ColTarget) return {};
         const QString process = displayProcessName(leaf->parent->processName);

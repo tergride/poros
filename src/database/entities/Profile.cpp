@@ -45,7 +45,7 @@ namespace Configs
             result = QObject::tr("Unavailable");
             return result;
         } else if (latency > 0) {
-            result += QString("%1 ms").arg(latency);
+            result += QObject::tr("%1 ms").arg(latency);
         }
         bool showSpeed = group->test_items_to_show == testShowItems::all || group->test_items_to_show == testShowItems::speedOnly;
         bool showIP = group->test_items_to_show == testShowItems::all || group->test_items_to_show == testShowItems::ipOnly;
