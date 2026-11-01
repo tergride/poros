@@ -131,16 +131,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         });
     };
 
-    // Menu mirrors of settings that other windows change as well.
-    const auto syncSettingsMirrors = [this] {
-        const auto &settings = Configs::dataManager->settingsRepo;
-        const QSignalBlocker rememberBlocker(ui->actionRemember_last_proxy);
-        const QSignalBlocker lanBlocker(ui->actionAllow_LAN);
-        ui->actionRemember_last_proxy->setChecked(settings->remember_enable);
-        ui->actionStart_with_system->setChecked(AutoRun_IsEnabled());
-        ui->actionAllow_LAN->setChecked(QStringList{"::", "0.0.0.0"}.contains(settings->inbound_address));
-    };
-
     // AutoConnection, like the old runOnUiThread hop: direct for emits on the main thread, queued from workers.
     auto *engineEvents = Engine::EngineEvents::instance();
     connect(engineEvents, &Engine::EngineEvents::subscriptionNewGroup, this, [this](int gid) {
@@ -166,7 +156,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         refresh_proxy_list({}, true, RefreshAnchor::Removal);
         if (m_serverModel != nullptr) m_serverModel->reload();
     });
-    connect(engineEvents, &Engine::EngineEvents::settingsChanged, this, [this, syncSettingsMirrors](const QStringList &) {
+    connect(engineEvents, &Engine::EngineEvents::settingsChanged, this, [this](const QStringList &) {
         refresh_status();
         syncSettingsMirrors();
     });
@@ -534,6 +524,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         Configs::dataManager->settingsRepo->remember_enable = checked;
         ui->actionRemember_last_proxy->setChecked(checked);
         Configs::dataManager->settingsRepo->Save();
+        refreshEmbeddedPages();
     });
     connect(ui->actionStart_with_system, &QAction::triggered, this, [=,this](bool checked) {
         if (QString error; !AutoRun_SetEnabled(checked, &error)) {
@@ -541,11 +532,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
         ui->actionStart_with_system->setChecked(AutoRun_IsEnabled());
     });
-    connect(ui->actionAllow_LAN, &QAction::triggered, this, [=,this](bool checked) {
-        Configs::dataManager->settingsRepo->inbound_address = checked ? "::" : "127.0.0.1";
-        ui->actionAllow_LAN->setChecked(checked);
-        MW_dialog_message(MwMessage::UpdateSettings, {});
-    });
+    connect(ui->actionAllow_LAN, &QAction::triggered, this, &MainWindow::setAllowLan);
     connect(ui->checkBox_VPN, &QCheckBox::clicked, this, [=,this](bool checked) { connection()->setTun(checked); });
     connect(ui->checkBox_SystemProxy, &QCheckBox::clicked, this, [=,this](bool checked) { connection()->setSystemProxy(checked); });
     connect(ui->menu_spmode, &QMenu::aboutToShow, this, [=,this]() {
@@ -651,6 +638,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         Configs::dataManager->settingsRepo->adblock_enable = checked;
         actionAdblock->setChecked(checked);
         Configs::dataManager->settingsRepo->Save();
+        refreshEmbeddedPages();
         connection()->restartStartedProfile();
     });
 
@@ -661,6 +649,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         Configs::dataManager->settingsRepo->enable_warp = checked;
         actionWarp->setChecked(checked);
         Configs::dataManager->settingsRepo->Save();
+        refreshEmbeddedPages();
         connection()->restartStartedProfile();
     });
 
@@ -913,3 +902,19 @@ void MainWindow::setupTrafficGraph() {
     refresh_traffic_graph_settings();
 }
 
+
+// Menu mirrors of settings that other screens change as well.
+void MainWindow::syncSettingsMirrors() {
+    const auto &settings = Configs::dataManager->settingsRepo;
+    const QSignalBlocker rememberBlocker(ui->actionRemember_last_proxy);
+    const QSignalBlocker lanBlocker(ui->actionAllow_LAN);
+    ui->actionRemember_last_proxy->setChecked(settings->remember_enable);
+    ui->actionStart_with_system->setChecked(AutoRun_IsEnabled());
+    ui->actionAllow_LAN->setChecked(QStringList{"::", "0.0.0.0"}.contains(settings->inbound_address));
+}
+
+void MainWindow::setAllowLan(bool allow) {
+    Configs::dataManager->settingsRepo->inbound_address = allow ? "::" : "127.0.0.1";
+    MW_dialog_message(MwMessage::UpdateSettings, {});
+    refreshEmbeddedPages();
+}

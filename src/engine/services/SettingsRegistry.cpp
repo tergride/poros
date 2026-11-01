@@ -11,7 +11,6 @@
 #include <utility>
 
 #include "include/configs/generate.h"
-#include "include/engine/EditLocks.h"
 #include "include/engine/EngineEvents.h"
 #include "include/engine/ThreadCheck.h"
 #include "include/global/Configs.hpp"
@@ -301,10 +300,6 @@ namespace Engine::SettingsRegistry {
         if (settings.prepare_exit || settings.noSave) {
             return ServiceError{503, QStringLiteral("exiting"), QStringLiteral("Poros is shutting down")};
         }
-        if (IsBeingEdited(EditTarget::Settings)) {
-            return ServiceError{409, QStringLiteral("editing"), QStringLiteral("Poros's settings window is open; close it and try again")};
-        }
-
         SettingsRegistryImpl::Patch pending(settings);
         for (auto it = patch.constBegin(); it != patch.constEnd(); ++it) {
             const auto *key = SettingsRegistryImpl::findKey(it.key());

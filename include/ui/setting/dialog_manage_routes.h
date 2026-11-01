@@ -6,7 +6,6 @@
 #include <atomic>
 #include <memory>
 
-#include "include/engine/EditLocks.h"
 #include "include/global/Configs.hpp"
 #include "include/ui/setting/RouteItem.h"
 #include "include/ui/utils/ValidationForm.h"
@@ -34,8 +33,6 @@ private:
 
     Validation::Form* form = nullptr;
 
-    Engine::EditLock settingsLock{Engine::EditTarget::Settings};
-    Engine::EditLock routesLock{Engine::EditTarget::Routes};
 
     // One of the two is open, on editedRoute; chainList gets its changes through applyEditor().
     RouteItem* routeEditor = nullptr;
@@ -65,6 +62,8 @@ private:
     QList<std::shared_ptr<Configs::RouteProfile>> chainList;
 
     std::shared_ptr<Configs::RouteProfile> currentRoute;
+    // The shell switches the route while this page stays open, so only a change made here is written back.
+    int routeIdAtOpen = -1;
 
     int tooltipID = 0;
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QDialog>
-#include "include/engine/EditLocks.h"
 #include "include/global/Configs.hpp"
 #include "ui_dialog_integration.h"
 
@@ -26,7 +25,9 @@ public:
 public slots:
     void accept() override;
 
-    void reject() override;
+protected:
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 private:
     void generateShortcutItems(const QList<QAction*>& actions);
@@ -42,6 +43,6 @@ private:
     QMap<QtExtKeySequenceEdit*, QString> seqEdit2ID;
     QList<HotkeyEdit> hotkeyEdits;
     Validation::Form *form = nullptr;
-    Engine::EditLock settingsLock{Engine::EditTarget::Settings};
+    bool hotkeysReleased = false;
     Ui::DialogIntegration *ui;
 };

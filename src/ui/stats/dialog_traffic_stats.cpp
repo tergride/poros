@@ -59,12 +59,15 @@ DialogTrafficStats::DialogTrafficStats(QWidget* parent) : QDialog(parent), ui(ne
 
     connect(ui->refreshBtn, &QPushButton::clicked, this, [this] { refresh(); });
     connect(ui->periodCombo, &QComboBox::currentIndexChanged, this, [this](int) { refresh(); });
-
-    refresh();
 }
 
 DialogTrafficStats::~DialogTrafficStats() {
     delete ui;
+}
+
+void DialogTrafficStats::showEvent(QShowEvent *event) {
+    QDialog::showEvent(event);
+    refresh();
 }
 
 long long DialogTrafficStats::selectedWindowSecs() const {

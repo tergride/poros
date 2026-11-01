@@ -5,7 +5,6 @@
 #include <QTimer>
 #include <memory>
 #include "ui_dialog_basic_settings.h"
-#include "include/engine/EditLocks.h"
 
 namespace Ui {
     class DialogBasicSettings;
@@ -32,7 +31,6 @@ private:
 
     Validation::Form *form = nullptr;
 
-    Engine::EditLock settingsLock{Engine::EditTarget::Settings};
 
     void bindValidation();
 

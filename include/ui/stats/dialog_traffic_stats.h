@@ -17,6 +17,9 @@ public:
     explicit DialogTrafficStats(QWidget* parent = nullptr);
     ~DialogTrafficStats() override;
 
+protected:
+    void showEvent(QShowEvent *event) override;
+
 private:
     void refresh();
     void populateProfileTable(long long fromSecs, long long toSecs);

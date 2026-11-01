@@ -422,7 +422,8 @@ DialogManageRoutes::DialogManageRoutes(QWidget *parent) : QDialog(parent), ui(ne
         Configs::dataManager->routesRepo->AddRouteProfile(defaultChain);
         chainList.append(defaultChain);
     }
-    currentRoute = Configs::dataManager->routesRepo->GetRouteProfile(Configs::dataManager->settingsRepo->current_route_id);
+    routeIdAtOpen = Configs::dataManager->settingsRepo->current_route_id;
+    currentRoute = Configs::dataManager->routesRepo->GetRouteProfile(routeIdAtOpen);
     if (currentRoute == nullptr) currentRoute = chainList[0];
 
     for (const auto& [button, icon] : {std::pair{ui->new_route, "plus"}, std::pair{ui->clone_route, "copy"}, std::pair{ui->import_route, "download"},
@@ -693,7 +694,7 @@ void DialogManageRoutes::accept() {
     Configs::dataManager->settingsRepo->dns_predefined_rules = predefinedRules;
 
     Configs::dataManager->routesRepo->UpdateRouteProfiles(chainList);
-    Configs::dataManager->settingsRepo->current_route_id = currentRoute->id;
+    if (currentRoute->id != routeIdAtOpen) Configs::dataManager->settingsRepo->current_route_id = currentRoute->id;
 
     Configs::dataManager->settingsRepo->enable_warp = ui->enable_warp->isChecked();
     Configs::dataManager->settingsRepo->warp_ep = ui->warp_ep->text().trimmed();

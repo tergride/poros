@@ -200,7 +200,9 @@ void MainWindow::confirm_disable_kill_switch() {
     box->setDefaultButton(cancel);
     box->setEscapeButton(cancel);
     connect(box, &QMessageBox::finished, this, [this, box, disable] {
-        if (box->clickedButton() == disable) connection()->disableKillSwitch();
+        if (box->clickedButton() != disable) return;
+        connection()->disableKillSwitch();
+        refreshEmbeddedPages();
     });
     box->open();
 }

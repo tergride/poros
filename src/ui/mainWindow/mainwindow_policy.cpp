@@ -84,6 +84,7 @@ void MainWindow::killSwitchProblem() {
         if (m_killSwitchDialog == box) m_killSwitchDialog = nullptr;
         if (clicked == disable) {
             connection()->disableKillSwitch();
+            refreshEmbeddedPages();
             return;
         }
         if (clicked != fix) return;

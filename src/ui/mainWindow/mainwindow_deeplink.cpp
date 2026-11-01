@@ -184,6 +184,7 @@ void MainWindow::handle_import_route(const QString &url) {
     if (box.exec() != QMessageBox::Yes) return;
 
     Configs::dataManager->routesRepo->AddRouteProfile(profile);
+    m_routingPage->rebuild();
 }
 
 void MainWindow::handle_add_remote_routes(const QString &url) {
@@ -213,7 +214,6 @@ void MainWindow::handle_add_remote_routes(const QString &url) {
         profile->autoUpdate = autoUpdate;
         Configs::dataManager->routesRepo->AddRouteProfile(profile);
     }
-    // Its copy of the list would drop these on Save.
     m_routingPage->rebuild();
 
     const auto added = profiles;
@@ -297,6 +297,8 @@ void MainWindow::dialog_message_impl(MwMessage cmd, const QStringList &args) {
     switch (cmd) {
     case MwMessage::UpdateSettings: {
         ui->actionTraffic_Stats->setVisible(!settings->disable_traffic_aggregation);
+        ui->stats_widget->setTabVisible(ui->stats_widget->indexOf(m_trafficPage), !settings->disable_traffic_aggregation);
+        syncSettingsMirrors();
         refresh_traffic_graph_settings();
         if (changed(MwArg::MaxLogLines)) {
             trimLogLines();

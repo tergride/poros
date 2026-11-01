@@ -38,6 +38,7 @@
 #include "include/ui/shell/NavRail.h"
 #include "include/ui/shell/SegmentSwitch.h"
 #include "include/ui/shell/TitleBar.h"
+#include "include/ui/simple/SimpleSettings.h"
 #include "include/ui/shell/WindowFrame.h"
 #include "include/ui/simple/SimpleHome.h"
 #include "include/ui/utils/CommandPalette.h"
@@ -341,10 +342,7 @@ void MainWindow::setupShell() {
     connect(m_advancedPage, &AdvancedPage::sectionChanged, this, [this](AdvancedPage::Section section) {
         syncConnectionViewState();
         if (section == AdvancedPage::Profiles) scheduleProxyListRefresh();
-        if (section == AdvancedPage::Routing) m_routingPage->rebuild();
-        if (section == AdvancedPage::Settings) {
-            for (auto *page : {m_basicSettings, m_vpnSettings, m_presetSettings}) page->rebuild();
-        }
+        if (section == AdvancedPage::Routing || section == AdvancedPage::Settings) refreshEmbeddedPages();
     });
     connect(m_advancedPage->rail(), &NavRail::searchRequested, this, &MainWindow::showCommandPalette);
 
@@ -361,11 +359,22 @@ void MainWindow::applyUiMode() {
     const bool simple = Configs::dataManager->settingsRepo->ui_mode != QLatin1String("advanced");
     m_rootStack->setCurrentWidget(simple ? static_cast<QWidget *>(m_simpleStack) : m_advancedPage);
     m_titleBar->setModeText(simple ? tr("Simple mode") : tr("Advanced mode"));
-    if (simple) m_modes->adopt();
+    if (simple) {
+        m_modes->adopt();
+        m_simpleSettings->reload();
+    } else {
+        refreshEmbeddedPages();
+    }
     syncConnectionViewState();
     refreshSimplePortal();
     refresh_startstop_button();
     if (!simple) scheduleProxyListRefresh();
+}
+
+void MainWindow::refreshEmbeddedPages() {
+    // Their Save writes the whole form back, so they must not keep what other screens have replaced since.
+    m_routingPage->rebuild();
+    for (auto *page : {m_basicSettings, m_vpnSettings, m_presetSettings}) page->rebuild();
 }
 
 void MainWindow::showAdvancedSection(int section) {

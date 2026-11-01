@@ -192,7 +192,7 @@ namespace Engine::AssetUpdates {
                 QStringList missing;
                 if (classified.refGeoip) missing << QStringLiteral("geoip.dat");
                 if (classified.refGeosite) missing << QStringLiteral("geosite.dat");
-                MW_show_log(MainWindowTr::tr("The Xray config \"%1\" needs geo data files that are not installed: %2. Download them under Basic Settings > Miscellaneous > Xray Geo Assets.")
+                MW_show_log(MainWindowTr::tr("The Xray config \"%1\" needs geo data files that are not installed: %2. Download them in Settings, on the Core page.")
                                 .arg(contextName, missing.join(QStringLiteral(", "))));
             }
             return true;

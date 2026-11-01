@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QKeyEvent>
 #include <QPushButton>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -16,6 +17,7 @@ QDialog *EmbeddedDialog::dialog() {
     m_dialog = m_factory(this);
     m_dialog->setWindowFlags(Qt::Widget);
     m_dialog->setProperty("embedded", true);
+    m_dialog->installEventFilter(this);
     layout()->addWidget(m_dialog);
     connect(m_dialog, &QDialog::finished, this, [this] {
         const QPointer<QDialog> closed = m_dialog;
@@ -43,6 +45,12 @@ void EmbeddedDialog::rebuild() {
     old->hide();
     old->deleteLater();
     if (isVisible()) dialog();
+}
+
+bool EmbeddedDialog::eventFilter(QObject *watched, QEvent *event) {
+    // A page has nothing to close: QDialog would reject it and drop what was typed.
+    if (watched == m_dialog && event->type() == QEvent::KeyPress && static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) return true;
+    return QWidget::eventFilter(watched, event);
 }
 
 void EmbeddedDialog::showEvent(QShowEvent *event) {

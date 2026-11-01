@@ -23,6 +23,7 @@
 
 #include "include/configs/PresetCatalog.h"
 #include "include/database/RoutesRepo.h"
+#include "include/engine/EngineEvents.h"
 #include "include/engine/EngineHost.h"
 #include "include/engine/connection/ConnectionManager.h"
 #include "include/engine/services/BackupArchive.h"
@@ -41,13 +42,6 @@
 
 namespace {
     auto &simpleSettingsRepo() { return Configs::dataManager->settingsRepo; }
-
-    void simpleSettingsPut(const QJsonObject &patch) {
-        const auto connection = Engine::host()->connection();
-        Engine::SettingsRegistry::PutResult result;
-        const auto &settings = simpleSettingsRepo();
-        Engine::SettingsRegistry::Put(patch, {connection->runningSnapshot() != nullptr, settings->spmode_vpn}, &result);
-    }
 
     QLabel *simpleSettingsLabel(const QString &text, const char *role, QWidget *parent) {
         auto *label = new QLabel(text, parent);
@@ -154,6 +148,15 @@ SimpleSettings::SimpleSettings(const Hooks &hooks, QWidget *parent) : QWidget(pa
 void SimpleSettings::showSection(int index) {
     m_pages->setCurrentIndex(index);
     for (int i = 0; i < m_nav.size(); i++) m_nav[i]->setChecked(i == index);
+}
+
+void SimpleSettings::put(const QJsonObject &patch) {
+    Engine::SettingsRegistry::PutResult result;
+    const Engine::SettingsRegistry::Context context{Engine::host()->connection()->runningSnapshot() != nullptr, simpleSettingsRepo()->spmode_vpn};
+    if (const auto error = Engine::SettingsRegistry::Put(patch, context, &result)) {
+        QMessageBox::warning(this, tr("Settings"), error->message);
+        reload();
+    }
 }
 
 void SimpleSettings::reload() {
@@ -298,7 +301,7 @@ QWidget *SimpleSettings::buildConnection() {
     column->addWidget(simpleSettingsCard({}, &card, page));
 
     auto *killSwitch = simpleSettingsSwitch();
-    connect(killSwitch, &QCheckBox::clicked, this, [](bool on) { simpleSettingsPut({{QStringLiteral("kill_switch"), on}}); });
+    connect(killSwitch, &QCheckBox::clicked, this, [this](bool on) { put({{QStringLiteral("kill_switch"), on}}); });
     simpleSettingsRow(card, tr("Kill switch"), tr("Block the internet when the connection to the server breaks."), killSwitch);
 
     auto *lan = simpleSettingsSwitch();
@@ -336,12 +339,12 @@ QWidget *SimpleSettings::buildSubscriptions() {
     interval->addItem(tr("Every 6 hours"), 360);
     interval->addItem(tr("Once a day"), 1440);
     simpleSettingsRow(card, tr("How often"), {}, interval);
-    const auto applyUpdate = [autoUpdate, interval] {
+    const auto applyUpdate = [this, autoUpdate, interval] {
         const int minutes = interval->currentData().toInt();
         const int current = qAbs(simpleSettingsRepo()->sub_auto_update);
         const int value = minutes > 0 ? minutes : qMax(current, 30);
-        simpleSettingsPut({{QStringLiteral("sub_auto_update"), autoUpdate->isChecked() ? value : -value},
-                           {QStringLiteral("sub_respect_server_interval"), minutes == 0}});
+        put({{QStringLiteral("sub_auto_update"), autoUpdate->isChecked() ? value : -value},
+             {QStringLiteral("sub_respect_server_interval"), minutes == 0}});
     };
     connect(autoUpdate, &QCheckBox::clicked, this, applyUpdate);
     connect(interval, &QComboBox::activated, this, applyUpdate);
@@ -380,11 +383,12 @@ QWidget *SimpleSettings::buildStartup() {
         QString error;
         if (!AutoRun_SetEnabled(on, &error)) QMessageBox::warning(this, tr("Start with Windows"), error);
         autoRun->setChecked(AutoRun_IsEnabled());
+        Engine::EngineEvents::SettingsChanged({QStringLiteral("auto_run")});
     });
     simpleSettingsRow(card, tr("Start with Windows"), {}, autoRun);
 
     auto *remember = simpleSettingsSwitch();
-    connect(remember, &QCheckBox::clicked, this, [](bool on) { simpleSettingsPut({{QStringLiteral("remember_enable"), on}}); });
+    connect(remember, &QCheckBox::clicked, this, [this](bool on) { put({{QStringLiteral("remember_enable"), on}}); });
     simpleSettingsRow(card, tr("Connect to the last profile"), {}, remember);
 
     auto *links = simpleSettingsSwitch();

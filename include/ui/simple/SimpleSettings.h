@@ -5,6 +5,7 @@
 #include <functional>
 
 class QAbstractButton;
+class QJsonObject;
 class QLabel;
 class QStackedWidget;
 class QVBoxLayout;
@@ -37,6 +38,7 @@ public:
     void reload();
 
 private:
+    void put(const QJsonObject &patch);
     QWidget *buildPresets();
     QWidget *buildConnection();
     QWidget *buildSubscriptions();

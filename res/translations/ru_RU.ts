@@ -7874,6 +7874,10 @@ URL: %2</translation>
         <translation>Kill switch: не активен</translation>
     </message>
     <message>
+        <source>Untick “Disable Traffic Stats” in Settings → Network to record speeds again.</source>
+        <translation>Снимите флажок «Отключить статистику трафика» в разделе «Настройки → Сеть», чтобы снова записывать скорость.</translation>
+    </message>
+    <message>
         <source>Connect OK</source>
         <translation>Подключено</translation>
     </message>
@@ -7964,6 +7968,10 @@ URL: %2</translation>
     <message>
         <source>a required category</source>
         <translation>обязательная категория</translation>
+    </message>
+    <message>
+        <source>The Xray config &quot;%1&quot; needs geo data files that are not installed: %2. Download them in Settings, on the Core page.</source>
+        <translation>Конфигурации Xray «%1» нужны неустановленные файлы геоданных: %2. Загрузите их в настройках, на странице «Ядро».</translation>
     </message>
     <message>
         <source>Geo asset missing category</source>
@@ -8794,10 +8802,6 @@ Name: %1</source>
         <translation>Статистика трафика отключена</translation>
     </message>
     <message>
-        <source>Untick “Disable Traffic Stats” in Basic Settings → Miscellaneous to record speeds again.</source>
-        <translation>Снимите флажок «Отключить статистику трафика» в разделе «Основные настройки → Прочее», чтобы снова записывать скорость.</translation>
-    </message>
-    <message>
         <source>Open Traffic Statistics…</source>
         <translation>Открыть статистику трафика…</translation>
     </message>
@@ -8808,10 +8812,6 @@ Name: %1</source>
     <message>
         <source>The Xray config &quot;%1&quot; needs &quot;%2&quot;, but the installed %3 does not contain it.</source>
         <translation>Конфигурации Xray «%1» нужен «%2», но в установленном %3 его нет.</translation>
-    </message>
-    <message>
-        <source>The Xray config &quot;%1&quot; needs geo data files that are not installed: %2. Download them under Basic Settings &gt; Miscellaneous &gt; Xray Geo Assets.</source>
-        <translation>Конфигурации Xray «%1» нужны неустановленные файлы геоданных: %2. Загрузите их в «Основные настройки &gt; Разное &gt; Геоданные Xray».</translation>
     </message>
     <message>
         <source>Geo asset files are already being downloaded.</source>
@@ -11277,6 +11277,10 @@ Core: %2</source>
     <message>
         <source>Help</source>
         <translation>Помощь</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Настройки</translation>
     </message>
     <message>
         <source>A preset decides which traffic goes through the server and which goes direct. Built-in presets do not change: to add your own settings, make a copy.</source>

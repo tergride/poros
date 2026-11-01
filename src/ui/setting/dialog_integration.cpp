@@ -43,7 +43,6 @@ DialogIntegration::DialogIntegration(QWidget *parent, const QList<QAction*>& act
     generateShortcutItems(actions);
     bindHotkeyValidation();
 
-    GetMainWindow()->RegisterHotkey(true);
     if (!GetMainWindow()->IsGlobalHotkeySupported()) {
         auto note = new QLabel(QCoreApplication::translate("GlobalHotkeys", "Global hotkeys are not supported in this desktop session."), ui->global_box);
         note->setWordWrap(true);
@@ -127,6 +126,7 @@ void DialogIntegration::accept()
     settings->Save();
 
     MW_dialog_message(MwMessage::UpdateShortcuts, {});
+    hotkeysReleased = false;
     const auto failures = GetMainWindow()->RegisterHotkey(false);
     if (!failures.isEmpty() && GetMainWindow()->IsGlobalHotkeySupported()) {
         QMessageBox box(QMessageBox::Warning, tr("Hotkey"), tr("These global hotkeys could not be registered:") + "\n\n" + failures.join('\n'), QMessageBox::Ok, this);
@@ -136,10 +136,17 @@ void DialogIntegration::accept()
     QDialog::accept();
 }
 
-void DialogIntegration::reject()
-{
-    GetMainWindow()->RegisterHotkey(false);
-    QDialog::reject();
+void DialogIntegration::showEvent(QShowEvent *event) {
+    QDialog::showEvent(event);
+    // A combination being typed here must not fire the action it is bound to now.
+    if (!hotkeysReleased) GetMainWindow()->RegisterHotkey(true);
+    hotkeysReleased = true;
+}
+
+void DialogIntegration::hideEvent(QHideEvent *event) {
+    QDialog::hideEvent(event);
+    if (hotkeysReleased) GetMainWindow()->RegisterHotkey(false);
+    hotkeysReleased = false;
 }
 
 DialogIntegration::~DialogIntegration() {

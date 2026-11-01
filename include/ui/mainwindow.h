@@ -246,6 +246,9 @@ private:
     // In mainwindow_shell.cpp.
     void setupShell();
     void applyUiMode();
+    void refreshEmbeddedPages();
+    void syncSettingsMirrors();
+    void setAllowLan(bool allow);
     void showAppMenu(const QPoint &globalPos);
     void refreshGroupPane();
     void refreshRouteChoice();

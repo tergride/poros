@@ -23,6 +23,7 @@
 #include "include/configs/sub/LinkKind.h"
 #include "include/database/GroupsRepo.h"
 #include "include/database/RoutesRepo.h"
+#include "include/engine/EngineEvents.h"
 #include "include/engine/services/GroupService.h"
 #include "include/global/Configs.hpp"
 #include "include/sys/AutoRun.hpp"
@@ -407,6 +408,7 @@ void OnboardingPage::applyChoices() {
     if (m_links->isChecked()) UrlScheme_Install();
     else UrlScheme_Uninstall();
     settings->Save();
+    Engine::EngineEvents::SettingsChanged({QStringLiteral("auto_run"), QStringLiteral("remember_enable")});
     if (m_routes->checkedId() >= 0) emit routeChosen(m_routes->checkedId());
 }
 

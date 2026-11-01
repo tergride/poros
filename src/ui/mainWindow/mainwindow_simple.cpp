@@ -58,9 +58,7 @@ void MainWindow::setupSimpleMode() {
         m_presetEditor->edit(route);
         m_simpleStack->setCurrentWidget(m_presetEditor);
     };
-    hooks.setAllowLan = [this](bool on) {
-        if (ui->actionAllow_LAN->isChecked() != on) ui->actionAllow_LAN->trigger();
-    };
+    hooks.setAllowLan = [this](bool on) { setAllowLan(on); };
     hooks.trayChanged = [] { MW_dialog_message(MwMessage::UpdateSettings, {MwArg::DisableTray}); };
     hooks.restartProgram = [] { MW_dialog_message(MwMessage::RestartProgram, {}); };
     hooks.showLog = [this] { showSimpleLog(); };
