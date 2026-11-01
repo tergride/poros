@@ -961,6 +961,13 @@ namespace Validation {
         d->status = label;
     }
 
+    void Form::attachStatus(QBoxLayout *row) {
+        if (row == nullptr || d->status) return;
+        auto *label = new ValidationStatusLabel(row->parentWidget());
+        row->addWidget(label, 1);
+        d->status = label;
+    }
+
     void Form::markAll() {
         auto all = d->collect(true);
         d->sortByFocus(all);

@@ -31,6 +31,10 @@
 #include "include/configs/sub/RouteUpdater.hpp"
 
 #include "include/database/RoutesRepo.h"
+#include "include/global/HTTPRequestHelper.hpp"
+#include "include/ui/advanced/GroupPane.h"
+#include "include/ui/mainwindow.h"
+#include "include/ui/setting/PorosTheme.h"
 #include "include/ui/setting/RawRouteItem.h"
 #include "include/ui/setting/RouteDnsEditor.h"
 
@@ -189,80 +193,74 @@ namespace {
     }
 }
 
-void DialogManageRoutes::reloadProfileItems() {
+void DialogManageRoutes::reloadProfileItems(const std::shared_ptr<Configs::RouteProfile>& select) {
     if (chainList.empty()) {
         MessageBoxWarning(tr("Invalid state"), tr("The list of routing profiles is empty, this should be an unreachable state, crashes may occur now"));
         return;
     }
 
-    QSignalBlocker blocker = QSignalBlocker(ui->route_prof); // currentIndexChanged during clear() crashes us
-    ui->route_prof->clear();
+    {
+        const QSignalBlocker comboBlocker(ui->route_prof); // currentIndexChanged during clear() crashes us
+        const QSignalBlocker listBlocker(ui->route_profiles);
+        ui->route_prof->clear();
 
-    ui->route_profiles->clear();
-    bool selectedChainGone = true;
-    int i=0;
-    for (const auto &item: chainList) {
-        ui->route_prof->addItem(item->name);
-        ui->route_profiles->addItem(item->name);
-        if (item == currentRoute) {
-            ui->route_prof->setCurrentIndex(i);
-            selectedChainGone=false;
+        ui->route_profiles->clear();
+        bool selectedChainGone = true;
+        int i=0;
+        for (const auto &item: chainList) {
+            ui->route_prof->addItem(item->name);
+            auto* row = new QListWidgetItem(PorosTheme::Icon(QStringLiteral("route")), item->name, ui->route_profiles);
+            row->setToolTip(item->name);
+            if (!item->isRaw) row->setData(PaneRowDelegate::CountRole, static_cast<int>(item->Rules.size()));
+            if (item == currentRoute) {
+                ui->route_prof->setCurrentIndex(i);
+                selectedChainGone=false;
+            }
+            i++;
         }
-        i++;
+        if (selectedChainGone) {
+            currentRoute=chainList[0];
+            ui->route_prof->setCurrentIndex(0);
+        }
     }
-    if (selectedChainGone) {
-        currentRoute=chainList[0];
-        ui->route_prof->setCurrentIndex(0);
+
+    auto target = select != nullptr ? select : editedRoute != nullptr ? editedRoute : currentRoute;
+    if (!chainList.contains(target)) target = chainList[0];
+    {
+        const QSignalBlocker listBlocker(ui->route_profiles);
+        ui->route_profiles->setCurrentRow(static_cast<int>(chainList.indexOf(target)));
     }
-    blocker.unblock();
+    if (target != editedRoute) showRouteEditor(target);
 }
 
-void DialogManageRoutes::show_predefined_dns_editor() {
-    auto w = new QDialog(this);
-    w->setWindowTitle(tr("Predefined DNS Answers"));
-    w->setWindowModality(Qt::ApplicationModal);
+void DialogManageRoutes::showRouteEditor(const std::shared_ptr<Configs::RouteProfile>& profile) {
+    delete routeEditor;
+    delete rawEditor;
+    routeEditor = nullptr;
+    rawEditor = nullptr;
+    editedRoute = profile;
+    if (profile->isRaw) {
+        rawEditor = new RawRouteItem(ui->route_editor, profile);
+        ui->route_editor->layout()->addWidget(rawEditor);
+    } else {
+        routeEditor = new RouteItem(ui->route_editor, profile);
+        ui->route_editor->layout()->addWidget(routeEditor);
+    }
+    ui->delete_route->setEnabled(!profile->IsBuiltin());
+    ui->delete_route->setToolTip(profile->IsBuiltin() ? tr("Built-in presets cannot be changed. Clone one to make your own.") : QString());
+}
 
-    auto layout = new QGridLayout(w);
-
-    auto enable = new QCheckBox(tr("Enable predefined answers"), w);
-    enable->setChecked(predefined_dns_enabled);
-    layout->addWidget(enable, 0, 0);
-
-    auto tEdit = new QPlainTextEdit(w);
-    tEdit->setPlaceholderText(tr("One entry per line, hosts-file syntax:\n\n"
-                                 "127.0.0.1 localhost\n"
-                                 "10.0.0.5 nas.lan files.lan\n"
-                                 "::1 localhost6\n\n"
-                                 "A domain listed with only one address family is answered "
-                                 "NXDOMAIN for the other, so the override cannot be bypassed."));
-    tEdit->setPlainText(predefined_dns_text);
-    tEdit->setEnabled(predefined_dns_enabled);
-    layout->addWidget(tEdit, 1, 0);
-
-    connect(enable, &QCheckBox::stateChanged, tEdit, [=](int state) {
-        tEdit->setEnabled(state != Qt::Unchecked);
-    });
-
-    auto buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, w);
-    layout->addWidget(buttons, 2, 0);
-
-    auto popupForm = new Validation::Form(w);
-    popupForm->attachStatus(buttons);
-    popupForm->bindLines(tEdit, manageRoutesPredefinedError).label(w->windowTitle());
-    popupForm->bind(tEdit, manageRoutesPredefinedWarning).label(w->windowTitle()).warning().raw();
-    popupForm->markAll();
-
-    connect(buttons, &QDialogButtonBox::accepted, w, [=, this] {
-        if (!popupForm->validateAll()) return;
-        predefined_dns_enabled = enable->isChecked();
-        predefined_dns_text = tEdit->toPlainText();
-        w->accept();
-    });
-    connect(buttons, &QDialogButtonBox::rejected, w, &QDialog::reject);
-
-    w->resize(w->sizeHint().expandedTo(QSize(520, 360)).boundedTo(screen()->availableGeometry().size()));
-    w->exec();
-    w->deleteLater();
+bool DialogManageRoutes::applyEditor() {
+    if (editedRoute == nullptr || editedRoute->IsBuiltin()) return true;
+    if (routeEditor != nullptr ? !routeEditor->apply() : !rawEditor->apply()) return false;
+    // A copy, as the editor goes on changing its own; Save may have given this profile its id since the editor opened.
+    const auto edited = std::make_shared<Configs::RouteProfile>(*(routeEditor != nullptr ? routeEditor->chain : rawEditor->chain));
+    edited->id = editedRoute->id;
+    if (currentRoute == editedRoute) currentRoute = edited;
+    chainList[chainList.indexOf(editedRoute)] = edited;
+    editedRoute = edited;
+    reloadProfileItems();
+    return true;
 }
 
 void DialogManageRoutes::show_dns_advanced_editor() {
@@ -427,9 +425,24 @@ DialogManageRoutes::DialogManageRoutes(QWidget *parent) : QDialog(parent), ui(ne
     currentRoute = Configs::dataManager->routesRepo->GetRouteProfile(Configs::dataManager->settingsRepo->current_route_id);
     if (currentRoute == nullptr) currentRoute = chainList[0];
 
-    // Both strategy pickers must stay on one shared item order.
-    ui->default_domain_strategy->addItems(Configs::DomainStrategy::DomainStrategy);
-    ui->domainStrategyCombo->addItems(Configs::DomainStrategy::DomainStrategy);
+    for (const auto& [button, icon] : {std::pair{ui->new_route, "plus"}, std::pair{ui->clone_route, "copy"}, std::pair{ui->import_route, "download"},
+                                       std::pair{ui->export_route, "upload"}, std::pair{ui->update_route, "refresh"}, std::pair{ui->delete_route, "trash"}}) {
+        button->setIcon(PorosTheme::Icon(QString::fromLatin1(icon)));
+        button->setIconSize({14, 14});
+    }
+    ui->route_profiles->setItemDelegate(new PaneRowDelegate(ui->route_profiles));
+    ui->route_profiles->setMouseTracking(true);
+
+    // The empty strategy is a choice of its own, named for what it means in each picker.
+    ui->default_domain_strategy->addItem(tr("Auto"), QString());
+    ui->domainStrategyCombo->addItem(tr("None"), QString());
+    for (const auto& strategy : Configs::DomainStrategy::DomainStrategy) {
+        if (strategy.isEmpty()) continue;
+        ui->default_domain_strategy->addItem(strategy, strategy);
+        ui->domainStrategyCombo->addItem(strategy, strategy);
+    }
+    ui->dns_final_out->addItem(tr("Direct"), QStringLiteral("direct"));
+    ui->dns_final_out->addItem(tr("Remote"), QStringLiteral("remote"));
     ui->local_override->setText(Configs::dataManager->settingsRepo->core_box_underlying_dns);
     ui->enable_fakeip->setChecked(Configs::dataManager->settingsRepo->fake_dns);
     ui->fakeip_disable_ipv6->setChecked(Configs::dataManager->settingsRepo->fakeip_disable_ipv6);
@@ -450,16 +463,22 @@ DialogManageRoutes::DialogManageRoutes(QWidget *parent) : QDialog(parent), ui(ne
 
     dns_object_text = Configs::dataManager->settingsRepo->dns_object;
     connect(ui->dns_object_edit, &QPushButton::clicked, this, &DialogManageRoutes::show_dns_object_editor);
-    connect(ui->use_dns_object, &QCheckBox::stateChanged, this, [=,this](int state) {
-        auto useDNSObject = state == Qt::Checked;
+    const auto syncDnsMode = [this] {
+        const bool useDNSObject = ui->use_dns_object->isChecked();
         ui->simple_dns_box->setDisabled(useDNSObject);
+        ui->fakeip_box->setDisabled(useDNSObject);
+        ui->predefined_enable->setDisabled(useDNSObject);
+        ui->predefined_text->setEnabled(!useDNSObject && ui->predefined_enable->isChecked());
         ui->dns_advanced->setDisabled(useDNSObject);
         ui->dns_object_edit->setDisabled(!useDNSObject);
-    });
-    ui->use_dns_object->stateChanged(Qt::Unchecked);
+    };
+    connect(ui->use_dns_object, &QCheckBox::toggled, this, syncDnsMode);
+    connect(ui->predefined_enable, &QCheckBox::toggled, this, syncDnsMode);
     ui->ruleset_mirror->setCurrentIndex(Configs::dataManager->settingsRepo->ruleset_mirror);
-    ui->default_domain_strategy->setCurrentText(Configs::dataManager->settingsRepo->default_domain_strategy);
-    ui->domainStrategyCombo->setCurrentText(Configs::dataManager->settingsRepo->resolve_domain_strategy);
+    ui->default_domain_strategy->setCurrentIndex(ui->default_domain_strategy->findData(Configs::dataManager->settingsRepo->default_domain_strategy));
+    ui->domainStrategyCombo->setCurrentIndex(ui->domainStrategyCombo->findData(Configs::dataManager->settingsRepo->resolve_domain_strategy));
+    ui->adblock_enable->setChecked(Configs::dataManager->settingsRepo->adblock_enable);
+    connect(ui->update_rule_sets, &QPushButton::clicked, GetMainWindow(), &MainWindow::updateRuleSets);
     ui->use_dns_object->setChecked(Configs::dataManager->settingsRepo->use_dns_object);
     DnsServerHistory::Fill(ui->remote_dns, Configs::dataManager->settingsRepo->remote_dns_history,
                            DnsServerHistory::RemotePresets(), Configs::dataManager->settingsRepo->remote_dns);
@@ -467,27 +486,29 @@ DialogManageRoutes::DialogManageRoutes(QWidget *parent) : QDialog(parent), ui(ne
     DnsServerHistory::Fill(ui->direct_dns, Configs::dataManager->settingsRepo->direct_dns_history,
                            DnsServerHistory::DirectPresets(), Configs::dataManager->settingsRepo->direct_dns);
     ui->direct_dns_disable_ipv6->setChecked(Configs::dataManager->settingsRepo->direct_dns_disable_ipv6);
-    ui->dns_final_out->setCurrentText(Configs::dataManager->settingsRepo->dns_final_out);
+    ui->dns_final_out->setCurrentIndex(ui->dns_final_out->findData(Configs::dataManager->settingsRepo->dns_final_out));
     ui->enable_dns_routing->setChecked(Configs::dataManager->settingsRepo->enable_dns_routing);
     ui->respect_hosts->setChecked(Configs::dataManager->settingsRepo->dns_use_hosts);
-    predefined_dns_enabled = Configs::dataManager->settingsRepo->dns_predefined_enable;
-    predefined_dns_text = Configs::dataManager->settingsRepo->dns_predefined_rules.join("\n");
-    connect(ui->predefined_dns, &QPushButton::clicked, this, &DialogManageRoutes::show_predefined_dns_editor);
-    reloadProfileItems();
+    ui->predefined_enable->setChecked(Configs::dataManager->settingsRepo->dns_predefined_enable);
+    ui->predefined_text->setPlainText(Configs::dataManager->settingsRepo->dns_predefined_rules.join("\n"));
+    ui->predefined_text->setPlaceholderText(tr("One entry per line, hosts-file syntax:\n\n"
+                                               "127.0.0.1 localhost\n"
+                                               "10.0.0.5 nas.lan files.lan\n"
+                                               "::1 localhost6\n\n"
+                                               "A domain listed with only one address family is answered "
+                                               "NXDOMAIN for the other, so the override cannot be bypassed."));
+    syncDnsMode();
 
-    connect(ui->route_profiles, &QListWidget::itemDoubleClicked, this, [=,this](const QListWidgetItem* item){
-        on_edit_route_clicked();
-    });
-    connect(ui->route_profiles, &QListWidget::currentRowChanged, this, [=,this](int row) {
-        const bool builtin = row >= 0 && row < chainList.size() && chainList[row]->IsBuiltin();
-        ui->edit_route->setEnabled(!builtin);
-        ui->delete_route->setEnabled(!builtin);
-        ui->edit_route->setToolTip(builtin ? tr("Built-in presets cannot be changed. Clone one to make your own.") : QString());
-    });
+    // Queued: applying can open a message box, and the list is still inside its mouse press here.
+    connect(ui->route_profiles, &QListWidget::currentRowChanged, this, [this](int row) {
+        if (row < 0 || row >= chainList.size() || chainList[row] == editedRoute) return;
+        reloadProfileItems(applyEditor() ? chainList[row] : editedRoute);
+    }, Qt::QueuedConnection);
 
     connect(ui->route_prof, &QComboBox::currentIndexChanged, this, &DialogManageRoutes::updateCurrentRouteProfile);
 
-    deleteShortcut = new QShortcut(QKeySequence(Qt::Key_Delete), this);
+    deleteShortcut = new QShortcut(QKeySequence(Qt::Key_Delete), ui->route_profiles);
+    deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut);
 
     connect(deleteShortcut, &QShortcut::activated, this, [=,this]{
         on_delete_route_clicked();
@@ -531,6 +552,8 @@ DialogManageRoutes::DialogManageRoutes(QWidget *parent) : QDialog(parent), ui(ne
     form->bind(ui->remote_dns, manageRoutesDnsProblem).label(ui->label_9->text());
     form->bind(ui->direct_dns, manageRoutesDnsProblem).label(ui->label_8->text());
     form->bind(ui->local_override, manageRoutesLocalDnsProblem).label(ui->label_2->text());
+    form->bindLines(ui->predefined_text, manageRoutesPredefinedError).label(ui->predefined_enable->text());
+    form->bind(ui->predefined_text, manageRoutesPredefinedWarning).label(ui->predefined_enable->text()).warning().raw();
     // buildDNSSection would emit an unparsable object as "dns": {}, silently dropping every DNS setting.
     form->addRule({ui->use_dns_object}, [this] {
         if (!ui->use_dns_object->isChecked()) return QString();
@@ -569,8 +592,7 @@ DialogManageRoutes::DialogManageRoutes(QWidget *parent) : QDialog(parent), ui(ne
     form->markAll();
 
     ADD_ASTERISK(this)
-    // Frozen .ui geometry clips this dialog once a translation outgrows it.
-    resize(sizeHint().expandedTo(size()).boundedTo(screen()->availableGeometry().size()));
+    reloadProfileItems();
 }
 
 void DialogManageRoutes::generate_warp_config() {
@@ -627,15 +649,16 @@ DialogManageRoutes::~DialogManageRoutes() {
 }
 
 void DialogManageRoutes::accept() {
-    if (!form->validateAll()) return;
+    if (!form->validateAll() || !applyEditor()) return;
     if (chainList.empty()) {
         MessageBoxInfo(tr("Invalid settings"), tr("Routing profile cannot be empty"));
         return;
     }
 
     Configs::dataManager->settingsRepo->ruleset_mirror = ui->ruleset_mirror->currentIndex();
-    Configs::dataManager->settingsRepo->resolve_domain_strategy = ui->domainStrategyCombo->currentText();
-    Configs::dataManager->settingsRepo->default_domain_strategy = ui->default_domain_strategy->currentText();
+    Configs::dataManager->settingsRepo->resolve_domain_strategy = ui->domainStrategyCombo->currentData().toString();
+    Configs::dataManager->settingsRepo->default_domain_strategy = ui->default_domain_strategy->currentData().toString();
+    Configs::dataManager->settingsRepo->adblock_enable = ui->adblock_enable->isChecked();
     Configs::dataManager->settingsRepo->use_dns_object = ui->use_dns_object->isChecked();
     Configs::dataManager->settingsRepo->dns_object = dns_object_text;
     const auto remoteDns = ui->remote_dns->currentText().trimmed();
@@ -657,14 +680,14 @@ void DialogManageRoutes::accept() {
     Configs::dataManager->settingsRepo->direct_dns = directDns;
     Configs::dataManager->settingsRepo->direct_dns_disable_ipv6 = ui->direct_dns_disable_ipv6->isChecked();
     Configs::dataManager->settingsRepo->core_box_underlying_dns = ui->local_override->text().trimmed();
-    Configs::dataManager->settingsRepo->dns_final_out = ui->dns_final_out->currentText();
+    Configs::dataManager->settingsRepo->dns_final_out = ui->dns_final_out->currentData().toString();
     Configs::dataManager->settingsRepo->fake_dns = ui->enable_fakeip->isChecked();
     Configs::dataManager->settingsRepo->fakeip_disable_ipv6 = ui->fakeip_disable_ipv6->isChecked();
     Configs::dataManager->settingsRepo->enable_dns_routing = ui->enable_dns_routing->isChecked();
     Configs::dataManager->settingsRepo->dns_use_hosts = ui->respect_hosts->isChecked();
-    Configs::dataManager->settingsRepo->dns_predefined_enable = predefined_dns_enabled;
+    Configs::dataManager->settingsRepo->dns_predefined_enable = ui->predefined_enable->isChecked();
     QStringList predefinedRules;
-    for (const auto &line : predefined_dns_text.split("\n")) {
+    for (const auto &line : ui->predefined_text->toPlainText().split("\n")) {
         if (!line.trimmed().isEmpty()) predefinedRules.append(line.trimmed());
     }
     Configs::dataManager->settingsRepo->dns_predefined_rules = predefinedRules;
@@ -687,8 +710,6 @@ void DialogManageRoutes::accept() {
     Configs::dataManager->settingsRepo->warp_masque_http_mode = ui->warp_masque_http_mode->currentIndex();
 
     MW_dialog_message(MwMessage::UpdateSettings, {MwArg::Route});
-
-    QDialog::accept();
 }
 
 void DialogManageRoutes::on_new_route_clicked() {
@@ -696,32 +717,48 @@ void DialogManageRoutes::on_new_route_clicked() {
     menu.addAction(tr("Structured profile"));
     auto* rawAct = menu.addAction(tr("Raw profile"));
     auto* remoteAct = menu.addAction(tr("Remote profile"));
+    auto* downloads = menu.addMenu(tr("Download Profiles"));
+    for (const QString& country : {QStringLiteral("China"), QStringLiteral("Iran"), QStringLiteral("Russia")}) {
+        downloads->addAction(country)->setData(country);
+    }
     auto* chosen = menu.exec(ui->new_route->mapToGlobal(QPoint(0, ui->new_route->height())));
     if (chosen == nullptr) return;
-
-    auto newProfile = Configs::dataManager->routesRepo->NewRouteProfile();
-    auto onCreated = [=, this](const std::shared_ptr<Configs::RouteProfile>& chain) {
-        chainList << chain;
-        reloadProfileItems();
-    };
-    if (chosen == rawAct) {
-        newProfile->isRaw = true;
-        auto* rawWidget = new RawRouteItem(this, newProfile);
-        rawWidget->setWindowModality(Qt::ApplicationModal);
-        rawWidget->show();
-        connect(rawWidget, &RawRouteItem::settingsChanged, this, onCreated);
-    } else {
-        // Remote profiles are structured underneath; RouteItem grows a "Remote source" section when isRemote.
-        if (chosen == remoteAct) newProfile->isRemote = true;
-        routeChainWidget = new RouteItem(this, newProfile);
-        routeChainWidget->setWindowModality(Qt::ApplicationModal);
-        routeChainWidget->show();
-        connect(routeChainWidget, &RouteItem::settingsChanged, this, onCreated);
+    if (const QString country = chosen->data().toString(); !country.isEmpty()) {
+        downloadRouteProfile(country);
+        return;
     }
+
+    if (!applyEditor()) return;
+    auto newProfile = Configs::dataManager->routesRepo->NewRouteProfile();
+    newProfile->name = tr("New profile");
+    newProfile->isRaw = chosen == rawAct;
+    // Remote profiles are structured underneath; RouteItem shows its Source tab when isRemote.
+    newProfile->isRemote = chosen == remoteAct;
+    chainList << newProfile;
+    reloadProfileItems(newProfile);
+}
+
+void DialogManageRoutes::downloadRouteProfile(const QString& country) {
+    if (!applyEditor()) return;
+    const QPointer<DialogManageRoutes> self(this);
+    runOnNewThread([self, country] {
+        const auto resp = Configs_network::NetworkRequestHelper::HttpGet(Configs::get_jsdelivr_link("https://raw.githubusercontent.com/throneproj/routeprofiles/profile/Profile_" + country));
+        runOnUiThread([self, resp] {
+            if (self == nullptr) return;
+            if (!resp.error.isEmpty()) {
+                MessageBoxWarning(tr("Download Profiles"), tr("Requesting profile error: %1").arg(resp.error + "\n" + resp.data));
+                return;
+            }
+            if (!self->tryImportRemoteRoutesLink(resp.data)) {
+                MessageBoxWarning(tr("Add remote routing profiles"), tr("No valid remote routing profiles in the link."));
+            }
+        });
+    });
 }
 
 void DialogManageRoutes::on_export_route_clicked()
 {
+    if (!applyEditor()) return;
     auto idx = ui->route_profiles->currentRow();
     if (idx < 0) return;
 
@@ -743,17 +780,12 @@ void DialogManageRoutes::applyImportedProfile(const std::shared_ptr<Configs::Rou
         // A legacy rule array carries no name / default outbound, so it cannot be saved unedited.
         auto shell = Configs::dataManager->routesRepo->NewRouteProfile();
         shell->Rules = profile->Rules;
-        routeChainWidget = new RouteItem(this, shell);
-        routeChainWidget->setWindowModality(Qt::ApplicationModal);
-        routeChainWidget->show();
-        connect(routeChainWidget, &RouteItem::settingsChanged, this, [=, this](const std::shared_ptr<Configs::RouteProfile>& chain) {
-            chainList << chain;
-            reloadProfileItems();
-        });
+        chainList << shell;
+        reloadProfileItems(shell);
     } else {
         chainList << profile;
         currentRoute = profile;
-        reloadProfileItems();
+        reloadProfileItems(profile);
     }
 }
 
@@ -790,6 +822,7 @@ bool DialogManageRoutes::tryImportRemoteRoutesLink(const QString& text)
 
 void DialogManageRoutes::on_import_route_clicked()
 {
+    if (!applyEditor()) return;
     const QString clip = QApplication::clipboard()->text().trimmed();
     if (tryImportRemoteRoutesLink(clip)) return;
     if (!clip.isEmpty()) {
@@ -845,6 +878,7 @@ void DialogManageRoutes::on_import_route_clicked()
 }
 
 void DialogManageRoutes::on_clone_route_clicked() {
+    if (!applyEditor()) return;
     auto idx = ui->route_profiles->currentRow();
     if (idx < 0) return;
 
@@ -853,30 +887,7 @@ void DialogManageRoutes::on_clone_route_clicked() {
     chainCopy->id = -1;
     chainCopy->DetachFromBuiltin();
     chainList.append(chainCopy);
-    reloadProfileItems();
-}
-
-void DialogManageRoutes::on_edit_route_clicked() {
-    auto idx = ui->route_profiles->currentRow();
-    if (idx < 0 || chainList[idx]->IsBuiltin()) return;
-
-    auto onEdited = [=, this](const std::shared_ptr<Configs::RouteProfile>& chain) {
-        if (currentRoute == chainList[idx]) currentRoute = chain;
-        chainList[idx] = chain;
-        reloadProfileItems();
-    };
-
-    if (chainList[idx]->isRaw) {
-        auto* rawWidget = new RawRouteItem(this, chainList[idx]);
-        rawWidget->setWindowModality(Qt::ApplicationModal);
-        rawWidget->show();
-        connect(rawWidget, &RawRouteItem::settingsChanged, this, onEdited);
-    } else {
-        routeChainWidget = new RouteItem(this, chainList[idx]);
-        routeChainWidget->setWindowModality(Qt::ApplicationModal);
-        routeChainWidget->show();
-        connect(routeChainWidget, &RouteItem::settingsChanged, this, onEdited);
-    }
+    reloadProfileItems(chainCopy);
 }
 
 void DialogManageRoutes::on_delete_route_clicked() {
@@ -892,6 +903,7 @@ void DialogManageRoutes::on_delete_route_clicked() {
     if (profileToDel == currentRoute) {
         currentRoute = chainList[0];
     }
+    if (profileToDel == editedRoute) editedRoute = nullptr;
     reloadProfileItems();
 }
 
@@ -902,12 +914,13 @@ void DialogManageRoutes::on_update_route_clicked() {
         auto* chosen = menu.exec(ui->update_route->mapToGlobal(QPoint(0, ui->update_route->height())));
         // Guard against the batch having finished while the menu was open.
         if (chosen == cancelAct && routeUpdateRunning) {
-            routeUpdateCancel = true;
+            *routeUpdateCancel = true;
             ui->update_route->setText(tr("Cancelling..."));
         }
         return;
     }
 
+    if (!applyEditor()) return;
     const int idx = ui->route_profiles->currentRow();
     const bool selIsRemote = idx >= 0 && chainList[idx]->isRemote;
 
@@ -938,7 +951,7 @@ void DialogManageRoutes::on_update_route_clicked() {
 void DialogManageRoutes::updateRemoteProfiles(const QList<std::shared_ptr<Configs::RouteProfile>>& profiles) {
     if (routeUpdateRunning || profiles.isEmpty()) return;
     routeUpdateRunning = true;
-    routeUpdateCancel = false;
+    *routeUpdateCancel = false;
     const int total = profiles.size();
 
     // The button stays enabled during the run so its click can offer Cancel (see the slot above).
@@ -947,15 +960,18 @@ void DialogManageRoutes::updateRemoteProfiles(const QList<std::shared_ptr<Config
     };
     ui->update_route->setText(progressText(1));
 
+    // Leaving the section and coming back rebuilds this page, possibly in the middle of the batch.
+    const QPointer<DialogManageRoutes> self(this);
+    const auto cancel = routeUpdateCancel;
     runOnNewThread([=, this] {
         QStringList failures;
         QStringList warned;
         int ok = 0;
         for (int i = 0; i < profiles.size(); ++i) {
-            if (routeUpdateCancel.load()) break;
+            if (cancel->load()) break;
             const int current = i + 1;
             runOnUiThread([=, this] {
-                if (routeUpdateRunning && !routeUpdateCancel.load())
+                if (self != nullptr && routeUpdateRunning && !cancel->load())
                     ui->update_route->setText(progressText(current));
             });
             QString warnings;
@@ -964,11 +980,13 @@ void DialogManageRoutes::updateRemoteProfiles(const QList<std::shared_ptr<Config
             else failures << (profiles[i]->name + ": " + err);
             if (err.isEmpty() && !warnings.trimmed().isEmpty()) warned << (profiles[i]->name + ":\n" + warnings.trimmed());
         }
-        const bool cancelled = routeUpdateCancel.load();
+        const bool cancelled = cancel->load();
         runOnUiThread([=, this] {
+            if (self == nullptr) return;
             routeUpdateRunning = false;
             ui->update_route->setText(tr("Update"));
             reloadProfileItems();
+            if (profiles.contains(editedRoute)) showRouteEditor(editedRoute);
             const QString details = warned.join("\n\n");
             const QString note = warned.isEmpty() ? QString()
                                                   : "\n\n" + tr("%n profile(s) were updated with warnings; see the details.", "", static_cast<int>(warned.size()));

@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 
+class QBoxLayout;
 class QComboBox;
 class QDialogButtonBox;
 class QLineEdit;
@@ -73,6 +74,9 @@ namespace Validation {
 
         // One elided line beside the buttons showing the latest focus-out problem; no layout growth.
         void attachStatus(QDialogButtonBox *buttons);
+
+        // The same line for a form without buttons: it takes the free width at the end of row.
+        void attachStatus(QBoxLayout *row);
 
         // Inline marks for everything currently invalid, without a message box (call after loading data).
         void markAll();

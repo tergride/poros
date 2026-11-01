@@ -22,6 +22,7 @@
 #include "include/engine/ThreadCheck.h"
 #include "include/engine/app/ExitController.h"
 #include "include/engine/connection/ConnectionManager.h"
+#include "include/engine/services/AssetUpdates.h"
 #include "include/engine/services/ReleaseUpdates.h"
 #include "include/engine/supervisor/CoreSupervisor.h"
 #include "include/global/Configs.hpp"
@@ -39,9 +40,6 @@
 #include "include/ui/setting/dialog_otp_manager.h"
 #include "include/ui/setting/dialog_preset_settings.h"
 #include "include/ui/setting/dialog_vpn_settings.h"
-#include "include/ui/setting/RawRouteItem.h"
-#include "include/ui/setting/RouteItem.h"
-#include "include/database/RoutesRepo.h"
 
 #include "3rdparty/WinCommander.hpp"
 #include "include/sys/windows/WinVersion.h"
@@ -59,34 +57,21 @@ void MainWindow::on_menu_routing_settings_triggered() {
     showAdvancedSection(AdvancedPage::Routing);
 }
 
-void MainWindow::openRouteProfileEditor(int routeId) {
-    // Also keeps the routing dialog from saving its stale copy over this edit.
-    if (dialog_is_using) return;
-    const auto profile = Configs::dataManager->routesRepo->GetRouteProfile(routeId);
-    if (profile == nullptr) return;
-    dialog_is_using = true;
-
-    const auto onSaved = [this](const std::shared_ptr<Configs::RouteProfile>& chain) {
-        if (!Configs::dataManager->routesRepo->Save(chain)) return;
-        if (chain->id == Configs::dataManager->settingsRepo->current_route_id)
-            connection()->noteRestartNeeded(Engine::RestartReason::Routing);
-    };
-    QDialog* editor;
-    if (profile->isRaw) {
-        auto* raw = new RawRouteItem(this, profile);
-        connect(raw, &RawRouteItem::settingsChanged, this, onSaved);
-        editor = raw;
-    } else {
-        auto* item = new RouteItem(this, profile);
-        connect(item, &RouteItem::settingsChanged, this, onSaved);
-        editor = item;
-    }
-    connect(editor, &QDialog::finished, this, [=, this] {
-        editor->deleteLater();
-        dialog_is_using = false;
+void MainWindow::updateRuleSets() {
+    Engine::AssetUpdates::UpdateRuleSets([](const Engine::AssetUpdates::RuleSetResult &result) {
+        if (!result.coreReachable) {
+            MessageBoxWarning(tr("Update Rule-Sets"), result.error);
+            return;
+        }
+        QStringList problems = result.failures;
+        if (!result.error.isEmpty()) problems.prepend(result.error);
+        const auto summary = tr("%n remote rule-set(s) refreshed", nullptr, result.updated);
+        if (!problems.isEmpty()) {
+            MessageBoxWarning(tr("Update Rule-Sets"), summary + "\n\n" + problems.join("\n"));
+        } else {
+            MessageBoxInfo(tr("Update Rule-Sets"), summary);
+        }
     });
-    editor->setWindowModality(Qt::ApplicationModal);
-    editor->show();
 }
 
 void MainWindow::on_menu_vpn_settings_triggered() {

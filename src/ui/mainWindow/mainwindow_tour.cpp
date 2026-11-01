@@ -6,8 +6,10 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QListWidget>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QTableWidget>
 #include <QTabWidget>
 #include <QTimer>
 
@@ -18,6 +20,7 @@
 #include "include/engine/services/GroupService.h"
 #include "include/engine/services/ImportService.h"
 #include "include/ui/advanced/AdvancedPage.h"
+#include "include/ui/advanced/EmbeddedDialog.h"
 #include "include/ui/advanced/SettingsSection.h"
 #include "include/ui/onboarding/OnboardingPage.h"
 #include "include/ui/simple/PresetEditor.h"
@@ -81,6 +84,25 @@ void MainWindow::runUiTour(const QString &dir) {
     });
 
     const auto trigger = [](QAction *action) { return [action] { action->trigger(); }; };
+    const auto routingTab = [this](int tab) {
+        return [this, tab] { m_routingPage->dialog()->findChild<QTabWidget *>(QStringLiteral("tabWidget"))->setCurrentIndex(tab); };
+    };
+    const auto routeTab = [this](int tab) {
+        return [this, tab] { m_routingPage->dialog()->findChild<QTabWidget *>(QStringLiteral("routeTabs"))->setCurrentIndex(tab); };
+    };
+    const auto routeProfile = [this](bool raw) {
+        return [this, raw] {
+            auto profile = Configs::dataManager->routesRepo->NewRouteProfile();
+            profile->name = raw ? QStringLiteral("Raw") : QStringLiteral("Remote");
+            profile->isRaw = raw;
+            profile->isRemote = !raw;
+            profile->remoteURL = QStringLiteral("https://rules.example.com/poros.json");
+            Configs::dataManager->routesRepo->AddRouteProfile(profile);
+            m_routingPage->rebuild();
+            auto *list = m_routingPage->dialog()->findChild<QListWidget *>(QStringLiteral("route_profiles"));
+            list->setCurrentRow(list->count() - 1);
+        };
+    };
     auto steps = std::make_shared<QList<TourStep>>(QList<TourStep>{
         {"profiles", [this] { setUiMode(QStringLiteral("advanced")); }},
         {"connections", [this] { m_advancedPage->showSection(AdvancedPage::Connections); }},
@@ -91,6 +113,28 @@ void MainWindow::runUiTour(const QString &dir) {
         {"settings-section", [this] { m_advancedPage->showSection(AdvancedPage::Settings); }},
         {"traffic", trigger(ui->actionTraffic_Stats)},
         {"routing", trigger(ui->menu_routing_settings)},
+        {"routing-dns", routingTab(1)},
+        {"routing-warp", routingTab(2)},
+        {"routing-general", routingTab(3)},
+        {"routing-clone", [this] {
+            auto *page = m_routingPage->dialog();
+            page->findChild<QTabWidget *>(QStringLiteral("tabWidget"))->setCurrentIndex(0);
+            page->findChild<QPushButton *>(QStringLiteral("clone_route"))->click();
+        }},
+        {"routing-rule", [this] {
+            auto *rules = m_routingPage->dialog()->findChild<QTableWidget *>(QStringLiteral("route_items"));
+            rules->setCurrentCell(qMin(1, rules->rowCount() - 1), 1);
+        }},
+        {"routing-simple", routeTab(0)},
+        {"routing-endpoints", [this] {
+            auto *tabs = m_routingPage->dialog()->findChild<QTabWidget *>(QStringLiteral("routeTabs"));
+            tabs->setTabVisible(2, true);
+            tabs->setCurrentIndex(2);
+        }},
+        {"routing-profile-dns", routeTab(3)},
+        {"routing-remote", routeProfile(false)},
+        {"routing-source", routeTab(4)},
+        {"routing-raw", routeProfile(true)},
         {"otp", trigger(ui->menu_otp_manager)},
         {"basic-settings", trigger(ui->menu_basic_settings)},
         {"settings-adv-inbound", [this] { m_settingsSection->showDialog(m_basicSettings, 1); }},

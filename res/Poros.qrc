@@ -61,6 +61,7 @@
         <file alias="qss/chevron-down.svg">poros/qss/chevron-down.svg</file>
         <file alias="qss/chevron-right.svg">poros/qss/chevron-right.svg</file>
         <file alias="qss/chevron-up.svg">poros/qss/chevron-up.svg</file>
+        <file alias="qss/close.svg">poros/qss/close.svg</file>
         <file alias="qss/dash.svg">poros/qss/dash.svg</file>
         <file alias="qss/dot.svg">poros/qss/dot.svg</file>
         <file alias="qss/switch-disabled.svg">poros/qss/switch-disabled.svg</file>

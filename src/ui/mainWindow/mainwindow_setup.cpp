@@ -244,8 +244,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
     }
 
-    ui->menuRouting_Menu->installEventFilter(this);
-
     ui->menubar->setVisible(false);
     connect(ui->actionRuntime_Stats, &QAction::triggered, this, [=, this]() {
         m_advancedPage->showSection(AdvancedPage::Statistics);
@@ -262,22 +260,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         ui->stats_widget->setCurrentWidget(m_autoSelectorPage);
     });
     connect(ui->actionCheck_For_Update, &QAction::triggered, this, [=,this] { runOnNewThread([=,this] { CheckUpdate(); }); });
-    connect(ui->actionUpdate_Rule_Sets, &QAction::triggered, this, [] {
-        Engine::AssetUpdates::UpdateRuleSets([](const Engine::AssetUpdates::RuleSetResult &result) {
-            if (!result.coreReachable) {
-                MessageBoxWarning(tr("Update Rule-Sets"), result.error);
-                return;
-            }
-            QStringList problems = result.failures;
-            if (!result.error.isEmpty()) problems.prepend(result.error);
-            const auto summary = tr("%n remote rule-set(s) refreshed", nullptr, result.updated);
-            if (!problems.isEmpty()) {
-                MessageBoxWarning(tr("Update Rule-Sets"), summary + "\n\n" + problems.join("\n"));
-            } else {
-                MessageBoxInfo(tr("Update Rule-Sets"), summary);
-            }
-        });
-    });
+    connect(ui->actionUpdate_Rule_Sets, &QAction::triggered, this, &MainWindow::updateRuleSets);
     if (!Engine::ReleaseUpdates::Available())
     {
         ui->actionCheck_For_Update->setDisabled(true);
@@ -713,29 +696,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         connection()->restartStartedProfile();
     });
 
-    auto* profilesMenu = new QMenu(QObject::tr("Download Profiles"), ui->menuRouting_Menu);
-    for (const QString &country : QStringList{"China", "Iran", "Russia"})
-    {
-        auto* action = new QAction(profilesMenu);
-        action->setText(country);
-        connect(action, &QAction::triggered, this, [=,this]()
-        {
-            auto resp = NetworkRequestHelper::HttpGet(Configs::get_jsdelivr_link("https://raw.githubusercontent.com/throneproj/routeprofiles/profile/Profile_" + country));
-            if (!resp.error.isEmpty()) {
-                runOnUiThread([=] {
-                    MessageBoxWarning(QObject::tr("Download Profiles"), QObject::tr("Requesting profile error: %1").arg(resp.error + "\n" + resp.data));
-                });
-                return;
-            }
-            handle_add_remote_routes(resp.data);
-        });
-        profilesMenu->addAction(action);
-    }
-
     ui->menuRouting_Menu->addAction(ui->menu_routing_settings);
     ui->menuRouting_Menu->addAction(actionAdblock);
     ui->menuRouting_Menu->addAction(actionWarp);
-    ui->menuRouting_Menu->addMenu(profilesMenu);
     ui->menuRouting_Menu->addAction(ui->actionUpdate_Rule_Sets);
     ui->menuRouting_Menu->addSeparator();
 

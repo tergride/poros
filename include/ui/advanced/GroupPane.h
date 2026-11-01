@@ -1,9 +1,21 @@
 #pragma once
 
 #include <QList>
+#include <QStyledItemDelegate>
 #include <QWidget>
 
 class QListWidget;
+
+// A row of the side panes: icon, name and, when CountRole holds one, a number at the right edge.
+class PaneRowDelegate : public QStyledItemDelegate {
+public:
+    static constexpr int CountRole = Qt::UserRole + 1;
+
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+};
 
 // The list of subscriptions and groups beside the profile table.
 class GroupPane : public QWidget {

@@ -2,7 +2,6 @@
 
 #include <QWidget>
 #include <QListWidgetItem>
-#include <QDialog>
 #include <QEvent>
 #include <QHash>
 #include <QPointer>
@@ -17,7 +16,8 @@ class QListWidget;
 class QStandardItemModel;
 class RouteDnsEditor;
 
-class RouteItem : public QDialog {
+// The editor of one structured routing profile, shown beside the list of profiles.
+class RouteItem : public QWidget {
     Q_OBJECT
 
 public:
@@ -25,8 +25,9 @@ public:
     ~RouteItem() override;
 
     std::shared_ptr<Configs::RouteProfile> chain;
-signals:
-    void settingsChanged(std::shared_ptr<Configs::RouteProfile> routingChain);
+
+    // Writes the fields into chain; false when a problem has to be fixed first.
+    bool apply();
 
 private:
     Ui::RouteItem *ui;
@@ -40,6 +41,8 @@ private:
 
     // Shared by every rule's outbound combo: refilling and re-measuring thousands of profiles froze each rule switch.
     QStandardItemModel* outboundsModel = nullptr;
+
+    QHash<int, QString> outboundNames;
 
     int outboundsPopupWidth = -1;
 
@@ -87,6 +90,9 @@ private:
     void loadSimpleEditors();
 
     QString applySimpleEditors();
+
+    // UpdateSimpleRules rebuilds and filters chain->Rules, so the selection is looked up again.
+    QString commitSimpleEditors();
 
     [[nodiscard]] QWidget* attributeEditor(const QString& attr) const;
 
@@ -159,14 +165,14 @@ private:
 
     void updateRouteItemsView();
 
+    void fillRuleRow(int row);
+
     void applyAttributeVisibilityChange(const QString& attr, bool visible);
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private slots:
-    void accept() override;
-
     void on_new_route_item_clicked();
     void on_moveup_route_item_clicked();
     void on_movedown_route_item_clicked();

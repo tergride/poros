@@ -2662,32 +2662,20 @@ Poros will restart to complete the restore.</source>
         <translation>Маршрутизация</translation>
     </message>
     <message>
-        <source>Common</source>
-        <translation>Основные</translation>
-    </message>
-    <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Used as default strategy when resolving outbound/dns server Domain addresses&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Используется как стратегия по умолчанию при разрешении доменных адресов для исходящих соединений и DNS-серверов&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Default Domain Strategy</source>
-        <translation>Стратегия разрешения доменов по умолчанию</translation>
+        <translation>Стратегия домена по умолчанию</translation>
     </message>
     <message>
         <source>Resolve Domain Strategy</source>
-        <translation>Стратегия разрешения доменов в запросах</translation>
-    </message>
-    <message>
-        <source>Warp</source>
-        <translation>Warp</translation>
+        <translation>Стратегия разрешения доменов</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enables the following config to be used as egress, useful for bypassing services restrciting non-warp VPNs&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Использовать конфигурацию ниже как выходной узел (egress). Полезно для обхода сервисов, которые блокируют любые VPN, кроме Warp&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>Enable Warp</source>
-        <translation>Включить Warp</translation>
     </message>
     <message>
         <source>Endpoint</source>
@@ -2715,19 +2703,15 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>Generate Warp Config</source>
-        <translation>Сгенерировать конфигурацию Warp</translation>
-    </message>
-    <message>
-        <source>DNS</source>
-        <translation>DNS</translation>
+        <translation>Получить конфигурацию WARP</translation>
     </message>
     <message>
         <source>Simple DNS Settings</source>
-        <translation>Основные настройки DNS</translation>
+        <translation>Простые настройки</translation>
     </message>
     <message>
         <source>Direct DNS</source>
-        <translation>DNS для прямых запросов</translation>
+        <translation>Прямой DNS</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When enabled, domains destined for direct outbound will also be resolved using direct dns&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -2735,7 +2719,7 @@ Poros will restart to complete the restore.</source>
     </message>
     <message>
         <source>Enable DNS Routing</source>
-        <translation>Включить DNS-маршрутизацию</translation>
+        <translation>Маршрутизация DNS</translation>
     </message>
     <message>
         <source>Remote DNS</source>
@@ -2759,7 +2743,7 @@ For more information, see the document &quot;Configuration/DNS&quot;.</source>
     </message>
     <message>
         <source>Routing Profile</source>
-        <translation>Профиль маршрутизации</translation>
+        <translation>Активный профиль маршрутизации</translation>
     </message>
     <message>
         <source>Remote Rule-set Mirror</source>
@@ -2790,24 +2774,16 @@ For more information, see the document &quot;Configuration/DNS&quot;.</source>
         <translation>Емкость кэша</translation>
     </message>
     <message>
-        <source>Route</source>
-        <translation>Маршрутизация</translation>
-    </message>
-    <message>
         <source>Routing Profiles</source>
         <translation>Профили маршрутизации</translation>
     </message>
     <message>
         <source>New</source>
-        <translation>Создать</translation>
+        <translation>Новый</translation>
     </message>
     <message>
         <source>Import</source>
         <translation>Импорт</translation>
-    </message>
-    <message>
-        <source>Edit</source>
-        <translation>Редактировать</translation>
     </message>
     <message>
         <source>Delete</source>
@@ -2818,12 +2794,44 @@ For more information, see the document &quot;Configuration/DNS&quot;.</source>
         <translation>Обновить выбранный удалённый профиль маршрутизации или все профили</translation>
     </message>
     <message>
+        <source>Profiles and rules</source>
+        <translation>Профили и правила</translation>
+    </message>
+    <message>
         <source>Update</source>
         <translation>Обновить</translation>
     </message>
     <message>
+        <source>For traffic through the server</source>
+        <translation>Для трафика через сервер</translation>
+    </message>
+    <message>
+        <source>For direct traffic</source>
+        <translation>Для прямого трафика</translation>
+    </message>
+    <message>
+        <source>An IP for when the local DNS is unavailable</source>
+        <translation>IP, если локальный DNS недоступен</translation>
+    </message>
+    <message>
+        <source>Remote: no IPv6</source>
+        <translation>Удалённый: без IPv6</translation>
+    </message>
+    <message>
+        <source>Direct: no IPv6</source>
+        <translation>Прямой: без IPv6</translation>
+    </message>
+    <message>
         <source>Enable FakeIP</source>
         <translation>Включить FakeIP</translation>
+    </message>
+    <message>
+        <source>Use WARP as the exit</source>
+        <translation>Использовать WARP как выход</translation>
+    </message>
+    <message>
+        <source>Helps with services that refuse other VPNs.</source>
+        <translation>Помогает с сервисами, которые не принимают другие VPN.</translation>
     </message>
     <message>
         <source>WireGuard runs over UDP. MASQUE tunnels over HTTP/3 or HTTP/2 and passes networks that block WireGuard.</source>
@@ -2847,15 +2855,23 @@ For more information, see the document &quot;Configuration/DNS&quot;.</source>
     </message>
     <message>
         <source>HTTP Version</source>
-        <translation>Версия HTTP</translation>
+        <translation>Версия HTTP (MASQUE)</translation>
     </message>
     <message>
         <source>HTTP/3 (fallback to HTTP/2)</source>
-        <translation>HTTP/3 (с откатом на HTTP/2)</translation>
+        <translation>HTTP/3, запасной HTTP/2</translation>
     </message>
     <message>
         <source>HTTP/3 only</source>
         <translation>Только HTTP/3</translation>
+    </message>
+    <message>
+        <source>Enable AdBlock</source>
+        <translation>Блокировать рекламу</translation>
+    </message>
+    <message>
+        <source>Update Rule Sets</source>
+        <translation>Обновить наборы правил</translation>
     </message>
     <message>
         <source>Cloudflare API domains to try, in order, when generating a WARP config</source>
@@ -2870,16 +2886,12 @@ For more information, see the document &quot;Configuration/DNS&quot;.</source>
         <translation>Отвечать на запросы AAAA, отправленные на этот сервер, пустым результатом.</translation>
     </message>
     <message>
-        <source>Disable IPv6</source>
-        <translation>Отключить IPv6</translation>
-    </message>
-    <message>
         <source>Hand out no fake IPv6 addresses; AAAA queries are answered empty.</source>
         <translation>Не выдавать FakeIP-адреса IPv6; на запросы AAAA даются пустые ответы.</translation>
     </message>
     <message>
         <source>FakeIP Disable IPv6</source>
-        <translation>FakeIP: отключить IPv6</translation>
+        <translation>FakeIP без IPv6</translation>
     </message>
     <message>
         <source>Advanced</source>
@@ -2891,7 +2903,7 @@ For more information, see the document &quot;Configuration/DNS&quot;.</source>
     </message>
     <message>
         <source>Advanced Settings</source>
-        <translation>Доп. настройки</translation>
+        <translation>Кэш и таймауты…</translation>
     </message>
     <message>
         <source>Use Custom DNS Object</source>
@@ -2903,7 +2915,7 @@ For more information, see the document &quot;Configuration/DNS&quot;.</source>
     </message>
     <message>
         <source>Clone</source>
-        <translation>Дублировать</translation>
+        <translation>Клон</translation>
     </message>
     <message>
         <source>Export</source>
@@ -2916,14 +2928,6 @@ For more information, see the document &quot;Configuration/DNS&quot;.</source>
     <message>
         <source>The list of routing profiles is empty, this should be an unreachable state, crashes may occur now</source>
         <translation>Список профилей маршрутизации пуст. Такого не должно происходить; возможны сбои приложения</translation>
-    </message>
-    <message>
-        <source>Predefined DNS Answers</source>
-        <translation>Предопределенные DNS-ответы</translation>
-    </message>
-    <message>
-        <source>Enable predefined answers</source>
-        <translation>Включить предопределенные ответы</translation>
     </message>
     <message>
         <source>One entry per line, hosts-file syntax:
@@ -3078,6 +3082,10 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Примеры:&lt;br/&gt;tls://8.8.8.8&lt;br/&gt;https://domain/path&lt;br/&gt;tcp://8.8.8.8:1234&lt;br/&gt;dhcp://auto&lt;br/&gt;h3://domain/path&lt;br/&gt;quic://domain:4632&lt;br/&gt;и т. д.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
+        <source>General</source>
+        <translation>Общее</translation>
+    </message>
+    <message>
         <source>GitHub</source>
         <translation>GitHub</translation>
     </message>
@@ -3111,7 +3119,7 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     </message>
     <message>
         <source>Predefined Answers</source>
-        <translation>Предопределенные ответы</translation>
+        <translation>Готовые ответы</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local DNS can not be used in some configurations, you will have to set an ip here to be used as local dns in such situations&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -3119,7 +3127,7 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     </message>
     <message>
         <source>Local Override</source>
-        <translation>Переопределение локального DNS</translation>
+        <translation>Локальная подмена</translation>
     </message>
     <message>
         <source>Import from clipboard</source>
@@ -3194,6 +3202,22 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>Встроенные пресеты не меняются. Склонируйте пресет, чтобы сделать свой.</translation>
     </message>
     <message>
+        <source>Auto</source>
+        <translation>Авто</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Нет</translation>
+    </message>
+    <message>
+        <source>Direct</source>
+        <translation>Прямой</translation>
+    </message>
+    <message>
+        <source>Remote</source>
+        <translation>Удалённый</translation>
+    </message>
+    <message>
         <source>It is on but empty: click Edit DNS Object to write one, or turn it off.</source>
         <translation>Параметр включен, но объект пуст: нажмите «Редактировать объект DNS», чтобы задать его, или отключите параметр.</translation>
     </message>
@@ -3204,6 +3228,18 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>Required while WARP is on: click Generate Warp Config, or fill it in.</source>
         <translation>Обязательно, пока включен WARP: нажмите «Сгенерировать конфигурацию Warp» или заполните поле вручную.</translation>
+    </message>
+    <message>
+        <source>Download Profiles</source>
+        <translation>Скачать профили</translation>
+    </message>
+    <message>
+        <source>New profile</source>
+        <translation>Новый профиль</translation>
+    </message>
+    <message>
+        <source>Requesting profile error: %1</source>
+        <translation>Ошибка запроса профиля: %1</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -7471,10 +7507,6 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <translation>Автовыбор</translation>
     </message>
     <message>
-        <source>More</source>
-        <translation>Ещё</translation>
-    </message>
-    <message>
         <source>OTP</source>
         <translation>OTP</translation>
     </message>
@@ -9274,14 +9306,6 @@ To fix this, share the hotspot from the poros-net adapter instead of &quot;%1&qu
         <translation>Перезапуск ядра...</translation>
     </message>
     <message>
-        <source>Download Profiles</source>
-        <translation>Скачать профили</translation>
-    </message>
-    <message>
-        <source>Requesting profile error: %1</source>
-        <translation>Ошибка запроса профиля: %1</translation>
-    </message>
-    <message>
         <source>Added remote routing profiles: %1 of %2 fetched</source>
         <translation>Добавлены удалённые профили маршрутизации: получено %1 из %2</translation>
     </message>
@@ -10376,24 +10400,16 @@ outbound и другие функции Poros могут не работать. 
 <context>
     <name>RouteDnsEditor</name>
     <message>
-        <source>Use the global DNS settings</source>
-        <translation>Использовать общие настройки DNS</translation>
-    </message>
-    <message>
-        <source>The servers set in Routing Settings &gt; DNS.</source>
-        <translation>Серверы из раздела «Настройки маршрутизации &gt; DNS».</translation>
-    </message>
-    <message>
-        <source>Use custom DNS settings</source>
-        <translation>Свои настройки DNS</translation>
-    </message>
-    <message>
         <source>These servers replace the global ones while this routing profile is in use.</source>
         <translation>Пока используется этот профиль маршрутизации, эти серверы заменяют общие.</translation>
     </message>
     <message>
-        <source>Routing Settings use a custom DNS object, so that object applies instead of the values below.</source>
-        <translation>В настройках маршрутизации задан свой объект DNS, поэтому действует он, а не значения ниже.</translation>
+        <source>Custom DNS for this profile</source>
+        <translation>Свой DNS для этого профиля</translation>
+    </message>
+    <message>
+        <source>Routing uses a custom DNS object, so that object applies instead of the values below.</source>
+        <translation>В маршрутизации включён свой объект DNS, поэтому вместо значений ниже действует он.</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;examples:&lt;br/&gt;tls://8.8.8.8&lt;br/&gt;https://domain/path&lt;/p&gt;&lt;p&gt;tcp://8.8.8.8:1234&lt;/p&gt;&lt;p&gt;dhcp://auto&lt;/p&gt;&lt;p&gt;h3://domain/path&lt;/p&gt;&lt;p&gt;quic://domain:4632&lt;/p&gt;&lt;p&gt;localhost&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -10440,8 +10456,8 @@ outbound и другие функции Poros могут не работать. 
         <translation>Не выдавать поддельные адреса IPv6: на AAAA-запросы приходит пустой ответ.</translation>
     </message>
     <message>
-        <source>Local Override, the hosts file, predefined answers and the advanced DNS settings always come from Routing Settings &gt; DNS.</source>
-        <translation>Локальные замены, файл hosts, готовые ответы и расширенные настройки DNS всегда берутся из раздела «Настройки маршрутизации &gt; DNS».</translation>
+        <source>Local Override, the hosts file, predefined answers and the advanced DNS settings always come from Routing &gt; DNS.</source>
+        <translation>Локальная подмена, файл hosts, готовые ответы и кэш всегда берутся из раздела «Маршрутизация &gt; DNS».</translation>
     </message>
 </context>
 <context>
@@ -10455,8 +10471,36 @@ outbound и другие функции Poros могут не работать. 
         <translation>Название</translation>
     </message>
     <message>
+        <source>Built-in presets cannot be changed. Clone one to make your own.</source>
+        <translation>Встроенные пресеты нельзя изменить. Создайте клон, чтобы настроить свой.</translation>
+    </message>
+    <message>
+        <source>Simple rules: one address or process per line.</source>
+        <translation>Простые правила: по одному адресу или процессу на строку.</translation>
+    </message>
+    <message>
+        <source>On</source>
+        <translation>Вкл</translation>
+    </message>
+    <message>
+        <source>Condition</source>
+        <translation>Условие</translation>
+    </message>
+    <message>
+        <source>Outbound</source>
+        <translation>Исходящий</translation>
+    </message>
+    <message>
+        <source>OpenVPN and OpenConnect profiles start together with this routing profile. Traffic for their networks goes through them, the rest follows the rules.</source>
+        <translation>Профили OpenVPN и OpenConnect запускаются вместе с этим профилем маршрутизации. Трафик их сетей идёт через них, остальное по правилам.</translation>
+    </message>
+    <message>
+        <source>Source</source>
+        <translation>Источник</translation>
+    </message>
+    <message>
         <source>Remote source</source>
-        <translation>Удаленный источник</translation>
+        <translation>Источник</translation>
     </message>
     <message>
         <source>URL</source>
@@ -10477,6 +10521,10 @@ Your local edits are overwritten on each update.</source>
         <translation>Автообновление</translation>
     </message>
     <message>
+        <source>Your local edits are overwritten on each update.</source>
+        <translation>Файл перезаписывает локальные правки при каждом обновлении.</translation>
+    </message>
+    <message>
         <source>Fetch the URL and show the routing profile without changing the current rules.</source>
         <translation>Загрузить URL и показать профиль маршрутизации без изменения текущих правил.</translation>
     </message>
@@ -10490,7 +10538,7 @@ Your local edits are overwritten on each update.</source>
     </message>
     <message>
         <source>Warp-bypass</source>
-        <translation>Warp-bypass</translation>
+        <translation>WARP</translation>
     </message>
     <message>
         <source>Endpoints</source>
@@ -10501,24 +10549,20 @@ Your local edits are overwritten on each update.</source>
         <translation>Добавить</translation>
     </message>
     <message>
-        <source>Remove</source>
-        <translation>Удалить</translation>
-    </message>
-    <message>
         <source>Rules</source>
         <translation>Правила</translation>
     </message>
     <message>
         <source>New</source>
-        <translation>Создать</translation>
+        <translation>Новое</translation>
     </message>
     <message>
         <source>Move Up</source>
-        <translation>Поднять выше</translation>
+        <translation>Вверх</translation>
     </message>
     <message>
         <source>Move Down</source>
-        <translation>Опустить ниже</translation>
+        <translation>Вниз</translation>
     </message>
     <message>
         <source>Delete</source>
@@ -10533,16 +10577,12 @@ Your local edits are overwritten on each update.</source>
         <translation>Предпросмотр</translation>
     </message>
     <message>
-        <source>Rule Settings</source>
-        <translation>Настройки правила</translation>
-    </message>
-    <message>
         <source>Action</source>
         <translation>Действие</translation>
     </message>
     <message>
         <source>Basic</source>
-        <translation>Основные настройки</translation>
+        <translation>Простые</translation>
     </message>
     <message>
         <source>How to use</source>
@@ -10554,19 +10594,11 @@ Your local edits are overwritten on each update.</source>
     </message>
     <message>
         <source>Proxy</source>
-        <translation>Прокси</translation>
+        <translation>Через прокси</translation>
     </message>
     <message>
         <source>Block</source>
         <translation>Блокировать</translation>
-    </message>
-    <message>
-        <source>OpenVPN / OpenConnect profiles started alongside this routing profile. Traffic for the networks they advertise goes through them; everything else follows this profile&apos;s rules. Each endpoint gets a rule in the Advanced tab that you can move among your own rules. A chain endpoint can hand out one rule per inner OpenVPN / OpenConnect hop too, so traffic can be routed to a hop before the exit.</source>
-        <translation>Профили OpenVPN / OpenConnect, запускаемые вместе с этим профилем маршрутизации. Трафик для сетей, которые они анонсируют, идёт через них; всё остальное подчиняется правилам этого профиля. Для каждой конечной точки на вкладке «Дополнительно» создаётся правило, которое можно перемещать среди ваших правил. Конечная точка-цепочка также может выдавать по правилу на каждое внутреннее звено OpenVPN / OpenConnect, чтобы трафик можно было направить на звено до выхода.</translation>
-    </message>
-    <message>
-        <source>Advanced</source>
-        <translation>Дополнительно</translation>
     </message>
     <message>
         <source>Invalid rules</source>
@@ -10661,12 +10693,8 @@ Remove that endpoint from this routing profile as well?</source>
 </translation>
     </message>
     <message>
-        <source>General</source>
-        <translation>Основное</translation>
-    </message>
-    <message>
         <source>Default outbound</source>
-        <translation>Outbound по умолчанию</translation>
+        <translation>Исходящий по умолчанию</translation>
     </message>
     <message>
         <source>%1 — %2 rule(s)</source>

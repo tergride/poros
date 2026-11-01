@@ -156,6 +156,8 @@ signals:
 
 public slots:
 
+    void updateRuleSets();
+
     void on_commitDataRequest();
 
     void on_menu_exit_triggered();
@@ -443,8 +445,6 @@ private:
     void handle_import_route(const QString &url);
 
     void handle_add_remote_routes(const QString &url);
-
-    void openRouteProfileEditor(int routeId);
 
     void import_or_handle_deeplink(const QString &text);
 

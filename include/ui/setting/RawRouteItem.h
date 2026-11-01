@@ -1,12 +1,13 @@
 #pragma once
 
-#include <QDialog>
 #include <QHash>
 #include <QPair>
 #include <memory>
 
 #include "include/database/entities/RouteProfile.h"
 #include "include/ui/widget/json/JsonCodeEdit.h"
+
+#include <QWidget>
 
 class QLineEdit;
 class QCheckBox;
@@ -42,7 +43,8 @@ private:
     QHash<QString, QString> outboundIdByDisplay; // popup display text -> id to insert
 };
 
-class RawRouteItem : public QDialog {
+// The editor of one raw routing profile, shown beside the list of profiles.
+class RawRouteItem : public QWidget {
     Q_OBJECT
 
 public:
@@ -50,11 +52,8 @@ public:
 
     std::shared_ptr<Configs::RouteProfile> chain;
 
-signals:
-    void settingsChanged(std::shared_ptr<Configs::RouteProfile> routingChain);
-
-private slots:
-    void accept() override;
+    // Writes the fields into chain; false when a problem has to be fixed first.
+    bool apply();
 
 private:
     QLineEdit* nameEdit = nullptr;

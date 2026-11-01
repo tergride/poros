@@ -11,6 +11,8 @@ QLabel[role="hint"] { color: @t3; font-size: 12px; }
 QLabel[role="field"] { color: @t2; font-size: 12px; margin-top: 4px; }
 QLabel[role="navGroup"] { color: @t3; font-size: 11px; padding: 8px 10px 2px 10px; }
 QLabel[role="mono"] { font-family: "JetBrains Mono", "Consolas"; }
+QPlainTextEdit[role="mono"], QTextBrowser[role="mono"] { font-family: "JetBrains Mono", "Consolas"; font-size: 12px; }
+QLabel[role="note"] { background-color: @s3; color: @t2; font-size: 12px; padding: 7px 14px; }
 QToolTip { background-color: @s3; color: @t1; border: 1px solid @line2; padding: 4px 8px; }
 
 QFrame[frameShape="4"], QFrame[frameShape="5"] { color: @line; }
@@ -42,6 +44,8 @@ QPushButton[variant="ghost"] { background-color: transparent; border-color: tran
 QPushButton[variant="ghost"]:hover { background-color: @s4; color: @t1; }
 QPushButton[variant="danger"] { background-color: transparent; border-color: @bad; color: @bad; }
 QPushButton[variant="danger"]:hover { background-color: @s4; }
+QPushButton[variant="danger"]:disabled { border-color: @line; color: @tdis; }
+QPushButton[role="small"] { padding: 3px 10px; min-height: 22px; font-size: 12px; }
 
 QToolButton {
     background-color: transparent;
@@ -164,7 +168,7 @@ QTabBar::tab:selected {
     border-bottom: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 @blue, stop:0.55 @violet, stop:1 @orchid);
 }
 QTabBar::tab:disabled { color: @tdis; }
-QTabBar::close-button { image: url(:/poros/icons/close.svg); }
+QTabBar::close-button { image: url(:/poros/qss/close.svg); }
 QTabBar QToolButton { background-color: @s3; border: 1px solid @line2; }
 
 /* Lists and tables */
@@ -193,6 +197,13 @@ QHeaderView::section {
     padding: 5px 8px;
 }
 QHeaderView::section:hover { color: @t1; }
+QTableWidget[role="table"] { background-color: @s1; }
+QTableWidget[role="table"]::item { border-bottom: 1px solid @line; padding: 0 10px; }
+QTableWidget[role="table"]::item:hover { background-color: @s2; }
+QTableWidget[role="table"]::item:selected { background-color: @s3; color: @t1; }
+QTableWidget[role="table"]::indicator { width: 30px; height: 18px; image: url(:/poros/qss/switch-off.svg); }
+QTableWidget[role="table"]::indicator:checked { image: url(:/poros/qss/switch-on.svg); }
+QTableWidget[role="table"] QHeaderView::section { background-color: @s1; border: none; border-bottom: 1px solid @line; padding: 7px 10px; }
 QHeaderView::down-arrow { image: url(:/poros/qss/chevron-down.svg); width: 10px; height: 10px; }
 QHeaderView::up-arrow { image: url(:/poros/qss/chevron-up.svg); width: 10px; height: 10px; }
 QTreeView::branch { background: transparent; }
@@ -258,8 +269,10 @@ ConnectionBar QLabel#label_inbound { color: @t3; font-size: 12px; }
 ConnectionBar QLabel#label_speed { color: @t2; font-family: "JetBrains Mono", "Consolas"; font-size: 12px; }
 
 GroupPane { background-color: @s1; border-right: 1px solid @line; }
-QListWidget#groupList { background: transparent; border: none; padding: 0 8px 8px 8px; }
-QListWidget#groupList::item { background: transparent; }
+QListWidget#groupList, QListWidget#route_profiles { background: transparent; border: none; padding: 0 8px 8px 8px; }
+QListWidget#groupList::item, QListWidget#route_profiles::item { background: transparent; }
+QFrame[role="pane"] { background-color: @s1; border: none; border-right: 1px solid @line; }
+QLabel[role="paneTitle"] { color: @t3; font-size: 12px; padding: 10px 12px 6px 12px; }
 
 SegmentSwitch { background-color: @s0; border: 1px solid @line2; border-radius: 10px; }
 SegmentSwitch QToolButton { color: @t2; border: none; border-radius: 7px; padding: 4px 12px; }

@@ -208,11 +208,8 @@ void MainWindow::setupShell() {
     }, ui->stats_widget);
     ui->stats_widget->addTab(m_autoSelectorPage, tr("Auto selector"));
 
-    QHBoxLayout *routingActions = nullptr;
-    auto *routingHeader = shellSectionHeader(tr("Routing"), &routingActions, m_advancedPage);
-    routingActions->addWidget(shellMenuButton(QStringLiteral("more"), tr("More"), ui->menuRouting_Menu, routingHeader));
     m_routingPage = new EmbeddedDialog([](QWidget *parent) -> QDialog * { return new DialogManageRoutes(parent); }, m_advancedPage);
-    m_advancedPage->setSection(AdvancedPage::Routing, shellSection(routingHeader, m_routingPage, m_advancedPage));
+    m_advancedPage->setSection(AdvancedPage::Routing, m_routingPage);
 
     m_toolTabs = new QTabWidget(m_advancedPage);
     m_toolTabs->addTab(new EmbeddedDialog([](QWidget *parent) -> QDialog * { return new DialogOtpManager(parent); }, m_toolTabs), tr("OTP"));

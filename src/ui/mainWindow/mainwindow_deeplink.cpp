@@ -25,6 +25,7 @@
 #include "include/global/PeriodicRunner.hpp"
 #include "include/sys/AutoRun.hpp"
 #include "include/sys/KillSwitch.hpp"
+#include "include/ui/advanced/EmbeddedDialog.h"
 #include "include/ui/mainWindow/MainWindowInternal.h"
 #include "include/ui/setting/Icon.hpp"
 #include "include/ui/utils/ProfilesTableModel.h"
@@ -212,6 +213,8 @@ void MainWindow::handle_add_remote_routes(const QString &url) {
         profile->autoUpdate = autoUpdate;
         Configs::dataManager->routesRepo->AddRouteProfile(profile);
     }
+    // Its copy of the list would drop these on Save.
+    m_routingPage->rebuild();
 
     const auto added = profiles;
     runOnNewThread([added] {

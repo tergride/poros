@@ -7,7 +7,6 @@
 class QCheckBox;
 class QComboBox;
 class QLabel;
-class QRadioButton;
 
 namespace Validation {
     class Form;
@@ -25,7 +24,7 @@ namespace DnsServerHistory {
     bool Remember(QStringList& history, const QStringList& presets, const QString& server);
 }
 
-// A routing profile's DNS tab: follow Routing Settings > DNS, or use its own servers.
+// A routing profile's DNS tab: follow Routing > DNS, or use its own servers.
 class RouteDnsEditor : public QWidget {
     Q_OBJECT
 
@@ -45,8 +44,7 @@ private:
 
     void syncState() const;
 
-    QRadioButton* globalRadio = nullptr;
-    QRadioButton* customRadio = nullptr;
+    QCheckBox* customSwitch = nullptr;
     QLabel* dnsObjectNote = nullptr;
     QWidget* fields = nullptr;
     QComboBox* remoteDns = nullptr;
