@@ -4,8 +4,10 @@
 #include <QCursor>
 #include <QMenu>
 #include <QShortcut>
+#include <QStackedWidget>
 
 #include "include/sys/GlobalHotkeys.hpp"
+#include "include/ui/advanced/AdvancedPage.h"
 
 QStringList MainWindow::RegisterHotkey(bool unregister) {
     if (!globalHotkeys) {
@@ -43,6 +45,7 @@ bool MainWindow::IsGlobalHotkeySupported() const {
 }
 
 void MainWindow::registerMenuShortcuts(QMenu *menu, QSet<QKeySequence> &claimed) {
+    const QList<QAction *> anyPage{commandPaletteAction, ui->actionHide_window, ui->actionSpeedtest_Current};
     for (const auto &action: menu->actions()) {
         if (auto *sub = action->menu()) {
             registerMenuShortcuts(sub, claimed);
@@ -50,9 +53,11 @@ void MainWindow::registerMenuShortcuts(QMenu *menu, QSet<QKeySequence> &claimed)
             for (const auto &seq : action->shortcuts()) {
                 if (claimed.contains(seq)) continue;
                 claimed.insert(seq);
-                hiddenMenuShortcuts.append(new QShortcut(seq, this, [=,this](){
+                auto *shortcut = new QShortcut(seq, this, [=,this](){
                     action->trigger();
-                }));
+                });
+                hiddenMenuShortcuts.append(shortcut);
+                if (!anyPage.contains(action)) profileShortcuts.append(shortcut);
             }
         }
     }
@@ -61,17 +66,24 @@ void MainWindow::registerMenuShortcuts(QMenu *menu, QSet<QKeySequence> &claimed)
 void MainWindow::RegisterHiddenMenuShortcuts(bool unregister) {
     for (const auto s : hiddenMenuShortcuts) s->deleteLater();
     hiddenMenuShortcuts.clear();
+    profileShortcuts.clear();
 
     if (unregister) return;
 
     // A native menubar keeps its actions' shortcuts live even while hidden, so a second binding makes both ambiguous and kills them.
     if (ui->menubar->isNativeMenuBar()) return;
 
-    // The menus only open from the shell, so none of their actions is on a visible widget that would own its shortcut.
+    // Menus on buttons hold stand-ins, so these are the only owners of the keys: a second one would silence both.
     QSet<QKeySequence> claimed;
     for (auto *menu : {ui->menu_program, ui->menu_preferences, ui->menuRouting_Menu, ui->menuTesting, ui->menuTools, ui->menuHidden_menu, ui->menu_server}) {
         registerMenuShortcuts(menu, claimed);
     }
+    syncMenuShortcuts();
+}
+
+void MainWindow::syncMenuShortcuts() {
+    const bool tableShown = m_rootStack->currentWidget() == m_advancedPage && m_advancedPage->currentSection() == AdvancedPage::Profiles;
+    for (auto *shortcut : std::as_const(profileShortcuts)) shortcut->setEnabled(tableShown);
 }
 
 void MainWindow::setActionsData()
@@ -140,7 +152,9 @@ void MainWindow::HotkeyEvent(const QString &id) {
     } else if (id == "show-groups") {
         on_menu_manage_groups_triggered();
     } else if (id == "show-routes") {
-        on_menu_routing_settings_triggered();
+        ActivateWindow(this);
+        if (m_rootStack->currentWidget() == m_simpleStack) showSimpleSettings(0);
+        else if (m_rootStack->currentWidget() == m_advancedPage) on_menu_routing_settings_triggered();
     } else if (id == "proxy-mode-menu") {
         ui->menu_spmode->popup(QCursor::pos());
     } else if (id == "toggle-system-proxy") {

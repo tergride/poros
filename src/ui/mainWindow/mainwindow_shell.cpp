@@ -68,6 +68,22 @@ namespace {
         return button;
     }
 
+    // An action on a visible button owns its shortcut, which would clash with the window's: the menu gets a stand-in without one.
+    QAction *shellStandIn(QAction *action, QMenu *menu) {
+        auto *standIn = new QAction(menu);
+        const auto follow = [standIn, action] {
+            const QString keys = action->shortcut().toString(QKeySequence::NativeText);
+            standIn->setText(keys.isEmpty() ? action->text() : action->text() + QLatin1Char('\t') + keys);
+            standIn->setIcon(action->icon());
+            standIn->setEnabled(action->isEnabled());
+            standIn->setVisible(action->isVisible());
+        };
+        follow();
+        QObject::connect(action, &QAction::changed, standIn, follow);
+        QObject::connect(standIn, &QAction::triggered, action, &QAction::trigger);
+        return standIn;
+    }
+
     // A null action adds a separator.
     QMenu *shellMenu(const QList<QPair<QString, QAction *>> &actions, QWidget *parent) {
         auto *menu = new QMenu(parent);
@@ -77,7 +93,7 @@ namespace {
                 continue;
             }
             action->setIcon(PorosTheme::Icon(icon));
-            menu->addAction(action);
+            menu->addAction(shellStandIn(action, menu));
         }
         return menu;
     }
@@ -341,6 +357,7 @@ void MainWindow::setupShell() {
 
     connect(m_advancedPage, &AdvancedPage::sectionChanged, this, [this](AdvancedPage::Section section) {
         syncConnectionViewState();
+        syncMenuShortcuts();
         if (section == AdvancedPage::Profiles) scheduleProxyListRefresh();
         if (section == AdvancedPage::Routing || section == AdvancedPage::Settings) refreshEmbeddedPages();
     });
@@ -366,6 +383,7 @@ void MainWindow::applyUiMode() {
         refreshEmbeddedPages();
     }
     syncConnectionViewState();
+    syncMenuShortcuts();
     refreshSimplePortal();
     refresh_startstop_button();
     if (!simple) scheduleProxyListRefresh();
@@ -403,6 +421,7 @@ void MainWindow::showOnboarding() {
     }
     m_titleBar->setMenuVisible(false);
     m_rootStack->setCurrentWidget(m_onboarding);
+    syncMenuShortcuts();
 }
 
 void MainWindow::finishOnboarding(const QString &uiMode, const QString &serverLink) {

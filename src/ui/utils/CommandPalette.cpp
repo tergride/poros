@@ -276,6 +276,14 @@ void CommandPalette::present(const Blocker &blocker) {
     edit->setFocus(Qt::OtherFocusReason);
 }
 
+void CommandPalette::hideEvent(QHideEvent *event) {
+    QDialog::hideEvent(event);
+    // refreshCommands showed the menus as far as their handlers can tell, so they get to undo what they set for it.
+    for (const auto &menu : std::as_const(collectedMenus)) {
+        if (menu) emit menu->aboutToHide();
+    }
+}
+
 void CommandPalette::setQuery(const QString &text) {
     edit->setText(text);
     edit->setFocus(Qt::OtherFocusReason);

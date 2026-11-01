@@ -3,6 +3,7 @@
 #include <QAction>
 #include <QDialog>
 #include <QMenu>
+#include <QStackedWidget>
 
 #include "include/ui/group/dialog_manage_groups.h"
 #include "include/ui/mainWindow/MainWindowInternal.h"
@@ -20,7 +21,6 @@ void MainWindow::setupCommandPalette() {
     commandPaletteAction = new QAction(tr("Search Settings"), this);
     commandPaletteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_K));
     connect(commandPaletteAction, &QAction::triggered, this, &MainWindow::showCommandPalette);
-    addAction(commandPaletteAction);
     const auto toolsActions = ui->menuTools->actions();
     ui->menuTools->insertAction(toolsActions.value(0), commandPaletteAction);
     if (!toolsActions.isEmpty()) ui->menuTools->insertSeparator(toolsActions.first());
@@ -73,6 +73,7 @@ void MainWindow::createCommandPalette() {
 }
 
 void MainWindow::showCommandPalette() {
+    if (m_rootStack->currentWidget() != m_advancedPage) return;
     if (commandPalette && commandPalette->isVisible()) {
         commandPalette->raise();
         commandPalette->activateWindow();

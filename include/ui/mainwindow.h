@@ -351,6 +351,8 @@ private:
     DataViewHtmlGenerator dataViewHtmlGenerator_;
 
     QList<QShortcut*> hiddenMenuShortcuts;
+    // The ones that act on the profile table, off whenever it is not on screen.
+    QList<QShortcut*> profileShortcuts;
     GlobalHotkeys *globalHotkeys = nullptr;
 
 
@@ -519,6 +521,7 @@ private:
 
     void RegisterHiddenMenuShortcuts(bool unregister = false);
     void registerMenuShortcuts(QMenu *menu, QSet<QKeySequence> &claimed);
+    void syncMenuShortcuts();
 
     void setActionsData();
 

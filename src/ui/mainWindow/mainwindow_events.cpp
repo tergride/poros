@@ -12,6 +12,7 @@
 #include "include/engine/connection/ConnectionManager.h"
 #include "include/ui/advanced/AdvancedPage.h"
 #include "include/ui/shell/TitleBar.h"
+#include "include/ui/simple/SimpleHome.h"
 #include "include/ui/widget/TrayOtpCodes.hpp"
 #include "include/ui/widget/TrayProfileSelector.hpp"
 
@@ -179,12 +180,12 @@ void MainWindow::openTrayOtpCodes() {
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event) {
-    if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
-        if (!qobject_cast<QLineEdit *>(QApplication::focusWidget())) {
-            if (simpleModeShown()) simpleStart();
-            else profile_start();
-            return;
-        }
+    // The profile table has a shortcut for these keys, and the other pages keep them for themselves. A stray press never disconnects.
+    const bool enter = event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter;
+    if (enter && m_rootStack->currentWidget() == m_simpleStack && m_simpleStack->currentWidget() == m_simpleHome &&
+        !qobject_cast<QLineEdit *>(QApplication::focusWidget()) && runningSnapshot() == nullptr) {
+        toggle_connection();
+        return;
     }
     QMainWindow::keyPressEvent(event);
 }

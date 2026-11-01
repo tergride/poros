@@ -729,8 +729,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     };
     connect(ui->menu_server, &QMenu::aboutToHide, this, [=,this] {
         setTimeout([=,this] { set_selected_or_group(2); }, this, 200);
-        ui->menu_qr->setEnabled(true);
-        ui->menu_export_config->setEnabled(true);
+        // A hidden action stays disabled whatever setEnabled says.
+        ui->menu_export_config->setVisible(true);
+        for (auto *action : {ui->menu_edit, ui->menu_qr, ui->menu_export_config, ui->actionSpeedtest_Selected, ui->actionUrl_Test_Selected,
+                             ui->menu_resolve_selected, ui->actionResolve_Selected_Out_IP}) {
+            action->setEnabled(true);
+        }
     });
     set_selected_or_group(2);
     auto *shareHeading = new QAction(tr("Share"), ui->menu_server);
