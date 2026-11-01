@@ -49,7 +49,7 @@ namespace Configs {
         QString ul_speed;
         QString test_country;
         std::shared_ptr<Configs::outbound> outbound;
-        // Inherit, Own or IpList.
+        // Inherit or Own.
         EndpointSource endpoint;
 
         qint64 traffic_downlink = 0;

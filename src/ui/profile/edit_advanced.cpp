@@ -235,11 +235,7 @@ void EditAdvanced::syncEndpoint() {
         if (const auto group = Configs::dataManager->groupsRepo->GetGroup(ent->gid)) resolution = Configs::ResolveEndpointSource(group->endpoint);
     }
     QString hint;
-    if (!resolution.address.isEmpty()) {
-        hint = tr("Connects to %1 (%2).").arg(resolution.address, resolution.origin);
-    } else if (!resolution.problem.isEmpty()) {
-        hint = tr("%1, so the profile's own address is used.").arg(resolution.problem);
-    }
+    if (!resolution.address.isEmpty()) hint = tr("Connects to %1 (%2).").arg(resolution.address, resolution.origin);
     ui->endpoint_hint->setText(hint);
     ui->endpoint_hint->setHidden(hint.isEmpty());
 }

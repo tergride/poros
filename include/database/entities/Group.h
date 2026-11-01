@@ -140,7 +140,7 @@ namespace Configs
         SubscriptionOptions sub_options;
         int front_proxy_id = -1;
         int landing_proxy_id = -1;
-        // Inherit (profiles keep their own addresses), Address or IpList.
+        // Inherit (profiles keep their own addresses) or Address.
         EndpointSource endpoint;
 
         QList<int> column_width;

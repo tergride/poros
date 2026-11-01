@@ -1,6 +1,5 @@
 #include "include/engine/services/SettingsRegistry.h"
 
-#include <QHostAddress>
 #include <QJsonValue>
 #include <QList>
 #include <QSet>
@@ -42,7 +41,7 @@ namespace Engine::SettingsRegistryImpl {
         T value;
     };
 
-    // The member writes of one PUT, each under the API key that made it; value() reads them over the stored settings.
+    // The member writes of one Put, each under the key that made it; value() reads them over the stored settings.
     class Patch {
     public:
         explicit Patch(const Settings &settings) : settings_(settings) {}
@@ -128,15 +127,13 @@ namespace Engine::SettingsRegistryImpl {
         return {};
     }
 
-    Key boolKey(const QString &name, bool Settings::*member, Restart restart, int effects = NoEffect, bool inverted = false) {
+    Key boolKey(const QString &name, bool Settings::*member, Restart restart, int effects = NoEffect) {
         return {name, restart, effects,
-                [member, inverted](const Settings &settings) { return QJsonValue(inverted ? !(settings.*member) : settings.*member); },
+                [member](const Settings &settings) { return QJsonValue(settings.*member); },
                 [name](const QJsonValue &value) {
                     return value.isBool() ? QString() : QStringLiteral("\"%1\" must be true or false").arg(name);
                 },
-                [name, member, inverted](const QJsonValue &value, Patch *patch) {
-                    patch->set(name, member, inverted ? !value.toBool() : value.toBool());
-                }};
+                [name, member](const QJsonValue &value, Patch *patch) { patch->set(name, member, value.toBool()); }};
     }
 
     Key intKey(const QString &name, int Settings::*member, int min, int max, Restart restart, int effects = NoEffect) {
@@ -171,7 +168,7 @@ namespace Engine::SettingsRegistryImpl {
         return stored <= -kMinAutoUpdate ? stored : -fallbackMinutes;
     }
 
-    // API minutes: 0 = off, else 30..525600; 1..29 would silently read as off, so they are refused.
+    // Minutes: 0 = off, else 30..525600; 1..29 would silently read as off, so they are refused.
     Key autoUpdateKey(const QString &name, int Settings::*member, int fallbackMinutes) {
         return {name, Restart::None, CheckPeriodic,
                 [member](const Settings &settings) {
@@ -192,23 +189,6 @@ namespace Engine::SettingsRegistryImpl {
                 }};
     }
 
-    // API 0 = off. Stored <= 0 is off; turning it off stores the port negated, as the defaults do, to keep it for later.
-    Key portOrOffKey(const QString &name, int Settings::*member, Restart restart) {
-        return {name, restart, NoEffect,
-                [member](const Settings &settings) { return QJsonValue(settings.*member > 0 ? settings.*member : 0); },
-                [name](const QJsonValue &value) {
-                    qint64 port = 0;
-                    if (!wholeNumber(value, &port)) return QStringLiteral("\"%1\" must be an integer").arg(name);
-                    if (port < 0 || port > 65535) return QStringLiteral("\"%1\" must be 0 (off) or from 1 to 65535").arg(name);
-                    return QString();
-                },
-                [name, member](const QJsonValue &value, Patch *patch) {
-                    const int port = static_cast<int>(value.toDouble());
-                    const int stored = patch->value(member);
-                    patch->set(name, member, port != 0 ? port : (stored > 0 ? -stored : stored));
-                }};
-    }
-
     const QList<Key> &keys() {
         static const QList<Key> table = [] {
             const QStringList http = {QStringLiteral("http"), QStringLiteral("https")};
@@ -217,7 +197,6 @@ namespace Engine::SettingsRegistryImpl {
             list << enumKey(QStringLiteral("log_level"), &Settings::log_level, Restart::Profile,
                             QStringLiteral("trace debug info warn error fatal panic").split(QLatin1Char(' ')));
             list << enumKey(QStringLiteral("xray_log_level"), &Settings::xray_log_level, Restart::Profile, Configs::Xray::XrayLogLevels);
-            list << boolKey(QStringLiteral("inbound_enabled"), &Settings::disable_mixed_inbound, Restart::Profile, NoEffect, true);
             list << stringKey(QStringLiteral("inbound_address"), &Settings::inbound_address, Restart::Profile,
                               [](const QString &text) { return Validation::Ip(text).isEmpty(); },
                               QStringLiteral("must be an IPv4 or IPv6 address, such as 127.0.0.1 or ::"));
@@ -254,11 +233,6 @@ namespace Engine::SettingsRegistryImpl {
             list << tunIpv6Cidr;
 
             list << intKey(QStringLiteral("dns_in_port"), &Settings::core_dns_in_port, 1, 65535, Restart::Profile);
-            list << portOrOffKey(QStringLiteral("clash_api_port"), &Settings::core_box_clash_api, Restart::Profile);
-            list << stringKey(QStringLiteral("clash_listen_addr"), &Settings::core_box_clash_listen_addr, Restart::Profile,
-                              [](const QString &text) { return Validation::Host(text, Validation::Empty::Allowed).isEmpty(); },
-                              QStringLiteral("must be empty (127.0.0.1) or a host name or IP address, without a scheme, port or spaces"));
-            list << portOrOffKey(QStringLiteral("singbox_api_port"), &Settings::core_box_api_port, Restart::Profile);
 
             const auto dnsAddress = [](const QString &text) { return Configs::ParseDnsAddress(text, nullptr); };
             const auto dnsRule = QStringLiteral("must be a DNS address: local, dhcp://auto, dhcp://<interface>, udp|tcp|tls|quic://host[:port], "
@@ -291,72 +265,34 @@ namespace Engine::SettingsRegistryImpl {
         QString label;
     };
 
-    // The settings dialog's port rule over the pending values, for each port this PUT changes or brings back into use, plus the
-    // Throne API's own listener.
+    // The settings dialog's port rule over the pending values, for each port this Put changes or brings back into use.
     QString portConflict(const Patch &pending) {
         const QList<PortUser> users = {
             {QStringLiteral("inbound_port"), &Settings::inbound_socks_port, QStringLiteral("the mixed inbound (inbound_port)")},
             {QStringLiteral("dns_in_port"), &Settings::core_dns_in_port, QStringLiteral("the core's DNS server (dns_in_port)")},
-            {QStringLiteral("clash_api_port"), &Settings::core_box_clash_api, QStringLiteral("the Clash API (clash_api_port)")},
-            {QStringLiteral("singbox_api_port"), &Settings::core_box_api_port, QStringLiteral("the sing-box API (singbox_api_port)")},
         };
-        const bool mixedOn = !pending.value(&Settings::disable_mixed_inbound) && !pending.value(&Settings::random_inbound_port);
-        const bool mixedTurnsOn =
-            mixedOn && (pending.changes(&Settings::disable_mixed_inbound) || pending.changes(&Settings::random_inbound_port));
-        const auto inUse = [&pending, mixedOn](const PortUser &user) {
-            return pending.value(user.member) > 0 && (user.member != &Settings::inbound_socks_port || mixedOn);
+        const bool fixedPort = !pending.value(&Settings::random_inbound_port);
+        const auto inUse = [&pending, fixedPort](const PortUser &user) {
+            return pending.value(user.member) > 0 && (user.member != &Settings::inbound_socks_port || fixedPort);
         };
         for (const auto &user : users) {
-            // While the mixed inbound was off, other ports could take its stored port unchecked.
-            const bool reenabled = user.member == &Settings::inbound_socks_port && mixedTurnsOn && !pending.changes(user.member);
+            // While the inbound port was random, the DNS server could take its stored port unchecked.
+            const bool reenabled = user.member == &Settings::inbound_socks_port && fixedPort && pending.changes(&Settings::random_inbound_port);
             if (!pending.changes(user.member) && !reenabled) continue;
             const int port = pending.value(user.member);
             if (port <= 0) continue;
-            QString holder;
             for (const auto &other : users) {
                 if (other.member != user.member && inUse(other) && pending.value(other.member) == port) {
-                    holder = other.label;
-                    break;
+                    return QStringLiteral("\"%1\" %2 is already used by %3; choose a different port")
+                        .arg(user.key, QString::number(port), other.label);
                 }
-            }
-            if (!holder.isEmpty() && reenabled) {
-                return QStringLiteral("\"inbound_enabled\" would turn the mixed inbound on at port %1, which %2 already uses; choose a "
-                                      "different inbound_port")
-                    .arg(QString::number(port), holder);
-            }
-            if (!holder.isEmpty()) {
-                return QStringLiteral("\"%1\" %2 is already used by %3; choose a different port")
-                    .arg(user.key, QString::number(port), holder);
             }
         }
         return {};
     }
-
-    // The Clash API secret is set only in the GUI, so the API never opens the Clash API to other hosts without one.
-    QString clashExposure(const Patch &pending, const Settings &settings) {
-        if (!pending.touches(QStringLiteral("clash_api_port")) && !pending.touches(QStringLiteral("clash_listen_addr"))) return {};
-        if (pending.value(&Settings::core_box_clash_api) <= 0 || !settings.core_box_clash_api_secret.isEmpty()) return {};
-        // Already on at this address: moving its port opens nothing new.
-        if (settings.core_box_clash_api > 0 && !pending.changes(&Settings::core_box_clash_listen_addr)) return {};
-        QString host = pending.value(&Settings::core_box_clash_listen_addr);
-        if (host.startsWith(QLatin1Char('[')) && host.endsWith(QLatin1Char(']'))) host = host.mid(1, host.size() - 2);
-        if (host.isEmpty() || host.compare(QLatin1String("localhost"), Qt::CaseInsensitive) == 0 || QHostAddress(host).isLoopback()) {
-            return {};
-        }
-        return QStringLiteral("\"clash_listen_addr\" %1 would open the Clash API to other hosts without a secret; keep it on 127.0.0.1, "
-                              "or set the Clash API secret in Poros's settings first")
-            .arg(host);
-    }
 } // namespace Engine::SettingsRegistryImpl
 
 namespace Engine::SettingsRegistry {
-    QJsonObject Values() {
-        const auto &settings = *Configs::dataManager->settingsRepo;
-        QJsonObject values;
-        for (const auto &key : SettingsRegistryImpl::keys()) values.insert(key.name, key.get(settings));
-        return values;
-    }
-
     std::optional<ServiceError> Put(const QJsonObject &patch, const Context &context, PutResult *result) {
         using Settings = SettingsRegistryImpl::Settings;
         ENGINE_CHECK_MAIN_THREAD();
@@ -374,7 +310,7 @@ namespace Engine::SettingsRegistry {
             const auto *key = SettingsRegistryImpl::findKey(it.key());
             if (key == nullptr) return SettingsRegistryImpl::badRequest(QStringLiteral("Unknown setting \"%1\"").arg(it.key()));
             const QJsonValue value = it.value();
-            // GET returns stored values even when they are invalid, so one sent back unchanged passes and writes nothing.
+            // A stored value may be invalid, so one sent back unchanged passes and writes nothing.
             if (value.isNull() || value == key->get(settings)) continue;
             if (const auto problem = key->check(value); !problem.isEmpty()) return SettingsRegistryImpl::badRequest(problem);
             key->set(value, &pending);
@@ -382,13 +318,6 @@ namespace Engine::SettingsRegistry {
 
         if (const auto problem = SettingsRegistryImpl::portConflict(pending); !problem.isEmpty()) {
             return SettingsRegistryImpl::badRequest(problem);
-        }
-        if (const auto problem = SettingsRegistryImpl::clashExposure(pending, settings); !problem.isEmpty()) {
-            return SettingsRegistryImpl::badRequest(problem);
-        }
-        if (context.systemProxyOn && pending.changes(&Settings::disable_mixed_inbound) && pending.value(&Settings::disable_mixed_inbound)) {
-            return ServiceError{409, QStringLiteral("mixed_inbound_disabled"),
-                                QStringLiteral("The system proxy needs Poros's mixed inbound; turn the system proxy off first")};
         }
         // The core refuses an empty NTP interval, which would fail every start.
         if ((pending.touches(QStringLiteral("ntp_enabled")) || pending.touches(QStringLiteral("ntp_interval"))) &&
@@ -420,37 +349,5 @@ namespace Engine::SettingsRegistry {
         if (effects & SettingsRegistryImpl::CheckPeriodic) Throne::PeriodicRunner::instance()->CheckNow();
         EngineEvents::SettingsChanged(changed);
         return std::nullopt;
-    }
-
-    const QStringList &HostKeys() {
-        static const QStringList keys = {
-            QStringLiteral("disable_mixed_inbound"), QStringLiteral("inbound_address"), QStringLiteral("inbound_socks_port"),
-            QStringLiteral("random_inbound_port"), QStringLiteral("custom_inbound"), QStringLiteral("inbound_auth"),
-            QStringLiteral("inbound_user"), QStringLiteral("inbound_pass"),
-            QStringLiteral("core_box_clash_api"), QStringLiteral("core_box_clash_listen_addr"), QStringLiteral("core_box_clash_api_secret"),
-            QStringLiteral("core_box_api_port"), QStringLiteral("core_box_api_secret"), QStringLiteral("core_dns_in_port"),
-            QStringLiteral("core_box_underlying_dns"),
-            QStringLiteral("vpn_strict_route"), QStringLiteral("vpn_l3_bridge"), QStringLiteral("vpn_mtu"),
-            QStringLiteral("vpn_ipv6"), QStringLiteral("vpn_tun_ipv4_cidr"), QStringLiteral("vpn_tun_ipv6_cidr"),
-            QStringLiteral("enable_tun_routing"), QStringLiteral("disable_privilege_req"), QStringLiteral("disable_private_range_bypass"),
-            QStringLiteral("vpn_private_ranges"),
-            QStringLiteral("kill_switch"),
-            QStringLiteral("remember_enable"), QStringLiteral("system_proxy_enabled"), QStringLiteral("tun_mode_enabled"),
-            QStringLiteral("start_minimal"),
-            QStringLiteral("windows_set_admin"), QStringLiteral("disable_win_admin"), QStringLiteral("reset_proxy_on_disable_sp"),
-            QStringLiteral("enable_ntp"), QStringLiteral("ntp_server_address"), QStringLiteral("ntp_server_port"),
-            QStringLiteral("ntp_interval"), QStringLiteral("ntp_outbound"),
-            QStringLiteral("log_level"), QStringLiteral("log_file_level"), QStringLiteral("max_log_line"), QStringLiteral("xray_log_level"),
-            QStringLiteral("url_scheme_mirror"), QStringLiteral("url_scheme_auto_register"), QStringLiteral("file_assoc_mirror"),
-            QStringLiteral("file_assoc_auto_register"),
-            QStringLiteral("extra_core_paths"), QStringLiteral("dial_bind_ifc_history"), QStringLiteral("dial_inet4_bind_history"),
-            QStringLiteral("dial_inet6_bind_history"),
-            QStringLiteral("main_window_geometry"), QStringLiteral("mw_size"), QStringLiteral("splitter_state"), QStringLiteral("disable_tray"),
-            QStringLiteral("theme"), QStringLiteral("language"), QStringLiteral("font"), QStringLiteral("font_size"),
-            QStringLiteral("log_font_family"), QStringLiteral("log_font_size"),
-            QStringLiteral("hk_mw"), QStringLiteral("hk_group"), QStringLiteral("hk_route"), QStringLiteral("hk_spmenu"),
-            QStringLiteral("hk_toggle"), QStringLiteral("hk_startstop"), QStringLiteral("hk_tun"), QStringLiteral("shortcuts"),
-        };
-        return keys;
     }
 } // namespace Engine::SettingsRegistry

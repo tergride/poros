@@ -256,7 +256,7 @@ static void WriteCrashArtifacts(EXCEPTION_POINTERS *pException) {
     WriteSidecar(sidecarPath, pException, dumpWritten);
 
     if (!g_interactive) {
-        // Nobody may be there to dismiss a box (a service, a headless run), and it would hold the process forever.
+        // Nobody may be there to dismiss a box, and it would hold the process forever.
         const HANDLE err = GetStdHandle(STD_ERROR_HANDLE);
         if (err != nullptr && err != INVALID_HANDLE_VALUE) {
             char narrow[MAX_PATH * 3] = "";

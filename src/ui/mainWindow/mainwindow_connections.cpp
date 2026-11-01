@@ -56,10 +56,10 @@ namespace
 
     struct RoutableServer { int id; QString label; QString fullLabel; };
 
-    // What generate.cpp refuses as a rule's outbound or as a hop of one: extra cores and full configs.
+    // What generate.cpp refuses as a rule's outbound or as a hop of one: full configs.
     bool UnroutableProfile(const std::shared_ptr<Configs::Profile>& profile)
     {
-        if (!profile || !profile->outbound || profile->outbound->IsExtraCore() || profile->outbound->IsXrayFullConfig()) return true;
+        if (!profile || !profile->outbound || profile->outbound->IsXrayFullConfig()) return true;
         const auto* custom = profile->Custom();
         return custom && custom->type == Configs::Custom::CustomFullConfig;
     }
@@ -74,7 +74,6 @@ namespace
         QHash<int, QString> names;
         // An unnamed profile shows as its type and address, as in the tray.
         for (const auto& [id, name] : FixProfileDisplayName(mapped)) names.insert(id, name);
-        for (const int id : repo->GetProfileIdsByType("extracore")) names.remove(id);
         for (const auto& profile : repo->GetProfileBatch(repo->GetProfileIdsByType("custom")))
             if (UnroutableProfile(profile)) names.remove(profile->id);
 

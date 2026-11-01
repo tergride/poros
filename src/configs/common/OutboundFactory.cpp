@@ -64,8 +64,6 @@ namespace Configs
 
     QString RefusedForeignType(const QString& type)
     {
-        if (type == "extracore")
-            return QCoreApplication::translate("Validation", "Refused to import an Extra Core profile: it would run a program on this computer.");
         if (type == "chain")
             return QCoreApplication::translate("Validation", "Refused to import a Chain Proxy profile: its hops are profiles of another installation.");
         if (type == "autoselector")

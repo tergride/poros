@@ -350,20 +350,6 @@ namespace Configs
                         if (wrapperChanged) o[sectionKey] = wrapper;
                     }
                 }
-            } else if (type == "tailscale") {
-                for (const auto& key : keysNamed(o, "ssh_server")) {
-                    const auto ssh = o.value(key);
-                    const auto sshObject = ssh.toObject();
-                    bool enabled = ssh.toBool();
-                    for (const auto& enabledKey : keysNamed(sshObject, "enabled")) enabled = enabled || sshObject.value(enabledKey).toBool();
-                    if (!enabled) continue;
-                    report(key,
-                           QCoreApplication::translate("Validation", "Removed the Tailscale SSH server from the imported configuration: it would let devices on that tailnet open a shell on this computer."));
-                    o.remove(key);
-                }
-                strip("taildrop_directory",
-                      QCoreApplication::translate("Validation", "Removed the Taildrop folder from the imported configuration: devices on that tailnet could place files there. Received files now go to the default folder."),
-                      true);
             }
             return removed;
         }

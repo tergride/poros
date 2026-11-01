@@ -1,38 +1,26 @@
 #include "include/sys/Process.hpp"
 #include "include/global/Configs.hpp"
 #include "include/sys/KillSwitch.hpp"
-#include "include/sys/ServiceManager.hpp"
 
 namespace Configs_sys {
     namespace {
-        std::atomic<bool> g_processIsolateChildren{false};
-
         // CREATE_NEW_PROCESS_GROUP and CREATE_NO_WINDOW from <winbase.h>, which this portable TU does not include.
         constexpr unsigned long kProcessNewProcessGroup = 0x00000200;
         constexpr unsigned long kProcessNoWindow = 0x08000000;
     }
 
-    void SetIsolatedChildren(bool enabled) { g_processIsolateChildren.store(enabled); }
-
     void IsolateChild(QProcess *process) {
         // Qt adds CREATE_NO_WINDOW only while we have no console: after AttachConsole a Ctrl+C or a console close would
         // reach the core and the guard (which disarms) before our ordered teardown.
-        if (g_processIsolateChildren.load()) {
-            process->setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments *args) {
-                args->flags |= kProcessNewProcessGroup | kProcessNoWindow;
-            });
-        }
-    }
-
-    void KillChildGroup(QProcess *process) {
-        Q_UNUSED(process);
+        process->setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments *args) {
+            args->flags |= kProcessNewProcessGroup | kProcessNoWindow;
+        });
     }
 
     CoreProcess::~CoreProcess() {
     }
 
     void CoreProcess::Kill(int waitMs) {
-        KillChildGroup(this);
         kill();
         waitForFinished(waitMs);
     }
@@ -48,7 +36,7 @@ namespace Configs_sys {
         ++generation;
         failed_to_start = false;
 
-        auto env = Sys::ServiceManager::ChildEnvironment();
+        auto env = QProcessEnvironment::systemEnvironment();
         env.insert("THRONE_CORE_SOCKET", m_socketName);
         // Turns an unrecovered Go panic into a real abort, so all goroutine stacks are dumped and WER captures the core too.
         env.insert("GOTRACEBACK", "crash");
@@ -66,7 +54,6 @@ namespace Configs_sys {
 
     void CoreProcess::Restart() {
         restarting = true;
-        KillChildGroup(this);
         kill();
         waitForFinished(500);
         started = false;

@@ -44,13 +44,10 @@ namespace MwArg {
     inline const QString NeedRestart  = QStringLiteral("needRestart");
     inline const QString ChoosePort   = QStringLiteral("choosePort");
     inline const QString DisableTray  = QStringLiteral("disableTray");
-    inline const QString TrayIcon     = QStringLiteral("trayIcon");
     inline const QString MaxLogLines  = QStringLiteral("maxLogLines");
     inline const QString DisableAdmin = QStringLiteral("disableAdmin");
     inline const QString ProfileListDisplay = QStringLiteral("profileListDisplay");
     inline const QString KillSwitch   = QStringLiteral("killSwitch");
-    inline const QString LogFont      = QStringLiteral("logFont");
-    inline const QString RemoteApi    = QStringLiteral("remoteApi");
     // ProfileChanged arg.
     inline const QString RestartProxy = QStringLiteral("restartProxy");
 }
@@ -136,10 +133,6 @@ QList<QString> QListInt2QListString(const QList<int> &list);
 
 QList<int> QStringList2QListInt(const QList<QString> &list);
 
-#define QJSONARRAY_ADD(arr, add) \
-    for (const auto &a: (add)) { \
-        (arr) += a;              \
-    }
 #define QJSONOBJECT_COPY(src, dst, key) \
     if (src.contains(key)) dst[key] = src[key];
 #define QJSONOBJECT_COPY2(src, dst, src_key, dst_key) \
@@ -204,14 +197,8 @@ inline bool IsValidPort(int port) {
     return InRange(port, 1, 65535);
 }
 
-// False under a plain QCoreApplication (headless) or before any app object exists; the helpers below then show nothing.
+// False under a plain QCoreApplication (-dump-configs) or before any app object exists; the helpers below then show nothing.
 bool IsGuiApp();
-
-// Dialogs swallowed because no QApplication exists; headless should keep this at 0.
-int HeadlessDialogCount();
-
-// Logs a HEADLESS-DIALOG line and counts it in HeadlessDialogCount().
-void LogHeadlessDialog(const QString &kind, const QString &title, const QString &text, const QString &defaultValue);
 
 QWidget *GetMessageBoxParent();
 

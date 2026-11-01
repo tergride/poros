@@ -252,7 +252,7 @@ namespace Subscription {
                 : QString();
         }
 
-        // Outcome errors reach the API, so they stay English.
+        // Outcome errors stay English.
         UpdateOutcome groupUpdaterFailure(int gid, UpdateOutcome::Failure failure, const QString &error) {
             UpdateOutcome outcome;
             outcome.gid = gid;
@@ -1026,40 +1026,15 @@ namespace Subscription {
         QList<int> disturbed;
         QSet<int> keptIds;
         bool deleteFailed = false;
-        bool cleared = false;
-        if (settings->sub_clear) {
-            MW_show_log(QObject::tr("Clearing servers..."));
-            auto doomed = members();
-            if (options.keep_working) {
-                QSet<int> working;
-                forEachProfile(doomed, [&working](const std::shared_ptr<Configs::Profile> &ent) {
-                    if (ent->IsWorking()) working.insert(ent->id);
-                });
-                doomed.removeIf([&working](int id) { return working.contains(id); });
-            }
-            const auto outcome = deleteProfiles(doomed);
-            if (!outcome.ok) {
-                PostNotice({NoticeLevel::Error, "Internal Error", "DB Error when deleting profiles, Please try again."});
-                result.failure = UpdateOutcome::Failure::Database;
-                result.error = QStringLiteral("The old profiles could not be deleted from the database.");
-                return;
-            }
-            disturbed = outcome.deleted;
-            result.removed = static_cast<int>(outcome.deleted.size());
-            // A survivor still belongs to the subscription: fall through to the diff.
-            cleared = members().isEmpty();
-        }
 
         QList<OldEntry> old;
         QSet<int> working;
-        if (!cleared) {
-            forEachProfile(members(), [&](const std::shared_ptr<Configs::Profile> &ent) {
-                old.append({ent->id, {contentKeyOf(*ent), identityKeyOf(*ent)}, ent->outbound->DisplayTypeAndName()});
-                if (options.keep_working && ent->IsWorking()) working.insert(ent->id);
-            });
-        }
+        forEachProfile(members(), [&](const std::shared_ptr<Configs::Profile> &ent) {
+            old.append({ent->id, {contentKeyOf(*ent), identityKeyOf(*ent)}, ent->outbound->DisplayTypeAndName()});
+            if (options.keep_working && ent->IsWorking()) working.insert(ent->id);
+        });
         ContentIndex index(old);
-        ImportSink sink(gid, cleared ? nullptr : &index);
+        ImportSink sink(gid, &index);
         ImportReport report;
 
         MW_show_log(">>>>>>>> " + QObject::tr("Processing subscription data..."));
@@ -1069,102 +1044,93 @@ namespace Subscription {
         report.setImported(sink.stored());
 
         QString change_text;
-        if (cleared) {
-            result.added = sink.stored();
-            if (sink.entries.size() >= 1000) {
-                change_text += "[+] " + Int2String(sink.entries.size()) + " profiles\n";
-            } else {
-                for (const auto &entry : sink.entries) change_text += "[+] " + entry.display + "\n";
+        const auto plan = Reconcile(old, sink.entries, index);
+        result.added = static_cast<int>(plan.added.size());
+        result.updated = static_cast<int>(plan.updates.size());
+        for (const auto &[oldId, newId] : plan.updates) {
+            auto oldEnt = profilesRepo->GetProfile(oldId);
+            const auto newEnt = profilesRepo->GetProfile(newId);
+            if (oldEnt != nullptr && newEnt != nullptr) {
+                oldEnt->outbound = newEnt->outbound;
+                // Still stamped with the temporary row's id; VPN credential overrides are keyed by it.
+                oldEnt->outbound->profile_id = oldId;
+                oldEnt->name = oldEnt->outbound->name;
+                profilesRepo->Save(oldEnt);
             }
-        } else {
-            const auto plan = Reconcile(old, sink.entries, index);
-            result.added = static_cast<int>(plan.added.size());
-            result.updated = static_cast<int>(plan.updates.size());
-            for (const auto &[oldId, newId] : plan.updates) {
-                auto oldEnt = profilesRepo->GetProfile(oldId);
-                const auto newEnt = profilesRepo->GetProfile(newId);
-                if (oldEnt != nullptr && newEnt != nullptr) {
-                    oldEnt->outbound = newEnt->outbound;
-                    // Still stamped with the temporary row's id; VPN credential overrides are keyed by it.
-                    oldEnt->outbound->profile_id = oldId;
-                    oldEnt->name = oldEnt->outbound->name;
-                    profilesRepo->Save(oldEnt);
-                }
-                disturbed << oldId;
-            }
+            disturbed << oldId;
+        }
 
-            QList<int> stale;
-            QList<int> keptWorking;
-            for (int id : plan.stale) (working.contains(id) ? keptWorking : stale) << id;
+        QList<int> stale;
+        QList<int> keptWorking;
+        for (int id : plan.stale) (working.contains(id) ? keptWorking : stale) << id;
 
-            const auto previousOrder = group->profiles;
-            group->profiles = plan.order;
-            for (const auto &[position, id] : sticky) {
-                group->profiles.insert(std::min<qsizetype>(position, group->profiles.size()), id);
-            }
-            groupsRepo->Save(group);
+        const auto previousOrder = group->profiles;
+        group->profiles = plan.order;
+        for (const auto &[position, id] : sticky) {
+            group->profiles.insert(std::min<qsizetype>(position, group->profiles.size()), id);
+        }
+        groupsRepo->Save(group);
 
-            const auto outcome = deleteProfiles(stale);
-            if (!outcome.ok) {
-                reportDeleteFailure();
-                deleteFailed = true;
+        const auto outcome = deleteProfiles(stale);
+        if (!outcome.ok) {
+            reportDeleteFailure();
+            deleteFailed = true;
+        }
+        disturbed << outcome.deleted;
+        // stale also lists the fresh rows that only carried an update into an old id.
+        const QSet<int> deletedIds(outcome.deleted.begin(), outcome.deleted.end());
+        for (const auto &entry : old) {
+            if (deletedIds.contains(entry.id)) ++result.removed;
+        }
+        for (int id : outcome.kept) keptIds << id;
+        for (int id : keptWorking) keptIds << id;
+
+        // Nothing rebuilds group->profiles from the rows: a survivor left out here is orphaned.
+        const auto restore = [&](int id) {
+            if (group->HasProfile(id)) return false;
+            const auto position = previousOrder.indexOf(id);
+            group->profiles.insert(position < 0 ? group->profiles.size()
+                                                : std::min<qsizetype>(position, group->profiles.size()), id);
+            return true;
+        };
+        QString notice_kept;
+        for (int id : outcome.kept) {
+            if (!restore(id)) continue;
+            if (const auto ent = profilesRepo->GetProfile(id); ent != nullptr) {
+                notice_kept += "[=] " + ent->outbound->DisplayTypeAndName() + "\n";
             }
-            disturbed << outcome.deleted;
-            // stale also lists the fresh rows that only carried an update into an old id.
-            const QSet<int> deletedIds(outcome.deleted.begin(), outcome.deleted.end());
+        }
+        QStringList workingNames;
+        for (int id : keptWorking) {
+            if (!restore(id)) continue;
+            if (const auto ent = profilesRepo->GetProfile(id); ent != nullptr) workingNames << ent->outbound->DisplayTypeAndName();
+        }
+        if (!outcome.kept.isEmpty() || !keptWorking.isEmpty()) groupsRepo->Save(group);
+
+        auto deletedNames = plan.deleted;
+        if (!keptWorking.isEmpty()) {
+            const QSet<int> doomed(stale.begin(), stale.end());
+            deletedNames.clear();
             for (const auto &entry : old) {
-                if (deletedIds.contains(entry.id)) ++result.removed;
+                if (doomed.contains(entry.id)) deletedNames << entry.display;
             }
-            for (int id : outcome.kept) keptIds << id;
-            for (int id : keptWorking) keptIds << id;
+        }
 
-            // Nothing rebuilds group->profiles from the rows: a survivor left out here is orphaned.
-            const auto restore = [&](int id) {
-                if (group->HasProfile(id)) return false;
-                const auto position = previousOrder.indexOf(id);
-                group->profiles.insert(position < 0 ? group->profiles.size()
-                                                    : std::min<qsizetype>(position, group->profiles.size()), id);
-                return true;
-            };
-            QString notice_kept;
-            for (int id : outcome.kept) {
-                if (!restore(id)) continue;
-                if (const auto ent = profilesRepo->GetProfile(id); ent != nullptr) {
-                    notice_kept += "[=] " + ent->outbound->DisplayTypeAndName() + "\n";
-                }
-            }
-            QStringList workingNames;
-            for (int id : keptWorking) {
-                if (!restore(id)) continue;
-                if (const auto ent = profilesRepo->GetProfile(id); ent != nullptr) workingNames << ent->outbound->DisplayTypeAndName();
-            }
-            if (!outcome.kept.isEmpty() || !keptWorking.isEmpty()) groupsRepo->Save(group);
-
-            auto deletedNames = plan.deleted;
-            if (!keptWorking.isEmpty()) {
-                const QSet<int> doomed(stale.begin(), stale.end());
-                deletedNames.clear();
-                for (const auto &entry : old) {
-                    if (doomed.contains(entry.id)) deletedNames << entry.display;
-                }
-            }
-
-            change_text = "\n" + QObject::tr("Added %1 profiles:\n%2\nUpdated %3 profiles:\n%4\nDeleted %5 Profiles:\n%6")
-                                     .arg(plan.added.size())
-                                     .arg(notice(plan.added, "[+]", "added"))
-                                     .arg(plan.updates.size())
-                                     .arg(notice(plan.updated, "[~]", "updated"))
-                                     .arg(deletedNames.size())
-                                     .arg(notice(deletedNames, "[-]", "deleted"));
-            if (!notice_kept.isEmpty()) {
-                change_text += "\n" + QObject::tr("Still in use, so kept instead of deleted:\n%1").arg(notice_kept);
-            }
-            if (!workingNames.isEmpty()) {
-                change_text += "\n" + QObject::tr("Working, so kept instead of deleted:\n%1").arg(notice(workingNames, "[=]", "kept"));
-            }
-            if (plan.added.isEmpty() && plan.updates.isEmpty() && deletedNames.isEmpty() && keptWorking.isEmpty()) {
-                change_text = QObject::tr("Nothing");
-            }
+        change_text = "\n" + QObject::tr("Added %1 profiles:\n%2\nUpdated %3 profiles:\n%4\nDeleted %5 Profiles:\n%6")
+                                 .arg(plan.added.size())
+                                 .arg(notice(plan.added, "[+]", "added"))
+                                 .arg(plan.updates.size())
+                                 .arg(notice(plan.updated, "[~]", "updated"))
+                                 .arg(deletedNames.size())
+                                 .arg(notice(deletedNames, "[-]", "deleted"));
+        if (!notice_kept.isEmpty()) {
+            change_text += "\n" + QObject::tr("Still in use, so kept instead of deleted:\n%1").arg(notice_kept);
+        }
+        if (!workingNames.isEmpty()) {
+            change_text += "\n" + QObject::tr("Working, so kept instead of deleted:\n%1").arg(notice(workingNames, "[=]", "kept"));
+        }
+        if (plan.added.isEmpty() && plan.updates.isEmpty() && deletedNames.isEmpty() && keptWorking.isEmpty()) {
+            change_text = QObject::tr("Nothing");
         }
 
         const auto flagged = removeFlagged(members(), options, change_text);

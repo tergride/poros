@@ -139,14 +139,6 @@ namespace Engine {
             if (!result.xrayConfig.isEmpty() || !fullConfigs.isEmpty()) {
                 doc["xray_outbound_dns_strategy"] = Configs::getXrayOutboundDomainStrategy();
             }
-            if (const auto &extra = result.extraCoreData; extra != nullptr && !extra->path.isEmpty()) {
-                doc["extra_core"] = QJsonObject{
-                    {"path", extra->path},
-                    {"args", extra->args},
-                    {"config", extra->config},
-                    {"no_log", extra->noLog},
-                };
-            }
             return doc;
         }
 
@@ -318,7 +310,7 @@ namespace Engine {
                 if (!lock.errorString().isEmpty()) LOG_WARN(lock.errorString());
                 break;
         }
-        // A Throne older than the lock, or a failed lock, leaves the instance socket as the only sign of a live owner.
+        // A failed lock leaves the instance socket as the only sign of a live owner.
         if (InstanceServer::HandOff(Bootstrap::InstanceServerName(dataDir.wd), {})) {
             PrintError(QString("-dump-configs: a running Poros owns %1").arg(dataDir.wd.absolutePath()));
             return ExitCode::DataDirOwned;

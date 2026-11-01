@@ -72,31 +72,10 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
-           <widget class="QLabel" name="label_11">
-            <property name="text">
-             <string>Custom Inbound</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="2">
-           <widget class="QPushButton" name="custom_inbound_edit">
-            <property name="text">
-             <string>Edit</string>
-            </property>
-           </widget>
-          </item>
           <item row="2" column="1">
            <widget class="QLabel" name="inbound_user_l">
             <property name="text">
              <string>Inbound Username</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QCheckBox" name="disable_mixed_inbound">
-            <property name="text">
-             <string>Disable Mixed Inbound</string>
             </property>
            </widget>
           </item>
@@ -139,32 +118,6 @@
            <widget class="QLabel" name="inbound_pass_l">
             <property name="text">
              <string>Inbound Password</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="4">
-           <widget class="QComboBox" name="proxy_scheme">
-            <item>
-             <property name="text">
-              <string notr="true">{ip}:{port}</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">http://{ip}:{port}</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">socks={ip}:{port}</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item row="4" column="3">
-           <widget class="QLabel" name="proxy_scheme_l">
-            <property name="text">
-             <string>Proxy Format</string>
             </property>
            </widget>
           </item>
@@ -355,7 +308,7 @@
        <item>
         <widget class="QGroupBox" name="url_scheme_box">
          <property name="title">
-          <string>Links and Files</string>
+          <string>poros:// links</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_url_scheme">
           <item row="0" column="0">
@@ -402,43 +355,6 @@
            <widget class="QPushButton" name="url_scheme_uninstall">
             <property name="toolTip">
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Removes the poros:// handler Poros wrote. Entries owned by other applications are left alone.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-            <property name="text">
-             <string>Uninstall</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QCheckBox" name="file_assoc_auto_register">
-            <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Adds Poros to the &quot;Open with&quot; list for config files such as JSON and YAML, re-applying the registration whenever the install is moved.&lt;/p&gt;&lt;p&gt;Turning this off does not undo an existing registration: use Uninstall for that.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-            <property name="text">
-             <string>Register config files at startup</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="2">
-           <widget class="QLabel" name="file_assoc_status">
-            <property name="text">
-             <string notr="true"/>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
-           <widget class="QPushButton" name="file_assoc_install">
-            <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Registers the associations now, without waiting for the next start.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-            <property name="text">
-             <string>Install</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="4">
-           <widget class="QPushButton" name="file_assoc_uninstall">
-            <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Removes every config file association Poros wrote, including those added by older versions. Associations owned by other applications are left alone.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
              <string>Uninstall</string>
@@ -554,93 +470,6 @@
          </layout>
         </widget>
        </item>
-       <item>
-        <widget class="QGroupBox" name="groupBox_4">
-         <property name="title">
-          <string>Log Filtering</string>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_4">
-          <item>
-           <widget class="QFrame" name="log_include_frame">
-            <property name="frameShape">
-             <enum>QFrame::Shape::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Shadow::Raised</enum>
-            </property>
-            <layout class="QFormLayout" name="formLayout_3">
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_25">
-               <property name="text">
-                <string>Include Keywords</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="MyTextEdit" name="log_include_keyword"/>
-             </item>
-             <item row="3" column="1">
-              <widget class="MyTextEdit" name="log_include_regex"/>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_26">
-               <property name="text">
-                <string>Include Regex</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QCheckBox" name="enable_log_include">
-               <property name="text">
-                <string>Enable Include Rules</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QFrame" name="log_exclude_frame">
-            <property name="frameShape">
-             <enum>QFrame::Shape::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Shadow::Raised</enum>
-            </property>
-            <layout class="QFormLayout" name="formLayout_4">
-             <item row="0" column="0">
-              <widget class="QCheckBox" name="enable_log_exclude">
-               <property name="text">
-                <string>Enable Exclude Rules</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="MyTextEdit" name="log_exclude_keyword"/>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_28">
-               <property name="text">
-                <string>Exclude Keywords</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_27">
-               <property name="text">
-                <string>Exclude Regex</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="MyTextEdit" name="log_exclude_regex"/>
-             </item>
-            </layout>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="tab_2">
@@ -672,33 +501,6 @@
             </item>
             <item row="1" column="1">
              <widget class="QComboBox" name="font_size"/>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_log_font">
-              <property name="text">
-               <string>Log Browser Font</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QFontComboBox" name="log_font_family">
-              <property name="fontFilters">
-               <set>QFontComboBox::FontFilter::MonospacedFonts</set>
-              </property>
-              <property name="toolTip">
-               <string>Only monospaced fonts are listed. An unavailable family falls back to a built-in monospace list.</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_log_font_size">
-              <property name="text">
-               <string>Log Browser Font Size</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QComboBox" name="log_font_size"/>
             </item>
            </layout>
           </widget>
@@ -800,58 +602,6 @@
        <item row="0" column="0">
         <layout class="QHBoxLayout" name="style_h_1">
          <item>
-          <widget class="QGroupBox" name="groupBox">
-           <layout class="QGridLayout" name="gridLayout_10">
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_8">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>Theme</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QComboBox" name="theme">
-              <item>
-               <property name="text">
-                <string notr="true">System</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QPushButton" name="select_custom_icon">
-              <property name="text">
-               <string>Select</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QCheckBox" name="enable_custom_icon">
-              <property name="text">
-               <string>Enable Custom Icons</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QCheckBox" name="follow_status_in_taskbar">
-              <property name="toolTip">
-               <string>Follow the connection status icon in the dock/taskbar. When off, it always shows the Poros icon</string>
-              </property>
-              <property name="text">
-               <string>Follow Status Icon in Taskbar</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </item>
-         <item>
           <widget class="QGroupBox" name="groupBox2">
            <layout class="QGridLayout" name="gridLayout_4">
             <item row="0" column="2">
@@ -902,13 +652,6 @@
         <widget class="QLineEdit" name="sub_custom_hwid_params">
          <property name="placeholderText">
           <string>hwid=custom_value,os=custom_os,osVersion=custom_version,model=custom_model</string>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="0">
-        <widget class="QCheckBox" name="sub_clear">
-         <property name="text">
-          <string>Clear servers before updating subscription</string>
          </property>
         </widget>
        </item>
@@ -1126,103 +869,6 @@
        <string>Core</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout">
-       <item>
-        <widget class="QGroupBox" name="groupBox_core">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="title">
-          <string notr="true">Sing-box</string>
-         </property>
-         <layout class="QVBoxLayout" name="verticalLayout_3">
-          <item>
-           <widget class="QGroupBox" name="clash_api_box">
-            <property name="title">
-             <string>Clash API</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_clash_api">
-             <item row="0" column="0">
-              <widget class="QLabel" name="core_box_clash_listen_addr_l">
-               <property name="text">
-                <string>Listen Address</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="MyLineEdit" name="core_box_clash_listen_addr"/>
-             </item>
-             <item row="0" column="2">
-              <widget class="QLabel" name="core_box_clash_api_l">
-               <property name="text">
-                <string>Listen Port</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="3">
-              <widget class="MyLineEdit" name="core_box_clash_api"/>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="core_box_clash_api_secret_l">
-               <property name="text">
-                <string>Secret</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1" colspan="3">
-              <widget class="MyLineEdit" name="core_box_clash_api_secret"/>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="api_service_box">
-            <property name="title">
-             <string>sing-box API / Dashboard</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_api_service">
-             <item row="0" column="0">
-              <widget class="QLabel" name="core_box_api_port_l">
-               <property name="text">
-                <string>Listen Port</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="MyLineEdit" name="core_box_api_port"/>
-             </item>
-             <item row="0" column="2">
-              <widget class="QLabel" name="core_box_api_secret_l">
-               <property name="text">
-                <string>Secret</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="3">
-              <widget class="MyLineEdit" name="core_box_api_secret"/>
-             </item>
-             <item row="1" column="0" colspan="3">
-              <widget class="QLabel" name="core_box_api_hint">
-               <property name="text">
-                <string>Loopback only. Leave the port empty to keep the web dashboard off.</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3">
-              <widget class="QPushButton" name="core_box_api_regen">
-               <property name="text">
-                <string>Regenerate Secret</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
        <item>
         <widget class="QGroupBox" name="xray_core_box">
          <property name="sizePolicy">
@@ -1655,26 +1301,6 @@
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="backup_inc_ip_lists">
-            <property name="text">
-             <string>IP lists and scans</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="backup_inc_icons">
-            <property name="text">
-             <string>Custom icons</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_backup_btn">
             <item>
              <widget class="QPushButton" name="backup_create">
@@ -1789,13 +1415,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="mozilla_cert">
-         <property name="text">
-          <string>Use Mozilla Certificate Store</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QCheckBox" name="xray_use_system_ca">
          <property name="toolTip">
           <string>Xray verifies servers only against its built-in root certificates. Turn this on to also trust the certificates installed in the system, such as a company or self-signed root. A profile or Xray config that sets useSystemCA itself keeps its own value.</string>
@@ -1846,11 +1465,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
    <class>MyLineEdit</class>
    <extends>QLineEdit</extends>
    <header>include/ui/utils/MyLineEdit.h</header>
-  </customwidget>
-  <customwidget>
-   <class>MyTextEdit</class>
-   <extends>QTextEdit</extends>
-   <header>include/ui/utils/MyTextEdit.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

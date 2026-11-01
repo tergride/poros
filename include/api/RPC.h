@@ -43,7 +43,7 @@ namespace API {
         QString Start(bool *rpcOK, const libcore::LoadConfigReq &request);
 
         // timeoutMs 0 = the channel default.
-        QString Stop(bool *rpcOK, int timeoutMs = 0);
+        QString Stop(bool *rpcOK);
 
         libcore::QueryStatsResp QueryStats();
 

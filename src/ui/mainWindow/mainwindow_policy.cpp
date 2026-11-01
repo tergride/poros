@@ -99,7 +99,7 @@ void MainWindow::killSwitchProblem() {
             Sys::KillSwitch::instance()->apply();
             return;
         }
-        exitController()->requestExit(ExitReason::RestartElevated, false);
+        exitController()->requestExit(ExitReason::RestartElevated);
     });
     box->open();
 }
@@ -108,12 +108,7 @@ void MainWindow::killSwitchProblemResolved() {
     if (m_killSwitchDialog) m_killSwitchDialog->close();
 }
 
-void MainWindow::extraCoreNotPermitted() {
-    ShowPassiveWarning(tr("Kill switch"),
-                       tr("The kill switch could not be updated to allow this profile's extra core, so the profile was not started. See the log for details."));
-}
-
-void MainWindow::startFailed(const StartRequest &, StartOutcome, const QString &title, const QString &error) {
+void MainWindow::startFailed(const StartRequest &, const QString &title, const QString &error) {
     if (error.contains(QLatin1String("initial rule-set"), Qt::CaseInsensitive)) {
         showRuleSetFailure();
         return;
@@ -206,10 +201,6 @@ Engine::PrivilegeDecision MainWindow::requestCorePrivileges(Engine::PrivilegeRea
     return PrivilegeDecision::Cancel;
 }
 
-void MainWindow::systemProxyNeedsMixedInbound() {
-    MessageBoxWarning("Invalid Operation", "Cannot set system proxy when mixed inbound is disabled.");
-}
-
 bool MainWindow::vpnPromptOpen() const {
     return m_vpnAuthDialog != nullptr;
 }
@@ -250,11 +241,7 @@ void MainWindow::testSessionBusy(const QString &text) {
     MessageBoxWarning(software_name, text);
 }
 
-void MainWindow::exitProgram(ExitReason reason, bool unattended) {
-    if (unattended) {
-        request_unattended_exit(reason);
-        return;
-    }
+void MainWindow::exitProgram(ExitReason reason) {
     exit_reason = reason;
     on_menu_exit_triggered();
 }

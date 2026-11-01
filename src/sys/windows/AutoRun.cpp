@@ -14,7 +14,6 @@
 #include <taskschd.h>
 
 namespace {
-    // WRL's ComPtr is off limits: its roapi.h declares namespace Windows, which clashes with osType::Windows.
     template <typename T>
     class TaskPtr {
     public:

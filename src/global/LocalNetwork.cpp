@@ -181,7 +181,7 @@ namespace LocalNetwork {
     // A non-loopback bind is what actually exposes the inbound, so an explicit LAN address counts too, not just the wildcard.
     bool LanInboundEnabled() {
         const auto *s = settings();
-        if (s == nullptr || s->disable_mixed_inbound) return false;
+        if (s == nullptr) return false;
         const QHostAddress addr(s->inbound_address);
         return !addr.isNull() && !addr.isLoopback();
     }

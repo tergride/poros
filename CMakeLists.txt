@@ -614,17 +614,9 @@ list(APPEND PROJECT_SOURCES res/EmojiFont.qrc res/EmojiFontWin.qrc)
 set_property(SOURCE res/EmojiFont.qrc res/EmojiFontWin.qrc
         PROPERTY AUTORCC_OPTIONS "--compress-algo;zlib;--compress;9;--threshold;5")
 
-# Portable headless glue (sys layer, no <windows.h>), right before the engine block so it only regroups the trailing batches.
-set(HEADLESS_SYS_SOURCES
-        include/sys/ServiceManager.hpp
-        src/sys/ServiceManager.cpp
-)
-list(APPEND PROJECT_SOURCES ${HEADLESS_SYS_SOURCES})
-
 # Appended last so engine TUs form trailing MSVC unity batches: adding one never regroups the batches above.
 set(ENGINE_SOURCES
         include/engine/EngineTypes.h
-        include/engine/EngineControl.h
         include/engine/EnginePolicy.h
         include/engine/EngineTr.h
         include/engine/ThreadCheck.h
@@ -642,8 +634,8 @@ set(ENGINE_SOURCES
         include/engine/vpn/VpnAuth.h
         include/engine/vpn/VpnEndpoints.h
         src/engine/vpn/VpnEndpoints.cpp
-        include/engine/headless/HeadlessPolicy.h
-        src/engine/headless/HeadlessPolicy.cpp
+        include/engine/UnboundPolicy.h
+        src/engine/UnboundPolicy.cpp
         include/engine/EditLocks.h
         src/engine/EditLocks.cpp
         include/engine/services/ServiceTypes.h
@@ -681,7 +673,6 @@ set(ENGINE_SOURCES
         src/engine/app/ExitController.cpp
         include/engine/EngineHost.h
         src/engine/EngineHost.cpp
-        include/engine/RuntimeOptions.h
         include/engine/app/ExitCodes.h
         # Last: its <windows.h> macros must not reach a later TU of the same MSVC unity batch.
         include/engine/supervisor/CoreSupervisor.h

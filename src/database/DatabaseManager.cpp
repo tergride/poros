@@ -77,9 +77,7 @@ namespace Configs {
                 profile_last_id INTEGER NOT NULL DEFAULT 0,
                 group_last_id INTEGER NOT NULL DEFAULT 0,
                 route_profile_last_id INTEGER NOT NULL DEFAULT 0,
-                otp_profile_last_id INTEGER NOT NULL DEFAULT 0,
-                ip_list_last_id INTEGER NOT NULL DEFAULT 0,
-                ip_scan_last_id INTEGER NOT NULL DEFAULT 0
+                otp_profile_last_id INTEGER NOT NULL DEFAULT 0
             )
         )");
 

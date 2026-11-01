@@ -262,8 +262,7 @@ namespace SettingsIndex {
 
     QList<Item> Build() {
         QList<Item> out;
-        collectForm<Ui::DialogBasicSettings>(DialogBasicSettings::staticMetaObject.className(), out,
-                                             &DialogBasicSettings::UnavailableWidgets);
+        collectForm<Ui::DialogBasicSettings>(DialogBasicSettings::staticMetaObject.className(), out);
         collectForm<Ui::DialogManageRoutes>(DialogManageRoutes::staticMetaObject.className(), out);
         collectForm<Ui::DialogVPNSettings>(DialogVPNSettings::staticMetaObject.className(), out);
         collectForm<Ui::DialogPresetSettings>(DialogPresetSettings::staticMetaObject.className(), out);

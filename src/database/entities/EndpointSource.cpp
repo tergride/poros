@@ -9,8 +9,6 @@ namespace Configs {
                 return {{"mode", "own"}};
             case Mode::Address:
                 return {{"mode", "address"}, {"address", address}};
-            case Mode::IpList:
-                return {{"mode", "list"}, {"list", ipListId}};
         }
         return {};
     }
@@ -23,9 +21,6 @@ namespace Configs {
         } else if (mode == QLatin1String("address")) {
             source.address = json.value("address").toString().trimmed();
             if (!source.address.isEmpty()) source.mode = Mode::Address;
-        } else if (mode == QLatin1String("list")) {
-            source.ipListId = json.value("list").toInt(-1);
-            if (source.ipListId >= 0) source.mode = Mode::IpList;
         }
         return source;
     }

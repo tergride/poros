@@ -130,7 +130,6 @@ void MainWindow::on_menu_exit_triggered() {
     exitController()->setExitInProgress(true);
     // A request made during the teardown below may overwrite exit_reason.
     const auto reason = exit_reason;
-    const bool unattended = m_exitUnattended;
     const bool restart = reason == ExitReason::Restart || reason == ExitReason::RestartWithTun ||
                          reason == ExitReason::RestartElevated || reason == ExitReason::RunUpdater;
     const auto program = QApplication::applicationFilePath();
@@ -147,7 +146,6 @@ void MainWindow::on_menu_exit_triggered() {
         }), arguments.end());
         if (reason == ExitReason::RestartWithTun) arguments << "-flag_restart_tun_on";
         if (m_restartProfileId >= 0) arguments << QString("-flag_restart_profile=%1").arg(m_restartProfileId);
-        if (unattended && m_exitKeepTray) arguments << "-tray";
     }
 
     bool relaunched = false;
@@ -164,7 +162,7 @@ void MainWindow::on_menu_exit_triggered() {
         relaunched = true;
     }
 
-    Engine::host()->shutdown(!unattended);
+    Engine::host()->shutdown();
     if (reason == ExitReason::RunUpdater) {
         QDir::setCurrent(QApplication::applicationDirPath());
         QFile::copy("./updater.exe", "./updater.old");
@@ -176,14 +174,6 @@ void MainWindow::on_menu_exit_triggered() {
         QProcess::startDetached(program, arguments);
     }
     QCoreApplication::quit();
-}
-
-void MainWindow::request_unattended_exit(ExitReason reason) {
-    if (Configs::dataManager->settingsRepo->prepare_exit || exitController()->exitInProgress()) return;
-    m_exitUnattended = true;
-    m_exitKeepTray = isHidden();
-    exit_reason = reason;
-    on_menu_exit_triggered();
 }
 
 void MainWindow::toggle_system_proxy() {

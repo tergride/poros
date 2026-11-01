@@ -87,7 +87,7 @@ bool isCustomSubtype(const QString &type) {
 }
 
 bool hasServerAddress(const QString &type) {
-    static const QSet<QString> serverless = {"chain", "autoselector", "direct", "extracore", "tailscale", "custom"};
+    static const QSet<QString> serverless = {"chain", "autoselector", "direct", "custom"};
     return !serverless.contains(type);
 }
 

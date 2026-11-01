@@ -15,7 +15,7 @@
 class QTimer;
 
 namespace Engine {
-    class EngineControl;
+    class ConnectionManager;
     class EnginePolicy;
 
     // Sign-in side of the running profile's OpenVPN/OpenConnect endpoints: polls them, answers OTP challenges, asks the policy
@@ -31,7 +31,7 @@ namespace Engine {
         static constexpr int kMaxCredentialPrompts = 3;
 
         // policy and control outlive the controller.
-        VpnAuthController(EnginePolicy *policy, EngineControl *control, QObject *parent = nullptr);
+        VpnAuthController(EnginePolicy *policy, ConnectionManager *connection, QObject *parent = nullptr);
 
         // Main thread, from the start success hop.
         void noteRunStarted();
@@ -90,7 +90,7 @@ namespace Engine {
         void clearCredentialOverrides();
 
         EnginePolicy *m_policy;
-        EngineControl *m_control;
+        ConnectionManager *m_control;
         QList<VpnAuthChallenge> m_vpnPendingChallenges;
 
         QTimer *m_vpnChallengeTimer = nullptr;

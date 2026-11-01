@@ -23,9 +23,6 @@ public:
 
     ~DialogBasicSettings();
 
-    // Widgets this platform or installation does not offer: the dialog hides them and the settings search skips them.
-    static QList<QWidget *> UnavailableWidgets(const Ui::DialogBasicSettings *ui);
-
 public slots:
 
     void accept();
@@ -39,8 +36,6 @@ private:
 
     void bindValidation();
 
-    void applyRegexHighlighting();
-
     void refreshUrlSchemeStatus();
 
     void downloadXrayGeoAsset(const QString &url, const QString &fileName);
@@ -51,14 +46,9 @@ private:
     void restoreBackupFile(const QString &filePath, const QString &fallbackDeviceName);
 
     struct {
-        QString custom_inbound;
         bool needRestart = false;
         bool updateDisableTray = false;
-        bool updateTrayIcon = false;
         bool updateMaxLogLines = false;
-        // What the log font boxes showed on open; left untouched, an unset family/size keeps following its default.
-        QString shownLogFontFamily;
-        int shownLogFontSize = 0;
         bool updateDisableAdmin = false;
     } CACHE;
 

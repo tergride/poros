@@ -187,7 +187,7 @@ void MainWindow::show_group_menu(int clickedGid, const QPoint &globalPos) {
         return;
     }
 
-    // The actions run inside menu.exec(), whose event loop may let the API add or delete groups: each resolves the id again.
+    // The actions run inside menu.exec(), whose event loop may let groups be added or deleted: each resolves the id again.
     ui->tabWidget->setCurrentIndex(groupId2TabIndex(clickedGid));
     QMenu menu(this);
 

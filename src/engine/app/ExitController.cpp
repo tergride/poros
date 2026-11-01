@@ -14,13 +14,12 @@ namespace Engine {
     ExitController::ExitController(EnginePolicy *policy, ConnectionManager *connection, CoreSupervisor *coreSupervisor, QObject *parent)
         : QObject(parent), m_policy(policy), m_connection(connection), m_coreSupervisor(coreSupervisor) {}
 
-    bool ExitController::requestExit(ExitReason reason, bool unattended) {
+    bool ExitController::requestExit(ExitReason reason) {
         ENGINE_CHECK_MAIN_THREAD();
-        if (unattended && reason != Engine::ExitReason::None && reason != Engine::ExitReason::Restart) return false;
         if (m_exitQueued || m_exitInProgress || Configs::dataManager->settingsRepo->prepare_exit) return false;
         m_exitQueued = true;
-        QMetaObject::invokeMethod(this, [this, reason, unattended] {
-            m_policy->exitProgram(reason, unattended);
+        QMetaObject::invokeMethod(this, [this, reason] {
+            m_policy->exitProgram(reason);
             // Turned away by a window exit waiting on UAC: once that one is declined, a new request may run.
             if (!Configs::dataManager->settingsRepo->prepare_exit) m_exitQueued = false;
         }, Qt::QueuedConnection);
@@ -43,13 +42,13 @@ namespace Engine {
         emit shutdownStarted();
         LOG_INFO("prepare_exit started, tearing down proxy/tun/core");
         // Whatever the live mode says: an uncheck may still have its clear queued.
-        if (m_shutdownOptions.clearSystemProxy) m_connection->applySystemProxy(false, true);
+        m_connection->applySystemProxy(false, true);
         emit sessionPersisting();
         persistSessionState();
         Configs::dataManager->settingsRepo->noSave = true; // don't change Configs::dataManager->settingsRepo after this line
-        m_connection->stop({false, true, false, interactive, m_shutdownOptions.stopRpcTimeoutMs, !m_shutdownOptions.stopTests});
+        m_connection->stop({false, true, false, interactive});
 
-        m_coreSupervisor->shutdown(m_shutdownOptions.coreKillWaitMs);
+        m_coreSupervisor->shutdown();
         emit coreShutDown();
         // Only once the core is gone: until then the guard keeps blocking whatever would leak around the dying tunnel.
         Sys::KillSwitch::instance()->shutdown();
@@ -66,10 +65,8 @@ namespace Engine {
 
         // Backstop only: this runs on a graceful exit, so it must never be the sole write.
         if (settings->remember_enable && settings->started_id >= 0) settings->remember_id = settings->started_id;
-        if (m_shutdownOptions.persistModes) {
-            settings->remember_system_proxy = settings->spmode_system_proxy;
-            settings->remember_tun = settings->spmode_vpn;
-        }
+        settings->remember_system_proxy = settings->spmode_system_proxy;
+        settings->remember_tun = settings->spmode_vpn;
 
         settings->Save();
         qDebug() << "End of data save";

@@ -62,23 +62,6 @@ namespace Engine::Bootstrap {
             _wputenv_s(L"TEMP", native.c_str());
         }
 
-        // "-name" and "--name" alike; nullptr for anything that is not an option.
-        const char *bootstrapOptionName(const char *arg) {
-            if (arg == nullptr || arg[0] != '-') return nullptr;
-            return arg[1] == '-' ? arg + 2 : arg + 1;
-        }
-
-        bool bootstrapEnvTruthy(const char *name) {
-            const QByteArray value = qgetenv(name).trimmed().toLower();
-            return !value.isEmpty() && value != "0" && value != "false" && value != "no" && value != "off";
-        }
-
-        // Any local user can bind the predictable legacy name in the shared temp dir; headless only trusts a socket of its own user.
-        bool bootstrapLegacySocketIsOurs(const QString &serverName) {
-            Q_UNUSED(serverName)
-            return false;
-        }
-
     } // namespace
 
     Launch PreScan(int argc, char **argv) {
@@ -154,14 +137,14 @@ namespace Engine::Bootstrap {
         if (!payload.isEmpty()) LOG_WARN("dropped the launch payload: " + payload.join(' '));
     }
 
-    Claim ClaimDataDir(DataDirLock &lock, const DataDir &dataDir, const QString &serverName, const QString &lockMode,
-                       const QStringList &payload, const RelaunchParent &relaunchParent, bool handOff) {
+    Claim ClaimDataDir(DataDirLock &lock, const DataDir &dataDir, const QString &serverName, const QStringList &payload,
+                       const RelaunchParent &relaunchParent) {
         const QString &configDir = dataDir.configDir;
         // For up to 60 s a restarted instance never hands off: the owner is its exiting parent, which still answers on the socket.
         const QDeadlineTimer relaunchDeadline(relaunchParent.relaunched() ? 60000 : 0);
         QDeadlineTimer handOffDeadline(QDeadlineTimer::Forever);
         while (true) {
-            const auto lockResult = lock.tryAcquire(configDir, lockMode);
+            const auto lockResult = lock.tryAcquire(configDir, QStringLiteral("gui"));
             if (lockResult == DataDirLock::Result::Failed) {
                 LOG_WARN("running without the data dir lock: " + lock.errorString());
                 break;
@@ -174,7 +157,6 @@ namespace Engine::Bootstrap {
                 QThread::msleep(100);
                 continue;
             }
-            if (!handOff) return {ClaimOutcome::HeldByOther, DataDirLock::ReadOwner(configDir).value("pid").toInteger()};
             if (handOffDeadline.isForever()) {
                 if (relaunchParent.relaunched() && !relaunchParent.gone()) {
                     LOG_WARN(QString("the data dir is still held after waiting for the restarting PID %1").arg(relaunchParent.pid));
@@ -192,25 +174,11 @@ namespace Engine::Bootstrap {
             }
             QThread::msleep(100);
         }
-        // A Throne older than the lock only answers on its socket; a restarted one would only find its exiting parent there.
-        if (relaunchParent.gone() && (handOff || bootstrapLegacySocketIsOurs(serverName)) && InstanceServer::HandOff(serverName, payload)) {
+        // An instance without the lock still answers on its socket; a restarted one would only find its exiting parent there.
+        if (relaunchParent.gone() && InstanceServer::HandOff(serverName, payload)) {
             return {ClaimOutcome::HandedOff};
         }
         return {};
-    }
-
-    void AttachParentConsole() {
-        // An inherited pipe or file wins: attaching would steal a redirect.
-        const auto usable = [](FILE *stream, DWORD which) {
-            const HANDLE handle = GetStdHandle(which);
-            return _fileno(stream) >= 0 && handle != nullptr && handle != INVALID_HANDLE_VALUE && GetFileType(handle) != FILE_TYPE_UNKNOWN;
-        };
-        const bool out = usable(stdout, STD_OUTPUT_HANDLE);
-        const bool err = usable(stderr, STD_ERROR_HANDLE);
-        if ((out && err) || !AttachConsole(ATTACH_PARENT_PROCESS)) return;
-        FILE *console = nullptr;
-        if (!out) freopen_s(&console, "CONOUT$", "w", stdout);
-        if (!err) freopen_s(&console, "CONOUT$", "w", stderr);
     }
 
     void OpenDataDir(const DataDir &dataDir, const QStringList &arguments) {
@@ -247,13 +215,8 @@ namespace Engine::Bootstrap {
     }
 
     void PrepareRuntime() {
-        AddBundledPluginPath();
-
         DS_cores = new QThread;
         DS_cores->start();
-    }
-
-    void AddBundledPluginPath() {
     }
 
     void StartLogging(const DataDir &dataDir) {
@@ -266,23 +229,4 @@ namespace Engine::Bootstrap {
         return Configs::dataManager != nullptr && Configs::dataManager->settingsRepo->prepare_exit;
     }
 
-    QString ProcessName(qint64 pid) {
-        if (pid <= 0) return {};
-        HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, static_cast<DWORD>(pid));
-        if (process == nullptr) return {};
-        QString name;
-        DWORD exitCode = 0;
-        // A handle still opens for an exited process that something keeps referenced.
-        const bool exited = GetExitCodeProcess(process, &exitCode) && exitCode != STILL_ACTIVE;
-        if (!exited) {
-            QString path(32767, QChar());
-            DWORD length = static_cast<DWORD>(path.size());
-            if (QueryFullProcessImageNameW(process, 0, reinterpret_cast<wchar_t *>(path.data()), &length)) {
-                path.truncate(static_cast<qsizetype>(length));
-                name = QFileInfo(path).fileName();
-            }
-        }
-        CloseHandle(process);
-        return name;
-    }
 } // namespace Engine::Bootstrap

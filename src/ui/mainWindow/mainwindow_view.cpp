@@ -123,18 +123,6 @@ void MainWindow::refresh_auto_selector_view()
     if (m_autoSelectorDialog != nullptr) m_autoSelectorDialog->refresh();
 }
 
-void MainWindow::updateLogFilterFields() {
-    QMutexLocker locker(&logMutex);
-    includeKeywords.clear();
-    excludeKeywords.clear();
-    for (const auto& inKeyword : Configs::dataManager->settingsRepo->log_include_keyword) includeKeywords.append(inKeyword);
-    for (const auto& exKeyword : Configs::dataManager->settingsRepo->log_exclude_keyword) excludeKeywords.append(exKeyword);
-    includeCombined.setPattern(Configs::dataManager->settingsRepo->log_include_regex.join("|"));
-    excludeCombined.setPattern(Configs::dataManager->settingsRepo->log_exclude_regex.join("|"));
-    includeCombined.optimize();
-    excludeCombined.optimize();
-}
-
 void MainWindow::applyProfileFilters()
 {
     if (!profilesFilterModel) return;
@@ -192,16 +180,15 @@ void MainWindow::refresh_status(const QString &traffic_update) {
         }
         ui->label_running->setText(runningLabelText);
     }
-    const auto inbound_disabled = settings->disable_mixed_inbound;
     auto display_socks = DisplayAddress(settings->inbound_address, settings->inbound_socks_port);
     QString inbound_tip;
-    if (!inbound_disabled && LocalNetwork::LanInboundIsWildcard()) {
+    if (LocalNetwork::LanInboundIsWildcard()) {
         if (const auto lan = LocalNetwork::LanAddress(); !lan.isEmpty()) {
             inbound_tip = tr("Listening on all interfaces (%1)").arg(display_socks);
             display_socks = DisplayAddress(lan, settings->inbound_socks_port);
         }
     }
-    ui->label_inbound->setText(QString("Mixed: %1").arg(inbound_disabled ? "Disabled" : display_socks));
+    ui->label_inbound->setText(QString("Mixed: %1").arg(display_socks));
     ui->label_inbound->setToolTip(inbound_tip);
     syncConnectionSourceColumn();
     ui->checkBox_VPN->setChecked(settings->spmode_vpn);
@@ -310,7 +297,7 @@ void MainWindow::refresh_startstop_button() {
     else if (mode == StartStopButton::Mode::SystemProxy) iconStatus = Icon::TrayIconStatus::SystemProxy;
     else if (mode == StartStopButton::Mode::Core) iconStatus = Icon::TrayIconStatus::Running;
     if (iconStatus != icon_status) {
-        QApplication::setWindowIcon(GetTaskbarIcon(iconStatus));
+        QApplication::setWindowIcon(Icon::GetTrayIcon(iconStatus));
         if (tray != nullptr) tray->setIcon(Icon::GetTrayIcon(iconStatus));
         icon_status = iconStatus;
     }

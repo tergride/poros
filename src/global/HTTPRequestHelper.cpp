@@ -58,9 +58,7 @@ namespace Configs_network {
             *error = QObject::tr("Request with proxy but no profile started.");
             return false;
         }
-        if (!settings->disable_mixed_inbound) return true;
-        if (!settings->spmode_vpn) *error = QObject::tr("Request with proxy but the mixed inbound is disabled and Tun Mode is off.");
-        return false;
+        return true;
     }
 
     void NetworkRequestHelper::SetDownloadProgressSink(DownloadProgressSink sink) {

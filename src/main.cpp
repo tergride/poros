@@ -26,7 +26,6 @@
 #include "include/engine/app/DataDirLock.h"
 #include "include/engine/app/ExitCodes.h"
 #include "include/engine/app/InstanceServer.h"
-#include "include/sys/Process.hpp"
 #include "include/ui/app/GuiStartup.h"
 #include "include/ui/mainwindow.h"
 #include "include/stats/traffic/TrafficStatsManager.hpp"
@@ -94,7 +93,7 @@ int main(int argc, char* argv[]) {
 
     // Before the temp wipe and initDB: the owner of the lock owns the data dir.
     Engine::DataDirLock dataDirLock;
-    const auto claim = Engine::Bootstrap::ClaimDataDir(dataDirLock, dataDir, serverName, "gui", launchPayload, relaunchParent);
+    const auto claim = Engine::Bootstrap::ClaimDataDir(dataDirLock, dataDir, serverName, launchPayload, relaunchParent);
     if (claim.outcome == Engine::Bootstrap::ClaimOutcome::HandedOff) return 0;
     if (claim.outcome == Engine::Bootstrap::ClaimOutcome::HeldByOther) {
         const auto pid = claim.ownerPid;
@@ -140,7 +139,6 @@ int main(int argc, char* argv[]) {
 
     API::defaultClient = new API::Client();
 
-    Configs_sys::SetIsolatedChildren(true);
     Engine::EngineHost::create();
     auto *window = UI_InitMainWindow();
     Engine::host()->init(window, window);

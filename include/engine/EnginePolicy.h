@@ -29,7 +29,7 @@ namespace Engine {
         std::function<void()> dismiss_;
     };
 
-    // Every point where the engine asks or tells the user something; MainWindow answers with dialogs, HeadlessPolicy without.
+    // Every point where the engine asks or tells the user something; MainWindow answers with dialogs, UnboundPolicy without.
     // Main thread only. A method that returns an answer may block for it; the others return at once or after a modal notice.
     class EnginePolicy {
     public:
@@ -49,11 +49,8 @@ namespace Engine {
         // The kill switch changed to any state but Failed.
         virtual void killSwitchProblemResolved() = 0;
 
-        // The kill switch could not admit a profile's extra core, so that start was refused.
-        virtual void extraCoreNotPermitted() = 0;
-
-        // Interactive requests only; startFinished has already carried the outcome.
-        virtual void startFailed(const StartRequest &request, StartOutcome outcome, const QString &title, const QString &error) = 0;
+        // Interactive requests only.
+        virtual void startFailed(const StartRequest &request, const QString &title, const QString &error) = 0;
 
         virtual void strictRouteUnavailable(const QString &error) = 0;
 
@@ -71,8 +68,6 @@ namespace Engine {
 
         // Interactive callers only, once the core turned out to lack the privileges reason needs.
         virtual PrivilegeDecision requestCorePrivileges(PrivilegeReason reason) = 0;
-
-        virtual void systemProxyNeedsMixedInbound() = 0;
 
         // While a sign-in prompt is open the engine holds back new challenges and auth-failure restarts.
         virtual bool vpnPromptOpen() const = 0;
@@ -94,8 +89,7 @@ namespace Engine {
         // Interactive test requests only.
         virtual void testSessionBusy(const QString &text) = 0;
 
-        // Ends the program the way the front end does (relaunch, updater, elevation); the engine passes only None and Restart.
-        // unattended: no dialog during the teardown.
-        virtual void exitProgram(ExitReason reason, bool unattended) = 0;
+        // Ends the program the way the front end does (relaunch, updater, elevation).
+        virtual void exitProgram(ExitReason reason) = 0;
     };
 } // namespace Engine

@@ -42,7 +42,6 @@ namespace Configs {
             {"vpn_ipv6",                      &vpn_ipv6},
             {"vpn_strict_route",              &vpn_strict_route},
             {"vpn_l3_bridge",                 &vpn_l3_bridge},
-            {"sub_clear",                     &sub_clear},
             {"sub_respect_server_interval",   &sub_respect_server_interval},
             {"sub_show_change_popup",         &sub_show_change_popup},
             {"net_insecure",                  &net_insecure},
@@ -54,28 +53,21 @@ namespace Configs {
             {"enable_stats",                  &enable_stats},
             {"disable_privilege_req",         &disable_privilege_req},
             {"enable_tun_routing",            &enable_tun_routing},
-            {"use_mozilla_certs",             &use_mozilla_certs},
             {"kill_switch",                   &kill_switch},
             {"onboarding_done",               &onboarding_done},
             {"auto_update_app",               &auto_update_app},
             {"adblock_enable",                &adblock_enable},
-            {"use_custom_icons",              &use_custom_icons},
-            {"follow_status_in_taskbar",           &follow_status_in_taskbar},
             {"xray_mux_default_on",           &xray_mux_default_on},
             {"xray_use_system_ca",            &xray_use_system_ca},
             {"use_dns_object",                &use_dns_object},
             {"skip_delete_confirmation",      &skip_delete_confirmation},
             {"show_config_security",          &show_config_security},
-            {"log_enable_include",            &log_enable_include},
-            {"log_enable_exclude",            &log_enable_exclude},
             {"enable_warp",                   &enable_warp},
             {"warp_tos_accepted",             &warp_tos_accepted},
             {"enable_dns_routing",            &enable_dns_routing},
             {"inbound_auth",                  &inbound_auth},
             {"allow_stopping_active_profile", &allow_stopping_active_profile},
-            {"disable_mixed_inbound",         &disable_mixed_inbound},
             {"url_scheme_auto_register",      &url_scheme_auto_register},
-            {"file_assoc_auto_register",      &file_assoc_auto_register},
             {"system_proxy_enabled",          &remember_system_proxy},
             {"tun_mode_enabled",              &remember_tun},
             {"reset_proxy_on_disable_sp", &reset_proxy_on_disable_sp},
@@ -107,7 +99,6 @@ namespace Configs {
             {"language",               &language},
             {"font_size",              &font_size},
             {"max_log_line",           &max_log_line},
-            {"log_font_size",          &log_font_size},
             {"stats_tab",              &stats_tab},
             {"traffic_graph_hidden_dirs", &traffic_graph_hidden_dirs},
             {"traffic_graph_range",    &traffic_graph_range},
@@ -119,8 +110,6 @@ namespace Configs {
             {"route_auto_update",      &route_auto_update},
             {"vpn_mtu",                &vpn_mtu},
             {"ntp_server_port",        &ntp_server_port},
-            {"core_box_clash_api",     &core_box_clash_api},
-            {"core_box_api_port",      &core_box_api_port},
             {"speed_test_mode",        &speed_test_mode},
             {"speed_test_timeout_ms",  &speed_test_timeout_ms},
             {"url_test_timeout_ms",    &url_test_timeout_ms},
@@ -153,13 +142,10 @@ namespace Configs {
             {"h2_keep_alive_period",       &h2_keep_alive_period},
             {"h2_stream_receive_window",   &h2_stream_receive_window},
             {"h2_connection_receive_window", &h2_connection_receive_window},
-            {"theme",                      &theme},
             {"ui_mode",                    &ui_mode},
             {"simple_conn_mode",           &simple_conn_mode},
-            {"custom_inbound",             &custom_inbound},
             {"custom_route",               &custom_route_global},
             {"font",                       &font},
-            {"log_font_family",            &log_font_family},
             {"hk_mw",                      &hotkey_mainwindow},
             {"hk_group",                   &hotkey_group},
             {"hk_route",                   &hotkey_route},
@@ -176,14 +162,11 @@ namespace Configs {
             {"sub_custom_hwid_params",     &sub_custom_hwid_params},
             {"splitter_state",             &splitter_state},
             {"utlsFingerprint",            &utlsFingerprint},
-            {"core_box_clash_listen_addr", &core_box_clash_listen_addr},
-            {"core_box_clash_api_secret",  &core_box_clash_api_secret},
             {"core_box_api_secret",        &core_box_api_secret},
             {"core_box_underlying_dns",    &core_box_underlying_dns},
             {"ntp_server_address",         &ntp_server_address},
             {"ntp_interval",               &ntp_interval},
             {"ntp_outbound",               &ntp_outbound},
-            {"proxy_scheme",               &proxy_scheme},
             {"main_window_geometry",       &mainWindowGeometry},
             {"xray_log_level",             &xray_log_level},
             {"xray_geoip_url",             &xray_geoip_url},
@@ -208,18 +191,12 @@ namespace Configs {
             {"inbound_user",               &inbound_user},
             {"inbound_pass",               &inbound_pass},
             {"url_scheme_mirror",          &url_scheme_mirror},
-            {"file_assoc_mirror",          &file_assoc_mirror},
         };
 
         stringListMap = {
             {"dns_predefined_rules",     &dns_predefined_rules},
             {"remote_dns_history",       &remote_dns_history},
             {"direct_dns_history",       &direct_dns_history},
-            {"extra_core_paths",         &extraCorePaths},
-            {"log_include_keyword",      &log_include_keyword},
-            {"log_include_regex",        &log_include_regex},
-            {"log_exclude_keyword",      &log_exclude_keyword},
-            {"log_exclude_regex",        &log_exclude_regex},
             {"traffic_graph_hidden",     &traffic_graph_hidden},
             {"warp_ifc_addrs",           &warp_ifc_addrs},
             {"vpn_private_ranges",       &vpn_private_ranges},
@@ -363,18 +340,6 @@ namespace Configs {
 
     bool SettingsRepo::Save() {
         saveAllSettings();
-        return true;
-    }
-
-    QStringList SettingsRepo::GetExtraCorePaths() const {
-        return extraCorePaths;
-    }
-
-    bool SettingsRepo::AddExtraCorePath(const QString &path) {
-        if (extraCorePaths.contains(path)) {
-            return false;
-        }
-        extraCorePaths.append(path);
         return true;
     }
 }

@@ -352,7 +352,6 @@ namespace Configs {
         const std::vector<std::string> kRouteTables = {"route_rules", "route_profiles"};
         const std::vector<std::string> kSettingsTables = {"settings"};
         const std::vector<std::string> kOtpTables = {"otp_profiles"};
-        const std::vector<std::string> kIpListTables = {"ip_list_entries", "ip_scans", "ip_lists"};
 
         std::vector<std::string> tableColumns(SQLite::Database& d, const std::string& schema, const std::string& table) {
             std::vector<std::string> cols;
@@ -492,7 +491,6 @@ namespace Configs {
         if (!parts.routes) wipe(kRouteTables);
         if (!parts.settings) wipe(kSettingsTables);
         if (!parts.otp) wipe(kOtpTables);
-        if (!parts.ipLists) wipe(kIpListTables);
         if (parts.settings && !excludedSettingKeys.isEmpty() && tableExists(dest, "main", "settings")) {
             std::string placeholders;
             for (qsizetype i = 0; i < excludedSettingKeys.size(); ++i) placeholders += i == 0 ? "?" : ",?";
@@ -504,7 +502,7 @@ namespace Configs {
     }
 
     int Database::restoreSelective(const std::string& srcPath, const BackupParts& parts, const QStringList& preservedSettingKeys) {
-        if (!parts.anyDb()) return 0;
+        if (!parts.any()) return 0;
 
         std::unique_lock writeLock(writeMutex_);
         {
@@ -543,7 +541,6 @@ namespace Configs {
             if (parts.routes) for (const auto& t : kRouteTables) skippedRules += copyTable(db, t);
             if (parts.settings) copyTable(db, "settings", settingKeepKeys);
             if (parts.otp) for (const auto& t : kOtpTables) copyTable(db, t);
-            if (parts.ipLists) for (const auto& t : kIpListTables) copyTable(db, t);
 
             // A settings id must resolve; one that did not come with its replaced table names an unrelated row.
             if (tableExists(db, "main", "settings")) {
@@ -593,19 +590,6 @@ namespace Configs {
                     "UPDATE entity_ids SET otp_profile_last_id = MAX(otp_profile_last_id,"
                     "(SELECT COALESCE(MAX(id),0) FROM otp_profiles)" +
                     std::string(bakOtpIds ? ",(SELECT COALESCE(MAX(otp_profile_last_id),0) FROM bak.entity_ids)" : "") + ")");
-            }
-
-            if (parts.ipLists) {
-                const bool bakListIds = columnExists(db, "bak", "entity_ids", "ip_list_last_id");
-                db.exec(
-                    "UPDATE entity_ids SET ip_list_last_id = MAX(ip_list_last_id,"
-                    "(SELECT COALESCE(MAX(id),0) FROM ip_lists)" +
-                    std::string(bakListIds ? ",(SELECT COALESCE(MAX(ip_list_last_id),0) FROM bak.entity_ids)" : "") + ")");
-                const bool bakScanIds = columnExists(db, "bak", "entity_ids", "ip_scan_last_id");
-                db.exec(
-                    "UPDATE entity_ids SET ip_scan_last_id = MAX(ip_scan_last_id,"
-                    "(SELECT COALESCE(MAX(id),0) FROM ip_scans)" +
-                    std::string(bakScanIds ? ",(SELECT COALESCE(MAX(ip_scan_last_id),0) FROM bak.entity_ids)" : "") + ")");
             }
 
             db.exec("COMMIT");

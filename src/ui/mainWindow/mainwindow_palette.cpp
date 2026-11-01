@@ -21,7 +21,6 @@ void MainWindow::setupCommandPalette() {
     commandPaletteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_K));
     connect(commandPaletteAction, &QAction::triggered, this, &MainWindow::showCommandPalette);
     addAction(commandPaletteAction);
-    CommandPalette::keepShortcutFromTextFields(commandPaletteAction, this);
     const auto toolsActions = ui->menuTools->actions();
     ui->menuTools->insertAction(toolsActions.value(0), commandPaletteAction);
     if (!toolsActions.isEmpty()) ui->menuTools->insertSeparator(toolsActions.first());

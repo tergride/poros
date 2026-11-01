@@ -28,7 +28,7 @@ namespace Configs {
             defaultGroup->name = QObject::tr("Default");
             dataManager->groupsRepo->AddGroup(defaultGroup);
         }
-        // The window repairs this when it lists the groups; without one (headless) imports would target no group.
+        // The window repairs this when it lists the groups; until then imports would target no group.
         if (dataManager->groupsRepo->CurrentGroup() == nullptr) {
             if (const auto order = dataManager->groupsRepo->GetGroupsTabOrder(); !order.isEmpty()) {
                 dataManager->settingsRepo->current_group = order.first();

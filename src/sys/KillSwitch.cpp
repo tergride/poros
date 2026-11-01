@@ -3,18 +3,14 @@
 #include "include/global/Configs.hpp"
 #include "include/global/Logger.hpp"
 #include "include/sys/Process.hpp"
-#include "include/sys/ServiceManager.hpp"
 
 #include <QDeadlineTimer>
-#include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
 #include <QTimer>
 
-#include <chrono>
-#include <future>
 #include <memory>
 #include <utility>
 
@@ -32,11 +28,6 @@ namespace Sys {
         const QString kInternal = QStringLiteral("internal");
         const QString kCrash = QStringLiteral("crash");
         const QString kTimeout = QStringLiteral("timeout");
-        const QString kOverridden = QStringLiteral("overridden");
-
-        std::atomic<quint16> g_killSwitchApiPort{0};
-        // Set once instance() has built the switch on the UI thread; SetApiPort never creates it from a worker.
-        std::atomic<KillSwitch *> g_killSwitchInstance{nullptr};
 
         QString killSwitchIdentityMessage(const QString &detail) {
             auto message = QStringLiteral("the core cannot adopt the kill-switch group 1950896719 here (it needs CAP_SETGID and that GID "
@@ -55,19 +46,6 @@ namespace Sys {
             return {};
         }
 
-        constexpr int kPermitTimeoutMs = 15000;
-
-        // The guard drops relative entries; resolve them against the working directory the core inherits.
-        QString nativePath(const QString &path) {
-            const auto trimmed = path.trimmed();
-            if (trimmed.isEmpty()) return {};
-            return QDir::toNativeSeparators(QDir::cleanPath(QDir::current().absoluteFilePath(trimmed)));
-        }
-
-        bool listsPath(const QStringList &paths, const QString &path) {
-            return paths.contains(nativePath(path), Qt::CaseInsensitive);
-        }
-
         void stopHard(QProcess *process) {
             process->kill();
         }
@@ -83,29 +61,16 @@ namespace Sys {
         }
     } // namespace
 
-    struct GuardConfig {
-        QByteArray json;
-        QStringList extraPaths;
-    };
-
     namespace {
-        GuardConfig buildConfig() {
+        QByteArray buildConfig() {
             const auto *settings = Configs::dataManager->settingsRepo.get();
-            GuardConfig config;
-            for (const auto &path : settings->GetExtraCorePaths()) {
-                const auto native = nativePath(path);
-                if (!native.isEmpty() && !config.extraPaths.contains(native, Qt::CaseInsensitive)) config.extraPaths << native;
-            }
             const QJsonObject object{
                 {"allow_lan", !settings->disable_private_range_bypass},
                 {"tun_name", tunName()},
                 {"tun_cidrs", QJsonArray{settings->vpn_tun_ipv4_cidr, settings->vpn_tun_ipv6_cidr}},
-                {"extra_paths", QJsonArray::fromStringList(config.extraPaths)},
                 {"bridge_name", bridgeName()},
-                {"api_port", int(g_killSwitchApiPort.load())},
             };
-            config.json = QJsonDocument(object).toJson(QJsonDocument::Compact);
-            return config;
+            return QJsonDocument(object).toJson(QJsonDocument::Compact);
         }
     } // namespace
 
@@ -118,7 +83,6 @@ namespace Sys {
         QByteArray config;
         // What the guard reads on stdin: config plus launch-only keys, never compared.
         QByteArray launch;
-        QStringList extraPaths;
         QByteArray stderrTail;
         QTimer *readyTimer;
         bool ready = false;
@@ -130,7 +94,6 @@ namespace Sys {
     KillSwitch *KillSwitch::instance() {
         static auto *self = [] {
             auto *created = new KillSwitch;
-            g_killSwitchInstance.store(created);
             return created;
         }();
         return self;
@@ -147,7 +110,7 @@ namespace Sys {
 
     bool KillSwitch::failedPersistently() const {
         if (state() != State::Failed) return false;
-        return failureCode_ == kPrivilege || failureCode_ == kUnsupported || failureCode_ == kConfig || failureCode_ == kOverridden;
+        return failureCode_ == kPrivilege || failureCode_ == kUnsupported || failureCode_ == kConfig;
     }
 
     bool KillSwitch::failedForIdentity() const {
@@ -155,7 +118,6 @@ namespace Sys {
     }
 
     QString KillSwitch::failureText() const {
-        if (failureCode_ == kOverridden) return failureMessage_;
         QString text;
         if (failureCode_ == kPrivilege) {
             text = tr("The kill switch needs Poros to run as administrator.");
@@ -178,26 +140,6 @@ namespace Sys {
         apply();
     }
 
-    void KillSwitch::setOverride(bool overridden) {
-        overridden_ = overridden;
-    }
-
-    void KillSwitch::SetApiPort(quint16 port) {
-        if (g_killSwitchApiPort.exchange(port) == port) return;
-        // Not built yet: its first apply() reads the new port.
-        auto *self = g_killSwitchInstance.load();
-        if (self == nullptr) return;
-        // The state is read on the UI thread, so an apply() racing this change cannot keep the old port.
-        QMetaObject::invokeMethod(self, [self] {
-            const auto current = self->state();
-            // A guard kept under the identity failure reports Failed but still needs the new port.
-            if (current != State::Arming && current != State::Armed && self->active_ == nullptr && self->pending_ == nullptr) return;
-            // A teardown stops the listener first; re-arming then would only respawn a guard that shutdown() closes next.
-            if (Configs::dataManager->settingsRepo->prepare_exit) return;
-            self->apply();
-        }, Qt::QueuedConnection);
-    }
-
     void KillSwitch::apply() {
         if (shutdown_) return;
         if (!Configs::dataManager->settingsRepo->kill_switch) {
@@ -211,22 +153,10 @@ namespace Sys {
             settle();
             return;
         }
-        if (overridden_) {
-            closeGuard(std::exchange(pending_, nullptr));
-            closeGuard(std::exchange(active_, nullptr));
-            const auto message = QStringLiteral("turned off for this run by --no-kill-switch (THRONE_KILL_SWITCH); profiles stay refused "
-                                                "until kill_switch is turned off");
-            if (state() == State::Failed && failureCode_ == kOverridden && failureMessage_ == message) {
-                settle();
-                return;
-            }
-            fail(kOverridden, message);
-            return;
-        }
         if (identityUnsupported_ && state() == State::Armed) failIdentity();
         const auto config = buildConfig();
-        if (pending_ != nullptr && pending_->config == config.json) return;
-        if (active_ != nullptr && active_->config == config.json) {
+        if (pending_ != nullptr && pending_->config == config) return;
+        if (active_ != nullptr && active_->config == config) {
             if (pending_ != nullptr) {
                 closeGuard(std::exchange(pending_, nullptr));
                 settle();
@@ -241,40 +171,7 @@ namespace Sys {
             callback(state() == State::Armed);
             return;
         }
-        waiters_.append({context, context != nullptr, false, std::move(callback)});
-    }
-
-    void KillSwitch::whenIdle(std::function<void()> callback) {
-        if (pending_ == nullptr) {
-            callback();
-            return;
-        }
-        waiters_.append({this, true, true, [callback = std::move(callback)](bool) { callback(); }});
-    }
-
-    bool KillSwitch::permitExtraCore(const QString &path) {
-        if (state() == State::Disabled) return true;
-        auto promise = std::make_shared<std::promise<bool>>();
-        auto future = promise->get_future();
-        runOnUiThread([this, path, promise] {
-            if (state() == State::Disabled || (active_ != nullptr && listsPath(active_->extraPaths, path))) {
-                promise->set_value(true);
-                return;
-            }
-            auto *settings = Configs::dataManager->settingsRepo.get();
-            if (settings->AddExtraCorePath(path)) settings->Save();
-            MW_show_log(tr("[Kill switch] Allowing the extra core %1.").arg(nativePath(path)));
-            apply();
-            whenIdle([this, path, promise] {
-                promise->set_value(state() == State::Armed && active_ != nullptr && listsPath(active_->extraPaths, path));
-            });
-        });
-        if (future.wait_for(std::chrono::milliseconds(kPermitTimeoutMs)) != std::future_status::ready) return false;
-        try {
-            return future.get();
-        } catch (const std::future_error &) {
-            return false;
-        }
+        waiters_.append({context, context != nullptr, std::move(callback)});
     }
 
     void KillSwitch::shutdown() {
@@ -304,18 +201,17 @@ namespace Sys {
         }
     }
 
-    void KillSwitch::spawn(const GuardConfig &config) {
+    void KillSwitch::spawn(const QByteArray &config) {
         closeGuard(std::exchange(pending_, nullptr));
         auto *guard = new GuardProcess(this);
-        guard->config = config.json;
-        guard->launch = config.json;
+        guard->config = config;
+        guard->launch = config;
         if (active_ != nullptr) {
             // The READY guard's anchor stays loaded until this one is ready, so no state formed outside the block.
-            auto object = QJsonDocument::fromJson(config.json).object();
+            auto object = QJsonDocument::fromJson(config).object();
             object.insert(QStringLiteral("keep_states"), true);
             guard->launch = QJsonDocument(object).toJson(QJsonDocument::Compact);
         }
-        guard->extraPaths = config.extraPaths;
         pending_ = guard;
 
         connect(guard->readyTimer, &QTimer::timeout, this, [this, guard] { onReadyTimeout(guard); });
@@ -341,7 +237,6 @@ namespace Sys {
         // Under an identity failure the state stays Failed (unsupported) whatever the guard does.
         if (active_ == nullptr && !identityUnsupported()) setState(State::Arming);
         guard->readyTimer->start(kReadyTimeoutMs);
-        guard->setProcessEnvironment(Sys::ServiceManager::ChildEnvironment());
         Configs_sys::IsolateChild(guard);
         guard->start(Configs::FindCoreRealPath(), {QStringLiteral("--guard")});
     }
@@ -477,7 +372,7 @@ namespace Sys {
         if (active_ != nullptr) {
             MW_show_log(tr("[Kill switch] The new settings could not be applied, the previous ones stay in force: %1").arg(message));
             if (code != kPrivilege && code != kUnsupported && code != kConfig) {
-                // apply() is a no-op once the kept guard's config matches again (e.g. the API port moved back).
+                // apply() is a no-op once the kept guard's config matches again.
                 QTimer::singleShot(kRespawnIntervalMs, this, [this] {
                     if (shutdown_ || pending_ != nullptr || active_ == nullptr) return;
                     if (Configs::dataManager->settingsRepo->prepare_exit) return;
@@ -546,7 +441,7 @@ namespace Sys {
     void KillSwitch::settle() {
         const auto waiting = std::exchange(waiters_, {});
         for (const auto &waiter : waiting) {
-            if (waiter.idle ? pending_ != nullptr : state() == State::Arming) {
+            if (state() == State::Arming) {
                 waiters_.append(waiter);
                 continue;
             }

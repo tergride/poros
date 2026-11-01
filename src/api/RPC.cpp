@@ -278,11 +278,11 @@ namespace API {
         }
     }
 
-    QString Client::Stop(bool *rpcOK, int timeoutMs) {
+    QString Client::Stop(bool *rpcOK) {
         libcore::EmptyReq request;
         libcore::ErrorResp reply;
         std::vector<uint8_t> resp;
-        auto status = channel->Call("Stop", spb::pb::serialize<std::string>(request), resp, timeoutMs);
+        auto status = channel->Call("Stop", spb::pb::serialize<std::string>(request), resp);
 
         if (status == LocalSocketChannel::CallOK && tryDeserialize(resp, reply)) {
             *rpcOK = true;

@@ -36,10 +36,6 @@ namespace Engine {
         emit instance()->groupOrderChanged(groupIds);
     }
 
-    void EngineEvents::ExtraCoreExited() {
-        emit instance()->extraCoreExited();
-    }
-
     void EngineEvents::GroupsChanged() {
         emit instance()->groupsChanged();
     }

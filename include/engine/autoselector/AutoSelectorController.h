@@ -12,7 +12,7 @@ namespace Configs {
 }
 
 namespace Engine {
-    class EngineControl;
+    class ConnectionManager;
     class TestRunner;
 
     // Ranks a selector's pool before its build, rebuilds an exhausted pool, prunes pools a group refresh invalidated.
@@ -21,7 +21,7 @@ namespace Engine {
 
     public:
         // control and tests outlive the controller.
-        AutoSelectorController(EngineControl *control, TestRunner *tests, QObject *parent = nullptr);
+        AutoSelectorController(ConnectionManager *connection, TestRunner *tests, QObject *parent = nullptr);
 
         // Main thread, once the core's RPC is up; later calls are no-ops. The poll thread never exits.
         void startMonitorLoop();
@@ -46,7 +46,7 @@ namespace Engine {
 
         void onSubscriptionGroupChanged(int gid, const QList<int> &disturbed);
 
-        EngineControl *control_;
+        ConnectionManager *control_;
         TestRunner *tests_;
         // Main thread only.
         bool rankingInFlight_ = false;

@@ -31,17 +31,13 @@ namespace Configs {
         long long traffic_up = 0;
         std::string endpoint_json = "{}";
     };
-    // icons is the icons/ folder, handled by the UI layer rather than the database.
     struct BackupParts {
         bool profiles = false;
         bool routes = false;
         bool settings = false;
         bool otp = false;
-        bool ipLists = false;
-        bool icons = false;
 
-        [[nodiscard]] bool anyDb() const { return profiles || routes || settings || otp || ipLists; }
-        [[nodiscard]] bool any() const { return anyDb() || icons; }
+        [[nodiscard]] bool any() const { return profiles || routes || settings || otp; }
     };
 
     // Max bound parameters per statement (SQLite default SQLITE_MAX_VARIABLE_NUMBER is 999).

@@ -10,7 +10,6 @@
 #include <QString>
 
 #include "include/engine/EngineTypes.h"
-#include "include/engine/RuntimeOptions.h"
 
 namespace Configs {
     class Profile;
@@ -30,8 +29,7 @@ namespace Engine {
         Q_OBJECT
 
     public:
-        ConnectionManager(EnginePolicy *policy, CoreSupervisor *coreSupervisor, StatsService *stats, const RuntimeOptions &options,
-                          QObject *parent = nullptr);
+        ConnectionManager(EnginePolicy *policy, CoreSupervisor *coreSupervisor, StatsService *stats, QObject *parent = nullptr);
 
         // Before the event loop runs; all three outlive every start and stop.
         void attach(TestRunner *tests, AutoSelectorController *autoSelector, VpnAuthController *vpnAuth);
@@ -39,29 +37,17 @@ namespace Engine {
         // Once, before the first KillSwitch::apply(), so the state changes apply() emits reach the handler.
         void attachKillSwitch();
 
-        // startFinished fires once per request. profileId < 0: NotFound.
         void start(const StartRequest &request);
 
         // Any thread, a start worker included; runs on the caller. block: the caller spins a nested loop until the main-thread
         // teardown ran.
         void stop(const StopOptions &options);
 
-        bool restartStartedProfile(bool interactive = true, quint64 restartSerial = 0);
+        bool restartStartedProfile(bool interactive = true);
 
         void applyPendingRestart();
 
-        // Before CoreSupervisor::start(): the first coreStarted for request.profileId runs exactly this request (as
-        // deferStartToCore does).
-        void setBootStart(const StartRequest &request);
-
-        // Windows: IsAdmin(). Elsewhere: KnownAdmin() when known; otherwise options.blockingPrivilegeCheck && IsAdmin().
         bool tunPrivileged();
-
-        // A remembered Tun the boot could not restore; cleared by a Tun disable or a successful enable.
-        bool tunRestoreHeld() const { return m_tunRestoreHeld; }
-
-        // Always empty: only a background instance could hold Tun, and there is none.
-        QString tunBlockedReason();
 
         // Any thread. The running config carries a tun inbound.
         bool runningTun() const;
@@ -75,14 +61,12 @@ namespace Engine {
 
         int lastProfileId() const;
 
-        quint64 nextStartSerial();
-
         // ConnectionModes.cpp. Each returns whether it restarted the profile.
         bool setSystemProxy(bool enable, const ModeChange &change = {});
 
         bool setTun(bool enable, const ModeChange &change = {});
 
-        bool chooseRoute(int routeId, bool interactive = true, quint64 restartSerial = 0);
+        bool chooseRoute(int routeId, bool interactive = true);
 
         // Any thread. Queued on one worker thread in call order; wait spins a nested loop until this change ran.
         void applySystemProxy(bool enable, bool wait = false);
@@ -101,18 +85,6 @@ namespace Engine {
         bool restartPending() const;
 
     signals:
-        // API; EngineHost relays them with Qt::DirectConnection. The types are unregistered.
-        void startFinished(quint64 serial, int profileId, Engine::StartOutcome outcome, const QString &error);
-
-        // Main thread, inside start() once the profile resolved and before its config is built; every pass of one request
-        // (rank and kill-switch re-entries) emits it again with the same serial. Direct connections only.
-        void startDispatching(quint64 serial, int profileId);
-
-        // After mu_stopping is released.
-        void stopFinished(int profileId);
-
-        void connectionStateChanged(Engine::ConnectionState state);
-
         // View hints, emitted where the old code refreshed a view; slots must not block, open a dialog, start or stop.
         void statusChanged();
 
@@ -132,19 +104,14 @@ namespace Engine {
 
         void onCoreStarted(int profileId);
 
-        void onCoreGaveUp(const QString &reason);
+        void onCoreGaveUp();
 
-        void failStart(const StartRequest &request, StartOutcome outcome, const QString &title, const QString &error);
+        void failStart(const StartRequest &request, const QString &title, const QString &error);
 
         void deferStartToCore(const StartRequest &request);
 
         // tun: the running config carries a tun inbound (generated Tun or a custom config's).
         void setRunning(std::shared_ptr<Configs::Profile> profile, bool tun = false);
-
-        // ConnectionModes.cpp. Why the boot Tun restore was held: the host conflict, the capability blocker, else privileges.
-        QString tunRestoreHoldReason();
-
-        void syncState();
 
         void lookupExitCountry(const std::shared_ptr<Configs::Profile> &ent);
 
@@ -154,10 +121,6 @@ namespace Engine {
         bool guardRestartPending() const;
 
         void restartCoreForGuard(const StartRequest &request);
-
-        // A start that failed with GeoAssetsMissing restarts once per profile after the unattended download, unless a start or a
-        // manual stop moved token on since the failure.
-        void retryAfterGeoFetch(int profileId, quint64 token);
 
         EnginePolicy *m_policy;
         CoreSupervisor *m_coreSupervisor;
@@ -175,8 +138,6 @@ namespace Engine {
         int m_lastProfileId = -1;
         bool m_profileConnecting = false;
         bool m_profileDisconnecting = false;
-        ConnectionState m_lastConnectionState = ConnectionState::Idle;
-        quint64 m_startSerial = 0;
         StartRequest m_killSwitchDeferredStart;
         // coreStarted carries only a profile id, so the rest of the request waits here.
         StartRequest m_coreStartRequest;
@@ -191,12 +152,5 @@ namespace Engine {
         // Set while start() stops the running profile, so that stop is marked as part of the switch.
         std::atomic<bool> m_switchingProfile{false};
 
-        RuntimeOptions m_options;
-        bool m_tunRestoreHeld = false;
-        // The boot request's serial until the first coreStarted; only that request is refused while the Tun is held.
-        quint64 m_bootSerial = 0;
-        int m_geoRetriedProfile = -1;
-        // Any thread: bumped by start() and every manual stop.
-        std::atomic<quint64> m_geoRetryToken{0};
     };
 } // namespace Engine

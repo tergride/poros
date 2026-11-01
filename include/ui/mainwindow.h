@@ -86,7 +86,6 @@ class MainWindow : public QMainWindow, public Engine::EnginePolicy, public Engin
 
 public:
     using ConnectionState = Engine::ConnectionState;
-    using StartOutcome = Engine::StartOutcome;
     using StartRequest = Engine::StartRequest;
     using ModeChange = Engine::ModeChange;
 
@@ -316,10 +315,6 @@ private:
     QShortcut *shortcut_select_cancel = nullptr;
     void finish_select_mode(int profileId);
     ExitReason exit_reason = ExitReason::None;
-    // Set by request_unattended_exit: no dialog during the teardown, and a restart stays in the tray when the window was hidden.
-    bool m_exitUnattended = false;
-    bool m_exitKeepTray = false;
-    QMutex mu_download_dashboard;
     class ConnectionsTreeModel *connectionsModel = nullptr;
     class ConnectionsTreeFilterProxyModel *connectionsFilterModel = nullptr;
     class ConnectionsFilterHeader *connectionFilterHeader = nullptr;
@@ -354,10 +349,6 @@ private:
     bool m_profilesTableHadFocus = false;
     int m_profilesScrollValue = 0;
 
-    QStringList includeKeywords;
-    QStringList excludeKeywords;
-    QRegularExpression includeCombined;
-    QRegularExpression excludeCombined;
     QMutex logMutex;
     QQueue<QString> logQueue;
     QWaitCondition logWaiter;
@@ -381,15 +372,6 @@ private:
     QToolButton *logFilterButton = nullptr;
     QToolButton *logJumpLatestButton = nullptr;
 
-    struct LogFilter {
-        bool enableInclude = false;
-        bool enableExclude = false;
-        QStringList includeKeywords;
-        QStringList excludeKeywords;
-        QRegularExpression includeCombined;
-        QRegularExpression excludeCombined;
-    };
-
     void append_log(const QString &log);
 
     void log_process_loop();
@@ -412,9 +394,7 @@ private:
 
     void updateLogStatus();
 
-    bool should_print_log(const QString &log, const LogFilter &filter);
 
-    void updateLogFilterFields();
 
     void setLogHighlighter(bool darkMode);
 
@@ -450,7 +430,6 @@ private:
     // Geometry, size and splitter into the settings, unsaved.
     void saveWindowState();
 
-    void request_unattended_exit(ExitReason reason);
 
     // Runs after the user confirmed; title heads the warning when Engine::GroupService refuses.
     void delete_group(int gid, const QString &title);
@@ -618,9 +597,8 @@ private:
 
     void killSwitchProblemResolved() override;
 
-    void extraCoreNotPermitted() override;
 
-    void startFailed(const StartRequest &request, StartOutcome outcome, const QString &title, const QString &error) override;
+    void startFailed(const StartRequest &request, const QString &title, const QString &error) override;
 
     void strictRouteUnavailable(const QString &error) override;
 
@@ -634,7 +612,6 @@ private:
 
     Engine::PrivilegeDecision requestCorePrivileges(Engine::PrivilegeReason reason) override;
 
-    void systemProxyNeedsMixedInbound() override;
 
     bool vpnPromptOpen() const override;
 
@@ -651,7 +628,7 @@ private:
 
     void testSessionBusy(const QString &text) override;
 
-    void exitProgram(ExitReason reason, bool unattended) override;
+    void exitProgram(ExitReason reason) override;
 
     // TestObserver, in mainwindow_view.cpp; synchronous, so a panel seed never lands after the next session's clear.
     void testPanelSeeded(Engine::TestKind kind, int totalProfiles) override;

@@ -38,9 +38,4 @@ namespace Engine {
         }
         return false;
     }
-
-    bool AnyEditorOpen() {
-        ENGINE_CHECK_MAIN_THREAD();
-        return !editLockCounts().isEmpty();
-    }
 } // namespace Engine

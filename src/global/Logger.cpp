@@ -37,7 +37,6 @@ namespace Logging {
 
         // Off: only Fatal reaches stderr.
         std::atomic<int> g_stdLevel{static_cast<int>(Level::Off)};
-        std::atomic<int> g_stdFormat{static_cast<int>(StdFormat::Auto)};
         QMutex g_stdMutex;
 
         // Buffering applies only before Init(); after it, a closed file means disk logging failed for good.
@@ -108,42 +107,17 @@ namespace Logging {
             return level == Level::Fatal || static_cast<int>(level) >= g_stdLevel.load(std::memory_order_relaxed);
         }
 
-        // JOURNAL_STREAM is inherited past redirections, so it only counts when its "dev:ino" is our stderr's (systemd.exec(5)).
-        bool journalStream() {
-            return false;
-        }
-
-        int journalPriority(Level level) {
-            switch (level) {
-                case Level::Fatal:
-                case Level::Error: return 3;
-                case Level::Warn: return 4;
-                case Level::Info: return 6;
-                default: return 7;
-            }
-        }
-
-        // journald takes the "<N>" priority prefix per line and stamps its own time.
-        void writeStd(Level level, const QString &timestamp, const QString &body) {
+        void writeStd(const QString &timestamp, const QString &body) {
             if (_fileno(stderr) < 0) return; // GUI-subsystem process without an inherited stderr
-            const auto format = static_cast<StdFormat>(g_stdFormat.load(std::memory_order_relaxed));
-            QByteArray out;
-            if (format == StdFormat::Journal || (format == StdFormat::Auto && journalStream())) {
-                const QByteArray prefix = "<" + QByteArray::number(journalPriority(level)) + ">";
-                out = prefix;
-                out += body.toUtf8().replace("\n", "\n" + prefix);
-            } else {
-                out = timestamp.toUtf8();
-                out += ' ';
-                out += body.toUtf8();
-            }
+            QByteArray out = timestamp.toUtf8();
+            out += ' ';
+            out += body.toUtf8();
             out += '\n';
             QMutexLocker lock(&g_stdMutex);
             std::fwrite(out.constData(), 1, static_cast<size_t>(out.size()), stderr);
             std::fflush(stderr);
         }
 
-        // Unix: never through a link or onto a hard-linked file, which the data dir's owner could aim at root's files; fails as unopenable.
         bool openTruncated(QFile &file, const QString &path) {
             file.setFileName(path);
             return file.open(QIODevice::WriteOnly | QIODevice::Truncate);
@@ -256,8 +230,6 @@ namespace Logging {
 
     void EnableStdSink(Level minLevel) { g_stdLevel.store(static_cast<int>(minLevel), std::memory_order_relaxed); }
 
-    void SetStdFormat(StdFormat format) { g_stdFormat.store(static_cast<int>(format), std::memory_order_relaxed); }
-
     void Write(Level level, const QString &message, const char *file, int line) {
         const bool toFile = IsEnabled(level);
         const bool toStd = stdSinkTakes(level);
@@ -269,7 +241,7 @@ namespace Logging {
             QMutexLocker lock(&g_mutex);
             writeLocked(formatted, level >= Level::Warn);
         }
-        if (toStd) writeStd(level, timestamp, body);
+        if (toStd) writeStd(timestamp, body);
     }
 
     void WriteUserLog(const QString &message) {
@@ -286,7 +258,7 @@ namespace Logging {
                 QMutexLocker lock(&g_mutex);
                 writeLocked(formatted, false);
             }
-            if (toStd) writeStd(Level::Info, timestamp, body);
+            if (toStd) writeStd(timestamp, body);
         }
     }
 
@@ -305,8 +277,6 @@ namespace Logging {
         g_markerPath = QDir(g_logDir).absoluteFilePath("running.marker");
 
         g_crashDirNative = QDir::toNativeSeparators(g_crashDir).toStdWString();
-
-        const bool pruneCrashDir = true;
 
         // Set the crashed session's log aside before this one truncates it or rotation pushes it out.
         g_previousCrashed = QFile::exists(g_markerPath);
@@ -360,10 +330,8 @@ namespace Logging {
         g_preInit.clear();
         g_file.flush();
 
-        if (pruneCrashDir) {
-            pruneOldest(g_crashDir, {"*.dmp"}, MAX_CRASH_DUMPS);
-            pruneOldest(g_crashDir, {"*.txt"}, MAX_CRASH_DUMPS);
-        }
+        pruneOldest(g_crashDir, {"*.dmp"}, MAX_CRASH_DUMPS);
+        pruneOldest(g_crashDir, {"*.txt"}, MAX_CRASH_DUMPS);
     }
 
     void Shutdown() {
@@ -435,11 +403,6 @@ namespace Logging {
             QString text = message;
             if (context.category != nullptr && qstrcmp(context.category, "default") != 0) {
                 text = QString("[%1] %2").arg(context.category, message);
-            }
-            if (type == QtFatalMsg) {
-                // A widget or GUI-only call reached a QCoreApplication (headless) process.
-                const auto *app = QCoreApplication::instance();
-                if (app != nullptr && !app->inherits("QApplication")) text.prepend(QStringLiteral("HEADLESS-WIDGET "));
             }
             Write(level, text, context.file, context.line);
             // Qt aborts the process the moment this returns for a fatal message.

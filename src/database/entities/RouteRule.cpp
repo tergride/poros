@@ -755,7 +755,7 @@ namespace Configs {
         }
 
         bool routeRuleUnroutable(const std::shared_ptr<Profile>& ent) {
-            if (ent->outbound == nullptr || ent->outbound->IsExtraCore() || ent->outbound->IsXrayFullConfig()) return true;
+            if (ent->outbound == nullptr || ent->outbound->IsXrayFullConfig()) return true;
             return ent->type == "custom" && ent->Custom() != nullptr && ent->Custom()->type == Custom::CustomFullConfig;
         }
 
@@ -768,7 +768,7 @@ namespace Configs {
                 return QCoreApplication::translate("Validation", "The outbound profile no longer exists; pick another one.");
             const QString name = ent->outbound->DisplayName();
             if (routeRuleUnroutable(ent))
-                return QCoreApplication::translate("Validation", "Routing rules cannot use \"%1\": extra core profiles and full configs are not supported. Pick another outbound.").arg(name);
+                return QCoreApplication::translate("Validation", "Routing rules cannot use \"%1\": full configs are not supported. Pick another outbound.").arg(name);
             if (ent->type != "chain") return {};
             const auto chain = ent->Chain();
             if (chain == nullptr || chain->list.isEmpty())
@@ -776,7 +776,7 @@ namespace Configs {
             for (const int hopID: chain->list) {
                 const auto hop = dataManager->profilesRepo->GetProfile(hopID);
                 if (hop == nullptr || hop->type == "chain" || routeRuleUnroutable(hop))
-                    return QCoreApplication::translate("Validation", "Routing rules cannot use the chain \"%1\": a hop of it is missing, another chain, an extra core profile or a full config. Pick another outbound.").arg(name);
+                    return QCoreApplication::translate("Validation", "Routing rules cannot use the chain \"%1\": a hop of it is missing, another chain or a full config. Pick another outbound.").arg(name);
             }
             return {};
         }

@@ -3,7 +3,7 @@
 #include "include/configs/AutoSelectorPlan.h"
 #include "include/database/DatabaseManager.h"
 #include "include/database/ProfilesRepo.h"
-#include "include/engine/EngineControl.h"
+#include "include/engine/connection/ConnectionManager.h"
 #include "include/engine/EngineEvents.h"
 #include "include/engine/EngineTr.h"
 #include "include/engine/ThreadCheck.h"
@@ -19,7 +19,7 @@
 #include <utility>
 
 namespace Engine {
-    AutoSelectorController::AutoSelectorController(EngineControl *control, TestRunner *tests, QObject *parent)
+    AutoSelectorController::AutoSelectorController(ConnectionManager *control, TestRunner *tests, QObject *parent)
         : QObject(parent), control_(control), tests_(tests) {
         // The selector monitor emits from its own poll thread.
         connect(Stats::autoSelectorMonitor, &Stats::AutoSelectorMonitor::poolExhausted, this,

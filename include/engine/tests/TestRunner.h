@@ -29,7 +29,7 @@ namespace Engine {
         // Any thread; the running profile, or null.
         using RunningSnapshot = std::function<std::shared_ptr<Configs::Profile>()>;
 
-        // policy and observer outlive the runner; a null observer gets a no-op stand-in (headless).
+        // policy and observer outlive the runner; a null observer gets a no-op stand-in.
         TestRunner(EnginePolicy* policy, TestObserver* observer, RunningSnapshot runningSnapshot);
 
         TestRunner(const TestRunner&) = delete;

@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Engine {
-    // What an open editor in the window saves back on OK; the API refuses to change it meanwhile. Main thread only.
+    // What an open editor in the window saves back on OK; the services refuse to change it meanwhile. Main thread only.
     enum class EditTarget {
         Settings,
         Routes,
@@ -24,6 +24,4 @@ namespace Engine {
     };
 
     bool IsBeingEdited(EditTarget target, int id = -1);
-
-    bool AnyEditorOpen();
 } // namespace Engine

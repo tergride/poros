@@ -8,18 +8,6 @@
 
 namespace Configs
 {
-    // Not "dashboard": that one is the Clash external_ui dir, holding a different UI.
-    inline constexpr auto apiDashboardDir = "sb-dashboard";
-
-    class ExtraCoreData
-    {
-        public:
-        QString path;
-        QString args;
-        QString config;
-        bool noLog = false;
-    };
-
     enum class TrafficChainKind { Main, Route, Aux };
 
     struct TrafficChainGroup {
@@ -45,7 +33,6 @@ namespace Configs
         QJsonObject xrayConfig;
         // Opaque full configs, one instance each; never merged into xrayConfig.
         QStringList xrayFullConfigs;
-        std::shared_ptr<ExtraCoreData> extraCoreData = std::make_shared<ExtraCoreData>();
 
         QList<TrafficChainGroup> chainGroups;
         QList<AutoSelectorBuildInfo> autoSelectors;
@@ -151,30 +138,14 @@ namespace Configs
 
     std::shared_ptr<BuildTestConfigResult> BuildTestConfig(const QList<std::shared_ptr<Profile> > &profiles);
 
-    struct ScanTestTarget {
-        QString address;
-        // 0 = keep the profile's port.
-        int port = 0;
-    };
-
-    struct ScanTestBuild {
-        QString error;
-        std::shared_ptr<BuildTestConfigResult> build;
-        QHash<QString, int> tag2target;
-        QStringList vpnEndpointTags;
-        QList<int> unsupported;
-    };
-
     // Keeps the original domain as SNI/Host; nullptr when the type has no single dialable server.
-    std::shared_ptr<Profile> CloneProfileWithServer(const std::shared_ptr<Profile> &base, const QString &address, int port);
+    std::shared_ptr<Profile> CloneProfileWithServer(const std::shared_ptr<Profile> &base, const QString &address);
 
     struct EndpointResolution {
         // Empty: the profile dials its own address.
         QString address;
-        // Where the address comes from, for hints and logs, e.g. IP list “Scan CF Result”.
+        // Where the address comes from, for hints.
         QString origin;
-        // Why a configured source supplied no address: a missing or empty IP list.
-        QString problem;
     };
 
     // What `source` makes a profile dial; Inherit and Own supply nothing.
@@ -186,20 +157,11 @@ namespace Configs
     // Non-empty when the profile has no single server address an endpoint source could replace.
     QString EndpointOverrideBlocker(const std::shared_ptr<Profile> &profile);
 
-    // For display: the host the profile dials instead of its own, or empty. IP lists are cached until the next invalidation.
+    // For display: the host the profile dials instead of its own, or empty.
     QString EffectiveEndpointHost(const std::shared_ptr<Profile> &profile);
 
     // The profile's address as its type shows it, with the effective host in place of its own.
     QString DisplayEffectiveAddress(const std::shared_ptr<Profile> &profile);
-
-    // Called whenever IP lists change, so displays pick up a new first entry.
-    void InvalidateEndpointDisplayCache();
-
-    // Checks a throwaway copy so the live profile's latency is never touched; empty = valid.
-    QString ValidateScanBase(const std::shared_ptr<Profile> &base);
-
-    // Worker thread only; group landing/front hops are not applied.
-    ScanTestBuild BuildScanTestConfig(const std::shared_ptr<Profile> &base, const QList<ScanTestTarget> &targets);
 
     // Accepts host, host:port, [v6] and [v6]:port; a bare IPv6 address takes defaultPort.
     void SplitWarpEndpoint(const QString &endpoint, int defaultPort, QString &host, int &port);

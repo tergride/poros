@@ -7,13 +7,11 @@ namespace Configs {
     // Where a profile's server address comes from when its config is built.
     struct EndpointSource {
         // Inherit: a profile follows its group; on a group it changes nothing.
-        enum class Mode { Inherit, Own, Address, IpList };
+        enum class Mode { Inherit, Own, Address };
 
         Mode mode = Mode::Inherit;
         // Mode::Address only (groups); a host without a port.
         QString address;
-        // Mode::IpList only.
-        int ipListId = -1;
 
         [[nodiscard]] QJsonObject ToJson() const;
 

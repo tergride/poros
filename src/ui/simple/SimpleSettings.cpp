@@ -46,7 +46,7 @@ namespace {
         const auto connection = Engine::host()->connection();
         Engine::SettingsRegistry::PutResult result;
         const auto &settings = simpleSettingsRepo();
-        Engine::SettingsRegistry::Put(patch, {connection->runningSnapshot() != nullptr, settings->spmode_vpn, settings->spmode_system_proxy}, &result);
+        Engine::SettingsRegistry::Put(patch, {connection->runningSnapshot() != nullptr, settings->spmode_vpn}, &result);
     }
 
     QLabel *simpleSettingsLabel(const QString &text, const char *role, QWidget *parent) {
@@ -390,8 +390,8 @@ QWidget *SimpleSettings::buildStartup() {
     auto *links = simpleSettingsSwitch();
     connect(links, &QCheckBox::clicked, this, [](bool on) {
         simpleSettingsRepo()->url_scheme_auto_register = on;
-        if (on) UrlScheme_Install(Association::Links);
-        else UrlScheme_Uninstall(Association::Links);
+        if (on) UrlScheme_Install();
+        else UrlScheme_Uninstall();
         simpleSettingsRepo()->Save();
     });
     simpleSettingsRow(card, tr("Accept poros:// links"), {}, links);
@@ -498,8 +498,7 @@ void SimpleSettings::restoreBackup() {
         return;
     }
     if (QMessageBox::question(this, tr("Restore from a backup"), tr("Replace the current data and restart Poros?")) != QMessageBox::Yes) return;
-    Engine::BackupArchive::ApplyResult result;
-    if (const auto error = Engine::BackupArchive::Apply(path, info.available, {}, &result); !error.isEmpty()) {
+    if (const auto error = Engine::BackupArchive::Apply(path, info.available); !error.isEmpty()) {
         QMessageBox::critical(this, tr("Restore from a backup"), error);
         return;
     }

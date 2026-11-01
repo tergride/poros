@@ -129,7 +129,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         });
     };
 
-    // Menu mirrors of settings that the API can change as well.
+    // Menu mirrors of settings that other windows change as well.
     const auto syncSettingsMirrors = [this] {
         const auto &settings = Configs::dataManager->settingsRepo;
         const QSignalBlocker rememberBlocker(ui->actionRemember_last_proxy);
@@ -189,7 +189,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     setLogHighlighter(true);
     setupLogView();
-    updateLogFilterFields();
     runOnThread([=, this] {
         log_process_loop();
     }, LogThread);
@@ -242,14 +241,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
     }
 
-    if (auto iconsDir = QDir("icons"); !iconsDir.exists()) {
-        QDir().mkdir("icons") ? qDebug("created icons dir") : qDebug("Failed to create icons dir");
-    }
-
     ui->menuRouting_Menu->installEventFilter(this);
 
     ui->menubar->setVisible(false);
-    for (auto *removed : {ui->menu_open_dashboard, ui->menu_scanner}) ui->menuTools->removeAction(removed);
     connect(ui->actionRuntime_Stats, &QAction::triggered, this, [=, this]() {
         m_advancedPage->showSection(AdvancedPage::Statistics);
         ui->stats_widget->setCurrentWidget(ui->runtime_tab);
@@ -532,7 +526,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     tray = new TrayIcon(this);
     tray->setIcon(Icon::GetTrayIcon(Icon::TrayIconStatus::None));
-    QApplication::setWindowIcon(Icon::GetTaskbarIcon(Icon::TrayIconStatus::None));
+    QApplication::setWindowIcon(Icon::GetTrayIcon(Icon::TrayIconStatus::None));
     trayMenu = new QMenu();
     trayMenu->addAction(ui->actionShow_window);
     trayMenu->addSeparator();

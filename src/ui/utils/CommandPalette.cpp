@@ -49,23 +49,6 @@ namespace {
                            [state](const QPointer<QAction> &menu) { return menu && (menu.data()->*state)(); });
     }
 
-    // Leaves the window's ShortcutOverride for the action unaccepted, so no focused widget can claim the key.
-    class ShortcutGuard : public QObject {
-    public:
-        ShortcutGuard(QAction *action, QWidget *window) : QObject(action), action(action), window(window) {}
-
-        bool eventFilter(QObject *obj, QEvent *event) override {
-            if (event->type() != QEvent::ShortcutOverride || !obj->isWidgetType() || !window) return false;
-            if (static_cast<QWidget *>(obj)->window() != window || action->shortcut().isEmpty()) return false;
-            const auto *key = static_cast<QKeyEvent *>(event);
-            return QKeySequence(key->keyCombination()) == action->shortcut();
-        }
-
-    private:
-        QAction *action;
-        QPointer<QWidget> window;
-    };
-
     class PaletteDelegate : public QStyledItemDelegate {
     public:
         using QStyledItemDelegate::QStyledItemDelegate;
@@ -272,10 +255,6 @@ QString CommandPalette::keywordsFor(const QString &objectName) {
     words.remove(prefix);
     words.replace('_', ' ');
     return words.trimmed();
-}
-
-void CommandPalette::keepShortcutFromTextFields(QAction *action, QWidget *window) {
-    qApp->installEventFilter(new ShortcutGuard(action, window));
 }
 
 void CommandPalette::setSettings(QList<Entry> settings) {

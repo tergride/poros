@@ -3,8 +3,8 @@
 #include "include/engine/EnginePolicy.h"
 
 namespace Engine {
-    // No user to ask: never blocks, logs what a dialog would have shown, and takes the safe answer.
-    class HeadlessPolicy final : public EnginePolicy {
+    // The answers while no window is bound: never blocks, logs what a dialog would have shown, and takes the safe answer.
+    class UnboundPolicy final : public EnginePolicy {
     public:
         void geoAssetMissingCategory(const QString &contextName, const QString &needed, const QString &whichFile) override;
 
@@ -16,9 +16,7 @@ namespace Engine {
 
         void killSwitchProblemResolved() override;
 
-        void extraCoreNotPermitted() override;
-
-        void startFailed(const StartRequest &request, StartOutcome outcome, const QString &title, const QString &error) override;
+        void startFailed(const StartRequest &request, const QString &title, const QString &error) override;
 
         void strictRouteUnavailable(const QString &error) override;
 
@@ -31,8 +29,6 @@ namespace Engine {
         SlowOperation slowOperation(SlowOperationKind kind, int delayMs) override;
 
         PrivilegeDecision requestCorePrivileges(PrivilegeReason reason) override;
-
-        void systemProxyNeedsMixedInbound() override;
 
         bool vpnPromptOpen() const override;
 
@@ -49,6 +45,6 @@ namespace Engine {
 
         void testSessionBusy(const QString &text) override;
 
-        void exitProgram(ExitReason reason, bool unattended) override;
+        void exitProgram(ExitReason reason) override;
     };
 } // namespace Engine

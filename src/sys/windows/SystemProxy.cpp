@@ -90,20 +90,16 @@ namespace {
         return connection.empty() ? QStringLiteral("LAN") : QString::fromStdWString(connection);
     }
 
-    std::wstring proxyServerString(const QString &host, int port, QString format) {
-        // "http" and "socks" are what the setting held before it became a template.
-        if (format == "http") format = "http://{ip}:{port}";
-        else if (format == "socks") format = "socks={ip}:{port}";
-        else if (!format.contains("{port}")) format = "{ip}:{port}";
+    std::wstring proxyServerString(const QString &host, int port) {
         const QString ip = host.contains(':') ? QString("[%1]").arg(host) : host;
-        return format.replace("{ip}", ip).replace("{port}", QString::number(port)).toStdWString();
+        return QString("%1:%2").arg(ip).arg(port).toStdWString();
     }
 }
 
-QString SystemProxy_Apply(const QString &host, int port, const QString &windowsFormat) {
+QString SystemProxy_Apply(const QString &host, int port) {
     QMutexLocker lock(&proxyMutex);
     QStringList errors;
-    auto server = proxyServerString(host, port, windowsFormat);
+    auto server = proxyServerString(host, port);
     appliedProxyServer = server;
     for (const auto &connection : proxyConnectionNames(errors)) {
         // Only the first Apply still sees the user's flags; a later one would record our own.

@@ -23,7 +23,7 @@
 namespace {
     constexpr int kConnectionModesCapsRefreshMs = 1000;
 
-    // networksetup and gsettings runs are slow, and profile start/stop call in from their own threads.
+    // Profile start and stop call in from their own threads.
     QThread *connectionModesSystemProxyThread() {
         static auto *thread = [] {
             auto *t = new QThread;
@@ -54,7 +54,7 @@ namespace Engine {
         }
         if (const auto blocker = connectionModesTunCapsBlocker(interactive); !blocker.isEmpty()) {
             MW_show_log(QStringLiteral("[Tun] The core cannot use Tun: %1").arg(blocker));
-            if (interactive && !m_options.headless) PostNotice({NoticeLevel::Warning, MainWindowTr::tr("Tun Mode"), blocker});
+            if (interactive) PostNotice({NoticeLevel::Warning, MainWindowTr::tr("Tun Mode"), blocker});
             return false;
         }
         if (tunPrivileged()) return true;
@@ -67,29 +67,17 @@ namespace Engine {
         return Configs::IsAdmin();
     }
 
-    QString ConnectionManager::tunBlockedReason() {
-        return {};
-    }
-
-    QString ConnectionManager::tunRestoreHoldReason() {
-        // setTun's order: the host conflict refuses before the privilege and capability checks.
-        if (auto why = tunBlockedReason(); !why.isEmpty()) return why;
-        if (auto why = connectionModesTunCapsBlocker(false); !why.isEmpty()) return why;
-        return QStringLiteral("the core lacks the privileges Tun needs");
-    }
-
     void ConnectionManager::applySystemProxy(bool enable, bool wait) {
         const auto &settings = Configs::dataManager->settingsRepo;
         const auto host = LocalNetwork::InboundConnectHost();
         const auto port = settings->inbound_socks_port;
-        const auto format = settings->proxy_scheme;
         runOnThread([=] {
             QString error;
             if (!enable) {
                 error = SystemProxy_Clear();
             } else if (Configs::dataManager->settingsRepo->spmode_system_proxy) {
                 // Rechecked: a profile start can queue this after the box was unchecked.
-                error = SystemProxy_Apply(host, port, format);
+                error = SystemProxy_Apply(host, port);
             }
             if (!error.isEmpty()) MW_show_log(MainWindowTr::tr("System proxy: %1").arg(error));
         }, connectionModesSystemProxyThread(), wait);
@@ -98,29 +86,12 @@ namespace Engine {
     bool ConnectionManager::setSystemProxy(bool enable, const ModeChange &change) {
         ENGINE_CHECK_MAIN_THREAD();
         const auto &settings = Configs::dataManager->settingsRepo;
-        if (!m_options.systemProxy) {
-            if (enable) {
-                MW_show_log(QStringLiteral("System proxy is not available in headless mode; use Tun or point clients at the "
-                                           "mixed inbound."));
-                emit statusChanged();
-            }
-            return false;
-        }
-        if (enable && settings->disable_mixed_inbound) {
-            if (change.interactive) {
-                runOnUiThread([=, this] {
-                   policy()->systemProxyNeedsMixedInbound();
-                });
-            }
-            emit statusChanged();
-            return false;
-        }
         settings->spmode_system_proxy = enable;
         bool restarted = false;
         if (const auto running = runningSnapshot()) {
             applySystemProxy(enable);
             if (!enable && settings->reset_proxy_on_disable_sp && change.restart) {
-                start(StartRequest{running->id, change.interactive, change.restartSerial});
+                start(StartRequest{running->id, change.interactive});
                 restarted = true;
             }
         }
@@ -137,33 +108,14 @@ namespace Engine {
     bool ConnectionManager::setTun(bool enable, const ModeChange &change) {
         ENGINE_CHECK_MAIN_THREAD();
         const auto &settings = Configs::dataManager->settingsRepo;
-        if (!enable && std::exchange(m_tunRestoreHeld, false)) {
-            // A held restore left spmode_vpn off, so the early return below would keep the remembered Tun for the next boot.
-            if (change.save) {
-                settings->remember_tun = false;
-                settings->Save();
-            }
-            emit statusChanged();
-        }
         if (enable == settings->spmode_vpn) return false;
 
-        if (enable) {
-            // Before any elevation prompt: nothing granted here clears another owner's Tun.
-            if (const auto reason = tunBlockedReason(); !reason.isEmpty()) {
-                MW_show_log(QStringLiteral("[Tun] Not enabling Tun: %1").arg(reason));
-                // Headless has no notice sink, so a notice there would only repeat the line above.
-                if (!m_options.headless) PostNotice({NoticeLevel::Warning, MainWindowTr::tr("Tun Mode"), reason});
-                emit statusChanged();
-                return false;
-            }
-            Configs::RefreshStaleTunDevice(kConnectionModesCapsRefreshMs);
-        }
+        if (enable) Configs::RefreshStaleTunDevice(kConnectionModesCapsRefreshMs);
         if (enable && (!tunPrivileged() || !connectionModesTunCapsBlocker(true).isEmpty()) &&
             !ensureTunPrivileges(change.interactive)) {
             emit statusChanged();
             return false;
         }
-        m_tunRestoreHeld = false;
 
         if (change.save) {
             // Written here, after the elevation check, so a failed enable is not remembered.
@@ -175,18 +127,18 @@ namespace Engine {
         emit statusChanged();
 
         if (!change.restart || settings->started_id < 0) return false;
-        start(StartRequest{settings->started_id, change.interactive, change.restartSerial});
+        start(StartRequest{settings->started_id, change.interactive});
         return true;
     }
 
-    bool ConnectionManager::chooseRoute(int routeId, bool interactive, quint64 restartSerial) {
+    bool ConnectionManager::chooseRoute(int routeId, bool interactive) {
         ENGINE_CHECK_MAIN_THREAD();
         const auto &settings = Configs::dataManager->settingsRepo;
         if (settings->current_route_id == routeId) return false;
         settings->current_route_id = routeId;
         settings->Save();
         if (settings->started_id < 0) return false;
-        start(StartRequest{settings->started_id, interactive, restartSerial});
+        start(StartRequest{settings->started_id, interactive});
         return true;
     }
 
@@ -229,11 +181,7 @@ namespace Engine {
     }
 
     void ConnectionManager::restartCoreForGuard(const StartRequest &request) {
-        const bool haveCore = m_coreSupervisor->setStartWhenUp(request.profileId);
-        if (!haveCore) {
-            emit startFinished(request.serial, request.profileId, StartOutcome::CoreUnavailable, {});
-            return;
-        }
+        if (!m_coreSupervisor->setStartWhenUp(request.profileId)) return;
         deferStartToCore(request);
         if (guardRestartPending()) return;
         m_guardCoreRestart.start();

@@ -14,8 +14,7 @@
 #include "include/engine/app/ExitController.h"
 #include "include/engine/autoselector/AutoSelectorController.h"
 #include "include/engine/connection/ConnectionManager.h"
-#include "include/engine/headless/HeadlessPolicy.h"
-#include "include/engine/services/AssetUpdates.h"
+#include "include/engine/UnboundPolicy.h"
 #include "include/engine/services/ProfileService.h"
 #include "include/engine/services/ReleaseUpdates.h"
 #include "include/engine/services/StatsService.h"
@@ -59,12 +58,8 @@ namespace Engine {
             target(__func__)->killSwitchProblemResolved();
         }
 
-        void extraCoreNotPermitted() override {
-            target(__func__)->extraCoreNotPermitted();
-        }
-
-        void startFailed(const StartRequest &request, StartOutcome outcome, const QString &title, const QString &error) override {
-            target(__func__)->startFailed(request, outcome, title, error);
+        void startFailed(const StartRequest &request, const QString &title, const QString &error) override {
+            target(__func__)->startFailed(request, title, error);
         }
 
         void strictRouteUnavailable(const QString &error) override {
@@ -89,10 +84,6 @@ namespace Engine {
 
         PrivilegeDecision requestCorePrivileges(PrivilegeReason reason) override {
             return target(__func__)->requestCorePrivileges(reason);
-        }
-
-        void systemProxyNeedsMixedInbound() override {
-            target(__func__)->systemProxyNeedsMixedInbound();
         }
 
         bool vpnPromptOpen() const override {
@@ -124,21 +115,21 @@ namespace Engine {
             target(__func__)->testSessionBusy(text);
         }
 
-        void exitProgram(ExitReason reason, bool unattended) override {
-            target(__func__)->exitProgram(reason, unattended);
+        void exitProgram(ExitReason reason) override {
+            target(__func__)->exitProgram(reason);
         }
 
     private:
         EnginePolicy *target(const char *method) const {
             if (m_target != nullptr) return m_target;
             if (!m_warnedUnbound.exchange(true)) {
-                LOG_WARN(QStringLiteral("POLICY-UNBOUND %1 got the headless answer: no front end is bound").arg(QLatin1String(method)));
+                LOG_WARN(QStringLiteral("POLICY-UNBOUND %1 got the unbound answer: no front end is bound").arg(QLatin1String(method)));
             }
             return &m_fallback;
         }
 
         EnginePolicy *m_target = nullptr;
-        mutable HeadlessPolicy m_fallback;
+        mutable UnboundPolicy m_fallback;
         mutable std::atomic<bool> m_warnedUnbound{false};
     };
 
@@ -174,8 +165,6 @@ namespace Engine {
         std::atomic<TestObserver *> m_target{nullptr};
     };
 
-    EngineHost::EngineHost(const RuntimeOptions &options) : m_options(options) {}
-
     EngineHost::~EngineHost() {
         engineHostInstance = nullptr;
         detachFrontEnd();
@@ -190,7 +179,7 @@ namespace Engine {
         delete m_stats;
     }
 
-    EngineHost *EngineHost::create(const RuntimeOptions &options) {
+    EngineHost *EngineHost::create() {
         ENGINE_CHECK_MAIN_THREAD();
         if (engineHostInstance != nullptr) {
             LOG_WARN("EngineHost::create() called again; keeping the existing host");
@@ -200,8 +189,7 @@ namespace Engine {
         Throne::PeriodicRunner::instance();
         Subscription::updater();
         EngineEvents::instance();
-        AssetUpdates::SetUnattendedFetch(options.geoAutoDownload);
-        auto *created = new EngineHost(options);
+        auto *created = new EngineHost;
         engineHostInstance = created;
         created->construct();
         return created;
@@ -212,20 +200,16 @@ namespace Engine {
         m_observer = std::make_unique<ObserverRelay>();
         m_stats = new StatsService(this);
         m_coreSupervisor = new CoreSupervisor(this);
-        m_connection = new ConnectionManager(policy(), m_coreSupervisor, m_stats, m_options, this);
-        connect(m_connection, &ConnectionManager::startFinished, this, &EngineControl::startFinished, Qt::DirectConnection);
-        connect(m_connection, &ConnectionManager::stopFinished, this, &EngineControl::stopFinished, Qt::DirectConnection);
-        connect(m_connection, &ConnectionManager::connectionStateChanged, this, &EngineControl::connectionStateChanged, Qt::DirectConnection);
-        m_vpnAuth = new VpnAuthController(policy(), this, this);
+        m_connection = new ConnectionManager(policy(), m_coreSupervisor, m_stats, this);
+        m_vpnAuth = new VpnAuthController(policy(), m_connection, this);
         Lifecycle::SetStopHandler([c = m_connection](bool crash, bool block, bool manual, bool interactive) { c->stop({crash, block, manual, interactive}); });
         m_tests = std::make_unique<TestRunner>(policy(), m_observer.get(), [c = m_connection] { return c->runningSnapshot(); });
-        m_autoSelector = std::make_unique<AutoSelectorController>(this, m_tests.get());
+        m_autoSelector = std::make_unique<AutoSelectorController>(m_connection, m_tests.get());
         m_connection->attach(m_tests.get(), m_autoSelector.get(), m_vpnAuth);
         // In this order: the traffic and connection loops spawn before the selector monitor, as before.
         connect(m_coreSupervisor, &CoreSupervisor::rpcConnected, m_stats, &StatsService::startLoops);
         connect(m_coreSupervisor, &CoreSupervisor::rpcConnected, m_autoSelector.get(), &AutoSelectorController::startMonitorLoop);
         m_exit = new ExitController(policy(), m_connection, m_coreSupervisor, this);
-        if (m_options.headless) m_exit->setShutdownOptions(ShutdownOptions::Headless());
 
         connect(EngineEvents::instance(), &EngineEvents::subscriptionFinished, this, [](int importedCount, bool quiet) {
             if (quiet) return;
@@ -242,7 +226,7 @@ namespace Engine {
         registerPeriodicJobs();
     }
 
-    void EngineHost::init(EnginePolicy *frontEnd, TestObserver *testObserver, std::optional<BootStart> bootStart) {
+    void EngineHost::init(EnginePolicy *frontEnd, TestObserver *testObserver) {
         ENGINE_CHECK_MAIN_THREAD();
         if (m_initialized) {
             LOG_WARN("EngineHost::init() called again; ignored");
@@ -265,30 +249,13 @@ namespace Engine {
         // Before apply(): a state change inside apply() must reach the handler.
         m_connection->attachKillSwitch();
 
-        if (m_options.headless) {
-            Sys::KillSwitch::instance()->setOverride(m_options.killSwitchOverride);
-            if (m_options.killSwitchOverride && Configs::dataManager->settingsRepo->kill_switch) {
-                LOG_WARN(QStringLiteral("[Kill switch] kill_switch is on, but --no-kill-switch (THRONE_KILL_SWITCH) keeps it off for this run; "
-                                        "profiles stay refused until kill_switch is turned off"));
-            }
-        }
-
         // Must precede the first coreStarted, or a remembered profile would start before the guard is even arming.
         Sys::KillSwitch::instance()->apply();
 
-        if (bootStart) {
-            if (bootStart->profileId >= 0) m_connection->setBootStart(StartRequest{bootStart->profileId, false, bootStart->serial});
-            m_coreSupervisor->start(bootStart->profileId);
-        } else {
-            const auto &startSettings = Configs::dataManager->settingsRepo;
-            // A relaunch for rights carries on with the start that asked for them.
-            if (startSettings->flag_restart_profile >= 0) m_coreSupervisor->start(startSettings->flag_restart_profile);
-            else m_coreSupervisor->start(startSettings->remember_enable && startSettings->remember_id >= 0 ? startSettings->remember_id : -1);
-        }
-    }
-
-    void EngineHost::setResumeSuppressed(bool suppressed) {
-        m_resumeSuppressed = suppressed;
+        const auto &startSettings = Configs::dataManager->settingsRepo;
+        // A relaunch for rights carries on with the start that asked for them.
+        if (startSettings->flag_restart_profile >= 0) m_coreSupervisor->start(startSettings->flag_restart_profile);
+        else m_coreSupervisor->start(startSettings->remember_enable && startSettings->remember_id >= 0 ? startSettings->remember_id : -1);
     }
 
     void EngineHost::detachFrontEnd() {
@@ -339,49 +306,13 @@ namespace Engine {
             if (!interactive) {
                 MW_show_log(MainWindowTr::tr("Settings changed") + ": " + MainWindowTr::tr("Restart the program to take effect."));
             } else if (policy()->confirmRestartProgram()) {
-                m_exit->requestExit(ExitReason::Restart, false);
+                m_exit->requestExit(ExitReason::Restart);
             }
         }
     }
 
     EnginePolicy *EngineHost::policy() const {
         return m_policy.get();
-    }
-
-    ConnectionState EngineHost::connectionState() const {
-        return m_connection->connectionState();
-    }
-
-    std::shared_ptr<Configs::Profile> EngineHost::runningSnapshot() const {
-        return m_connection->runningSnapshot();
-    }
-
-    int EngineHost::resolveLastProfile() {
-        return m_connection->resolveLastProfile();
-    }
-
-    quint64 EngineHost::nextStartSerial() {
-        return m_connection->nextStartSerial();
-    }
-
-    void EngineHost::start(const StartRequest &request) {
-        m_connection->start(request);
-    }
-
-    void EngineHost::stop(const StopOptions &options) {
-        m_connection->stop(options);
-    }
-
-    bool EngineHost::setSystemProxy(bool enable, const ModeChange &change) {
-        return m_connection->setSystemProxy(enable, change);
-    }
-
-    bool EngineHost::setTun(bool enable, const ModeChange &change) {
-        return m_connection->setTun(enable, change);
-    }
-
-    bool EngineHost::chooseRoute(int routeId, bool interactive, quint64 serial) {
-        return m_connection->chooseRoute(routeId, interactive, serial);
     }
 
     int EngineHost::clearTestResults(const QList<int> &profileIds) {
@@ -394,88 +325,6 @@ namespace Engine {
     std::optional<LiveRates> EngineHost::freshLiveRates(qint64 maxAgeMs) const {
         if (m_connection->runningSnapshot() == nullptr) return std::nullopt;
         return m_stats->freshLiveRates(maxAgeMs);
-    }
-
-    bool EngineHost::testsRunning() {
-        return m_tests->isRunning();
-    }
-
-    bool EngineHost::testsStopRequested() const {
-        return m_tests->stopRequested();
-    }
-
-    bool EngineHost::runTests(TestKind kind, const QList<int> &profileIds, const std::function<void()> &onFinished) {
-        switch (kind) {
-            case Engine::TestKind::Latency: return m_tests->runUrlTests(profileIds, onFinished, false);
-            case Engine::TestKind::Ip: return m_tests->runIpTests(profileIds, onFinished, false);
-            case Engine::TestKind::Speed: break;
-        }
-        return m_tests->runSpeedTests(profileIds, false, onFinished, false);
-    }
-
-    void EngineHost::queueUrlTests(const QList<int> &profileIds, const std::function<void()> &onFinished) {
-        m_tests->queueUrlTests(profileIds, onFinished, false);
-    }
-
-    void EngineHost::stopTests() {
-        m_tests->stop();
-    }
-
-    void EngineHost::noteRestartNeeded(RestartReason reason) {
-        m_connection->noteRestartNeeded(reason);
-    }
-
-    bool EngineHost::restartPending() const {
-        return m_connection->restartPending();
-    }
-
-    bool EngineHost::requestExit(ExitReason reason) {
-        ENGINE_CHECK_MAIN_THREAD();
-        return m_exit->requestExit(reason);
-    }
-
-    QString EngineHost::degradedReason() const {
-        const auto &settings = Configs::dataManager->settingsRepo;
-        const auto killSwitchFailed = [&settings] {
-            return settings->kill_switch && Sys::KillSwitch::instance()->state() == Sys::KillSwitch::State::Failed;
-        };
-        if (!m_options.headless) {
-            if (!settings->core_running) return QStringLiteral("core_unavailable");
-            if (killSwitchFailed()) return QStringLiteral("kill_switch_failed");
-            return {};
-        }
-        if (m_coreSupervisor->state() == CoreState::GaveUp) return QStringLiteral("core_gave_up");
-        if (!settings->core_running) return QStringLiteral("core_unavailable");
-        if (killSwitchFailed()) return QStringLiteral("kill_switch_failed");
-        if (m_connection->tunRestoreHeld()) return QStringLiteral("tun_unavailable");
-        if (m_resumeSuppressed) return QStringLiteral("resume_suppressed");
-        if (m_vpnAuth->authFailed()) return QStringLiteral("vpn_auth_failed");
-        if (!m_vpnAuth->pendingChallenges().isEmpty()) return QStringLiteral("vpn_challenge_pending");
-        return {};
-    }
-
-    bool EngineHost::systemProxySupported() const {
-        return m_options.systemProxy;
-    }
-
-    bool EngineHost::tunPrivileged() {
-        return m_connection->tunPrivileged();
-    }
-
-    bool EngineHost::resumesOnBoot() const {
-        return m_options.resume && (m_options.headless || Configs::dataManager->settingsRepo->remember_enable);
-    }
-
-    bool EngineHost::tunRestoreHeld() const {
-        return m_connection->tunRestoreHeld();
-    }
-
-    QString EngineHost::tunBlockedReason() {
-        return m_connection->tunBlockedReason();
-    }
-
-    bool EngineHost::runningTun() const {
-        return m_connection->runningTun();
     }
 
     void EngineHost::registerPeriodicJobs() {

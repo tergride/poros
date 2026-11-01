@@ -51,7 +51,7 @@ public:
 
     void refreshProfileId(int profileId);
 
-    // Re-resolves the Address column after IP lists or group endpoints change.
+    // Re-resolves the Address column after group endpoints change.
     void invalidateAddresses();
 
     void emplaceProfiles(int row1, int row2);
@@ -80,7 +80,7 @@ private:
     mutable QHash<int, std::shared_ptr<Configs::Profile>> m_cache;
     mutable QList<int> m_lruOrder;
     int m_cacheSize = 100;
-    // Resolving an endpoint source can query the IP lists, so it runs once per row, not per paint.
+    // Resolving an endpoint source clones the profile, so it runs once per row, not per paint.
     mutable QHash<int, QString> m_addressCache;
 
     mutable QHash<int, FilterKey> m_filterKeys;

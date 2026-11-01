@@ -293,19 +293,11 @@ void MainWindow::dialog_message_impl(MwMessage cmd, const QStringList &args) {
 
     switch (cmd) {
     case MwMessage::UpdateSettings: {
-        updateLogFilterFields();
         ui->actionTraffic_Stats->setVisible(!settings->disable_traffic_aggregation);
         refresh_traffic_graph_settings();
-        if (changed(MwArg::TrayIcon)) {
-            Icon::InvalidateTrayIconCache();
-            icon_status.reset();
-        }
         if (changed(MwArg::MaxLogLines)) {
             trimLogLines();
             rebuildLogView();
-        }
-        if (changed(MwArg::LogFont)) {
-            applyLogBrowserFont();
         }
         if (changed(MwArg::DisableTray)) {
             tray->setVisible(!settings->disable_tray);
@@ -327,7 +319,7 @@ void MainWindow::dialog_message_impl(MwMessage cmd, const QStringList &args) {
         break;
     }
     case MwMessage::RestartProgram:
-        exitController()->requestExit(ExitReason::Restart, false);
+        exitController()->requestExit(ExitReason::Restart);
         break;
     case MwMessage::Raise:
         ActivateWindow(this);

@@ -74,7 +74,7 @@ namespace Configs
             // Only raw sing-box outbound JSON can describe an endpoint.
             if (type != CustomOutbound) return false;
             const auto t = QString2QJsonObject(config)["type"].toString();
-            return t == "wireguard" || t == "tailscale" || t == "masque";
+            return t == "wireguard" || t == "masque";
         }
 
         bool IsXray() override { return type == CustomXrayOutbound; }

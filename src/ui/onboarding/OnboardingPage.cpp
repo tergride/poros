@@ -360,8 +360,8 @@ void OnboardingPage::applyChoices() {
     if (m_autoStart->isChecked() != AutoRun_IsEnabled()) AutoRun_SetEnabled(m_autoStart->isChecked());
     settings->remember_enable = m_remember->isChecked();
     settings->url_scheme_auto_register = m_links->isChecked();
-    if (m_links->isChecked()) UrlScheme_Install(Association::Links);
-    else UrlScheme_Uninstall(Association::Links);
+    if (m_links->isChecked()) UrlScheme_Install();
+    else UrlScheme_Uninstall();
     settings->Save();
 }
 

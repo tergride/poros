@@ -474,14 +474,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Прослушиваемый адрес</translation>
     </message>
     <message>
-        <source>Custom Inbound</source>
-        <translation>Польз. inbound</translation>
-    </message>
-    <message>
-        <source>Edit</source>
-        <translation>Редактировать</translation>
-    </message>
-    <message>
         <source>Enable</source>
         <translation>Включить</translation>
     </message>
@@ -504,10 +496,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
     <message>
         <source>Style</source>
         <translation>Интерфейс</translation>
-    </message>
-    <message>
-        <source>Theme</source>
-        <translation>Тема</translation>
     </message>
     <message>
         <source>Connection statistics</source>
@@ -538,10 +526,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Игнорировать ошибки TLS</translation>
     </message>
     <message>
-        <source>Clear servers before updating subscription</source>
-        <translation>Очищать список серверов перед обновлением подписки</translation>
-    </message>
-    <message>
         <source>Enable sending HWID, device model, and OS version when updating subscription</source>
         <translation>Включить отправку HWID, модели устройства и версии ОС при обновлении подписки</translation>
     </message>
@@ -552,14 +536,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
     <message>
         <source>Skip confirmation When Deleting Profiles</source>
         <translation>Не запрашивать подтверждение при удалении профилей</translation>
-    </message>
-    <message>
-        <source>Select</source>
-        <translation>Выбрать</translation>
-    </message>
-    <message>
-        <source>Enable Custom Icons</source>
-        <translation>Включить пользовательские иконки</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format: hwid=value,os=value,osVersion=value,model=value&lt;/p&gt;&lt;p&gt;Leave empty to use default values. Only specify the parameters you want to override.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -590,8 +566,8 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>Ядро Xray</translation>
     </message>
     <message>
-        <source>Links and Files</source>
-        <translation>Ссылки «poros://» и файлы</translation>
+        <source>poros:// links</source>
+        <translation>Ссылки poros://</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Registers Poros as the handler for poros:// links, re-applying the registration whenever the install is moved.&lt;/p&gt;&lt;p&gt;Turning this off does not undo an existing registration: use Uninstall for that.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -666,10 +642,6 @@ It stays a preference, not a lock: if that profile stops working the selector st
         <translation>OTP-профили</translation>
     </message>
     <message>
-        <source>IP lists and scans</source>
-        <translation>Списки IP и сканирования</translation>
-    </message>
-    <message>
         <source>Create Backup...</source>
         <translation>Создать резервную копию</translation>
     </message>
@@ -718,10 +690,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>Enable Authorization</source>
         <translation>Включить авторизацию</translation>
-    </message>
-    <message>
-        <source>Disable Mixed Inbound</source>
-        <translation>Отключить mixed inbound</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use proxy for subscription request, update request etc&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -784,22 +752,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
         <translation>Удалить</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Adds Poros to the &quot;Open with&quot; list for config files such as JSON and YAML, re-applying the registration whenever the install is moved.&lt;/p&gt;&lt;p&gt;Turning this off does not undo an existing registration: use Uninstall for that.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Добавляет Poros в список «Открыть с помощью» для файлов конфигурации, таких как JSON и YAML, и повторно применяет регистрацию при каждом перемещении исполняемых файлов.&lt;/p&gt;&lt;p&gt;Отключение этой функции не отменяет существующую регистрацию: для этого нажмите кнопку «Удалить».&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>Register config files at startup</source>
-        <translation>Регистрировать ассоциации файлов конфигурации при запуске</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Registers the associations now, without waiting for the next start.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Регистрирует ассоциации прямо сейчас, не дожидаясь следующего запуска.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Removes every config file association Poros wrote, including those added by older versions. Associations owned by other applications are left alone.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Удаляет все ассоциации конфигурационных файлов, созданные Poros, включая те, что были добавлены более старыми версиями. Ассоциации, принадлежащие другим приложениям, остаются без изменений.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
         <source>Logging</source>
         <translation>Логирование</translation>
     </message>
@@ -810,46 +762,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>Xray Log level</source>
         <translation>Уровень логирования Xray</translation>
-    </message>
-    <message>
-        <source>Log Filtering</source>
-        <translation>Фильтрация логов</translation>
-    </message>
-    <message>
-        <source>Include Keywords</source>
-        <translation>Ключевые слова</translation>
-    </message>
-    <message>
-        <source>Include Regex</source>
-        <translation>Регулярные выражения</translation>
-    </message>
-    <message>
-        <source>Enable Include Rules</source>
-        <translation>Использовать правила включения</translation>
-    </message>
-    <message>
-        <source>Enable Exclude Rules</source>
-        <translation>Использовать правила исключения</translation>
-    </message>
-    <message>
-        <source>Exclude Keywords</source>
-        <translation>Ключевые слова</translation>
-    </message>
-    <message>
-        <source>Exclude Regex</source>
-        <translation>Регулярные выражения</translation>
-    </message>
-    <message>
-        <source>Log Browser Font</source>
-        <translation>Шрифт логов</translation>
-    </message>
-    <message>
-        <source>Only monospaced fonts are listed. An unavailable family falls back to a built-in monospace list.</source>
-        <translation>Показываются только моноширинные шрифты. Если выбранное семейство недоступно, используется встроенный список моноширинных шрифтов.</translation>
-    </message>
-    <message>
-        <source>Log Browser Font Size</source>
-        <translation>Размер шрифта логов</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Fully disables the traffic aggregation feature (per-config and per-app usage history kept in a separate database, shown in the Traffic Stats dashboard). Does not affect the per-profile traffic counters in the main window.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -866,14 +778,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>Show Config Security</source>
         <translation>Отображать безопасность конфигураций</translation>
-    </message>
-    <message>
-        <source>Follow the connection status icon in the dock/taskbar. When off, it always shows the Poros icon</source>
-        <translation>Показывать иконку статуса подключения в доке/на панели задач. Если выключено, там всегда отображается иконка Poros</translation>
-    </message>
-    <message>
-        <source>Follow Status Icon in Taskbar</source>
-        <translation>Показывать иконку статуса на панели задач</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When enabled, a window listing added / updated / deleted profiles is shown after a manual subscription update. The same information is always written to the log.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -944,26 +848,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
         <translation>Автообновление профилей маршрутизации</translation>
     </message>
     <message>
-        <source>Clash API</source>
-        <translation>Clash API</translation>
-    </message>
-    <message>
-        <source>Secret</source>
-        <translation>Secret</translation>
-    </message>
-    <message>
-        <source>sing-box API / Dashboard</source>
-        <translation>sing-box API / Веб-панель</translation>
-    </message>
-    <message>
-        <source>Loopback only. Leave the port empty to keep the web dashboard off.</source>
-        <translation>Только локальный адрес (loopback). Оставьте порт пустым, чтобы отключить веб-панель.</translation>
-    </message>
-    <message>
-        <source>Regenerate Secret</source>
-        <translation>Сгенерировать Secret</translation>
-    </message>
-    <message>
         <source>Miscellaneous</source>
         <translation>Прочее</translation>
     </message>
@@ -1028,10 +912,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
         <translation>Шрифт</translation>
     </message>
     <message>
-        <source>Proxy Format</source>
-        <translation>Формат прокси</translation>
-    </message>
-    <message>
         <source>Language</source>
         <translation>Язык</translation>
     </message>
@@ -1068,10 +948,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
         <translation>Случайный порт</translation>
     </message>
     <message>
-        <source>Use Mozilla Certificate Store</source>
-        <translation>Исп. хранилище сертификатов Mozilla</translation>
-    </message>
-    <message>
         <source>Network Settings</source>
         <translation>Настройки сети</translation>
     </message>
@@ -1090,14 +966,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout for URLtest in ms&lt;br/&gt;Note that muxed connections take a much longer time for their initial request, and setting this value too low will cause the test to falsely report that the config is not working&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Таймаут теста задержки в мс&lt;br/&gt;Учтите, что при мультиплексировании первый запрос выполняется намного дольше, поэтому при слишком малом значении тест может ошибочно показать, что конфигурация не работает&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>Select png icons</source>
-        <translation>Выберите иконки в формате PNG</translation>
-    </message>
-    <message>
-        <source>Image Files (*.png)</source>
-        <translation>Изображения (*.png)</translation>
     </message>
     <message>
         <source>Create Backup</source>
@@ -1146,10 +1014,6 @@ The local network stays reachable unless Private Range Bypass is turned off in T
     <message>
         <source>Routing profiles</source>
         <translation>Профили маршрутизации</translation>
-    </message>
-    <message>
-        <source>Custom icons</source>
-        <translation>Пользовательские иконки</translation>
     </message>
     <message>
         <source>Poros Backup (*.thrbackup)</source>
@@ -1202,14 +1066,6 @@ Select which parts to restore:</source>
         <translation>Не удалось зарегистрировать обработчик ссылок poros://.</translation>
     </message>
     <message>
-        <source>Could not register the config file associations.</source>
-        <translation>Не удалось зарегистрировать ассоциации файлов конфигурации.</translation>
-    </message>
-    <message>
-        <source>127.0.0.1 (default)</source>
-        <translation>127.0.0.1 (по умолчанию)</translation>
-    </message>
-    <message>
         <source>Speed test timeout</source>
         <translation>Таймаут теста скорости</translation>
     </message>
@@ -1226,10 +1082,6 @@ Select which parts to restore:</source>
         <translation>DNS-сервер</translation>
     </message>
     <message>
-        <source>sing-box API</source>
-        <translation>API sing-box</translation>
-    </message>
-    <message>
         <source>Port %1 is already used by: %2. Choose a different port.</source>
         <translation>Порт %1 уже используется: %2. Выберите другой порт.</translation>
     </message>
@@ -1240,10 +1092,6 @@ Select which parts to restore:</source>
     <message>
         <source>NTP port</source>
         <translation>Порт NTP</translation>
-    </message>
-    <message>
-        <source>Not available for this installation</source>
-        <translation>Недоступно для этого варианта установки</translation>
     </message>
     <message>
         <source>Installed</source>
@@ -1330,10 +1178,6 @@ Poros will restart to complete the restore.</source>
     <message>
         <source>The backup file is damaged or incomplete.</source>
         <translation>Файл резервной копии повреждён или неполон.</translation>
-    </message>
-    <message>
-        <source>There is nothing to back up</source>
-        <translation>Нечего сохранять в резервную копию</translation>
     </message>
     <message>
         <source>A subscription update is running; try again when it finishes.</source>
@@ -3756,10 +3600,6 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
         <translation>Вкл. IPv6 в TUN</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Improves Tun routing and performance using nftables. While enabled, this machine cannot be used as a network gateway for other devices.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Улучшает маршрутизацию и производительность TUN с помощью nftables. Пока опция включена, этот компьютер нельзя использовать как сетевой шлюз для других устройств.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Address ranges handed straight to the physical NIC instead of being routed through the core, one CIDR per line. Uncheck to let the core hijack private range traffic instead. Loopback and broadcast are always bypassed and cannot be listed here.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Диапазоны адресов, передаваемые напрямую на физический сетевой адаптер вместо маршрутизации через ядро; по одному CIDR в строке. Снимите флажок, чтобы ядро перехватывало (hijack) трафик частных диапазонов. Loopback и broadcast всегда идут в обход и не могут быть указаны здесь.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -3812,10 +3652,6 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
     <message>
         <source>Enable Tun Routing</source>
         <translation>Вкл. TUN-маршрутизацию</translation>
-    </message>
-    <message>
-        <source>Auto Redirect</source>
-        <translation>Автоматическое перенаправление</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Forwards bypassed traffic straight out of the network interface instead of rebuilding it as a new connection, which is faster and keeps NAT intact for games and P2P. Applies to UDP and ICMP only; TCP still needs to be sniffed and keeps taking the normal direct path.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -4166,10 +4002,6 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
     <message>
         <source>Connects to %1 (%2).</source>
         <translation>Подключение к %1 (%2).</translation>
-    </message>
-    <message>
-        <source>%1, so the profile&apos;s own address is used.</source>
-        <translation>%1, поэтому используется собственный адрес профиля.</translation>
     </message>
     <message>
         <source>Already set</source>
@@ -4545,24 +4377,12 @@ https://matsuridayo.github.io/n-configuration/#vpn-tun</translation>
         <translation>Пользовательская конфигурация %1 не может быть звеном; звеньями могут быть только пользовательские outbound.</translation>
     </message>
     <message>
-        <source>Only one Extra Core profile can be in a chain.</source>
-        <translation>В цепочке может быть только один профиль с доп. ядром.</translation>
-    </message>
-    <message>
         <source>Only one custom Xray config can be in a chain.</source>
         <translation>В цепочке может быть только одна пользовательская конфигурация Xray.</translation>
     </message>
     <message>
-        <source>An Extra Core profile and a custom Xray config cannot be in the same chain.</source>
-        <translation>Профиль с доп. ядром и пользовательская конфигурация Xray не могут находиться в одной цепочке.</translation>
-    </message>
-    <message>
         <source>A custom Xray config cannot share a chain with other Xray profiles.</source>
         <translation>Пользовательская конфигурация Xray не может находиться в одной цепочке с другими профилями Xray.</translation>
-    </message>
-    <message>
-        <source>An Extra Core profile can only be the final hop; move it to the top of the list.</source>
-        <translation>Профиль с доп. ядром может быть только последним звеном; переместите его в начало списка.</translation>
     </message>
     <message>
         <source>A custom Xray config can only be the final hop; move it to the top of the list.</source>
@@ -7323,14 +7143,6 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <translation>Менеджер OTP</translation>
     </message>
     <message>
-        <source>IP Scanner</source>
-        <translation>IP-сканер</translation>
-    </message>
-    <message>
-        <source>Open Web dashboard</source>
-        <translation>Открыть веб-панель</translation>
-    </message>
-    <message>
         <source>Remove Insecure Configs</source>
         <translation>Удалить небезопасные конфигурации</translation>
     </message>
@@ -7877,16 +7689,8 @@ Download them now?</source>
         <translation>[Kill switch] %1 не запускается: kill switch не активен.</translation>
     </message>
     <message>
-        <source>[Kill switch] The extra core %1 could not be allowed through the kill switch.</source>
-        <translation>[Kill switch] Не удалось пропустить дополнительное ядро %1 через kill switch.</translation>
-    </message>
-    <message>
         <source>Kill switch</source>
         <translation>Kill switch</translation>
-    </message>
-    <message>
-        <source>The kill switch could not be updated to allow this profile&apos;s extra core, so the profile was not started. See the log for details.</source>
-        <translation>Не удалось обновить kill switch, чтобы пропустить дополнительное ядро этого профиля, поэтому профиль не запущен. Подробности в логе.</translation>
     </message>
     <message>
         <source>[Auto selector] Running the best %1 of %2 ranked profiles.</source>
@@ -8185,22 +7989,6 @@ Error: %1</source>
         <translation>Перезапуск от имени администратора отменен, Poros продолжает работу</translation>
     </message>
     <message>
-        <source>This installation cannot grant the core privileges by itself.</source>
-        <translation>Эта установка не может самостоятельно выдать ядру необходимые права.</translation>
-    </message>
-    <message>
-        <source>Please give the core root privileges</source>
-        <translation>Пожалуйста, предоставьте ядру права root.</translation>
-    </message>
-    <message>
-        <source>Requesting permission</source>
-        <translation>Запрос разрешения</translation>
-    </message>
-    <message>
-        <source>Please Enter your password in the opened terminal, then try again</source>
-        <translation>Введите пароль в открывшемся терминале и повторите попытку.</translation>
-    </message>
-    <message>
         <source>System proxy: %1</source>
         <translation>Системный прокси: %1</translation>
     </message>
@@ -8215,10 +8003,6 @@ Error: %1</source>
     <message>
         <source>Retry</source>
         <translation>Повторить</translation>
-    </message>
-    <message>
-        <source>Grant Privileges</source>
-        <translation>Предоставить права</translation>
     </message>
     <message>
         <source>Disable Kill Switch</source>
@@ -9188,10 +8972,6 @@ Name: %1</source>
         <translation>Запрос через прокси, но профиль не запущен.</translation>
     </message>
     <message>
-        <source>Request with proxy but the mixed inbound is disabled and Tun Mode is off.</source>
-        <translation>Запрос должен идти через прокси, но mixed inbound отключён и режим TUN выключен.</translation>
-    </message>
-    <message>
         <source>Response larger than %1 MB</source>
         <translation>Размер ответа превышает %1 МБ</translation>
     </message>
@@ -9254,10 +9034,6 @@ How to update?</source>
     <message>
         <source>Subscription request fininshed: %1</source>
         <translation>Запрос подписки завершён: %1</translation>
-    </message>
-    <message>
-        <source>Clearing servers...</source>
-        <translation>Очистка серверов...</translation>
     </message>
     <message>
         <source>Processing subscription data...</source>
@@ -9422,10 +9198,6 @@ To fix this, share the hotspot from the poros-net adapter instead of &quot;%1&qu
         <translation>По умолчанию</translation>
     </message>
     <message>
-        <source>%1 dials its own address: %2</source>
-        <translation>%1 подключается к собственному адресу: %2</translation>
-    </message>
-    <message>
         <source>The routing profile lists an endpoint profile (id %1) that no longer exists</source>
         <translation>В профиле маршрутизации указан профиль конечной точки (id %1), который больше не существует</translation>
     </message>
@@ -9442,8 +9214,8 @@ To fix this, share the hotspot from the poros-net adapter instead of &quot;%1&qu
         <translation>%1 указан как конечная точка профиля маршрутизации, поэтому его последним звеном должен быть профиль OpenVPN или OpenConnect</translation>
     </message>
     <message>
-        <source>Hops of the routing profile endpoint %1 cannot use an extra core, a full config, or be a chain</source>
-        <translation>Звенья конечной точки профиля маршрутизации %1 не могут использовать доп. ядро или полную конфигурацию и не могут быть цепочкой</translation>
+        <source>Hops of the routing profile endpoint %1 cannot be a full config or a chain</source>
+        <translation>Звенья конечной точки профиля маршрутизации %1 не могут быть полной конфигурацией или цепочкой</translation>
     </message>
     <message>
         <source>Hops of the routing profile endpoint %1 cannot run on the Xray core</source>
@@ -9486,26 +9258,6 @@ To fix this, share the hotspot from the poros-net adapter instead of &quot;%1&qu
         <translation>Профиль больше не существует</translation>
     </message>
     <message>
-        <source>%1 profiles have no single server to scan</source>
-        <translation>У профилей типа %1 нет единого сервера для сканирования</translation>
-    </message>
-    <message>
-        <source>Hysteria2 realm profiles have no fixed server to scan</source>
-        <translation>У профилей Hysteria2 с realm нет фиксированного сервера для сканирования</translation>
-    </message>
-    <message>
-        <source>The chain has no hops</source>
-        <translation>В цепочке нет звеньев</translation>
-    </message>
-    <message>
-        <source>A hop of the chain no longer exists</source>
-        <translation>Одно из звеньев цепочки больше не существует</translation>
-    </message>
-    <message>
-        <source>Chains with an extra-core or Xray full config hop cannot be tested</source>
-        <translation>Цепочки со звеном на доп. ядре или с полной конфигурацией Xray нельзя протестировать</translation>
-    </message>
-    <message>
         <source>Skipped testing %1: %2</source>
         <translation>Тестирование %1 пропущено: %2</translation>
     </message>
@@ -9514,32 +9266,12 @@ To fix this, share the hotspot from the poros-net adapter instead of &quot;%1&qu
         <translation>фиксированный адрес группы</translation>
     </message>
     <message>
-        <source>The IP list no longer exists</source>
-        <translation>Список IP больше не существует</translation>
-    </message>
-    <message>
         <source>%1 profiles have no single server address to replace</source>
         <translation>У профилей типа %1 нет единого адреса сервера, который можно заменить</translation>
     </message>
     <message>
         <source>Hysteria2 realm profiles have no fixed server address to replace</source>
         <translation>У профилей Hysteria2 с realm нет фиксированного адреса сервера, который можно заменить</translation>
-    </message>
-    <message>
-        <source>The profile could not be copied for the scan</source>
-        <translation>Не удалось скопировать профиль для сканирования</translation>
-    </message>
-    <message>
-        <source>The profile could not be checked: core unreachable</source>
-        <translation>Не удалось проверить профиль: ядро недоступно</translation>
-    </message>
-    <message>
-        <source>The profile is not valid; the log has the details</source>
-        <translation>Профиль недействителен; подробности в логе</translation>
-    </message>
-    <message>
-        <source>The profile cannot be pointed at the scanned addresses</source>
-        <translation>Профиль нельзя перенаправить на просканированные адреса</translation>
     </message>
     <message>
         <source>Auto-update: running %1</source>
@@ -9708,20 +9440,12 @@ Move the Poros folder somewhere you can write to.</source>
         <translation>требуется слишком много переключений ядра</translation>
     </message>
     <message>
-        <source>extra-core profile</source>
-        <translation>профиль доп. ядра</translation>
-    </message>
-    <message>
         <source>full config profile</source>
         <translation>профиль полной конфигурации</translation>
     </message>
     <message>
         <source>config does not parse</source>
         <translation>не удаётся разобрать конфиг</translation>
-    </message>
-    <message>
-        <source>Tailscale profile</source>
-        <translation>профиль Tailscale</translation>
     </message>
     <message>
         <source>OpenVPN or OpenConnect profile</source>
@@ -10364,28 +10088,8 @@ Move the Poros folder somewhere you can write to.</source>
         <translation>Документ должен представлять собой объект JSON.</translation>
     </message>
     <message>
-        <source>%1 scan in progress %2/%3 (%4%)</source>
-        <translation>Сканирование %1: %2/%3 (%4%)</translation>
-    </message>
-    <message>
         <source>Settings</source>
         <translation>Настройки</translation>
-    </message>
-    <message numerus="yes">
-        <source> · +%n more</source>
-        <translation>
-            <numerusform> · еще %n сканирование</numerusform>
-            <numerusform> · еще %n сканирования</numerusform>
-            <numerusform> · еще %n сканирований</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source> · %1 found</source>
-        <translation> · найдено: %1</translation>
-    </message>
-    <message>
-        <source>+%1 more</source>
-        <translation>и еще %1</translation>
     </message>
     <message>
         <source>Settings changed, restart to apply</source>
@@ -11576,10 +11280,6 @@ Remove that endpoint from this routing profile as well?</source>
         <translation>Для kill switch нужно запустить Poros от имени администратора.</translation>
     </message>
     <message>
-        <source>The kill switch needs the core to have root privileges.</source>
-        <translation>Для kill switch ядру нужны права root.</translation>
-    </message>
-    <message>
         <source>The kill switch is not supported on this system.</source>
         <translation>Kill switch не поддерживается в этой системе.</translation>
     </message>
@@ -11602,10 +11302,6 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>[Kill switch] Off.</source>
         <translation>[Kill switch] Выключен.</translation>
-    </message>
-    <message>
-        <source>[Kill switch] Allowing the extra core %1.</source>
-        <translation>[Kill switch] Разрешено дополнительное ядро %1.</translation>
     </message>
     <message>
         <source>[Kill switch] Warning: %1</source>
@@ -11808,10 +11504,6 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>The server port is missing.</source>
         <translation>Не указан порт сервера.</translation>
-    </message>
-    <message>
-        <source>Refused to import an Extra Core profile: it would run a program on this computer.</source>
-        <translation>Импорт профиля с доп. ядром отклонен: он запустил бы программу на этом компьютере.</translation>
     </message>
     <message>
         <source>Refused to import a Chain Proxy profile: its hops are profiles of another installation.</source>
@@ -12172,14 +11864,6 @@ Remove that endpoint from this routing profile as well?</source>
     <message>
         <source>Removed the %1 wrapper path from the imported configuration; add it back only if you trust that program.</source>
         <translation>Путь к обертке %1 удален из импортированной конфигурации; верните его, только если доверяете этой программе.</translation>
-    </message>
-    <message>
-        <source>Removed the Tailscale SSH server from the imported configuration: it would let devices on that tailnet open a shell on this computer.</source>
-        <translation>SSH-сервер Tailscale удален из импортированной конфигурации: он позволил бы устройствам из этой tailnet открывать командную оболочку на этом компьютере.</translation>
-    </message>
-    <message>
-        <source>Removed the Taildrop folder from the imported configuration: devices on that tailnet could place files there. Received files now go to the default folder.</source>
-        <translation>Папка Taildrop удалена из импортированной конфигурации: устройства из этой tailnet могли бы помещать туда файлы. Теперь полученные файлы сохраняются в папку по умолчанию.</translation>
     </message>
     <message>
         <source>Removed from the imported configuration: it would open a port on this computer that other devices could reach.</source>
@@ -13302,16 +12986,16 @@ Remove that endpoint from this routing profile as well?</source>
         <translation>Профиль outbound больше не существует; выберите другой.</translation>
     </message>
     <message>
-        <source>Routing rules cannot use &quot;%1&quot;: extra core profiles and full configs are not supported. Pick another outbound.</source>
-        <translation>В правилах маршрутизации нельзя использовать &quot;%1&quot;: профили с дополнительным ядром и полные конфигурации не поддерживаются. Выберите другой outbound.</translation>
-    </message>
-    <message>
         <source>The chain &quot;%1&quot; has no hops; pick another outbound.</source>
         <translation>В цепочке &quot;%1&quot; нет звеньев; выберите другой outbound.</translation>
     </message>
     <message>
-        <source>Routing rules cannot use the chain &quot;%1&quot;: a hop of it is missing, another chain, an extra core profile or a full config. Pick another outbound.</source>
-        <translation>В правилах маршрутизации нельзя использовать цепочку &quot;%1&quot;: одно из ее звеньев отсутствует, является другой цепочкой, профилем с дополнительным ядром или полной конфигурацией. Выберите другой outbound.</translation>
+        <source>Routing rules cannot use &quot;%1&quot;: full configs are not supported. Pick another outbound.</source>
+        <translation>В правилах маршрутизации нельзя использовать &quot;%1&quot;: полные конфигурации не поддерживаются. Выберите другой outbound.</translation>
+    </message>
+    <message>
+        <source>Routing rules cannot use the chain &quot;%1&quot;: a hop of it is missing, another chain or a full config. Pick another outbound.</source>
+        <translation>В правилах маршрутизации нельзя использовать цепочку &quot;%1&quot;: одно из её звеньев отсутствует, является другой цепочкой или полной конфигурацией. Выберите другой outbound.</translation>
     </message>
     <message>
         <source>A range goes in port_range, written like 1000:2000.</source>

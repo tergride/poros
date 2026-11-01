@@ -1,9 +1,6 @@
 #include "include/ui/setting/dialog_basic_settings.h"
 
-#include "include/ui/widget/json/JsonEditorDialog.h"
-#include "include/ui/widget/json/SchemaStore.h"
 #include "include/ui/setting/ThemeManager.hpp"
-#include "include/ui/setting/Icon.hpp"
 #include "include/ui/utils/GuiUtils.hpp"
 #include "include/global/Configs.hpp"
 #include "include/global/DeviceDetailsHelper.hpp"
@@ -18,15 +15,11 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
-#include <QPixmap>
 #include <QTimer>
-#include <QTextBlock>
-#include <QTextCursor>
 #include <qfontdatabase.h>
 #include <QJsonObject>
 #include <QDir>
 #include <QStandardPaths>
-#include <QUuid>
 #include <QCheckBox>
 #include <QScreen>
 #include <QVBoxLayout>
@@ -85,41 +78,6 @@ namespace {
         return {};
     }
 
-    // Same per-line wording as Validation::Form::bindLines, which takes only a QPlainTextEdit.
-    QString basicSettingsRegexLinesError(const QString &text) {
-        const auto lines = text.split(QLatin1Char('\n'));
-        QString first;
-        int bad = 0;
-        for (qsizetype i = 0; i < lines.size(); ++i) {
-            const auto line = lines[i].trimmed();
-            const auto problem = Validation::Regex(line);
-            if (problem.isEmpty()) continue;
-            if (bad++ == 0) {
-                first = QCoreApplication::translate("Validation", "Line %1 (\"%2\"): %3")
-                            .arg(QString::number(i + 1), line.size() > 40 ? line.left(39) + QChar(0x2026) : line, problem);
-            }
-        }
-        if (bad > 1) first += QLatin1Char(' ') + QCoreApplication::translate("Validation", "%n more line(s) have problems.", nullptr, bad - 1);
-        return first;
-    }
-
-    // Underlines the lines that do not compile; extra selections stay off the undo stack.
-    void basicSettingsMarkRegexLines(QTextEdit *edit) {
-        QList<QTextEdit::ExtraSelection> selections;
-        QTextCharFormat format;
-        format.setUnderlineStyle(QTextCharFormat::WaveUnderline);
-        format.setUnderlineColor(themeManager()->tokens.danger.isValid() ? themeManager()->tokens.danger : QColor(Qt::red));
-        for (QTextBlock block = edit->document()->begin(); block.isValid(); block = block.next()) {
-            if (Validation::Regex(block.text()).isEmpty()) continue;
-            QTextEdit::ExtraSelection selection;
-            selection.cursor = QTextCursor(block);
-            selection.cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-            selection.format = format;
-            selections.append(selection);
-        }
-        edit->setExtraSelections(selections);
-    }
-
     // BackupArchive answers in English with these texts; the dialog shows their translations.
     const char *const kBasicSettingsBackupErrors[] = {
         QT_TRANSLATE_NOOP("DialogBasicSettings", "Failed to create database snapshot: %1"),
@@ -133,7 +91,6 @@ namespace {
         QT_TRANSLATE_NOOP("DialogBasicSettings", "Failed to create temporary file for restore."),
         QT_TRANSLATE_NOOP("DialogBasicSettings", "The backup's database is damaged: %1"),
         QT_TRANSLATE_NOOP("DialogBasicSettings", "Failed to restore database: %1"),
-        QT_TRANSLATE_NOOP("DialogBasicSettings", "There is nothing to back up"),
         QT_TRANSLATE_NOOP("DialogBasicSettings", "A subscription update is running; try again when it finishes."),
     };
 
@@ -159,8 +116,6 @@ namespace {
         parts.routes = ui->backup_inc_routes->isChecked();
         parts.settings = ui->backup_inc_settings->isChecked();
         parts.otp = ui->backup_inc_otp->isChecked();
-        parts.ipLists = ui->backup_inc_ip_lists->isChecked();
-        parts.icons = ui->backup_inc_icons->isChecked();
         return parts;
     }
 
@@ -181,10 +136,8 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
     ui->log_level->addItems(QString("trace debug info warn error fatal panic").split(" "));
     ui->xray_loglevel->addItems(Configs::Xray::XrayLogLevels);
     ui->disable_stats->setChecked(Configs::dataManager->settingsRepo->disable_traffic_stats);
-    ui->proxy_scheme->setCurrentText(Configs::dataManager->settingsRepo->proxy_scheme);
 
     D_LOAD_STRING(inbound_address)
-    CACHE.custom_inbound = Configs::dataManager->settingsRepo->custom_inbound;
     D_LOAD_INT(inbound_socks_port)
     ui->random_listen_port->setChecked(Configs::dataManager->settingsRepo->random_inbound_port);
     D_LOAD_INT(test_concurrent)
@@ -209,36 +162,23 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
     ui->simple_down_url->setText(Configs::dataManager->settingsRepo->simple_dl_url);
     D_LOAD_BOOL(auto_update_app)
     ui->auto_update_app->setEnabled(Engine::ReleaseUpdates::Available());
-    ui->disable_mixed_inbound->setChecked(Configs::dataManager->settingsRepo->disable_mixed_inbound);
     D_LOAD_BOOL(inbound_auth)
     D_LOAD_STRING(inbound_user)
     D_LOAD_STRING(inbound_pass)
 
     ui->url_scheme_auto_register->setChecked(Configs::dataManager->settingsRepo->url_scheme_auto_register);
-    ui->file_assoc_auto_register->setChecked(Configs::dataManager->settingsRepo->file_assoc_auto_register);
-    const auto connectAssociation = [this](Association a, QCheckBox *autoRegister, QPushButton *install, QPushButton *uninstall, const QString &failure) {
-        connect(install, &QPushButton::clicked, this, [=,this] {
-            const bool ok = UrlScheme_Install(a);
-            refreshUrlSchemeStatus();
-            if (!ok) QMessageBox::warning(this, ui->url_scheme_box->title(), failure);
-        });
-        connect(uninstall, &QPushButton::clicked, this, [=,this] {
-            UrlScheme_Uninstall(a);
-            autoRegister->setChecked(false);
-            refreshUrlSchemeStatus();
-        });
-    };
-    connectAssociation(Association::Links, ui->url_scheme_auto_register, ui->url_scheme_install, ui->url_scheme_uninstall,
-                       tr("Could not register the handler for poros:// links."));
-    connectAssociation(Association::ConfigFiles, ui->file_assoc_auto_register, ui->file_assoc_install, ui->file_assoc_uninstall,
-                       tr("Could not register the config file associations."));
-    for (auto *widget : UnavailableWidgets(ui)) widget->hide();
-    ui->url_scheme_box->setEnabled(UrlScheme_IsSupported(Association::Links));
+    connect(ui->url_scheme_install, &QPushButton::clicked, this, [this] {
+        const bool ok = UrlScheme_Install();
+        refreshUrlSchemeStatus();
+        if (!ok) QMessageBox::warning(this, ui->url_scheme_box->title(), tr("Could not register the handler for poros:// links."));
+    });
+    connect(ui->url_scheme_uninstall, &QPushButton::clicked, this, [this] {
+        UrlScheme_Uninstall();
+        ui->url_scheme_auto_register->setChecked(false);
+        refreshUrlSchemeStatus();
+    });
     refreshUrlSchemeStatus();
 
-    connect(ui->custom_inbound_edit, &QPushButton::clicked, this, [=,this] {
-        C_EDIT_JSON_ALLOW_EMPTY(custom_inbound, JsonEdit::SingBox::Config)
-    });
     connect(ui->disable_tray, &QCheckBox::stateChanged, this, [=,this](const bool &) {
         CACHE.updateDisableTray = true;
     });
@@ -256,13 +196,6 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
     ui->max_log_line->setText(QString::number(Configs::dataManager->settingsRepo->max_log_line));
     ui->log_level->setCurrentText(Configs::dataManager->settingsRepo->log_level);
     ui->xray_loglevel->setCurrentText(Configs::dataManager->settingsRepo->xray_log_level);
-    ui->enable_log_include->setChecked(Configs::dataManager->settingsRepo->log_enable_include);
-    ui->enable_log_exclude->setChecked(Configs::dataManager->settingsRepo->log_enable_exclude);
-    ui->log_include_keyword->setText(Configs::dataManager->settingsRepo->log_include_keyword.join("\n"));
-    ui->log_exclude_keyword->setText(Configs::dataManager->settingsRepo->log_exclude_keyword.join("\n"));
-    ui->log_include_regex->setText(Configs::dataManager->settingsRepo->log_include_regex.join("\n"));
-    ui->log_exclude_regex->setText(Configs::dataManager->settingsRepo->log_exclude_regex.join("\n"));
-    applyRegexHighlighting();
 
     ui->connection_statistics->setChecked(Configs::dataManager->settingsRepo->enable_stats);
     ui->disable_traffic_aggregation->setChecked(Configs::dataManager->settingsRepo->disable_traffic_aggregation);
@@ -297,44 +230,6 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
         Configs::dataManager->settingsRepo->Save();
         adjustSize();
     });
-    ui->log_font_family->setCurrentFont(QFont(ResolveLogFontFamily(Configs::dataManager->settingsRepo->log_font_family)));
-    CACHE.shownLogFontFamily = ui->log_font_family->currentFont().family();
-    for (int i=7;i<=26;i++) {
-        ui->log_font_size->addItem(Int2String(i));
-    }
-    const int logFontSize = Configs::dataManager->settingsRepo->log_font_size;
-    ui->log_font_size->setCurrentText(Int2String(logFontSize > 0 ? logFontSize : qApp->font().pointSize()));
-    CACHE.shownLogFontSize = ui->log_font_size->currentText().toInt();
-    ui->enable_custom_icon->setChecked(Configs::dataManager->settingsRepo->use_custom_icons);
-    ui->follow_status_in_taskbar->setChecked(Configs::dataManager->settingsRepo->follow_status_in_taskbar);
-    ui->follow_status_in_taskbar->setEnabled(ui->enable_custom_icon->isChecked());
-    connect(ui->enable_custom_icon, &QCheckBox::toggled, this, [this](bool enabled) {
-        ui->follow_status_in_taskbar->setEnabled(enabled);
-    });
-    connect(ui->select_custom_icon, &QPushButton::clicked, this, [=, this] {
-        auto n = QMessageBox::information(this, "Custom Icon Manual", tr(Configs::Information::CustomIconManual.toStdString().c_str()), QMessageBox::Open | QMessageBox::Cancel);
-        if (n == QMessageBox::Open) {
-            auto fileNames = NativeFileDialog::getOpenFileNames(this,
-                tr("Select png icons"), QDir::homePath(), tr("Image Files (*.png)"));
-            QString errors;
-            for (const auto& fileName : fileNames) {
-                CACHE.updateTrayIcon = true;
-                QFileInfo fileInfo(fileName);
-                if (auto pixMap = QPixmap(fileName); pixMap.isNull()) errors += "Failed to load " + fileName + "\n";
-                else if (pixMap.width() != pixMap.height()) errors += "Image does not have equal width and height: " + fileName + "\n";
-                else if (!Configs::Information::iconNames.contains(fileInfo.fileName())) errors += "Icon name is not valid: " + fileInfo.fileName() + "\n";
-                else {
-                    QFile::remove(QDir("icons").filePath(fileInfo.fileName()));
-                    if (!QFile::copy(fileName, QDir("icons").filePath(fileInfo.fileName()))) errors += "Failed to copy " + fileName + "\n";
-                }
-            }
-            if (!errors.isEmpty()) {
-                QMessageBox::warning(this, "Select custom image error", errors);
-            }
-        }
-    });
-    ui->theme->hide();
-    ui->label_8->hide();
 
     ui->user_agent->setText(Configs::dataManager->settingsRepo->user_agent);
     ui->user_agent->setPlaceholderText(Configs::dataManager->settingsRepo->GetUserAgent(true));
@@ -345,7 +240,6 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
     }
     D_LOAD_BOOL(net_use_proxy)
     D_LOAD_BOOL(allow_stopping_active_profile)
-    D_LOAD_BOOL(sub_clear)
     D_LOAD_BOOL(sub_show_change_popup)
     D_LOAD_BOOL(net_insecure)
     D_LOAD_BOOL(sub_send_hwid)
@@ -363,23 +257,6 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
 
     ui->dns_in_port->setValidator(new QIntValidator(1, 65535, ui->dns_in_port));
     ui->dns_in_port->setText(Int2String(Configs::dataManager->settingsRepo->core_dns_in_port));
-
-    ui->core_box_clash_listen_addr->setText(Configs::dataManager->settingsRepo->core_box_clash_listen_addr);
-    ui->core_box_clash_listen_addr->setPlaceholderText(tr("127.0.0.1 (default)"));
-    ui->core_box_clash_api->setValidator(new QIntValidator(1, 65535, ui->core_box_clash_api));
-    ui->core_box_clash_api->setText(Configs::dataManager->settingsRepo->core_box_clash_api > 0
-                                        ? Int2String(Configs::dataManager->settingsRepo->core_box_clash_api)
-                                        : "");
-    ui->core_box_clash_api_secret->setText(Configs::dataManager->settingsRepo->core_box_clash_api_secret);
-
-    ui->core_box_api_port->setValidator(new QIntValidator(1, 65535, ui->core_box_api_port));
-    ui->core_box_api_port->setText(Configs::dataManager->settingsRepo->core_box_api_port > 0
-                                       ? Int2String(Configs::dataManager->settingsRepo->core_box_api_port)
-                                       : "");
-    ui->core_box_api_secret->setText(Configs::dataManager->settingsRepo->core_box_api_secret);
-    connect(ui->core_box_api_regen, &QPushButton::clicked, this, [this] {
-        ui->core_box_api_secret->setText(QUuid::createUuid().toString(QUuid::WithoutBraces).remove('-'));
-    });
 
     ui->vless_xray_pref->addItems(Configs::Xray::XrayVlessPreferenceString);
     ui->vless_xray_pref->setCurrentIndex(Configs::dataManager->settingsRepo->xray_vless_preference);
@@ -420,21 +297,11 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
 
     ui->disable_priv_req->setChecked(Configs::dataManager->settingsRepo->disable_privilege_req);
     ui->windows_no_admin->setChecked(Configs::dataManager->settingsRepo->disable_run_admin);
-    ui->mozilla_cert->setChecked(Configs::dataManager->settingsRepo->use_mozilla_certs);
     D_LOAD_BOOL(xray_use_system_ca)
     D_LOAD_BOOL(kill_switch)
 
     D_LOAD_BOOL(skip_cert)
 
-    for (QWidget *removed : std::initializer_list<QWidget *>{
-             ui->custom_inbound_edit, ui->disable_mixed_inbound, ui->proxy_scheme, ui->proxy_scheme_l, ui->file_assoc_auto_register, ui->file_assoc_status,
-             ui->file_assoc_install, ui->file_assoc_uninstall, ui->groupBox_4, ui->label_log_font, ui->log_font_family, ui->label_log_font_size, ui->log_font_size,
-             ui->enable_custom_icon, ui->select_custom_icon, ui->follow_status_in_taskbar, ui->sub_clear, ui->clash_api_box, ui->api_service_box, ui->mozilla_cert,
-             ui->backup_inc_icons, ui->backup_inc_ip_lists}) {
-        removed->hide();
-    }
-    ui->backup_inc_icons->setChecked(false);
-    ui->backup_inc_ip_lists->setChecked(false);
     bindValidation();
 
     // The .ui geometry underruns real font metrics/translations and Qt then overlaps the rows (#1671).
@@ -473,11 +340,8 @@ void DialogBasicSettings::bindValidation() {
         std::function<bool()> used;
     };
     const QList<PortUse> ports = {
-        {ui->inbound_socks_port, tr("Mixed inbound"),
-         [this] { return !ui->disable_mixed_inbound->isChecked() && !ui->random_listen_port->isChecked(); }},
+        {ui->inbound_socks_port, tr("Mixed inbound"), [this] { return !ui->random_listen_port->isChecked(); }},
         {ui->dns_in_port, tr("DNS server"), [] { return true; }},
-        {ui->core_box_clash_api, tr("Clash API"), [this] { return !ui->core_box_clash_api->text().trimmed().isEmpty(); }},
-        {ui->core_box_api_port, tr("sing-box API"), [this] { return !ui->core_box_api_port->text().trimmed().isEmpty(); }},
     };
     for (qsizetype i = 0; i < ports.size(); ++i) {
         for (qsizetype j = i + 1; j < ports.size(); ++j) {
@@ -489,15 +353,9 @@ void DialogBasicSettings::bindValidation() {
             }, nullptr, Severity::Error, ports[i].name);
         }
     }
-    refreshOn(ui->disable_mixed_inbound);
     refreshOn(ui->random_listen_port);
 
     form->bind(ui->max_log_line, Rules::Int(1, std::numeric_limits<int>::max(), Empty::Required)).label(ui->label_17->text());
-    for (QTextEdit *edit : {static_cast<QTextEdit *>(ui->log_include_regex), static_cast<QTextEdit *>(ui->log_exclude_regex)})
-        form->addRule({edit}, [edit] {
-            basicSettingsMarkRegexLines(edit);
-            return basicSettingsRegexLinesError(edit->toPlainText());
-        });
 
     form->bind(ui->user_agent, [](const QString &text) { return basicSettingsHeaderValueError(text); });
     form->bind(ui->sub_custom_hwid_params, [](const QString &text) { return basicSettingsHwidParamsError(text); });
@@ -509,11 +367,6 @@ void DialogBasicSettings::bindValidation() {
     refreshOn(ui->route_auto_update_enable);
 
     form->bind(ui->dns_in_port, Rules::Port());
-    const auto clashLabel = [this](const QLabel *label) { return QStringLiteral("%1 %2").arg(ui->clash_api_box->title(), label->text()); };
-    form->bind(ui->core_box_clash_listen_addr, Rules::Host(Empty::Allowed)).label(clashLabel(ui->core_box_clash_listen_addr_l));
-    form->bind(ui->core_box_clash_api, Rules::Port(Empty::Allowed)).label(clashLabel(ui->core_box_clash_api_l));
-    form->bind(ui->core_box_api_port, Rules::Port(Empty::Allowed))
-        .label(QStringLiteral("%1 %2").arg(ui->api_service_box->title(), ui->core_box_api_port_l->text()));
 
     form->bind(ui->ntp_server, Rules::Host(Empty::Allowed)).label(tr("NTP server"));
     // The core turns port 0 into 123.
@@ -525,33 +378,11 @@ void DialogBasicSettings::bindValidation() {
     form->markAll();
 }
 
-QList<QWidget *> DialogBasicSettings::UnavailableWidgets(const Ui::DialogBasicSettings *ui) {
-    QList<QWidget *> widgets;
-    if (!UrlScheme_IsSupported(Association::ConfigFiles)) {
-        widgets << ui->file_assoc_auto_register << ui->file_assoc_status << ui->file_assoc_install << ui->file_assoc_uninstall;
-    }
-    return widgets;
-}
-
 void DialogBasicSettings::refreshUrlSchemeStatus() {
     const auto &tk = themeManager()->tokens;
-    const auto show = [&](QLabel *status, Association a) {
-        if (!UrlScheme_IsSupported(a)) {
-            status->setText(tr("Not available for this installation"));
-            status->setStyleSheet(QStringLiteral("color: %1;").arg(tk.muted.name()));
-            return;
-        }
-        const bool installed = UrlScheme_IsCurrent(a);
-        status->setText(installed ? tr("Installed") : tr("Not installed"));
-        status->setStyleSheet(QStringLiteral("color: %1;").arg((installed ? tk.success : tk.muted).name()));
-    };
-    show(ui->url_scheme_status, Association::Links);
-    show(ui->file_assoc_status, Association::ConfigFiles);
-}
-
-void DialogBasicSettings::applyRegexHighlighting() {
-    basicSettingsMarkRegexLines(ui->log_include_regex);
-    basicSettingsMarkRegexLines(ui->log_exclude_regex);
+    const bool installed = UrlScheme_IsCurrent();
+    ui->url_scheme_status->setText(installed ? tr("Installed") : tr("Not installed"));
+    ui->url_scheme_status->setStyleSheet(QStringLiteral("color: %1;").arg((installed ? tk.success : tk.muted).name()));
 }
 
 void DialogBasicSettings::accept() {
@@ -559,7 +390,6 @@ void DialogBasicSettings::accept() {
     bool needChoosePort = false;
 
     Configs::dataManager->settingsRepo->inbound_address = ui->inbound_address->text().trimmed();
-    Configs::dataManager->settingsRepo->custom_inbound = CACHE.custom_inbound;
     D_SAVE_INT(inbound_socks_port)
     if (!Configs::dataManager->settingsRepo->random_inbound_port && ui->random_listen_port->isChecked())
     {
@@ -572,23 +402,18 @@ void DialogBasicSettings::accept() {
     D_SAVE_BOOL(exit_country_lookup)
     Configs::dataManager->settingsRepo->exit_lookup_provider = ui->exit_lookup_provider->currentData().toString();
     D_SAVE_BOOL(disable_tray)
-    Configs::dataManager->settingsRepo->proxy_scheme = ui->proxy_scheme->currentText().toLower();
     Configs::dataManager->settingsRepo->speed_test_mode = ui->speedtest_mode->currentIndex();
     Configs::dataManager->settingsRepo->simple_dl_url = ui->simple_down_url->text().trimmed();
     Configs::dataManager->settingsRepo->url_test_timeout_ms = ui->url_timeout->text().trimmed().toInt();
     Configs::dataManager->settingsRepo->speed_test_timeout_ms = ui->test_timeout->text().trimmed().toInt();
     D_SAVE_BOOL(auto_update_app)
-    Configs::dataManager->settingsRepo->disable_mixed_inbound = ui->disable_mixed_inbound->isChecked();
     Configs::dataManager->settingsRepo->reset_proxy_on_disable_sp = ui->reset_proxy_on_disable_sp->isChecked();
     D_SAVE_BOOL(inbound_auth)
     D_SAVE_STRING(inbound_user)
     D_SAVE_STRING(inbound_pass)
 
-    const bool registrationTurnedOn =
-        (!Configs::dataManager->settingsRepo->url_scheme_auto_register && ui->url_scheme_auto_register->isChecked()) ||
-        (!Configs::dataManager->settingsRepo->file_assoc_auto_register && ui->file_assoc_auto_register->isChecked());
+    const bool registrationTurnedOn = !Configs::dataManager->settingsRepo->url_scheme_auto_register && ui->url_scheme_auto_register->isChecked();
     Configs::dataManager->settingsRepo->url_scheme_auto_register = ui->url_scheme_auto_register->isChecked();
-    Configs::dataManager->settingsRepo->file_assoc_auto_register = ui->file_assoc_auto_register->isChecked();
     if (registrationTurnedOn) UrlScheme_RegisterIfNeeded();
 
     auto oldMaxLogLines = Configs::dataManager->settingsRepo->max_log_line;
@@ -596,37 +421,15 @@ void DialogBasicSettings::accept() {
     if (oldMaxLogLines != Configs::dataManager->settingsRepo->max_log_line) CACHE.updateMaxLogLines = true;
     Configs::dataManager->settingsRepo->log_level = ui->log_level->currentText().trimmed();
     Configs::dataManager->settingsRepo->xray_log_level = ui->xray_loglevel->currentText().trimmed();
-    Configs::dataManager->settingsRepo->log_enable_include = ui->enable_log_include->isChecked();
-    Configs::dataManager->settingsRepo->log_enable_exclude = ui->enable_log_exclude->isChecked();
-    Configs::dataManager->settingsRepo->log_include_keyword = SplitAndTrim(ui->log_include_keyword->toPlainText(), "\n", false);
-    Configs::dataManager->settingsRepo->log_exclude_keyword = SplitAndTrim(ui->log_exclude_keyword->toPlainText(), "\n", false);
-
-    Configs::dataManager->settingsRepo->log_include_regex = SplitAndTrim(ui->log_include_regex->toPlainText(), "\n", false);
-    Configs::dataManager->settingsRepo->log_exclude_regex = SplitAndTrim(ui->log_exclude_regex->toPlainText(), "\n", false);
 
     Configs::dataManager->settingsRepo->enable_stats = ui->connection_statistics->isChecked();
     Configs::dataManager->settingsRepo->disable_traffic_aggregation = ui->disable_traffic_aggregation->isChecked();
     Configs::dataManager->settingsRepo->language = ui->language->currentData().toInt();
-    auto oldUseCustomIcon = Configs::dataManager->settingsRepo->use_custom_icons;
-    Configs::dataManager->settingsRepo->use_custom_icons = ui->enable_custom_icon->isChecked();
-    if (oldUseCustomIcon != Configs::dataManager->settingsRepo->use_custom_icons) CACHE.updateTrayIcon = true;
-    auto oldFollowStatusInTaskbar = Configs::dataManager->settingsRepo->follow_status_in_taskbar;
-    Configs::dataManager->settingsRepo->follow_status_in_taskbar = ui->follow_status_in_taskbar->isChecked();
-    if (oldFollowStatusInTaskbar != Configs::dataManager->settingsRepo->follow_status_in_taskbar) CACHE.updateTrayIcon = true;
     D_SAVE_BOOL(start_minimal)
     Configs::dataManager->settingsRepo->skip_delete_confirmation = ui->skip_delete_confirm->isChecked();
     bool profileListDisplayChanged =
         Configs::dataManager->settingsRepo->show_config_security != ui->show_config_security->isChecked();
     D_SAVE_BOOL(show_config_security)
-
-    QString logFontFamily = ui->log_font_family->currentFont().family();
-    if (Configs::dataManager->settingsRepo->log_font_family.isEmpty() && logFontFamily == CACHE.shownLogFontFamily) logFontFamily.clear();
-    int logFontSize = ui->log_font_size->currentText().toInt();
-    if (Configs::dataManager->settingsRepo->log_font_size <= 0 && logFontSize == CACHE.shownLogFontSize) logFontSize = 0;
-    const bool logFontChanged = logFontFamily != Configs::dataManager->settingsRepo->log_font_family ||
-                                logFontSize != Configs::dataManager->settingsRepo->log_font_size;
-    Configs::dataManager->settingsRepo->log_font_family = logFontFamily;
-    Configs::dataManager->settingsRepo->log_font_size = logFontSize;
 
     // The PeriodicRunner reads these intervals live; no timer needs restarting.
 
@@ -635,7 +438,6 @@ void DialogBasicSettings::accept() {
     Configs::dataManager->settingsRepo->sub_http_version = ui->sub_http_version->currentIndex();
     D_SAVE_BOOL(net_use_proxy)
     D_SAVE_BOOL(allow_stopping_active_profile)
-    D_SAVE_BOOL(sub_clear)
     D_SAVE_BOOL(sub_show_change_popup)
     D_SAVE_BOOL(net_insecure)
     D_SAVE_BOOL(sub_send_hwid)
@@ -646,13 +448,6 @@ void DialogBasicSettings::accept() {
 
     Configs::dataManager->settingsRepo->disable_traffic_stats = ui->disable_stats->isChecked();
     Configs::dataManager->settingsRepo->core_dns_in_port = ui->dns_in_port->text().trimmed().toInt();
-    Configs::dataManager->settingsRepo->core_box_clash_listen_addr = ui->core_box_clash_listen_addr->text().trimmed();
-    Configs::dataManager->settingsRepo->core_box_clash_api = ui->core_box_clash_api->text().trimmed().toInt();
-    Configs::dataManager->settingsRepo->core_box_clash_api_secret = ui->core_box_clash_api_secret->text().trimmed();
-    Configs::dataManager->settingsRepo->core_box_api_port = ui->core_box_api_port->text().trimmed().toInt();
-    // Blank means "no authentication" to sing-box, so never let the field clear it.
-    if (const auto secret = ui->core_box_api_secret->text().trimmed(); !secret.isEmpty())
-        Configs::dataManager->settingsRepo->core_box_api_secret = secret;
 
     Configs::dataManager->settingsRepo->xray_vless_preference = static_cast<Configs::Xray::XrayVlessPreference>(ui->vless_xray_pref->currentIndex());
     // An empty field means the provider shown as its placeholder; the download at profile start has no fallback of its own.
@@ -675,7 +470,6 @@ void DialogBasicSettings::accept() {
     Configs::dataManager->settingsRepo->disable_privilege_req = ui->disable_priv_req->isChecked();
     if (Configs::dataManager->settingsRepo->disable_run_admin != ui->windows_no_admin->isChecked()) CACHE.updateDisableAdmin = true;
     Configs::dataManager->settingsRepo->disable_run_admin = ui->windows_no_admin->isChecked();
-    Configs::dataManager->settingsRepo->use_mozilla_certs = ui->mozilla_cert->isChecked();
     D_SAVE_BOOL(xray_use_system_ca)
     const bool killSwitchChanged = Configs::dataManager->settingsRepo->kill_switch != ui->kill_switch->isChecked();
     D_SAVE_BOOL(kill_switch)
@@ -683,13 +477,11 @@ void DialogBasicSettings::accept() {
     QStringList changes;
     if (CACHE.needRestart) changes << MwArg::NeedRestart;
     if (CACHE.updateDisableTray) changes << MwArg::DisableTray;
-    if (CACHE.updateTrayIcon) changes << MwArg::TrayIcon;
     if (CACHE.updateMaxLogLines) changes << MwArg::MaxLogLines;
     if (CACHE.updateDisableAdmin) changes << MwArg::DisableAdmin;
     if (needChoosePort) changes << MwArg::ChoosePort;
     if (profileListDisplayChanged) changes << MwArg::ProfileListDisplay;
     if (killSwitchChanged) changes << MwArg::KillSwitch;
-    if (logFontChanged) changes << MwArg::LogFont;
     MW_dialog_message(MwMessage::UpdateSettings, changes);
     QDialog::accept();
 }
@@ -792,8 +584,6 @@ void DialogBasicSettings::on_backup_create_clicked() {
     if (parts.routes) included << tr("Routing profiles");
     if (parts.settings) included << tr("Settings");
     if (parts.otp) included << tr("OTP profiles");
-    if (parts.ipLists) included << tr("IP lists and scans");
-    if (parts.icons) included << tr("Custom icons");
 
     QMessageBox::information(this, tr("Backup Created"),
         tr("Backup created successfully:\n%1\n\nIncluded: %2")
@@ -841,9 +631,6 @@ void DialogBasicSettings::restoreBackupFile(const QString &filePath, const QStri
     auto* cbRoutes = new QCheckBox(tr("Routing profiles"), &dlg);
     auto* cbSettings = new QCheckBox(tr("Settings"), &dlg);
     auto* cbOtp = new QCheckBox(tr("OTP profiles"), &dlg);
-    auto* cbIpLists = new QCheckBox(tr("IP lists and scans"), &dlg);
-    auto* cbIcons = new QCheckBox(tr("Custom icons"), &dlg);
-    for (auto* cb : {cbProfiles, cbRoutes, cbSettings, cbOtp, cbIpLists, cbIcons}) cb->setChecked(true);
     cbProfiles->setEnabled(avail.profiles);
     cbProfiles->setChecked(avail.profiles);
     cbRoutes->setEnabled(avail.routes);
@@ -852,16 +639,10 @@ void DialogBasicSettings::restoreBackupFile(const QString &filePath, const QStri
     cbSettings->setChecked(avail.settings);
     cbOtp->setEnabled(avail.otp);
     cbOtp->setChecked(avail.otp);
-    cbIpLists->setEnabled(avail.ipLists);
-    cbIpLists->setChecked(avail.ipLists);
-    cbIcons->setEnabled(avail.icons);
-    cbIcons->setChecked(avail.icons);
     layout->addWidget(cbProfiles);
     layout->addWidget(cbRoutes);
     layout->addWidget(cbSettings);
     layout->addWidget(cbOtp);
-    layout->addWidget(cbIpLists);
-    layout->addWidget(cbIcons);
 
     auto* warn = new QLabel(
         tr("Each selected part replaces the current data. This cannot be undone.\n"
@@ -882,8 +663,6 @@ void DialogBasicSettings::restoreBackupFile(const QString &filePath, const QStri
     chosen.routes = avail.routes && cbRoutes->isChecked();
     chosen.settings = avail.settings && cbSettings->isChecked();
     chosen.otp = avail.otp && cbOtp->isChecked();
-    chosen.ipLists = avail.ipLists && cbIpLists->isChecked();
-    chosen.icons = avail.icons && cbIcons->isChecked();
 
     if (!chosen.any()) {
         QMessageBox::warning(this, tr("Restore Backup"),
@@ -891,9 +670,8 @@ void DialogBasicSettings::restoreBackupFile(const QString &filePath, const QStri
         return;
     }
 
-    // Apply keeps the device-local settings; the window restores every other one, only the API also keeps this host's keys.
     Engine::BackupArchive::ApplyResult result;
-    if (const auto error = Engine::BackupArchive::Apply(filePath, chosen, {}, &result); !error.isEmpty()) {
+    if (const auto error = Engine::BackupArchive::Apply(filePath, chosen, &result); !error.isEmpty()) {
         QMessageBox::critical(this, tr("Restore Failed"), basicSettingsBackupError(error));
         return;
     }

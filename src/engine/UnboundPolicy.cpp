@@ -1,11 +1,10 @@
-#include "include/engine/headless/HeadlessPolicy.h"
+#include "include/engine/UnboundPolicy.h"
 
 #include <QCoreApplication>
 #include <QPointer>
 #include <QTimer>
 
 #include "include/engine/EngineHost.h"
-#include "include/engine/app/ExitCodes.h"
 #include "include/engine/vpn/VpnAuthController.h"
 #include "include/engine/vpn/VpnEndpoints.h"
 #include "include/global/Configs.hpp"
@@ -14,21 +13,21 @@
 namespace Engine {
     namespace {
         // A sign-in prompt nothing here can answer is cancelled at its deadline, or after this when it names none.
-        constexpr int kHeadlessPolicyChallengeCapSec = 300;
+        constexpr int kUnboundPolicyChallengeCapSec = 300;
     } // namespace
 
-    void HeadlessPolicy::geoAssetMissingCategory(const QString &contextName, const QString &needed, const QString &whichFile) {
+    void UnboundPolicy::geoAssetMissingCategory(const QString &contextName, const QString &needed, const QString &whichFile) {
         MW_show_log(QStringLiteral("[Geo assets] The Xray config \"%1\" needs \"%2\", which the installed %3 does not contain; "
                                    "point the GeoIP/GeoSite asset URL at a source that provides it.")
                         .arg(contextName, needed, whichFile));
     }
 
-    bool HeadlessPolicy::confirmGeoAssetDownload(const QString &contextName) {
+    bool UnboundPolicy::confirmGeoAssetDownload(const QString &contextName) {
         MW_show_log(QStringLiteral("[Geo assets] Downloading geoip.dat / geosite.dat for the Xray config \"%1\".").arg(contextName));
         return true;
     }
 
-    void HeadlessPolicy::geoAssetDownloadFinished(const QString &error) {
+    void UnboundPolicy::geoAssetDownloadFinished(const QString &error) {
         if (error.isEmpty()) {
             MW_show_log(QStringLiteral("[Geo assets] Installed; a start that failed for them is retried once."));
         } else {
@@ -36,7 +35,7 @@ namespace Engine {
         }
     }
 
-    void HeadlessPolicy::killSwitchProblem() {
+    void UnboundPolicy::killSwitchProblem() {
         const auto *killSwitch = Sys::KillSwitch::instance();
         if (killSwitch->state() != Sys::KillSwitch::State::Failed) return;
         // failIdentity already logged "Profiles refused"; the guard still blocks, so "Not active" would be wrong.
@@ -48,35 +47,31 @@ namespace Engine {
                              hint.isEmpty() ? QString() : QStringLiteral(" Hint: %1.").arg(hint)));
     }
 
-    void HeadlessPolicy::killSwitchProblemResolved() {}
+    void UnboundPolicy::killSwitchProblemResolved() {}
 
-    void HeadlessPolicy::extraCoreNotPermitted() {
-        MW_show_log(QStringLiteral("[Kill switch] The profile was not started: its extra core could not be allowed through the kill switch."));
-    }
-
-    void HeadlessPolicy::startFailed(const StartRequest &request, StartOutcome, const QString &title, const QString &error) {
+    void UnboundPolicy::startFailed(const StartRequest &request, const QString &title, const QString &error) {
         MW_show_log(QStringLiteral("Profile %1 failed to start: %2: %3").arg(request.profileId).arg(title, error));
     }
 
-    void HeadlessPolicy::strictRouteUnavailable(const QString &error) {
+    void UnboundPolicy::strictRouteUnavailable(const QString &error) {
         MW_show_log(QStringLiteral("Windows could not enable strict routing; disable Strict Route in the Tun settings. Error: %1").arg(error));
     }
 
-    bool HeadlessPolicy::offerCoreReset(const QString &error) {
+    bool UnboundPolicy::offerCoreReset(const QString &error) {
         MW_show_log(QStringLiteral("Tun did not come up, the core is left running: %1").arg(error));
         return false;
     }
 
-    bool HeadlessPolicy::offerLeftoverTunAdapterRetry(const QString &error) {
+    bool UnboundPolicy::offerLeftoverTunAdapterRetry(const QString &error) {
         MW_show_log(QStringLiteral("Windows still held the Tun adapter of an earlier session; start the profile again: %1").arg(error));
         return false;
     }
 
-    void HeadlessPolicy::stopFailed(const QString &error) {
+    void UnboundPolicy::stopFailed(const QString &error) {
         MW_show_log(QStringLiteral("Stop return error: %1").arg(error));
     }
 
-    SlowOperation HeadlessPolicy::slowOperation(SlowOperationKind kind, int delayMs) {
+    SlowOperation UnboundPolicy::slowOperation(SlowOperationKind kind, int delayMs) {
         const auto what = kind == SlowOperationKind::Start ? QStringLiteral("start") : QStringLiteral("stop");
         auto *timer = new QTimer(QCoreApplication::instance());
         timer->setSingleShot(true);
@@ -91,65 +86,45 @@ namespace Engine {
         });
     }
 
-    PrivilegeDecision HeadlessPolicy::requestCorePrivileges(PrivilegeReason) {
+    PrivilegeDecision UnboundPolicy::requestCorePrivileges(PrivilegeReason) {
         MW_show_log(QStringLiteral("The core lacks the privileges Tun needs: run Poros from an elevated prompt."));
         return PrivilegeDecision::Cancel;
     }
 
-    void HeadlessPolicy::systemProxyNeedsMixedInbound() {
-        MW_show_log(QStringLiteral("Cannot set system proxy when mixed inbound is disabled."));
-    }
-
-    bool HeadlessPolicy::vpnPromptOpen() const {
+    bool UnboundPolicy::vpnPromptOpen() const {
         return false;
     }
 
-    void HeadlessPolicy::vpnChallenge(const VpnAuthChallenge &challenge) {
+    void UnboundPolicy::vpnChallenge(const VpnAuthChallenge &challenge) {
         MW_show_log(QStringLiteral("[VPN] %1 asks for a %2 sign-in that nothing here can answer; it is cancelled at its deadline "
                                    "(at most %3 s).")
                         .arg(Stats::VpnEndpointDisplayName(challenge.endpointTag), challenge.kind)
-                        .arg(kHeadlessPolicyChallengeCapSec));
-        if (auto *engine = host()) engine->vpnAuth()->cancelAtDeadline(challenge, kHeadlessPolicyChallengeCapSec);
+                        .arg(kUnboundPolicyChallengeCapSec));
+        if (auto *engine = host()) engine->vpnAuth()->cancelAtDeadline(challenge, kUnboundPolicyChallengeCapSec);
     }
 
-    void HeadlessPolicy::vpnCredentialsRejected(int profileId, const VpnAuthChallenge &challenge,
+    void UnboundPolicy::vpnCredentialsRejected(int profileId, const VpnAuthChallenge &challenge,
                                                 const std::function<void(const QString &, const QString &)> &) {
-        MW_show_log(QStringLiteral("[VPN] %1 (profile %2) rejected the saved credentials; update them in the profile (status: vpn_auth_failed).")
+        MW_show_log(QStringLiteral("[VPN] %1 (profile %2) rejected the saved credentials; update them in the profile.")
                         .arg(Stats::VpnEndpointDisplayName(challenge.endpointTag), QString::number(profileId)));
     }
 
-    void HeadlessPolicy::vpnChallengesCleared() {}
+    void UnboundPolicy::vpnChallengesCleared() {}
 
-    void HeadlessPolicy::settingsNeedTunRestart() {
+    void UnboundPolicy::settingsNeedTunRestart() {
         MW_show_log(QStringLiteral("Tun settings changed; they take effect when Tun restarts."));
     }
 
-    bool HeadlessPolicy::confirmRestartProgram() {
+    bool UnboundPolicy::confirmRestartProgram() {
         MW_show_log(QStringLiteral("A changed setting needs a program restart; it takes effect after the next restart."));
         return false;
     }
 
-    void HeadlessPolicy::testSessionBusy(const QString &text) {
+    void UnboundPolicy::testSessionBusy(const QString &text) {
         MW_show_log(text);
     }
 
-    void HeadlessPolicy::exitProgram(ExitReason reason, bool) {
-        switch (reason) {
-            case ExitReason::None:
-                QCoreApplication::exit(ExitCode::Ok);
-                return;
-            case ExitReason::Restart:
-                QCoreApplication::exit(ExitCode::Restart);
-                return;
-            case ExitReason::RunUpdater:
-                MW_show_log(QStringLiteral("Running the updater is not available in headless mode; ignored."));
-                return;
-            case ExitReason::RestartWithTun:
-                MW_show_log(QStringLiteral("Restarting with Tun is not available in headless mode; ignored."));
-                return;
-            case ExitReason::RestartElevated:
-                MW_show_log(QStringLiteral("Restarting elevated is not available in headless mode; ignored."));
-                return;
-        }
+    void UnboundPolicy::exitProgram(ExitReason) {
+        QCoreApplication::exit();
     }
 } // namespace Engine

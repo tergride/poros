@@ -37,9 +37,8 @@ namespace {
 } // namespace
 
 namespace Engine {
-    ConnectionManager::ConnectionManager(EnginePolicy *policy, CoreSupervisor *coreSupervisor, StatsService *stats,
-                                         const RuntimeOptions &options, QObject *parent)
-        : QObject(parent), m_policy(policy), m_coreSupervisor(coreSupervisor), m_stats(stats), m_options(options) {
+    ConnectionManager::ConnectionManager(EnginePolicy *policy, CoreSupervisor *coreSupervisor, StatsService *stats, QObject *parent)
+        : QObject(parent), m_policy(policy), m_coreSupervisor(coreSupervisor), m_stats(stats) {
         connect(m_coreSupervisor, &CoreSupervisor::coreStarted, this, &ConnectionManager::onCoreStarted);
         connect(m_coreSupervisor, &CoreSupervisor::coreGaveUp, this, &ConnectionManager::onCoreGaveUp);
         m_lastProfileId = Configs::dataManager->settingsRepo->remember_id;
@@ -53,30 +52,18 @@ namespace Engine {
 
     void ConnectionManager::start(const StartRequest &request) {
         ENGINE_CHECK_MAIN_THREAD();
-        ++m_geoRetryToken;
-        if (Configs::dataManager->settingsRepo->prepare_exit) {
-            emit startFinished(request.serial, request.profileId, StartOutcome::Exiting, {});
-            return;
-        }
+        if (Configs::dataManager->settingsRepo->prepare_exit) return;
 
         std::shared_ptr<Configs::Profile> ent = nullptr;
         if (request.profileId >= 0) {
             ent = Configs::dataManager->profilesRepo->GetProfile(request.profileId);
         }
-        if (ent == nullptr) {
-            emit startFinished(request.serial, request.profileId, StartOutcome::NotFound, {});
-            return;
-        }
+        if (ent == nullptr) return;
 
         m_lastProfileId = ent->id;
 
-        emit startDispatching(request.serial, ent->id);
-
         const auto group = Configs::dataManager->groupsRepo->GetGroup(ent->gid);
-        if (group == nullptr || group->archive) {
-            emit startFinished(request.serial, ent->id, StartOutcome::GroupUnavailable, {});
-            return;
-        }
+        if (group == nullptr || group->archive) return;
 
         StartRequest resolved = request;
         resolved.profileId = ent->id;
@@ -85,9 +72,6 @@ namespace Engine {
         if (killSwitch->state() == Sys::KillSwitch::State::Arming) {
             // Only the latest request survives, so repeated clicks while arming start one profile.
             const bool queued = m_killSwitchDeferredStart.profileId >= 0;
-            if (queued) {
-                emit startFinished(m_killSwitchDeferredStart.serial, m_killSwitchDeferredStart.profileId, StartOutcome::Superseded, {});
-            }
             m_killSwitchDeferredStart = resolved;
             if (!queued) {
                 killSwitch->whenSettled(this, [this](bool) {
@@ -104,7 +88,6 @@ namespace Engine {
             } else {
                 MW_show_log(MainWindowTr::tr("[Kill switch] Not starting %1: the kill switch is not active.").arg(ent->outbound->DisplayTypeAndName()));
             }
-            emit startFinished(request.serial, ent->id, StartOutcome::KillSwitchInactive, killSwitch->failureText());
             if (request.interactive) policy()->killSwitchProblem();
             return;
         }
@@ -119,18 +102,16 @@ namespace Engine {
 
         if (resolved.interactive && !tunPrivileged() && ent->outbound->HasTLS() && ent->outbound->GetTLS()->enabled &&
             ent->outbound->GetTLS()->SpoofEffectivelyOn() && policy()->requestCorePrivileges(PrivilegeReason::TlsSpoof) != PrivilegeDecision::TryWithout) {
-            emit startFinished(resolved.serial, ent->id, StartOutcome::StartFailed, {});
             return;
         }
 
         const auto result = Configs::BuildSingBoxConfig(ent);
         if (!result->error.isEmpty()) {
-            failStart(resolved, StartOutcome::BuildFailed, MainWindowTr::tr("BuildConfig return error"), result->error);
+            failStart(resolved, MainWindowTr::tr("BuildConfig return error"), result->error);
             return;
         }
-        const auto finish = [=, this](StartOutcome outcome, const QString &error) {
-            if (!resolved.interactive && !error.isEmpty()) MW_show_log(error);
-            runOnUiThread([=, this] { emit startFinished(resolved.serial, resolved.profileId, outcome, error); });
+        const auto logUnattended = [=](const QString &error) {
+            if (!resolved.interactive) MW_show_log(error);
         };
         auto profile_start_stage2 = [=, this](const Engine::SlowOperation &slowStart) {
             libcore::LoadConfigReq req;
@@ -150,54 +131,24 @@ namespace Engine {
                     req.xray_full_idle_seconds = 0;
                 }
             }
-            if (!result->extraCoreData->path.isEmpty())
-            {
-                if (!Sys::KillSwitch::instance()->permitExtraCore(result->extraCoreData->path)) {
-                    runOnUiThread([slowStart] { slowStart.dismiss(); });
-                    MW_show_log(MainWindowTr::tr("[Kill switch] The extra core %1 could not be allowed through the kill switch.").arg(result->extraCoreData->path));
-                    finish(StartOutcome::ExtraCoreBlocked, {});
-                    if (!resolved.interactive) return false;
-                    runOnUiThread([this] {
-                        if (Sys::KillSwitch::instance()->state() == Sys::KillSwitch::State::Failed) {
-                            policy()->killSwitchProblem();
-                        } else {
-                            policy()->extraCoreNotPermitted();
-                        }
-                    });
-                    return false;
-                }
-                req.need_extra_process = true;
-                req.extra_process_path = result->extraCoreData->path.toStdString();
-                req.extra_process_args = result->extraCoreData->args.toStdString();
-                req.extra_process_conf = result->extraCoreData->config.toStdString();
-                req.extra_no_out = result->extraCoreData->noLog;
-            }
             bool rpcOK;
             const QString error = API::defaultClient->Start(&rpcOK, req);
             // Queued ahead of every dialog below, so none of them can be shown over the prompt.
             runOnUiThread([slowStart] { slowStart.dismiss(); });
-            if (!rpcOK) {
-                finish(StartOutcome::CoreUnavailable, {});
-                return false;
-            }
+            if (!rpcOK) return false;
             if (!error.isEmpty()) {
-                std::function<void()> onGeoInstalled;
-                if (m_options.geoAutoDownload) {
-                    onGeoInstalled = [this, id = ent->id, token = m_geoRetryToken.load()] { retryAfterGeoFetch(id, token); };
-                }
-                if (Engine::AssetUpdates::HandleXrayGeoError(policy(), error, ent->outbound->DisplayTypeAndName(), resolved.interactive,
-                                                             onGeoInstalled)) {
-                    finish(StartOutcome::GeoAssetsMissing, error);
+                if (Engine::AssetUpdates::HandleXrayGeoError(policy(), error, ent->outbound->DisplayTypeAndName(), resolved.interactive)) {
+                    logUnattended(error);
                     return false;
                 }
                 if (error.contains("Fwpm", Qt::CaseInsensitive)) {
-                    finish(StartOutcome::StrictRouteUnavailable, error);
+                    logUnattended(error);
                     if (!resolved.interactive) return false;
                     runOnUiThread([=, this] { policy()->strictRouteUnavailable(error); });
                     return false;
                 }
                 if (error.contains("configure tun interface")) {
-                    finish(StartOutcome::TunFailed, error);
+                    logUnattended(error);
                     if (!resolved.interactive) return false;
                     if (error.contains("open existing adapter")) {
                         runOnUiThread([=, this] {
@@ -212,9 +163,9 @@ namespace Engine {
                     });
                     return false;
                 }
-                finish(StartOutcome::StartFailed, error);
+                logUnattended(error);
                 if (resolved.interactive) {
-                    runOnUiThread([=, this] { policy()->startFailed(resolved, StartOutcome::StartFailed, "LoadConfig return error", error); });
+                    runOnUiThread([=, this] { policy()->startFailed(resolved, "LoadConfig return error", error); });
                 }
                 return false;
             }
@@ -232,31 +183,29 @@ namespace Engine {
             const bool exitIsEndpoint = Stats::VpnExitEndpoint(ent) != nullptr;
 
             runOnUiThread([=, this] {
-                m_geoRetriedProfile = -1;
                 // The profile object outlives the run, so an earlier run's answer would linger, for good with the lookup off.
                 ent->runningCountryInfo.clear();
                 clearRestartNeeded();
                 m_vpnAuth->noteRunStarted();
                 emit statusChanged();
                 emit profileRowsChanged({ent->id});
-                emit startFinished(resolved.serial, resolved.profileId, StartOutcome::Started, {});
 
                 // "Only route advertised network" rejects this probe.
                 if (exitIsEndpoint) return;
 
-                if (m_options.exitCountryLookup && Configs::dataManager->settingsRepo->exit_country_lookup) lookupExitCountry(ent);
+                if (Configs::dataManager->settingsRepo->exit_country_lookup) lookupExitCountry(ent);
             });
 
             return true;
         };
 
         if (!mu_starting.tryLock()) {
-            failStart(resolved, StartOutcome::Busy, QStringLiteral("Poros"), MainWindowTr::tr("Another profile is starting..."));
+            failStart(resolved, QStringLiteral("Poros"), MainWindowTr::tr("Another profile is starting..."));
             return;
         }
         if (!mu_stopping.tryLock()) {
             mu_starting.unlock();
-            failStart(resolved, StartOutcome::Busy, QStringLiteral("Poros"), MainWindowTr::tr("Another profile is stopping..."));
+            failStart(resolved, QStringLiteral("Poros"), MainWindowTr::tr("Another profile is stopping..."));
             return;
         }
         mu_stopping.unlock();
@@ -272,7 +221,7 @@ namespace Engine {
         if (!Configs::dataManager->settingsRepo->core_running) {
             if (!m_coreSupervisor->canStartCore()) {
                 mu_starting.unlock();
-                failStart(resolved, StartOutcome::CoreUnavailable, QStringLiteral("Poros"), m_coreSupervisor->lastFailure());
+                failStart(resolved, QStringLiteral("Poros"), m_coreSupervisor->lastFailure());
                 return;
             }
             deferStartToCore(resolved);
@@ -290,7 +239,6 @@ namespace Engine {
 
         runOnUiThread([this] {
             m_profileConnecting = true;
-            syncState();
             emit busyChanged();
         });
 
@@ -313,7 +261,6 @@ namespace Engine {
             runOnUiThread([=, this] {
                 slowStart.dismiss();
                 m_profileConnecting = false;
-                syncState();
                 emit busyChanged();
                 if (started) {
                     emit runMarker(markerAt, switching ? RunMarker::Switched : RunMarker::Started,
@@ -330,10 +277,7 @@ namespace Engine {
         const bool block = options.block;
         const bool manual = options.manual;
         const bool interactive = options.interactive;
-        const int rpcTimeoutMs = options.rpcTimeoutMs;
-        const bool skipTests = options.skipTests;
 
-        if (manual) ++m_geoRetryToken;
         const auto current = runningSnapshot();
         if (current == nullptr) {
             // A crashed profile waits for the restarted core with nothing running; a user stop cancels that.
@@ -343,14 +287,14 @@ namespace Engine {
         const auto id = current->id;
 
         auto profile_stop_stage2 = [=,this](const Engine::SlowOperation &slowStop) {
-            if (!skipTests && m_tests->isTestingCurrent()) {
+            if (m_tests->isTestingCurrent()) {
                 bool ok;
                 API::defaultClient->StopTests(&ok);
                 if (!ok) MW_show_log("Failed to stop profile tests!");
             }
             if (!crash) {
                 bool rpcOK;
-                const QString error = API::defaultClient->Stop(&rpcOK, rpcTimeoutMs);
+                const QString error = API::defaultClient->Stop(&rpcOK);
                 runOnUiThread([slowStop] { slowStop.dismiss(); });
                 if (rpcOK && !error.isEmpty()) {
                     if (interactive) {
@@ -376,7 +320,6 @@ namespace Engine {
 
         runOnUiThread([this] {
             m_profileDisconnecting = true;
-            syncState();
             emit busyChanged();
         });
 
@@ -416,20 +359,18 @@ namespace Engine {
                 m_profileDisconnecting = false;
                 clearRestartNeeded();
                 m_vpnAuth->noteRunStopped(id, manual);
-                syncState();
                 emit statusChanged();
                 emit profileRowsChanged({id});
 
                 mu_stopping.unlock();
-                emit stopFinished(id);
             }, true);
         }, block);
     }
 
-    bool ConnectionManager::restartStartedProfile(bool interactive, quint64 restartSerial) {
+    bool ConnectionManager::restartStartedProfile(bool interactive) {
         const int startedId = Configs::dataManager->settingsRepo->started_id;
         if (startedId < 0) return false;
-        start(StartRequest{startedId, interactive, restartSerial});
+        start(StartRequest{startedId, interactive});
         return true;
     }
 
@@ -439,26 +380,16 @@ namespace Engine {
         if (startedId >= 0) start(StartRequest{startedId});
     }
 
-    void ConnectionManager::failStart(const StartRequest &request, StartOutcome outcome, const QString &title, const QString &error) {
-        emit startFinished(request.serial, request.profileId, outcome, error);
+    void ConnectionManager::failStart(const StartRequest &request, const QString &title, const QString &error) {
         if (request.interactive) {
-            policy()->startFailed(request, outcome, title, error);
+            policy()->startFailed(request, title, error);
         } else {
             MW_show_log(title + ": " + error);
         }
     }
 
     void ConnectionManager::deferStartToCore(const StartRequest &request) {
-        if (m_coreStartRequest.profileId >= 0) {
-            emit startFinished(m_coreStartRequest.serial, m_coreStartRequest.profileId, StartOutcome::Superseded, {});
-        }
         m_coreStartRequest = request;
-    }
-
-    void ConnectionManager::setBootStart(const StartRequest &request) {
-        ENGINE_CHECK_MAIN_THREAD();
-        m_bootSerial = request.serial;
-        deferStartToCore(request);
     }
 
     void ConnectionManager::onCoreStarted(int profileId) {
@@ -466,77 +397,28 @@ namespace Engine {
         m_guardCoreRestart.invalidate();
         // The core may just have been given root, which the guard needs too.
         if (Sys::KillSwitch::instance()->failedForPrivileges()) Sys::KillSwitch::instance()->apply();
-        QString tunHoldWhy;
-        if (m_options.headless) {
-            const bool wantTun = settings->remember_tun || settings->flag_restart_tun_on;
-            if (wantTun) {
-                setTun(true, ModeChange{.save = false, .interactive = false, .restart = false});
-                settings->flag_restart_tun_on = false;
-            }
-            // setTun's return value is not success, so the hold is judged by the resulting state.
-            m_tunRestoreHeld = m_options.tunRequired && wantTun && !settings->spmode_vpn;
-            if (m_tunRestoreHeld) {
-                tunHoldWhy = tunRestoreHoldReason();
-                MW_show_log(QStringLiteral("[Tun] The remembered Tun mode could not be restored: %1 (degraded: tun_unavailable).")
-                                .arg(tunHoldWhy));
-            }
-        } else {
-            if (settings->remember_enable && settings->remember_system_proxy) {
-                setSystemProxy(true, ModeChange{.save = false});
-            }
-            if ((settings->remember_enable && settings->remember_tun) || settings->flag_restart_tun_on) {
-                setTun(true, ModeChange{.save = settings->flag_restart_tun_on});
-                settings->flag_restart_tun_on = false;
-            }
+        if (settings->remember_enable && settings->remember_system_proxy) {
+            setSystemProxy(true, ModeChange{.save = false});
         }
-        {
-            const int id = profileId;
-            const auto request = std::exchange(m_coreStartRequest, StartRequest{});
-            const quint64 bootSerial = std::exchange(m_bootSerial, 0);
-            if (request.profileId >= 0 && request.profileId != id) {
-                emit startFinished(request.serial, request.profileId, StartOutcome::Superseded, {});
-            }
-            if (id >= 0) {
-                const StartRequest next = request.profileId == id ? request : StartRequest{id};
-                // Any other start (crash resume, deferred API start) runs proxy-only, as it would against a live core.
-                if (m_tunRestoreHeld && next.serial != 0 && next.serial == bootSerial) {
-                    const auto ent = Configs::dataManager->profilesRepo->GetProfile(id);
-                    MW_show_log(QStringLiteral("[Tun] Not starting %1 without Tun; turn Tun off to run it proxy-only.")
-                                    .arg(ent != nullptr && ent->outbound ? ent->outbound->DisplayTypeAndName() : QString::number(id)));
-                    emit startFinished(next.serial, id, StartOutcome::TunFailed,
-                                       QStringLiteral("Tun could not be restored (%1); the profile was not started without it.")
-                                           .arg(tunHoldWhy));
-                } else {
-                    start(next);
-                }
-            }
+        if ((settings->remember_enable && settings->remember_tun) || settings->flag_restart_tun_on) {
+            setTun(true, ModeChange{.save = settings->flag_restart_tun_on});
+            settings->flag_restart_tun_on = false;
         }
+        const auto request = std::exchange(m_coreStartRequest, StartRequest{});
+        if (profileId >= 0) start(request.profileId == profileId ? request : StartRequest{profileId});
         emit statusChanged();
     }
 
-    void ConnectionManager::onCoreGaveUp(const QString &reason) {
+    void ConnectionManager::onCoreGaveUp() {
         // Otherwise a start within the window would wait on a guard restart that is not coming.
         m_guardCoreRestart.invalidate();
-        const auto request = std::exchange(m_coreStartRequest, StartRequest{});
-        if (request.profileId >= 0) emit startFinished(request.serial, request.profileId, StartOutcome::CoreUnavailable, reason);
-    }
-
-    void ConnectionManager::retryAfterGeoFetch(int profileId, quint64 token) {
-        ENGINE_CHECK_MAIN_THREAD();
-        if (token != m_geoRetryToken.load()) return;
-        if (std::exchange(m_geoRetriedProfile, profileId) == profileId) return;
-        if (Configs::dataManager->settingsRepo->prepare_exit || connectionState() != ConnectionState::Idle ||
-            m_lastProfileId != profileId) {
-            return;
-        }
-        MW_show_log(QStringLiteral("Geo assets installed; starting profile %1 again.").arg(profileId));
-        start(StartRequest{profileId, false});
+        m_coreStartRequest = {};
     }
 
     void ConnectionManager::lookupExitCountry(const std::shared_ptr<Configs::Profile> &ent) {
         ENGINE_CHECK_MAIN_THREAD();
         const QString provider = Configs::dataManager->settingsRepo->exit_lookup_provider;
-        // Off the UI thread: HttpGet spins a nested event loop that would re-enter API dispatch.
+        // Off the UI thread: HttpGet spins a nested event loop.
         runOnNewThread([=, this] {
             QString error;
             const auto info = Configs_network::LookupExit(provider, &error);
@@ -587,15 +469,4 @@ namespace Engine {
         return m_runningTun;
     }
 
-    quint64 ConnectionManager::nextStartSerial() {
-        return ++m_startSerial;
-    }
-
-    void ConnectionManager::syncState() {
-        ENGINE_CHECK_MAIN_THREAD();
-        if (const auto connState = connectionState(); connState != m_lastConnectionState) {
-            m_lastConnectionState = connState;
-            emit connectionStateChanged(connState);
-        }
-    }
 } // namespace Engine

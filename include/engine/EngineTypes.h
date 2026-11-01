@@ -10,28 +10,10 @@ namespace Engine {
         Stopping,
     };
 
-    enum class StartOutcome {
-        Started,
-        Exiting,
-        NotFound,
-        GroupUnavailable,
-        KillSwitchInactive,
-        Superseded,
-        CoreUnavailable,
-        BuildFailed,
-        Busy,
-        ExtraCoreBlocked,
-        GeoAssetsMissing,
-        StrictRouteUnavailable,
-        TunFailed,
-        StartFailed,
-    };
-
     struct StartRequest {
         int profileId = -1;
-        // Unattended callers get every failure through startFinished and the log, never a dialog.
+        // Unattended callers get every failure through the log, never a dialog.
         bool interactive = true;
-        quint64 serial = 0;
     };
 
     struct StopOptions {
@@ -39,18 +21,13 @@ namespace Engine {
         bool block = false;
         bool manual = false;
         bool interactive = true;
-        // 0: the channel default (30 s).
-        int rpcTimeoutMs = 0;
-        // Skip StopTests in the stop.
-        bool skipTests = false;
     };
 
     struct ModeChange {
         bool save = true;
-        // Unattended callers get no dialog or elevation prompt, and their restart is an unattended StartRequest carrying restartSerial.
+        // Unattended callers get no dialog or elevation prompt, and their restart is an unattended StartRequest.
         bool interactive = true;
         bool restart = true;
-        quint64 restartSerial = 0;
     };
 
     // Where the traffic chart marks a run.

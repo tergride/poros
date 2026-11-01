@@ -10,17 +10,13 @@ namespace {
     // generate.cpp chainScanError over the build order, which reads the list bottom-up.
     QString editChainScanError(const QList<std::shared_ptr<Configs::Profile>> &topFirst) {
         const auto count = topFirst.size();
-        int extraCores = 0, extraCoreIndex = -1, xrayFullConfigs = 0, xrayFullConfigIndex = -1, xrayHops = 0, transitions = 0;
+        int xrayFullConfigs = 0, xrayFullConfigIndex = -1, xrayHops = 0, transitions = 0;
         bool customFullConfig = false, inXray = false;
         for (qsizetype k = 0; k < count; ++k) {
             const auto &hop = topFirst[count - 1 - k];
             const bool xray = hop->outbound->IsXray();
             if (xray != inXray) transitions++;
             inXray = xray;
-            if (hop->outbound->IsExtraCore()) {
-                extraCores++;
-                extraCoreIndex = int(k);
-            }
             if (hop->outbound->IsXrayFullConfig()) {
                 xrayFullConfigs++;
                 xrayFullConfigIndex = int(k);
@@ -29,14 +25,9 @@ namespace {
             if (hop->type == "custom" && hop->Custom() != nullptr && hop->Custom()->type == Configs::Custom::CustomFullConfig) customFullConfig = true;
         }
         if (customFullConfig) return EditChain::tr("A custom %1 config cannot be a hop; only custom outbounds can.").arg(software_core_name);
-        if (extraCores > 1) return EditChain::tr("Only one Extra Core profile can be in a chain.");
         if (xrayFullConfigs > 1) return EditChain::tr("Only one custom Xray config can be in a chain.");
-        if (extraCores > 0 && xrayFullConfigs > 0) return EditChain::tr("An Extra Core profile and a custom Xray config cannot be in the same chain.");
         if (xrayFullConfigs > 0 && xrayHops > 0) return EditChain::tr("A custom Xray config cannot share a chain with other Xray profiles.");
-        // An extra core or a custom Xray config is reached through its local socks port, so nothing can come after it.
-        if (extraCores == 1 && count > 1 && extraCoreIndex != count - 1) {
-            return EditChain::tr("An Extra Core profile can only be the final hop; move it to the top of the list.");
-        }
+        // A custom Xray config is reached through its local socks port, so nothing can come after it.
         if (xrayFullConfigs == 1 && count > 1 && xrayFullConfigIndex != count - 1) {
             return EditChain::tr("A custom Xray config can only be the final hop; move it to the top of the list.");
         }

@@ -54,9 +54,6 @@ public:
     // Search words from an object name ("actionUrl_Test_Group" -> "Url Test Group"); empty for Designer's defaults.
     static QString keywordsFor(const QString &objectName);
 
-    // Stops text fields from swallowing the action's shortcut in window.
-    static void keepShortcutFromTextFields(QAction *action, QWidget *window);
-
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 

@@ -4,7 +4,7 @@
 #include "include/database/DatabaseManager.h"
 #include "include/database/OtpProfilesRepo.h"
 #include "include/database/ProfilesRepo.h"
-#include "include/engine/EngineControl.h"
+#include "include/engine/connection/ConnectionManager.h"
 #include "include/engine/EnginePolicy.h"
 #include "include/engine/EngineTr.h"
 #include "include/engine/ThreadCheck.h"
@@ -90,7 +90,7 @@ namespace {
 } // namespace
 
 namespace Engine {
-    VpnAuthController::VpnAuthController(EnginePolicy *policy, EngineControl *control, QObject *parent)
+    VpnAuthController::VpnAuthController(EnginePolicy *policy, ConnectionManager *control, QObject *parent)
         : QObject(parent), m_policy(policy), m_control(control) {}
 
     void VpnAuthController::noteRunStarted() {

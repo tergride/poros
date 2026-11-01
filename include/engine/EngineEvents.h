@@ -18,7 +18,6 @@ namespace Engine {
         static void SubscriptionGroupChanged(int groupId, const QList<int> &disturbedProfileIds);
         static void SubscriptionDiff(const QString &title, const QString &body);
         static void GroupOrderChanged(const QList<int> &groupIds);
-        static void ExtraCoreExited();
         static void GroupsChanged();
         static void ProfilesRemoved(const QList<int> &profileIds);
         static void SettingsChanged(const QStringList &keys);
@@ -30,11 +29,10 @@ namespace Engine {
         void subscriptionGroupChanged(int groupId, const QList<int> &disturbedProfileIds);
         void subscriptionDiff(const QString &title, const QString &body);
         void groupOrderChanged(const QList<int> &groupIds);
-        void extraCoreExited();
         // Groups were added, deleted or repaired outside the window.
         void groupsChanged();
         void profilesRemoved(const QList<int> &profileIds);
-        // API names of the settings (Engine::SettingsRegistry) that changed outside the window.
+        // Names of the settings (Engine::SettingsRegistry) that changed outside the window.
         void settingsChanged(const QStringList &keys);
 
     private:

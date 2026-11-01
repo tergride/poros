@@ -11,7 +11,7 @@
 // Declaration order is descending urgency; only the highest occupied level is ever rendered.
 enum class DataViewPriority { Critical, High, Medium, Low };
 
-enum class DataViewItem { Download, SpeedTest, LatencyTest, AutoSelector, VpnEndpoint, PendingRestart, Scanner };
+enum class DataViewItem { Download, SpeedTest, LatencyTest, AutoSelector, VpnEndpoint, PendingRestart };
 
 class DataViewHtmlGenerator {
 public:
@@ -58,13 +58,6 @@ public:
         QStringList reasons;
     };
 
-    struct ScannerPanelItem {
-        QString name;
-        quint64 tested = 0;
-        quint64 total = 0;
-        int found = 0;
-    };
-
     static constexpr auto RestartActionUrl = "throne-action:restart-proxy";
     static constexpr auto DismissRestartActionUrl = "throne-action:dismiss-restart";
 
@@ -83,7 +76,6 @@ public:
     // An empty list hides the panel.
     void setPendingRestartReasons(const QStringList &reasons);
 
-    void setScannerPanel(const QList<ScannerPanelItem> &items);
 
     void clearTestSections();
 
@@ -97,7 +89,7 @@ private:
     // Assume mu_ is held.
     [[nodiscard]] bool itemVisible(DataViewItem item) const;
 
-    QString itemHtml(DataViewItem item, bool shared);
+    QString itemHtml(DataViewItem item);
 
     // The *SectionHtml helpers assume buildHtml already holds mu_.
     QString downloadSectionHtml();
@@ -110,9 +102,8 @@ private:
 
     QString vpnEndpointSectionHtml();
 
-    QString pendingRestartSectionHtml(bool compact);
+    QString pendingRestartSectionHtml();
 
-    QString scannerSectionHtml(bool compact);
 
     // Pool threads seed panels while buildHtml reads them.
     mutable QMutex mu_;
@@ -123,7 +114,6 @@ private:
     AutoSelectorPanelState autoSelector_ = {};
     VpnEndpointPanelState vpnEndpoint_ = {};
     PendingRestartPanelState pendingRestart_ = {};
-    QList<ScannerPanelItem> scanner_;
 
     std::atomic<int> testProgress{0};
 };

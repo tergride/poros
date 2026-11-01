@@ -42,8 +42,6 @@ namespace {
     std::shared_ptr<const UserLogSink> g_userLogSink;
     std::shared_ptr<const DialogMessageSink> g_dialogMessageSink;
 
-    std::atomic<int> g_headlessDialogs{0};
-
     template<typename Sink>
     std::shared_ptr<const Sink> loadSink(const std::shared_ptr<const Sink> &slot) {
         std::lock_guard lock(g_sinkMu);
@@ -90,18 +88,6 @@ void SetDialogMessageSink(std::function<void(MwMessage, const QStringList &)> si
 bool IsGuiApp() {
     const auto *app = QCoreApplication::instance();
     return app != nullptr && app->inherits("QApplication");
-}
-
-int HeadlessDialogCount() {
-    return g_headlessDialogs.load(std::memory_order_relaxed);
-}
-
-void LogHeadlessDialog(const QString &kind, const QString &title, const QString &text, const QString &defaultValue) {
-    g_headlessDialogs.fetch_add(1, std::memory_order_relaxed);
-    QString flat = text;
-    flat.replace(QStringLiteral("\r\n"), QStringLiteral(" | ")).replace('\n', QStringLiteral(" | ")).replace('\r', QStringLiteral(" | "));
-    if (flat.size() > 2000) flat.truncate(2000);
-    LOG_WARN(QString("HEADLESS-DIALOG kind=%1 title=\"%2\" text=\"%3\" default=%4").arg(kind, title, flat, defaultValue));
 }
 
 QStringList SplitLines(const QString &_string) {
@@ -347,10 +333,7 @@ QString DisplayTime(long long time, int formatType) {
 }
 
 QWidget *GetMessageBoxParent() {
-    if (!IsGuiApp()) {
-        LogHeadlessDialog(QStringLiteral("GetMessageBoxParent"), {}, {}, QStringLiteral("nullptr"));
-        return nullptr;
-    }
+    if (!IsGuiApp()) return nullptr;
     auto parent = QApplication::activeWindow();
     // A child box dies with its parent box, even while it is still running on the caller's stack.
     while (qobject_cast<QMessageBox *>(parent) != nullptr) {
@@ -361,18 +344,12 @@ QWidget *GetMessageBoxParent() {
 }
 
 int MessageBoxWarning(const QString &title, const QString &text) {
-    if (!IsGuiApp()) {
-        LogHeadlessDialog(QStringLiteral("MessageBoxWarning"), title, text, QStringLiteral("Ok"));
-        return QMessageBox::Ok;
-    }
+    if (!IsGuiApp()) return QMessageBox::Ok;
     return QMessageBox::warning(GetMessageBoxParent(), title, text);
 }
 
 void ShowPassiveWarning(const QString &title, const QString &text) {
-    if (!IsGuiApp()) {
-        LogHeadlessDialog(QStringLiteral("ShowPassiveWarning"), title, text, QStringLiteral("none"));
-        return;
-    }
+    if (!IsGuiApp()) return;
     static QPointer<QMessageBox> box;
     if (box) {
         box->setWindowTitle(title);
@@ -389,28 +366,19 @@ void ShowPassiveWarning(const QString &title, const QString &text) {
 }
 
 void PostPassiveWarning(const QString &title, const QString &text) {
-    if (!IsGuiApp()) {
-        LogHeadlessDialog(QStringLiteral("PostPassiveWarning"), title, text, QStringLiteral("none"));
-        return;
-    }
+    if (!IsGuiApp()) return;
     auto *app = QCoreApplication::instance();
     if (app == nullptr) return;
     QMetaObject::invokeMethod(app, [title, text] { ShowPassiveWarning(title, text); }, Qt::QueuedConnection);
 }
 
 int MessageBoxInfo(const QString &title, const QString &text) {
-    if (!IsGuiApp()) {
-        LogHeadlessDialog(QStringLiteral("MessageBoxInfo"), title, text, QStringLiteral("Ok"));
-        return QMessageBox::Ok;
-    }
+    if (!IsGuiApp()) return QMessageBox::Ok;
     return QMessageBox::information(GetMessageBoxParent(), title, text);
 }
 
 void MessageBoxScrollable(const QString &title, const QString &text) {
-    if (!IsGuiApp()) {
-        LogHeadlessDialog(QStringLiteral("MessageBoxScrollable"), title, text, QStringLiteral("none"));
-        return;
-    }
+    if (!IsGuiApp()) return;
     QDialog dialog(GetMessageBoxParent());
     dialog.setWindowTitle(title);
     auto *layout = new QVBoxLayout(&dialog);
@@ -426,10 +394,7 @@ void MessageBoxScrollable(const QString &title, const QString &text) {
 }
 
 int MessageBoxCheck(const QString &title, const QString &text, const QString &checkBoxText, bool &isChecked) {
-    if (!IsGuiApp()) {
-        LogHeadlessDialog(QStringLiteral("MessageBoxCheck"), title, text, QStringLiteral("Cancel"));
-        return QMessageBox::Cancel;
-    }
+    if (!IsGuiApp()) return QMessageBox::Cancel;
     QMessageBox msgBox(GetMessageBoxParent());
     msgBox.setWindowTitle(title);
     msgBox.setTextFormat(Qt::PlainText);
@@ -462,28 +427,6 @@ void ActivateWindow(QWidget *w) {
 void HideWindow(QWidget *w) {
     if (!IsGuiApp()) return;
     w->hide();
-}
-
-QStringList LogFontFamilies(const QString &preferred) {
-    QStringList families;
-    if (const QString chosen = preferred.trimmed(); !chosen.isEmpty()) families << chosen;
-    families << QStringList{"Consolas", "Menlo", "SF Mono", "DejaVu Sans Mono", "Noto Sans Mono", "Ubuntu Mono", "monospace"};
-    families.removeDuplicates();
-    return families;
-}
-
-QString ResolveLogFontFamily(const QString &preferred) {
-    if (!IsGuiApp()) {
-        const QString family = LogFontFamilies(preferred).first();
-        LogHeadlessDialog(QStringLiteral("ResolveLogFontFamily"), {}, {}, family);
-        return family;
-    }
-    for (const auto &family : LogFontFamilies(preferred)) {
-        if (family != QStringLiteral("monospace") && QFontDatabase::hasFamily(family)) return family;
-    }
-    QFont generic(QStringLiteral("monospace"));
-    generic.setStyleHint(QFont::Monospace);
-    return QFontInfo(generic).family();
 }
 
 void runOnUiThread(const std::function<void()> &callback, bool wait) {

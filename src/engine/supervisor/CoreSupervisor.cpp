@@ -121,10 +121,6 @@ namespace {
 
 namespace Engine {
     CoreSupervisor::CoreSupervisor(QObject *parent) : QObject(parent) {
-        // Queued to the main thread: the marker is seen on DS_cores.
-        connect(EngineEvents::instance(), &EngineEvents::extraCoreExited, this, [] {
-            Lifecycle::StopRunningProfile(false, false, false, true);
-        });
         m_restartTimer = new QTimer(this);
         m_restartTimer->setSingleShot(true);
         connect(m_restartTimer, &QTimer::timeout, this, [this] { postRestart(); });
@@ -197,7 +193,6 @@ namespace Engine {
         m_connectTimer->stop();
         runOnThread([this] {
             if (!m_process) return;
-            Configs_sys::KillChildGroup(m_process);
             m_process->kill();
         }, DS_cores);
     }
@@ -430,11 +425,6 @@ namespace Engine {
         // The process is the context, so every handler runs on DS_cores, where the process lives.
         connect(process, &QProcess::readyReadStandardOutput, process, [this, process] {
             auto log = process->readAllStandardOutput();
-            if (log.contains("Extra process exited unexpectedly"))
-            {
-                MW_show_log("Extra Core exited, stopping profile...");
-                EngineEvents::ExtraCoreExited();
-            }
             coreSupervisorWarnEgressForwarding(log);
             // The window opens at the first chunk after the last one expired; the pre-add count is compared, so the crossing chunk still shows.
             const qint64 now = MonotonicMs();

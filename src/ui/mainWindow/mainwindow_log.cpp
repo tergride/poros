@@ -47,15 +47,12 @@ namespace {
 }
 
 void MainWindow::applyLogBrowserFont() {
-    const auto &settings = Configs::dataManager->settingsRepo;
-    // The whole list, not just the resolved family, so glyphs missing from the first font still fall back in order.
     QFont logFont;
-    logFont.setFamilies(LogFontFamilies(settings->log_font_family));
+    logFont.setFamilies({QStringLiteral("Consolas"), QStringLiteral("Courier New")});
     logFont.setStyleHint(QFont::Monospace);
     logFont.setFixedPitch(true);
-    int pt = settings->log_font_size;
-    if (pt <= 0) pt = qApp->font().pointSize();
-    if (pt <= 0) pt = settings->font_size;
+    int pt = qApp->font().pointSize();
+    if (pt <= 0) pt = Configs::dataManager->settingsRepo->font_size;
     if (pt > 0) logFont.setPointSize(pt);
     ui->masterLogBrowser->setFont(logFont);
 }
@@ -135,18 +132,13 @@ void MainWindow::log_process_loop() {
         }
         QQueue<QString> pending;
         pending.swap(logQueue);
-        const LogFilter filter{
-            Configs::dataManager->settingsRepo->log_enable_include,
-            Configs::dataManager->settingsRepo->log_enable_exclude,
-            includeKeywords, excludeKeywords, includeCombined, excludeCombined,
-        };
         logMutex.unlock();
 
         QString batchToPrint;
         for (const auto& entry : pending) {
             for (auto logLine : entry.split('\n')) {
                 if (logLine.endsWith('\r')) logLine.chop(1);
-                if (!should_print_log(logLine, filter)) continue;
+                if (QStringView(logLine).trimmed().isEmpty()) continue;
                 // QTextCursor::insertText starts a new block at these; keep each log line a single block.
                 for (QChar &c : logLine) {
                     if (c == '\r' || c == QChar::ParagraphSeparator || c == QChar(0xfdd0) || c == QChar(0xfdd1)) c = ' ';
@@ -292,35 +284,6 @@ void MainWindow::updateLogStatus() {
     }
     logJumpLatestButton->setVisible(!m_logFollow);
     logJumpLatestButton->setText(m_logHeld.empty() ? tr("Jump to latest") : tr("Jump to latest (%1 new)").arg(m_logHeld.size()));
-}
-
-bool MainWindow::should_print_log(const QString &log, const LogFilter &filter) {
-    if (QStringView(log).trimmed().isEmpty()) return false;
-    bool result = true;
-    if (filter.enableInclude) {
-        result = false;
-        for (const auto& includeKeyword : filter.includeKeywords) {
-            if (log.contains(includeKeyword)) {
-                result = true;
-                break;
-            }
-        }
-        if (!result && !filter.includeCombined.pattern().isEmpty() && filter.includeCombined.match(log).hasMatch()) {
-            result = true;
-        }
-    }
-    if (result && filter.enableExclude) {
-        for (const auto& excludeKeyword : filter.excludeKeywords) {
-            if (log.contains(excludeKeyword)) {
-                result = false;
-                break;
-            }
-        }
-        if (result && !filter.excludeCombined.pattern().isEmpty() && filter.excludeCombined.match(log).hasMatch()) {
-            result = false;
-        }
-    }
-    return result;
 }
 
 void MainWindow::on_masterLogBrowser_customContextMenuRequested(const QPoint &pos) {

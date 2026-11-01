@@ -2,7 +2,6 @@
 
 #include "Database.h"
 #include "include/global/Const.hpp"
-#include "include/sys/UrlScheme.hpp"
 #include <QMutexLocker>
 #include <QJsonObject>
 #include <QMap>
@@ -106,22 +105,12 @@ namespace Configs {
         int h2_max_concurrent_streams = 0;
         int quic_initial_packet_size = 0;
         bool quic_disable_path_mtu_discovery = false;
-        QString theme = "poros";
         int language = 0;
         QString font = "";
         int font_size = 0;
         QString mw_size = "";
-        bool log_enable_include = false;
-        bool log_enable_exclude = false;
-        QStringList log_include_keyword = {};
-        QStringList log_include_regex = {};
-        QStringList log_exclude_keyword = {};
-        QStringList log_exclude_regex = {};
         bool start_minimal = false;
         int max_log_line = 500;
-        // Log view font; empty family / 0 size fall back to the built-in monospace list / the app font size.
-        QString log_font_family = "";
-        int log_font_size = 0;
         // On-disk diagnostic log only; log_level is the core's browser verbosity.
         QString log_file_level = "debug";
         QString splitter_state = "";
@@ -144,18 +133,15 @@ namespace Configs {
         int speed_test_timeout_ms = 5000;
         QString simple_dl_url = "http://cachefly.cachefly.net/1mb.test";
         bool auto_update_app = true;
-        bool use_custom_icons = false;
-        bool follow_status_in_taskbar = true;
         bool skip_delete_confirmation = false;
         bool show_config_security = false;
         // -1 until a filter column has been used.
         int last_filter_column = -1;
 
-        // Mirrors of the registrations we last wrote to the OS; startup re-registers only when they differ.
+        // Mirror of the registration we last wrote to the OS; startup re-registers only when it differs.
         QString url_scheme_mirror = "";
-        bool url_scheme_auto_register = UrlScheme_AutoRegisterByDefault();
-        QString file_assoc_mirror = "";
-        bool file_assoc_auto_register = false;
+        // Every copy is portable: nothing is registered until the user asks.
+        bool url_scheme_auto_register = false;
 
         // Network
         bool net_use_proxy = false;
@@ -171,7 +157,6 @@ namespace Configs {
         int sub_auto_update = -30;
         // Follow a server's profile-update-interval instead of sub_auto_update's minutes.
         bool sub_respect_server_interval = false;
-        bool sub_clear = false;
         bool sub_show_change_popup = true;
         bool sub_send_hwid = false;
         QString sub_custom_hwid_params = "";
@@ -181,7 +166,6 @@ namespace Configs {
         bool skip_cert = false;
         QString utlsFingerprint = "";
         bool disable_run_admin = false; // windows only
-        bool use_mozilla_certs = false;
         bool kill_switch = false;
 
         // This device's identity: device-local, see BackupArchive::DeviceLocalSettingKeys().
@@ -235,13 +219,10 @@ namespace Configs {
         int ruleset_mirror = Mirrors::CLOUDFLARE;
 
         // Socks & HTTP Inbound
-        bool disable_mixed_inbound = false;
         QString inbound_address = "127.0.0.1";
         // Ports and Tun addresses stay off Throne's defaults, so that both clients can run at once.
         int inbound_socks_port = 2090; // Mixed, actually
         bool random_inbound_port = false;
-        QString custom_inbound = "{\"inbounds\": []}";
-        QString proxy_scheme = "{ip}:{port}";
         bool inbound_auth = false;
         QString inbound_user = "";
         QString inbound_pass = "";
@@ -300,11 +281,7 @@ namespace Configs {
         QString hotkey_toggle_tun = "";
 
         // Core
-        int core_box_clash_api = -9190;
-        QString core_box_clash_listen_addr = "127.0.0.1";
-        QString core_box_clash_api_secret = "";
-        // Port only publishes the dashboard; the service itself also carries the stats tracker.
-        int core_box_api_port = -9191;
+        // The core's api service carries the stats tracker and listens on a random loopback port; this keeps other local programs out.
         QString core_box_api_secret = "";
         QString core_box_underlying_dns = "";
         int core_dns_in_port = 5543;
@@ -323,9 +300,6 @@ namespace Configs {
         QStringList xray_geoip_url_history = {};
         QStringList xray_geosite_url_history = {};
 
-        // Extra Core Paths
-        QStringList extraCorePaths = {};
-
         // Last 5 custom entries per field.
         QStringList dial_bind_interface_history = {};
         QStringList dial_inet4_bind_address_history = {};
@@ -334,8 +308,5 @@ namespace Configs {
         void UpdateStartedId(int id);
 
         [[nodiscard]] QString GetUserAgent(bool isDefault = false) const;
-        
-        [[nodiscard]] QStringList GetExtraCorePaths() const;
-        bool AddExtraCorePath(const QString &path);
     };
 }
