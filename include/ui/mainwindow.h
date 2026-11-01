@@ -263,7 +263,7 @@ private:
     class OnboardingPage *m_onboarding = nullptr;
     QStringList m_deferredDeeplinks;
     void showOnboarding();
-    void finishOnboarding(const QString &uiMode);
+    void finishOnboarding(const QString &uiMode, const QString &serverLink = {});
 
     // The simple mode, in mainwindow_simple.cpp.
     class SimpleHome *m_simpleHome = nullptr;

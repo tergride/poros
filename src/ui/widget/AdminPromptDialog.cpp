@@ -131,3 +131,7 @@ void FailureBanner::present(const QString &text, const QList<Action> &actions) {
 void FailureBanner::dismiss() {
     hide();
 }
+
+QString FailureBanner::text() const {
+    return m_text->text();
+}

@@ -7220,10 +7220,6 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <source>Debug Info</source>
-        <translation>Отладочная информация</translation>
-    </message>
-    <message>
         <source>QR Code and link</source>
         <translation>QR-код и ссылка</translation>
     </message>
@@ -8018,10 +8014,6 @@ Download them now?</source>
         <translation>[Автовыбор] Запущены лучшие профили: %1 из %2.</translation>
     </message>
     <message>
-        <source>If there is no response for a long time, it is recommended to restart the software.</source>
-        <translation>Если нет ответа в течение долгого времени, рекомендуем перезапустить программу.</translation>
-    </message>
-    <message>
         <source>Starting profile %1</source>
         <translation>Запуск профиля %1</translation>
     </message>
@@ -8120,6 +8112,18 @@ Error: %1</source>
     <message>
         <source>Start Again</source>
         <translation>Запустить снова</translation>
+    </message>
+    <message>
+        <source>Connecting is taking longer than usual. If nothing changes, restart Poros.</source>
+        <translation>Подключение занимает больше обычного. Если ничего не изменится, перезапустите Poros.</translation>
+    </message>
+    <message>
+        <source>Disconnecting is taking longer than usual. If nothing changes, restart Poros.</source>
+        <translation>Отключение занимает больше обычного. Если ничего не изменится, перезапустите Poros.</translation>
+    </message>
+    <message>
+        <source>Restart Poros</source>
+        <translation>Перезапустить Poros</translation>
     </message>
     <message>
         <source>Restart with rights</source>
@@ -8979,6 +8983,10 @@ Name: %1</source>
         <translation>Выберите режим интерфейса</translation>
     </message>
     <message>
+        <source>Routing</source>
+        <translation>Маршрутизация</translation>
+    </message>
+    <message>
         <source>Simple</source>
         <translation>Простой</translation>
     </message>
@@ -9023,6 +9031,14 @@ Name: %1</source>
         <translation>Режим можно сменить в любой момент в меню приложения.</translation>
     </message>
     <message>
+        <source>Which traffic goes through the server</source>
+        <translation>Какой трафик пускать через сервер</translation>
+    </message>
+    <message>
+        <source>You can change the preset at any time on the main screen.</source>
+        <translation>Пресет можно сменить в любой момент на главном экране.</translation>
+    </message>
+    <message>
         <source>Skip</source>
         <translation>Пропустить</translation>
     </message>
@@ -9039,8 +9055,12 @@ Name: %1</source>
         <translation>Далее</translation>
     </message>
     <message>
-        <source>This link is one server, not a subscription. Manual servers are added in the advanced mode, which you can choose at step 3.</source>
-        <translation>Это ссылка на один сервер, а не подписка. Серверы вручную добавляются в расширенном режиме, его можно выбрать на шаге 3.</translation>
+        <source>This link is one server. Poros will add it as a profile.</source>
+        <translation>Это ссылка на один сервер. Poros добавит её как профиль.</translation>
+    </message>
+    <message>
+        <source>This link is one server, not a subscription. Manual servers are added in the advanced mode, which you can choose at step 1.</source>
+        <translation>Это ссылка на один сервер, а не подписка. Серверы вручную добавляются в расширенном режиме, его можно выбрать на шаге 1.</translation>
     </message>
     <message>
         <source>This does not look like a subscription link.</source>

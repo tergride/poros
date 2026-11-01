@@ -1,6 +1,7 @@
 #include "include/ui/onboarding/OnboardingPage.h"
 
 #include <QApplication>
+#include <QButtonGroup>
 #include <QCheckBox>
 #include <QClipboard>
 #include <QHBoxLayout>
@@ -10,13 +11,18 @@
 #include <QPainter>
 #include <QPointer>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QStackedWidget>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include <algorithm>
+
+#include "include/configs/PresetCatalog.h"
 #include "include/configs/sub/LinkKind.h"
 #include "include/database/GroupsRepo.h"
+#include "include/database/RoutesRepo.h"
 #include "include/engine/services/GroupService.h"
 #include "include/global/Configs.hpp"
 #include "include/sys/AutoRun.hpp"
@@ -26,12 +32,13 @@
 
 namespace {
     constexpr int onboardingArtWidth = 470;
+    constexpr int onboardingLinkStep = 1;
 
     class OnboardingStepper : public QWidget {
     public:
         OnboardingStepper(int *step, QWidget *parent) : QWidget(parent), m_step(step) {
             setFixedHeight(26);
-            m_names = {OnboardingPage::tr("Subscription"), OnboardingPage::tr("Launch"), OnboardingPage::tr("Mode")};
+            m_names = {OnboardingPage::tr("Mode"), OnboardingPage::tr("Subscription"), OnboardingPage::tr("Launch"), OnboardingPage::tr("Routing")};
         }
 
     protected:
@@ -83,16 +90,17 @@ namespace {
         QStringList m_names;
     };
 
-    // The whole row toggles the box.
-    class OnboardingCheckRow : public QFrame {
+    // The whole row toggles the box. An exclusive radio button stays on, as it does when clicked.
+    template <typename Toggle>
+    class OnboardingRow : public QFrame {
     public:
-        OnboardingCheckRow(const QString &title, const QString &text, QWidget *parent) : QFrame(parent) {
+        OnboardingRow(const QString &title, const QString &text, QWidget *parent) : QFrame(parent) {
             setProperty("role", QStringLiteral("checkRow"));
             setCursor(Qt::PointingHandCursor);
             auto *row = new QHBoxLayout(this);
             row->setContentsMargins(16, 14, 16, 14);
             row->setSpacing(14);
-            box = new QCheckBox(this);
+            box = new Toggle(this);
             row->addWidget(box, 0, Qt::AlignTop);
             auto *column = new QVBoxLayout;
             column->setSpacing(2);
@@ -106,7 +114,7 @@ namespace {
             row->addLayout(column, 1);
         }
 
-        QCheckBox *box;
+        Toggle *box;
 
     protected:
         void mouseReleaseEvent(QMouseEvent *event) override {
@@ -156,6 +164,22 @@ OnboardingPage::OnboardingPage(QWidget *parent)
     column->addWidget(m_steps, 1);
 
     QVBoxLayout *body = nullptr;
+    auto *modeStep = onboardingStep(tr("Choose the interface mode"), {}, &body, m_steps);
+    auto *cards = new QHBoxLayout;
+    cards->setSpacing(12);
+    m_simple = new ChoiceCard(tr("Simple"), {}, {tr("The server list and a Start button"), tr("Subscriptions as groups"), tr("Ready presets and your own copies"), tr("Only the settings you need")}, modeStep);
+    m_advanced = new ChoiceCard(tr("Advanced"), {}, {tr("Everything from the simple mode"), tr("Your own groups and manual profiles"), tr("Routing rules, DNS, WARP"), tr("Logs, connections, tools")}, modeStep);
+    m_simple->setAutoExclusive(true);
+    m_advanced->setAutoExclusive(true);
+    cards->addWidget(m_simple, 1);
+    cards->addWidget(m_advanced, 1);
+    body->addLayout(cards);
+    auto *modeHint = new QLabel(tr("You can change the mode at any time in the app menu."), modeStep);
+    modeHint->setProperty("role", QStringLiteral("hint"));
+    body->addWidget(modeHint);
+    body->addStretch();
+    m_steps->addWidget(modeStep);
+
     auto *linkStep = onboardingStep(tr("Add a subscription"),
                                     tr("Paste the link from your provider and Poros will load the server list. It usually comes in an email or a bot after payment."),
                                     &body, m_steps);
@@ -193,9 +217,9 @@ OnboardingPage::OnboardingPage(QWidget *parent)
     m_steps->addWidget(linkStep);
 
     auto *launchStep = onboardingStep(tr("How to start Poros"), {}, &body, m_steps);
-    auto *autoRow = new OnboardingCheckRow(tr("Start with Windows"), tr("Poros opens when you sign in."), launchStep);
-    auto *rememberRow = new OnboardingCheckRow(tr("Connect to the last profile"), tr("After starting, Poros connects to the server that worked last time."), launchStep);
-    auto *linksRow = new OnboardingCheckRow(tr("Accept poros:// links"), tr("A link from a site or a messenger opens right in Poros."), launchStep);
+    auto *autoRow = new OnboardingRow<QCheckBox>(tr("Start with Windows"), tr("Poros opens when you sign in."), launchStep);
+    auto *rememberRow = new OnboardingRow<QCheckBox>(tr("Connect to the last profile"), tr("After starting, Poros connects to the server that worked last time."), launchStep);
+    auto *linksRow = new OnboardingRow<QCheckBox>(tr("Accept poros:// links"), tr("A link from a site or a messenger opens right in Poros."), launchStep);
     m_autoStart = autoRow->box;
     m_remember = rememberRow->box;
     m_links = linksRow->box;
@@ -210,28 +234,29 @@ OnboardingPage::OnboardingPage(QWidget *parent)
     body->addStretch();
     m_steps->addWidget(launchStep);
 
-    auto *modeStep = onboardingStep(tr("Choose the interface mode"), {}, &body, m_steps);
-    auto *cards = new QHBoxLayout;
-    cards->setSpacing(12);
-    m_simple = new ChoiceCard(tr("Simple"), {}, {tr("The server list and a Start button"), tr("Subscriptions as groups"), tr("Ready presets and your own copies"), tr("Only the settings you need")}, modeStep);
-    m_advanced = new ChoiceCard(tr("Advanced"), {}, {tr("Everything from the simple mode"), tr("Your own groups and manual profiles"), tr("Routing rules, DNS, WARP"), tr("Logs, connections, tools")}, modeStep);
-    m_simple->setAutoExclusive(true);
-    m_advanced->setAutoExclusive(true);
-    cards->addWidget(m_simple, 1);
-    cards->addWidget(m_advanced, 1);
-    body->addLayout(cards);
-    auto *modeHint = new QLabel(tr("You can change the mode at any time in the app menu."), modeStep);
-    modeHint->setProperty("role", QStringLiteral("hint"));
-    body->addWidget(modeHint);
+    auto *routeStep = onboardingStep(tr("Which traffic goes through the server"), {}, &body, m_steps);
+    body->setSpacing(10);
+    m_routes = new QButtonGroup(this);
+    const auto routes = Configs::dataManager->routesRepo->GetAllRouteProfiles();
+    for (const auto &key : Configs::PresetCatalog::Keys()) {
+        const auto route = std::ranges::find_if(routes, [&key](const auto &candidate) { return candidate->builtinKey == key; });
+        if (route == routes.end()) continue;
+        auto *routeRow = new OnboardingRow<QRadioButton>((*route)->name, Configs::PresetCatalog::Description(key), routeStep);
+        m_routes->addButton(routeRow->box, (*route)->id);
+        body->addWidget(routeRow);
+    }
+    auto *routeHint = new QLabel(tr("You can change the preset at any time on the main screen."), routeStep);
+    routeHint->setProperty("role", QStringLiteral("hint"));
+    body->addWidget(routeHint);
     body->addStretch();
-    m_steps->addWidget(modeStep);
+    m_steps->addWidget(routeStep);
 
     auto *footer = new QHBoxLayout;
     footer->setSpacing(8);
     auto *skip = new QPushButton(tr("Skip"), main);
     skip->setProperty("variant", QStringLiteral("ghost"));
     skip->setAutoDefault(false);
-    connect(skip, &QPushButton::clicked, this, [this] { emit finished(true, Configs::dataManager->settingsRepo->ui_mode); });
+    connect(skip, &QPushButton::clicked, this, [this] { emit finished(m_step > 0 ? chosenMode() : Configs::dataManager->settingsRepo->ui_mode, serverLink()); });
     footer->addWidget(skip);
     footer->addStretch();
     m_back = new QPushButton(PorosTheme::Icon(QStringLiteral("back")), tr("Back"), main);
@@ -248,7 +273,7 @@ OnboardingPage::OnboardingPage(QWidget *parent)
             return;
         }
         applyChoices();
-        emit finished(false, m_advanced->isChecked() ? QStringLiteral("advanced") : QStringLiteral("simple"));
+        emit finished(chosenMode(), serverLink());
     });
     footer->addWidget(m_next);
     column->addSpacing(16);
@@ -272,6 +297,10 @@ void OnboardingPage::restart() {
     m_remember->setChecked(settings->onboarding_done ? settings->remember_enable : true);
     m_links->setChecked(settings->onboarding_done ? settings->url_scheme_auto_register : true);
     (settings->ui_mode == QLatin1String("advanced") ? m_advanced : m_simple)->setChecked(true);
+    // A preset of the user's own has no row here, so no row stays chosen and finishing keeps it.
+    m_routes->setExclusive(false);
+    for (auto *button : m_routes->buttons()) button->setChecked(m_routes->id(button) == settings->current_route_id);
+    m_routes->setExclusive(true);
     m_groupId = -1;
     m_linkToken++;
     m_link->clear();
@@ -283,8 +312,19 @@ void OnboardingPage::setLink(const QString &link) {
     m_link->setText(link);
 }
 
+QString OnboardingPage::chosenMode() const {
+    return m_advanced->isChecked() ? QStringLiteral("advanced") : QStringLiteral("simple");
+}
+
+QString OnboardingPage::serverLink() const {
+    const QString link = m_link->text().trimmed();
+    return m_advanced->isChecked() && Subscription::ClassifyLink(link) == Subscription::LinkKind::SingleServer ? link : QString();
+}
+
 void OnboardingPage::showStep(int step) {
     m_step = step;
+    // What a one-server link means depends on the mode, which the user may have just changed.
+    if (step == onboardingLinkStep && Subscription::ClassifyLink(m_link->text().trimmed()) == Subscription::LinkKind::SingleServer) checkLink();
     m_steps->setCurrentIndex(step);
     m_back->setVisible(step > 0);
     const bool last = step == m_steps->count() - 1;
@@ -315,8 +355,12 @@ void OnboardingPage::checkLink() {
             setLinkStatus({}, {}, false);
             return;
         case LinkKind::SingleServer:
-            setLinkStatus(tr("This link is one server, not a subscription. Manual servers are added in the advanced mode, which you can choose at step 3."),
-                          QStringLiteral("info"), true);
+            if (m_advanced->isChecked()) {
+                setLinkStatus(tr("This link is one server. Poros will add it as a profile."), QStringLiteral("check"), false);
+            } else {
+                setLinkStatus(tr("This link is one server, not a subscription. Manual servers are added in the advanced mode, which you can choose at step 1."),
+                              QStringLiteral("info"), true);
+            }
             return;
         case LinkKind::Unknown:
             setLinkStatus(tr("This does not look like a subscription link."), QStringLiteral("warn"), true);
@@ -363,6 +407,7 @@ void OnboardingPage::applyChoices() {
     if (m_links->isChecked()) UrlScheme_Install();
     else UrlScheme_Uninstall();
     settings->Save();
+    if (m_routes->checkedId() >= 0) emit routeChosen(m_routes->checkedId());
 }
 
 void OnboardingPage::paintEvent(QPaintEvent *event) {

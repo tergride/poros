@@ -18,6 +18,7 @@
 #include "include/database/GroupsRepo.h"
 #include "include/database/RoutesRepo.h"
 #include "include/engine/connection/ConnectionManager.h"
+#include "include/engine/tests/TestRunner.h"
 #include "include/ui/advanced/AdvancedPage.h"
 #include "include/ui/advanced/ConnectionBar.h"
 #include "include/ui/advanced/EmbeddedDialog.h"
@@ -376,7 +377,12 @@ void MainWindow::showOnboarding() {
     if (m_onboarding == nullptr) {
         m_onboarding = new OnboardingPage(m_rootStack);
         m_rootStack->addWidget(m_onboarding);
-        connect(m_onboarding, &OnboardingPage::finished, this, [this](bool, const QString &uiMode) { finishOnboarding(uiMode); });
+        connect(m_onboarding, &OnboardingPage::finished, this, &MainWindow::finishOnboarding);
+        connect(m_onboarding, &OnboardingPage::routeChosen, this, [this](int id) {
+            connection()->chooseRoute(id);
+            refreshRouteChoice();
+            refreshSimplePortal();
+        });
         connect(m_onboarding, &OnboardingPage::qrScanRequested, this, [this] {
             bool captured = false;
             const auto texts = ScreenQr::ScanScreens(this, captured);
@@ -390,7 +396,7 @@ void MainWindow::showOnboarding() {
     m_rootStack->setCurrentWidget(m_onboarding);
 }
 
-void MainWindow::finishOnboarding(const QString &uiMode) {
+void MainWindow::finishOnboarding(const QString &uiMode, const QString &serverLink) {
     auto &settings = Configs::dataManager->settingsRepo;
     settings->onboarding_done = true;
     settings->ui_mode = uiMode;
@@ -398,6 +404,7 @@ void MainWindow::finishOnboarding(const QString &uiMode) {
     m_titleBar->setMenuVisible(true);
     applyUiMode();
     for (const auto &link : std::exchange(m_deferredDeeplinks, {})) handle_deeplink_impl(link);
+    if (!serverLink.isEmpty()) import_or_handle_deeplink(serverLink);
 }
 
 void MainWindow::setUiMode(const QString &mode) {
@@ -478,8 +485,8 @@ QWidget *MainWindow::profilesBulkPanel(QWidget *parent) {
         row->addWidget(added);
         return added;
     };
-    connect(button(QStringLiteral("gauge"), tr("Latency test")), &QPushButton::clicked, ui->actionUrl_Test_Selected, &QAction::trigger);
-    connect(button(QStringLiteral("bolt"), tr("Speed")), &QPushButton::clicked, ui->actionSpeedtest_Selected, &QAction::trigger);
+    connect(button(QStringLiteral("gauge"), tr("Latency test")), &QPushButton::clicked, this, [this] { tests()->runUrlTests(get_now_selected_list()); });
+    connect(button(QStringLiteral("bolt"), tr("Speed")), &QPushButton::clicked, this, [this] { tests()->runSpeedTests(get_now_selected_list()); });
 
     auto *share = button(QStringLiteral("share"), tr("Share"));
     share->setProperty("menu", true);
@@ -492,13 +499,22 @@ QWidget *MainWindow::profilesBulkPanel(QWidget *parent) {
         ui->menu_export_config->setEnabled(single);
         ui->menu_export_config->setVisible(true);
     });
+    // Their shortcuts stay live outside the menus.
+    connect(shareMenu, &QMenu::aboutToHide, this, [this] {
+        ui->menu_qr->setEnabled(true);
+        ui->menu_export_config->setEnabled(true);
+    });
 
     connect(button(QStringLiteral("copy"), tr("Clone")), &QPushButton::clicked, ui->menu_clone, &QAction::trigger);
 
     auto *toGroup = button(QStringLiteral("folder"), tr("To group"));
     toGroup->setProperty("menu", true);
-    auto *groupsMenu = new QMenu(toGroup);
+    auto *groupsMenu = new QMenu(tr("To group"), toGroup);
+    groupsMenu->setIcon(PorosTheme::Icon(QStringLiteral("folder")));
     toGroup->setMenu(groupsMenu);
+    const auto rowActions = ui->menu_server->actions();
+    ui->menu_server->insertMenu(rowActions.value(rowActions.indexOf(ui->menu_clone) + 1), groupsMenu);
+    connect(ui->menu_server, &QMenu::aboutToShow, this, [this, groupsMenu] { groupsMenu->menuAction()->setEnabled(!get_now_selected_list().isEmpty()); });
     connect(groupsMenu, &QMenu::aboutToShow, this, [this, groupsMenu] {
         groupsMenu->clear();
         for (const int gid : Configs::dataManager->groupsRepo->GetGroupsTabOrder()) {
@@ -517,8 +533,6 @@ QWidget *MainWindow::profilesBulkPanel(QWidget *parent) {
     connect(ui->profilesTableView, &ProfilesTableView::bulkRowsChanged, this, [this, panel, count](int rows) {
         panel->setVisible(rows > 0);
         count->setText(tr("Selected: %1").arg(rows));
-        ui->actionUrl_Test_Selected->setEnabled(rows > 0);
-        ui->actionSpeedtest_Selected->setEnabled(rows > 0);
     });
     return panel;
 }

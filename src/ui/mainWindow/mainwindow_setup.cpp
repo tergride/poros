@@ -740,6 +740,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     };
     connect(ui->menu_server, &QMenu::aboutToHide, this, [=,this] {
         setTimeout([=,this] { set_selected_or_group(2); }, this, 200);
+        ui->menu_qr->setEnabled(true);
+        ui->menu_export_config->setEnabled(true);
     });
     set_selected_or_group(2);
     auto *shareHeading = new QAction(tr("Share"), ui->menu_server);

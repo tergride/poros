@@ -37,6 +37,7 @@ public:
 
     void present(const QString &text, const QList<Action> &actions);
     void dismiss();
+    [[nodiscard]] QString text() const;
 
 private:
     QLabel *m_text;

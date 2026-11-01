@@ -3,6 +3,7 @@
 #include <QWidget>
 
 class ChoiceCard;
+class QButtonGroup;
 class QCheckBox;
 class QLabel;
 class QLineEdit;
@@ -10,7 +11,7 @@ class QPushButton;
 class QStackedWidget;
 class QTimer;
 
-// The first-launch wizard: subscription, how to start, interface mode. Every step can be skipped and it can run again later.
+// The first-launch wizard: interface mode, subscription, how to start, routing preset. Every step can be skipped and it can run again later.
 class OnboardingPage : public QWidget {
     Q_OBJECT
 
@@ -23,8 +24,9 @@ public:
     void setLink(const QString &link);
 
 signals:
-    // skipped: nothing past the subscription was applied.
-    void finished(bool skipped, const QString &uiMode);
+    // Skipping keeps the mode once its step is passed, and the subscription. serverLink is a one-server link to import, if any.
+    void finished(const QString &uiMode, const QString &serverLink);
+    void routeChosen(int routeId);
     void qrScanRequested();
 
 protected:
@@ -36,6 +38,8 @@ private:
     void setLinkStatus(const QString &text, const QString &icon, bool problem);
     void dropCheckedGroup();
     void applyChoices();
+    [[nodiscard]] QString chosenMode() const;
+    [[nodiscard]] QString serverLink() const;
 
     QWidget *m_stepper;
     QStackedWidget *m_steps;
@@ -57,6 +61,8 @@ private:
 
     ChoiceCard *m_simple;
     ChoiceCard *m_advanced;
+
+    QButtonGroup *m_routes;
 
     QPixmap m_art;
     QPixmap m_wordmark;

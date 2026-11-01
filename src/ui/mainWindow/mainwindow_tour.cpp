@@ -272,6 +272,7 @@ void MainWindow::runUiTour(const QString &dir) {
         {"wizard-1", [this] { showOnboarding(); }},
         {"wizard-2", [this] { m_onboarding->findChild<QPushButton *>(QString(), Qt::FindChildrenRecursively); tourWizardNext(m_onboarding); }},
         {"wizard-3", [this] { tourWizardNext(m_onboarding); }},
+        {"wizard-4", [this] { tourWizardNext(m_onboarding); }},
         {"simple", [this] { finishOnboarding(QStringLiteral("simple")); }},
         {"add-subscription", [this] { showAddSubscription({}); }},
         {"settings-presets", [this] { showSimpleSettings(0); }},

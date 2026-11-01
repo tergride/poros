@@ -11,7 +11,6 @@
 #include "include/engine/connection/ConnectionManager.h"
 #include "include/sys/KillSwitch.hpp"
 #include "include/ui/profile/dialog_vpn_auth.h"
-#include "include/ui/utils/RestartPrompt.h"
 
 void MainWindow::geoAssetMissingCategory(const QString &contextName, const QString &needed, const QString &whichFile) {
     MessageBoxWarning(
@@ -167,10 +166,23 @@ void MainWindow::stopFailed(const QString &error) {
     MessageBoxWarning(tr("Stop return error"), error);
 }
 
-Engine::SlowOperation MainWindow::slowOperation(Engine::SlowOperationKind, int delayMs) {
-    const QPointer<RestartPrompt> restartPrompt =
-        new RestartPrompt(this, tr("If there is no response for a long time, it is recommended to restart the software."), delayMs);
-    return Engine::SlowOperation([restartPrompt] { if (restartPrompt) restartPrompt->dismiss(); });
+Engine::SlowOperation MainWindow::slowOperation(Engine::SlowOperationKind kind, int delayMs) {
+    const QString text = kind == Engine::SlowOperationKind::Start
+                             ? tr("Connecting is taking longer than usual. If nothing changes, restart Poros.")
+                             : tr("Disconnecting is taking longer than usual. If nothing changes, restart Poros.");
+    auto *timer = new QTimer(this);
+    timer->setSingleShot(true);
+    connect(timer, &QTimer::timeout, this, [this, text] {
+        m_banner->present(text, {{tr("Restart Poros"), [] { MW_dialog_message(MwMessage::RestartProgram, {}); }}});
+    });
+    timer->start(delayMs);
+    return Engine::SlowOperation([this, timer = QPointer<QTimer>(timer), text] {
+        if (timer == nullptr) return;
+        timer->stop();
+        timer->deleteLater();
+        // Another message may have taken the banner by now.
+        if (m_banner->text() == text) m_banner->dismiss();
+    });
 }
 
 Engine::PrivilegeDecision MainWindow::requestCorePrivileges(Engine::PrivilegeReason reason) {
