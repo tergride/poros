@@ -776,13 +776,15 @@ namespace Configs {
         void buildNTPSection(BuildContext &ctx) {
             const auto &settings = *dataManager->settingsRepo;
             if (!settings.enable_ntp) return;
-            ctx.result->coreConfig["ntp"] = QJsonObject{
+            QJsonObject ntp{
                 {"enabled", true},
                 {"server", settings.ntp_server_address},
                 {"server_port", settings.ntp_server_port},
                 {"interval", settings.ntp_interval},
-                {"detour", (settings.ntp_outbound == tags::proxy && !ctx.forTest) ? tags::proxy : tags::direct},
             };
+            // The core refuses a detour to a plain direct outbound; without a detour it goes out directly anyway.
+            if (settings.ntp_outbound == tags::proxy && !ctx.forTest) ntp["detour"] = tags::proxy;
+            ctx.result->coreConfig["ntp"] = ntp;
         }
 
         void buildCertificateSection(BuildContext &ctx) {
@@ -2038,6 +2040,7 @@ namespace Configs {
                 QJsonObject resolve;
                 QJsonObject dnsHijack;
                 QJsonObject dnsInReject;
+                QJsonObject lanLoopbackReject;
             } injected;
 
             if (!routeChain->isRaw) {
@@ -2057,6 +2060,21 @@ namespace Configs {
             if (!ctx.forTest) {
                 injected.dnsInReject = QJsonObject{
                     {"inbound", tags::dnsIn},
+                    {"action", "reject"},
+                };
+            }
+            // With the inbound open to the network, a device there could reach this computer's own services through it:
+            // every preset sends private addresses, loopback among them, direct.
+            if (!ctx.forTest && !QHostAddress(settings.inbound_address).isLoopback()) {
+                const QJsonArray loopback{"127.0.0.0/8", "::1/128"};
+                injected.lanLoopbackReject = QJsonObject{
+                    {"type", "logical"},
+                    {"mode", "and"},
+                    {"rules", QJsonArray{
+                        QJsonObject{{"inbound", QJsonArray{tags::mixedIn}}, {"ip_cidr", loopback},
+                                    {"domain", QJsonArray{"localhost"}}, {"domain_suffix", QJsonArray{".localhost"}}},
+                        QJsonObject{{"source_ip_cidr", loopback}, {"invert", true}},
+                    }},
                     {"action", "reject"},
                 };
             }
@@ -2141,6 +2159,7 @@ namespace Configs {
             appendIfSet(injected.resolve);
             appendIfSet(injected.dnsHijack);
             appendIfSet(injected.dnsInReject);
+            appendIfSet(injected.lanLoopbackReject);
             for (const auto& r : profileRules) routeRules.append(r);
             for (const auto& r : vpnAuxRules) routeRules.append(r);
             for (const auto& r : l3BridgeFinalRules) routeRules.append(r);
@@ -2205,6 +2224,11 @@ namespace Configs {
 
         void buildXrayConfig(BuildContext &ctx) {
             if (ctx.xrayOutbounds.isEmpty()) return;
+            // An Xray full config already fills the one Xray instance, and its outbounds and routing would be replaced here.
+            if (!ctx.result->xrayConfig.isEmpty()) {
+                ctx.error = "An Xray full config cannot run with a routing rule that leads to another Xray profile";
+                return;
+            }
             ctx.result->isXrayNeeded = true;
             QJsonArray inbounds;
             QJsonArray routeRules;
@@ -2838,6 +2862,14 @@ namespace Configs {
                 QString(tags::bridgePrefix) + "-" + Int2String(bridgeConf.port), bridgeConf));
         }
         QJsonArray routeRules;
+        // Without these the traffic coming back from Xray takes the first outbound instead of its chain's sing-box hop.
+        for (qsizetype idx = 0; idx < ctx.xrayToSingBridges.size() && idx < ctx.singIngressTags.size(); idx++) {
+            routeRules.append(QJsonObject{
+                {"inbound", QString(tags::bridgePrefix) + "-" + Int2String(ctx.xrayToSingBridges[idx].port)},
+                {"action", "route"},
+                {"outbound", ctx.singIngressTags[idx]},
+            });
+        }
         // A running Tun owns the OS resolver, so the sidecar resolves against the probe box's dns-direct instead.
         if (ctx.result->isXrayNeeded || !res->xrayFullConfigs.isEmpty()) {
             res->xrayDnsStrategy = getXrayOutboundDomainStrategy();

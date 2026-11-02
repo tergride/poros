@@ -8138,18 +8138,6 @@ Download them now?</source>
         <translation>Строгая маршрутизация недоступна</translation>
     </message>
     <message>
-        <source>Windows could not enable strict routing. Open Tun Settings, disable Strict Route, and start the profile again.
-
-Disabling Strict Route may cause DNS leaks.
-
-Error: %1</source>
-        <translation>Windows не удалось включить строгую маршрутизацию. Откройте «Настройки режима TUN», отключите «Строгая маршрутизация» и снова запустите профиль.
-
-Отключение строгой маршрутизации может привести к утечкам DNS.
-
-Ошибка: %1</translation>
-    </message>
-    <message>
         <source>Reset</source>
         <translation>Сбросить</translation>
     </message>
@@ -8204,6 +8192,18 @@ Error: %1</source>
     <message>
         <source>TLS spoofing did not work without administrator rights.</source>
         <translation>Подмена TLS не заработала без прав администратора.</translation>
+    </message>
+    <message>
+        <source>Windows could not enable strict routing. Open Tun Settings, disable Strict Route, and start the profile again.
+
+Without Strict Route DNS queries can leak, and so can all IPv6 traffic while IPv6 is off in Tun Settings.
+
+Error: %1</source>
+        <translation>Windows не удалось включить строгую маршрутизацию. Откройте «Настройки режима TUN», отключите «Строгая маршрутизация» и снова запустите профиль.
+
+Без строгой маршрутизации могут утекать запросы DNS, а пока IPv6 выключен в настройках TUN, ещё и весь трафик IPv6.
+
+Ошибка: %1</translation>
     </message>
     <message>
         <source>Use %1</source>
@@ -9216,8 +9216,8 @@ Name: %1</source>
         <translation>Через сервер идут только сайты из списка, остальное напрямую.</translation>
     </message>
     <message>
-        <source>Like All traffic, with TLS fragmentation. Try it when the connection keeps breaking.</source>
-        <translation>Как «Весь трафик», плюс фрагментация TLS. Помогает, когда соединение обрывается.</translation>
+        <source>Like All traffic, with TLS fragmentation. It does not reach REALITY servers or the ones that run in Xray. Try it when the connection keeps breaking.</source>
+        <translation>Как «Весь трафик», плюс фрагментация TLS. На серверы REALITY и серверы, работающие через Xray, она не действует. Помогает, когда соединение обрывается.</translation>
     </message>
 </context>
 <context>
@@ -13539,6 +13539,10 @@ Core: %2</source>
     <message>
         <source>Routing rules cannot use &quot;%1&quot;: full configs are not supported. Pick another outbound.</source>
         <translation>В правилах маршрутизации нельзя использовать &quot;%1&quot;: полные конфигурации не поддерживаются. Выберите другой исходящий.</translation>
+    </message>
+    <message>
+        <source>Routing rules cannot use the auto selector &quot;%1&quot;: it is not a fixed server. Pick another outbound.</source>
+        <translation>Правила маршрутизации не могут использовать автовыбор «%1»: это не постоянный сервер. Выберите другой исходящий.</translation>
     </message>
     <message>
         <source>Routing rules cannot use the chain &quot;%1&quot;: a hop of it is missing, another chain or a full config. Pick another outbound.</source>

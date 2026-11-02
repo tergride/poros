@@ -141,6 +141,9 @@ private slots:
         QCOMPARE(routeByKey("blocked-only")->defaultOutboundID, int(Configs::directID));
         QCOMPARE(ruleSets(routeByKey("except-ru")), QStringList({"geosite-ru", "geoip-ru"}));
         QCOMPARE(ruleSets(routeByKey("blocked-only")), QStringList({"geosite-ru-blocked", "geoip-ru-blocked"}));
+        // Names the server does not cover resolve directly, so a dead server takes down only the blocked sites.
+        QCOMPARE(routeByKey("blocked-only")->ActiveDns().value_or(Configs::RouteDns{}).dns_final_out, QString("direct"));
+        QVERIFY(!routeByKey("all")->ActiveDns().has_value());
         QVERIFY(routeByKey("hardened")->hardened);
         QVERIFY(!routeByKey("all")->hardened);
         QCOMPARE(Configs::dataManager->routesRepo->GetAllRouteProfileIds().size(), Configs::PresetCatalog::Keys().size());

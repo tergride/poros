@@ -51,7 +51,7 @@ namespace Configs::PresetCatalog {
         if (key == QLatin1String("all")) return QCoreApplication::translate("PresetCatalog", "Everything goes through the server, local networks stay direct.");
         if (key == QLatin1String("except-ru")) return QCoreApplication::translate("PresetCatalog", "Russian sites open directly, everything else goes through the server.");
         if (key == QLatin1String("blocked-only")) return QCoreApplication::translate("PresetCatalog", "Only blocked sites go through the server, everything else stays direct.");
-        if (key == QLatin1String("hardened")) return QCoreApplication::translate("PresetCatalog", "Like All traffic, with TLS fragmentation. Try it when the connection keeps breaking.");
+        if (key == QLatin1String("hardened")) return QCoreApplication::translate("PresetCatalog", "Like All traffic, with TLS fragmentation. It does not reach REALITY servers or the ones that run in Xray. Try it when the connection keeps breaking.");
         return {};
     }
 
@@ -87,6 +87,8 @@ namespace Configs::PresetCatalog {
             current->Rules = preset->Rules;
             current->defaultOutboundID = preset->defaultOutboundID;
             current->hardened = preset->hardened;
+            current->customDns = preset->customDns;
+            current->dns = preset->dns;
             routes->Save(current);
         }
     }

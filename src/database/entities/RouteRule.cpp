@@ -769,6 +769,9 @@ namespace Configs {
             const QString name = ent->outbound->DisplayName();
             if (routeRuleUnroutable(ent))
                 return QCoreApplication::translate("Validation", "Routing rules cannot use \"%1\": full configs are not supported. Pick another outbound.").arg(name);
+            // A selector moves between members, while a rule needs one fixed outbound.
+            if (ent->type == "autoselector")
+                return QCoreApplication::translate("Validation", "Routing rules cannot use the auto selector \"%1\": it is not a fixed server. Pick another outbound.").arg(name);
             if (ent->type != "chain") return {};
             const auto chain = ent->Chain();
             if (chain == nullptr || chain->list.isEmpty())
@@ -895,7 +898,7 @@ namespace Configs {
         } else if (attr == "protocol") {
             message = Validation::OneOf(value, {"tls", "http", "quic", "dns", "stun", "bittorrent", "dtls", "ssh", "rdp", "ntp"});
         } else if (attr == "action") {
-            message = Validation::OneOf(value, {"route", "route-options", "direct", "bypass", "reject", "hijack-dns", "sniff", "resolve"});
+            message = Validation::OneOf(value, {"route", "route-options", "bypass", "reject", "hijack-dns", "sniff", "resolve"});
         } else if (attr == "method") {
             // get_rule_json lowercases it.
             message = Validation::OneOf(value.toLower(), {"default", "drop", "reply"});

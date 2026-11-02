@@ -115,7 +115,7 @@ void MainWindow::strictRouteUnavailable(const QString &error) {
         tr("Strict routing unavailable"),
         tr("Windows could not enable strict routing. Open Tun Settings, "
            "disable Strict Route, and start the profile again.\n\n"
-           "Disabling Strict Route may cause DNS leaks.\n\nError: %1").arg(error));
+           "Without Strict Route DNS queries can leak, and so can all IPv6 traffic while IPv6 is off in Tun Settings.\n\nError: %1").arg(error));
 }
 
 bool MainWindow::offerCoreReset(const QString &error) {

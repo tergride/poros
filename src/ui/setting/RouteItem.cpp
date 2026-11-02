@@ -197,13 +197,15 @@ RouteItem::RouteItem(QWidget *parent, const std::shared_ptr<Configs::RouteProfil
     QHash<int, QString> idToName;
     idToName.reserve(static_cast<qsizetype>(proxyListRaw.size()));
     for (const auto& [id, name] : proxyListRaw) idToName.insert(id, name);
+    // A rule needs one fixed outbound, which an auto selector is not.
+    const auto selectors = Configs::dataManager->profilesRepo->GetProfileIdsByType(QStringLiteral("autoselector"));
     auto groupIDs = Configs::dataManager->groupsRepo->GetGroupsTabOrder();
     for (auto groupID : groupIDs) {
         auto group = Configs::dataManager->groupsRepo->GetGroup(groupID);
         if (!group) continue;
         for (int profileID : group->profiles) {
             const auto it = idToName.constFind(profileID);
-            if (it == idToName.cend()) continue;
+            if (it == idToName.cend() || selectors.contains(profileID)) continue;
             addOutbound(QString("[" + group->name + "] ") + it.value(), profileID);
         }
     }
