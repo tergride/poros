@@ -99,8 +99,8 @@ void MainWindow::setupSimpleMode() {
         }
         simplePick(id);
     });
-    connect(list, &ServerListView::refreshRequested, this, [this](int groupId) {
-        Engine::GroupService::Update(groupId, [](const Subscription::UpdateOutcome &) {});
+    connect(list, &ServerListView::refreshRequested, this, [](int groupId) {
+        Engine::GroupService::Update(groupId, [](const Subscription::UpdateOutcome &) {}, true);
     });
     connect(list, &ServerListView::groupMenuRequested, this, &MainWindow::showSimpleGroupMenu);
     connect(m_simpleHome, &SimpleHome::addRequested, this, &MainWindow::showAddSubscription);
@@ -119,6 +119,11 @@ void MainWindow::setupSimpleMode() {
         if (m_simpleHome->isVisible() && runningSnapshot() != nullptr) refreshSimplePortal();
     });
     simpleClock->start();
+    // The subscriptions' "updated … ago" moves on without a reload.
+    auto *ageClock = new QTimer(this);
+    ageClock->setInterval(30000);
+    connect(ageClock, &QTimer::timeout, list->viewport(), qOverload<>(&QWidget::update));
+    ageClock->start();
 
     m_serverModel->setSelectedId(Configs::dataManager->settingsRepo->simple_server_id);
     m_serverModel->reload();
@@ -183,7 +188,7 @@ void MainWindow::simpleStart() {
     }
     const int id = simpleProfileToStart();
     if (id < 0) return;
-    m_banner->dismiss();
+    if (!m_banner->standing()) m_banner->dismiss();
     simplePick(id);
     profile_start(id);
 }
@@ -200,7 +205,7 @@ void MainWindow::showSimpleGroupMenu(int groupId, const QPoint &globalPos) {
     const auto item = [&menu](const QString &icon, const QString &text) { return menu.addAction(PorosTheme::Icon(icon), text); };
 
     connect(item(QStringLiteral("refresh"), tr("Update")), &QAction::triggered, this, [groupId] {
-        Engine::GroupService::Update(groupId, [](const Subscription::UpdateOutcome &) {});
+        Engine::GroupService::Update(groupId, [](const Subscription::UpdateOutcome &) {}, true);
     });
     connect(item(QStringLiteral("gauge"), tr("Test servers")), &QAction::triggered, this, [this, groupId] {
         if (const auto group = Configs::dataManager->groupsRepo->GetGroup(groupId)) tests()->runUrlTests(group->Profiles());

@@ -9,7 +9,6 @@
 
 #include "include/configs/sub/GroupUpdater.hpp"
 #include "include/database/GroupsRepo.h"
-#include "include/engine/services/AutoGroupService.h"
 #include "include/engine/services/GroupService.h"
 #include "include/ui/advanced/GroupPane.h"
 #include "include/ui/group/dialog_edit_group.h"
@@ -252,13 +251,5 @@ void MainWindow::show_group_menu(int clickedGid, const QPoint &globalPos) {
 }
 
 void MainWindow::delete_group(int gid, const QString &title) {
-    // Checked before the stop, so a refused delete leaves the running profile alone.
-    if (const auto refusal = Engine::GroupService::CheckDelete(gid)) {
-        MessageBoxWarning(title, GroupDeleteRefusalText(*refusal));
-        return;
-    }
-    if (const auto running = runningSnapshot(); running != nullptr && (running->gid == gid || running->id == Engine::AutoGroupService::Find(gid))) {
-        profile_stop(false, true, false);
-    }
     if (const auto refusal = Engine::GroupService::Delete(gid)) MessageBoxWarning(title, GroupDeleteRefusalText(*refusal));
 }

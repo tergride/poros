@@ -16,6 +16,8 @@ namespace Configs::PresetRules {
         QString text;
         Action action = Action::Proxy;
         bool program = false;
+        // The simple-rule line as stored, written back as it is so its kind survives; empty for a rule typed in.
+        QString line;
 
         bool operator==(const UserRule &) const = default;
     };

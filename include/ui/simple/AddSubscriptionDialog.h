@@ -24,6 +24,8 @@ private:
     void syncLink();
     // Plain text unless asked otherwise: an error may quote the server.
     void setStatus(const QString &text, bool problem, Qt::TextFormat format = Qt::PlainText);
+    // The check adds the group as it goes, so a cancel then would leave it behind.
+    void reject() override;
 
     QLineEdit *m_link;
     QLineEdit *m_name;

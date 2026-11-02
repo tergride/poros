@@ -45,7 +45,8 @@ void MainWindow::showReleaseUpdate() {
                        {tr("What's new"), [this] {
                             showReleaseNotes();
                             showReleaseUpdate();
-                        }}});
+                        }}},
+                      true);
 }
 
 void MainWindow::showReleaseNotes() {

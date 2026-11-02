@@ -64,7 +64,7 @@ namespace Configs::PresetRules {
             for (const auto &line : lines) {
                 const auto colon = line.indexOf(u':');
                 const QString kind = line.left(colon);
-                rules.append({line.mid(colon + 1), action, kind.startsWith(QLatin1String("process"))});
+                rules.append({line.mid(colon + 1), action, kind.startsWith(QLatin1String("process")), line});
             }
         }
         return rules;
@@ -76,7 +76,7 @@ namespace Configs::PresetRules {
             QStringList lines;
             for (const auto &rule : rules) {
                 if (rule.action != action) continue;
-                const QString line = rule.program ? ProgramLine(rule.text) : SiteLine(rule.text);
+                const QString line = !rule.line.isEmpty() ? rule.line : rule.program ? ProgramLine(rule.text) : SiteLine(rule.text);
                 if (!line.isEmpty()) lines << line;
             }
             problems += profile.UpdateSimpleRules(lines.join(u'\n'), presetRulesSimpleAction(action));

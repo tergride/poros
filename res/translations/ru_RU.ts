@@ -7874,6 +7874,14 @@ URL: %2</translation>
         <translation>Импортировано профилей: %1</translation>
     </message>
     <message>
+        <source>Some changes take effect after reconnecting.</source>
+        <translation>Часть изменений вступит в силу после переподключения.</translation>
+    </message>
+    <message>
+        <source>Reconnect</source>
+        <translation>Переподключить</translation>
+    </message>
+    <message>
         <source>Nothing found</source>
         <translation>Ничего не найдено</translation>
     </message>
@@ -8646,6 +8654,10 @@ Name: %1</source>
     <message>
         <source>The current routing profile is locked against modifications.</source>
         <translation>Текущий профиль маршрутизации защищен от изменений.</translation>
+    </message>
+    <message>
+        <source>&quot;%1&quot; is a built-in preset. Make a copy of it to add your own rules.</source>
+        <translation>«%1» — встроенный пресет. Чтобы добавить свои правила, сделайте его копию.</translation>
     </message>
     <message>
         <source>The current routing profile is raw JSON.</source>
@@ -11248,6 +11260,10 @@ Core: %2</source>
     <message>
         <source>%1 ms</source>
         <translation>%1 мс</translation>
+    </message>
+    <message>
+        <source>Connect OK</source>
+        <translation>Подключено</translation>
     </message>
     <message>
         <source>no response</source>

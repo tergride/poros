@@ -30,6 +30,7 @@
 #include "include/ui/advanced/EmbeddedDialog.h"
 #include "include/ui/mainWindow/MainWindowInternal.h"
 #include "include/ui/setting/Icon.hpp"
+#include "include/ui/simple/ServerTreeModel.h"
 #include "include/ui/utils/ProfilesTableModel.h"
 
 namespace {
@@ -369,10 +370,12 @@ void MainWindow::dialog_message_impl(MwMessage cmd, const QStringList &args) {
         break;
     case MwMessage::ProfileChanged:
         refresh_proxy_list({}, true);
+        if (m_serverModel != nullptr) m_serverModel->reload();
         if (changed(MwArg::RestartProxy)) connection()->noteRestartNeeded(Engine::RestartReason::Profile);
         break;
     case MwMessage::GroupsChanged:
         refresh_groups();
+        if (m_serverModel != nullptr) m_serverModel->reload();
         profilesTableModel->invalidateAddresses();
         if (changed(MwArg::RestartProxy)) connection()->noteRestartNeeded(Engine::RestartReason::Group);
         break;

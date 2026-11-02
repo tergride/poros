@@ -479,6 +479,8 @@ QString MainWindow::routeRuleAppendBlocker() const
     const auto currentRoute = dm->routesRepo->GetRouteProfile(dm->settingsRepo->current_route_id);
     if (!currentRoute) return tr("No active routing profile found.");
     if (currentRoute->preventModifications) return tr("The current routing profile is locked against modifications.");
+    // The start restores a built-in preset as it ships, which would drop the rule without a word.
+    if (currentRoute->IsBuiltin()) return tr("\"%1\" is a built-in preset. Make a copy of it to add your own rules.").arg(currentRoute->name);
     if (currentRoute->isRaw) return tr("The current routing profile is raw JSON.");
     if (currentRoute->isRemote && currentRoute->autoUpdate) return tr("The current routing profile auto-updates from a URL.");
     return {};

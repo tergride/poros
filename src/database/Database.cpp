@@ -540,6 +540,7 @@ namespace Configs {
             keepHostId(profilesReplaced, QStringLiteral("remember_id"));
             keepHostId(profilesReplaced, QStringLiteral("simple_server_id"));
             keepHostId(groupsReplaced, QStringLiteral("current_group"));
+            keepHostId(groupsReplaced, QStringLiteral("auto_group_id"));
             keepHostId(routesReplaced, QStringLiteral("current_route_id"));
 
             if (parts.profiles) for (const auto& t : kProfileTables) copyTable(db, t);
@@ -557,6 +558,11 @@ namespace Configs {
                         if ((profilesReplaced && keptHere(QString::fromLatin1(key))) || !databaseIdExists(db, "profiles", *profileId))
                             databaseSetSettingId(db, key, NoProfileId);
                     }
+                }
+                // A hidden group that did not come along is made again when the user next picks Auto.
+                if (const auto autoGroup = databaseSettingId(db, "auto_group_id"); autoGroup && *autoGroup >= 0) {
+                    if ((groupsReplaced && keptHere("auto_group_id")) || !databaseIdExists(db, "groups", *autoGroup))
+                        databaseSetSettingId(db, "auto_group_id", -1);
                 }
                 // Missing rows are written too: SettingsRepo would load hard defaults that need not resolve.
                 const auto currentGroup = databaseSettingId(db, "current_group");

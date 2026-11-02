@@ -96,6 +96,7 @@ namespace Configs {
             {"test_concurrent",        &test_concurrent},
             {"remember_id",            &remember_id},
             {"simple_server_id",       &simple_server_id},
+            {"auto_group_id",          &auto_group_id},
             {"language",               &language},
             {"font_size",              &font_size},
             {"max_log_line",           &max_log_line},

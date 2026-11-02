@@ -114,7 +114,15 @@ FailureBanner::FailureBanner(QWidget *parent) : QFrame(parent) {
     hide();
 }
 
-void FailureBanner::present(const QString &text, const QList<Action> &actions) {
+void FailureBanner::present(const QString &text, const QList<Action> &actions, bool standing) {
+    if (standing) {
+        m_standingText = text;
+        m_standingActions = actions;
+    }
+    display(text, actions);
+}
+
+void FailureBanner::display(const QString &text, const QList<Action> &actions) {
     while (auto *item = m_actions->takeAt(0)) {
         delete item->widget();
         delete item;
@@ -132,7 +140,17 @@ void FailureBanner::present(const QString &text, const QList<Action> &actions) {
 }
 
 void FailureBanner::dismiss() {
-    hide();
+    if (standing() || m_standingText.isEmpty()) {
+        m_standingText.clear();
+        m_standingActions.clear();
+        hide();
+        return;
+    }
+    display(m_standingText, m_standingActions);
+}
+
+bool FailureBanner::standing() const {
+    return !isHidden() && !m_standingText.isEmpty() && m_text->text() == m_standingText;
 }
 
 QString FailureBanner::text() const {

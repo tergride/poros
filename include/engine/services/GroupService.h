@@ -22,9 +22,10 @@ namespace Engine::GroupService {
 
     using UpdateDone = std::function<void(const Subscription::UpdateOutcome &outcome)>;
 
-    // Main thread. Refreshes a subscription group quietly (log only); done runs on the main thread. An update of a group
-    // already queued or running shares that job's outcome.
-    std::optional<ServiceError> Update(int groupId, const UpdateDone &done);
+    // Main thread. Refreshes a subscription group; done runs on the main thread. Quietly (log only) unless shown, which
+    // shows the changes as the settings ask and any failure. An update of a group already queued or running shares that
+    // job's outcome.
+    std::optional<ServiceError> Update(int groupId, const UpdateDone &done, bool shown = false);
 
     using UpdateAllDone = std::function<void(const QList<Subscription::UpdateOutcome> &outcomes)>;
 

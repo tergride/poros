@@ -111,6 +111,7 @@ void AddSubscriptionDialog::accept() {
     }
     m_busy = true;
     m_add->setEnabled(false);
+    m_cancel->setEnabled(false);
     m_link->setEnabled(false);
     m_name->setEnabled(false);
     setStatus(tr("Checking the link…"), false);
@@ -130,6 +131,7 @@ void AddSubscriptionDialog::accept() {
         self->m_link->setEnabled(true);
         self->m_name->setEnabled(true);
         self->m_add->setEnabled(true);
+        self->m_cancel->setEnabled(true);
         self->setStatus(outcome.error.isEmpty() ? tr("No servers were found at this link.") : outcome.error, true);
     });
     if (refusal) {
@@ -139,6 +141,11 @@ void AddSubscriptionDialog::accept() {
         m_link->setEnabled(true);
         m_name->setEnabled(true);
         m_add->setEnabled(true);
+        m_cancel->setEnabled(true);
         setStatus(refusal->message, true);
     }
+}
+
+void AddSubscriptionDialog::reject() {
+    if (!m_busy) QDialog::reject();
 }

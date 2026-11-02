@@ -7,7 +7,9 @@
 #include "include/engine/autoselector/AutoSelectorController.h"
 #include "include/engine/tests/TestRunner.h"
 
+#include <QGuiApplication>
 #include <QMenu>
+#include <QScreen>
 
 #include "include/configs/sub/GroupUpdater.hpp"
 #include "include/configs/sub/RouteUpdater.hpp"
@@ -87,6 +89,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(host->stats(), &Engine::StatsService::connectionsUpdated, this, &MainWindow::UpdateConnectionList);
     connect(host->connection(), &Engine::ConnectionManager::statusChanged, this, [this] { refresh_status(); });
     connect(host->connection(), &Engine::ConnectionManager::busyChanged, this, &MainWindow::refresh_startstop_button);
+    connect(host->connection(), &Engine::ConnectionManager::busyChanged, this, &MainWindow::refreshSimplePortal);
     connect(host->connection(), &Engine::ConnectionManager::profileRowsChanged, this, [this](const QList<int> &ids) { refresh_proxy_list(ids); });
     connect(host->connection(), &Engine::ConnectionManager::runMarker, this, &MainWindow::addRunMarker);
     connect(host->connection(), &Engine::ConnectionManager::restartReasonsChanged, this, &MainWindow::showRestartReasons);
@@ -219,12 +222,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->label_inbound->installEventFilter(this);
     RegisterHotkey(false);
     auto last_size = Configs::dataManager->settingsRepo->mw_size.split("x");
-    if (last_size.length() == 2) {
-        auto w = last_size[0].toInt();
-        auto h = last_size[1].toInt();
-        if (w > 0 && h > 0) {
-            resize(w, h);
-        }
+    if (last_size.length() == 2 && last_size[0].toInt() > 0 && last_size[1].toInt() > 0) {
+        resize(last_size[0].toInt(), last_size[1].toInt());
+    } else if (const auto *primary = QGuiApplication::primaryScreen()) {
+        // The first launch opens on the quick setup, which is laid out for this size.
+        resize(QSize(1180, 760).boundedTo(primary->availableGeometry().size()));
     }
 
     ui->menubar->setVisible(false);

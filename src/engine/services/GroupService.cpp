@@ -10,6 +10,8 @@
 #include "include/database/DatabaseManager.h"
 #include "include/database/GroupsRepo.h"
 #include "include/engine/EditLocks.h"
+#include "include/engine/EngineHost.h"
+#include "include/engine/connection/ConnectionManager.h"
 #include "include/engine/EngineEvents.h"
 #include "include/engine/ThreadCheck.h"
 #include "include/global/Utils.hpp"
@@ -63,7 +65,7 @@ namespace Engine::GroupService {
         return std::nullopt;
     }
 
-    std::optional<ServiceError> Update(int groupId, const UpdateDone &done) {
+    std::optional<ServiceError> Update(int groupId, const UpdateDone &done, bool shown) {
         ENGINE_CHECK_MAIN_THREAD();
         const auto group = Configs::dataManager->groupsRepo->GetGroup(groupId);
         if (group == nullptr) return groupServiceUnknown(groupId);
@@ -74,7 +76,8 @@ namespace Engine::GroupService {
             return ServiceError{409, QStringLiteral("group_archived"), QStringLiteral("The group is archived")};
         }
 
-        Subscription::updater()->RefreshWithOutcome(groupId, Subscription::GroupUpdater::Surface::Log,
+        using Surface = Subscription::GroupUpdater::Surface;
+        Subscription::updater()->RefreshWithOutcome(groupId, shown ? Surface::Diff : Surface::Log,
                                                     [done](const Subscription::UpdateOutcome &outcome) {
                                                         if (!done) return;
                                                         groupServiceDeliver([done, outcome] { done(outcome); });
@@ -146,16 +149,23 @@ namespace Engine::GroupService {
         if (auto refusal = CheckDelete(groupId)) return refusal;
         const auto group = Configs::dataManager->groupsRepo->GetGroup(groupId);
         const auto profileIds = group->Profiles();
-        const QSet<int> deletedProfiles(profileIds.cbegin(), profileIds.cend());
+        QSet<int> deletedProfiles(profileIds.cbegin(), profileIds.cend());
+        // The group's Auto lives in the hidden group but goes with it.
+        if (const int autoId = AutoGroupService::Find(groupId); autoId >= 0) deletedProfiles.insert(autoId);
+        if (auto *engine = Engine::host()) {
+            if (const auto running = engine->connection()->runningSnapshot(); running != nullptr && deletedProfiles.contains(running->id)) {
+                engine->connection()->stop({.block = true});
+            }
+        }
+        auto *settings = Configs::dataManager->settingsRepo.get();
+        // A non-manual stop leaves started_id naming the profile, and a batch delete spares the profile it names.
+        if (deletedProfiles.contains(settings->started_id)) settings->UpdateStartedId(Configs::NoProfileId);
         if (!Configs::dataManager->groupsRepo->DeleteGroup(groupId)) {
             return ServiceError{500, QStringLiteral("internal"), QStringLiteral("Could not delete the group")};
         }
 
         AutoGroupService::Remove(groupId);
 
-        auto *settings = Configs::dataManager->settingsRepo.get();
-        // The caller stopped a running profile of the group, but a non-manual stop leaves started_id naming it.
-        if (deletedProfiles.contains(settings->started_id)) settings->UpdateStartedId(Configs::NoProfileId);
         if (settings->current_group == groupId) {
             const auto tabGroups = groupServiceTabGroups();
             settings->current_group = tabGroups.isEmpty() ? -1 : tabGroups.first();

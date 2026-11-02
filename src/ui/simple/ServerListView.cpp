@@ -6,6 +6,7 @@
 #include <QSortFilterProxyModel>
 #include <QStyledItemDelegate>
 
+#include "include/database/entities/Profile.h"
 #include "include/ui/setting/PorosTheme.h"
 #include "include/ui/simple/ServerTreeModel.h"
 
@@ -47,6 +48,7 @@ namespace {
     }
 
     QColor serverListPingColor(int latency) {
+        if (latency == Configs::kLatencyConnectOnly) return QColor(PorosTheme::Ok);
         if (latency <= 0) return QColor(PorosTheme::T3);
         if (latency < 100) return QColor(PorosTheme::Ok);
         return QColor(latency < 300 ? PorosTheme::Warn : PorosTheme::Bad);
@@ -194,7 +196,10 @@ namespace {
             }
 
             if (server.latency != 0) {
-                const QString ping = server.latency > 0 ? ServerTreeModel::tr("%1 ms").arg(server.latency) : ServerTreeModel::tr("no response");
+                // A VPN profile's test only tells that it connects.
+                const QString ping = server.latency > 0 ? ServerTreeModel::tr("%1 ms").arg(server.latency)
+                                     : server.latency == Configs::kLatencyConnectOnly ? ServerTreeModel::tr("Connect OK")
+                                                                                       : ServerTreeModel::tr("no response");
                 painter->setFont(MonoFont(12));
                 painter->setPen(serverListPingColor(server.latency));
                 const int pingWidth = painter->fontMetrics().horizontalAdvance(ping);

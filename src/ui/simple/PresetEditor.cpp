@@ -248,7 +248,7 @@ void PresetEditor::addRule(bool program, QLineEdit *input) {
         return;
     }
     m_problem->clear();
-    m_rules.append({line.mid(line.indexOf(u':') + 1), Configs::PresetRules::Action::Proxy, program});
+    m_rules.append({line.mid(line.indexOf(u':') + 1), Configs::PresetRules::Action::Proxy, program, line});
     input->clear();
     rebuildRules();
 }

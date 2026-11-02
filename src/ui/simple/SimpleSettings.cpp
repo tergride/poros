@@ -207,6 +207,7 @@ void SimpleSettings::rebuildPresetRows() {
     const auto keys = Configs::PresetCatalog::Keys();
     std::stable_sort(routes.begin(), routes.end(), [&keys](const auto &a, const auto &b) { return keys.indexOf(a->builtinKey) < keys.indexOf(b->builtinKey); });
     const int current = simpleSettingsRepo()->current_route_id;
+    bool ownPresets = false;
     for (const auto &route : routes) {
         const bool builtin = route->IsBuiltin();
         auto *parent = (builtin ? m_builtinPresets : m_ownPresets)->parentWidget();
@@ -237,9 +238,13 @@ void SimpleSettings::rebuildPresetRows() {
             connect(copy, &QPushButton::clicked, this, [this, id = route->id] { copyPreset(id); });
             rowLayout->addWidget(copy);
         } else {
-            auto *edit = new QPushButton(PorosTheme::Icon(QStringLiteral("edit")), tr("Edit"), row);
-            connect(edit, &QPushButton::clicked, this, [this, id = route->id] { m_hooks.editPreset(id); });
-            rowLayout->addWidget(edit);
+            ownPresets = true;
+            // The editor works on rules: a raw preset has none, a locked one keeps them and a remote one gets them from its URL.
+            if (!route->isRaw && !route->preventModifications && !route->isRemote) {
+                auto *edit = new QPushButton(PorosTheme::Icon(QStringLiteral("edit")), tr("Edit"), row);
+                connect(edit, &QPushButton::clicked, this, [this, id = route->id] { m_hooks.editPreset(id); });
+                rowLayout->addWidget(edit);
+            }
             auto *remove = new QToolButton(row);
             remove->setIcon(PorosTheme::Icon(QStringLiteral("trash")));
             remove->setToolTip(tr("Delete"));
@@ -248,7 +253,7 @@ void SimpleSettings::rebuildPresetRows() {
         }
         (builtin ? m_builtinPresets : m_ownPresets)->addWidget(row);
     }
-    if (m_ownPresets->isEmpty()) m_ownPresets->addWidget(simpleSettingsLabel(tr("Make a copy of a built-in preset to add your own sites and programs."), "hint", m_ownPresets->parentWidget()));
+    if (!ownPresets) m_ownPresets->addWidget(simpleSettingsLabel(tr("Make a copy of a built-in preset to add your own sites and programs."), "hint", m_ownPresets->parentWidget()));
 }
 
 void SimpleSettings::copyPreset(int routeId) {
@@ -343,7 +348,7 @@ QWidget *SimpleSettings::buildSubscriptions() {
         const int minutes = interval->currentData().toInt();
         const int current = qAbs(simpleSettingsRepo()->sub_auto_update);
         const int value = minutes > 0 ? minutes : qMax(current, 30);
-        put({{QStringLiteral("sub_auto_update"), autoUpdate->isChecked() ? value : -value},
+        put({{QStringLiteral("sub_auto_update"), autoUpdate->isChecked() ? value : 0},
              {QStringLiteral("sub_respect_server_interval"), minutes == 0}});
     };
     connect(autoUpdate, &QCheckBox::clicked, this, applyUpdate);

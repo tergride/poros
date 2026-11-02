@@ -35,11 +35,18 @@ public:
         std::function<void()> run;
     };
 
-    void present(const QString &text, const QList<Action> &actions);
+    // A standing message (an update to install) comes back once a later one goes, until it is dismissed itself.
+    void present(const QString &text, const QList<Action> &actions, bool standing = false);
     void dismiss();
     [[nodiscard]] QString text() const;
+    // Whether the message on show is the standing one.
+    [[nodiscard]] bool standing() const;
 
 private:
+    void display(const QString &text, const QList<Action> &actions);
+
     QLabel *m_text;
     QHBoxLayout *m_actions;
+    QString m_standingText;
+    QList<Action> m_standingActions;
 };

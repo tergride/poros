@@ -411,7 +411,9 @@ private slots:
         QVERIFY(ownRule >= 0);
         QVERIFY(russianSites > ownRule);
 
-        const auto back = Read(*copy);
+        auto back = Read(*copy);
+        // Typed rules carry no stored line; the ones read back do.
+        for (auto &rule : back) rule.line.clear();
         QCOMPARE(back.size(), rules.size());
         for (const auto &rule : rules) QVERIFY2(back.contains(rule), qPrintable(rule.text));
         QCOMPARE(LockedRules(*copy), locked);
@@ -765,6 +767,39 @@ private slots:
         QVERIFY(!Configs_network::RequestUsesMixedInbound(false, &error));
         QVERIFY(!error.isEmpty());
         std::tie(settings->spmode_system_proxy, settings->net_use_proxy, settings->started_id) = saved;
+    }
+
+    void autoGroupSurvivesRestart() {
+        int gid = -1;
+        QVERIFY(!Engine::GroupService::Add({"Survives", "https://sub.example.com/s/5", false}, &gid).has_value());
+        auto server = Configs::ProfilesRepo::NewProfile("socks");
+        server->outbound->server = "198.51.100.1";
+        server->outbound->server_port = 1080;
+        QVERIFY(Configs::dataManager->profilesRepo->AddProfile(server, gid));
+        const int autoId = Engine::AutoGroupService::Ensure(gid);
+        QVERIFY(autoId >= 0);
+        const int hidden = Configs::dataManager->settingsRepo->auto_group_id;
+        Configs::dataManager->settingsRepo->Save();
+        openDatabase();
+        QCOMPARE(Configs::dataManager->settingsRepo->auto_group_id, hidden);
+        QCOMPARE(Engine::AutoGroupService::Ensure(gid), autoId);
+
+        // Deleting the subscription takes its Auto along, and a start can no longer name it.
+        Configs::dataManager->settingsRepo->started_id = autoId;
+        QVERIFY(!Engine::GroupService::Delete(gid).has_value());
+        QCOMPARE(Engine::AutoGroupService::Find(gid), -1);
+        QCOMPARE(Configs::dataManager->settingsRepo->started_id, Configs::NoProfileId);
+    }
+
+    void presetKeepsTheKindOfEachRule() {
+        auto copy = std::make_shared<Configs::RouteProfile>(*routeByKey("all"));
+        copy->id = -1;
+        copy->DetachFromBuiltin();
+        const QString lines = "keyword:github\nregex:^ads\\.\nruleset:geosite-google\ndomain:a.example.com";
+        QVERIFY(copy->UpdateSimpleRules(lines, Configs::proxy).isEmpty());
+        const auto before = copy->GetSimpleRules(Configs::proxy);
+        QVERIFY(Configs::PresetRules::Write(*copy, Configs::PresetRules::Read(*copy)).isEmpty());
+        QCOMPARE(copy->GetSimpleRules(Configs::proxy), before);
     }
 
     void cleanStartIsSimple() {

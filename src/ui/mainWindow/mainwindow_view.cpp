@@ -25,6 +25,7 @@
 #include "include/ui/simple/ServerTreeModel.h"
 #include "include/ui/stats/dialog_auto_selector.h"
 #include "include/ui/utils/ProfilesTableModel.h"
+#include "include/ui/widget/AdminPromptDialog.h"
 #include "include/ui/widget/LiveChart.h"
 #include "include/ui/widget/StartStopButton.hpp"
 
@@ -100,6 +101,13 @@ void MainWindow::showRestartReasons()
     for (const auto reason : connection()->restartReasons()) reasons << restartReasonText(reason);
     dataViewHtmlGenerator_.setPendingRestartReasons(reasons);
     UpdateDataView(true);
+    // The simple mode has no data view to say it.
+    const QString text = tr("Some changes take effect after reconnecting.");
+    if (!reasons.isEmpty() && simpleModeShown()) {
+        m_banner->present(text, {{tr("Reconnect"), [this] { connection()->applyPendingRestart(); }}});
+    } else if (m_banner->text() == text) {
+        m_banner->dismiss();
+    }
 }
 
 void MainWindow::showVpnEndpointStatus(const QString &summary, const QString &detail, bool problem)
