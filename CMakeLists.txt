@@ -762,6 +762,9 @@ if (POROS_BUILD_TESTS)
     enable_testing()
     set(POROS_UNIT_SOURCES ${PROJECT_SOURCES})
     list(REMOVE_ITEM POROS_UNIT_SOURCES src/main.cpp)
+    if (POROS_UI_TOUR)
+        list(APPEND POROS_UNIT_SOURCES src/ui/mainWindow/mainwindow_tour.cpp)
+    endif ()
     qt_add_executable(poros_unit
             MANUAL_FINALIZATION
             ${POROS_UNIT_SOURCES}

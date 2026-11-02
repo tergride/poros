@@ -22,7 +22,7 @@ namespace Configs {
     // The cached IsAdmin answer without an RPC or side effects; empty while unknown. Main thread.
     std::optional<bool> KnownAdmin();
 
-    // Set once at startup to the resolved data dir; before that GetBasePath() falls back to the old guess.
+    // Set once at startup to the data folder: the program folder, or the one -appdata names. Before that, the program folder.
     void SetBasePath(const QString &path);
 
     QString GetBasePath();

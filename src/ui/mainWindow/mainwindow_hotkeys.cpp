@@ -45,21 +45,22 @@ bool MainWindow::IsGlobalHotkeySupported() const {
 }
 
 void MainWindow::registerMenuShortcuts(QMenu *menu, QSet<QKeySequence> &claimed) {
-    const QList<QAction *> anyPage{commandPaletteAction, ui->actionHide_window, ui->actionSpeedtest_Current};
     for (const auto &action: menu->actions()) {
-        if (auto *sub = action->menu()) {
-            registerMenuShortcuts(sub, claimed);
-        } else {
-            for (const auto &seq : action->shortcuts()) {
-                if (claimed.contains(seq)) continue;
-                claimed.insert(seq);
-                auto *shortcut = new QShortcut(seq, this, [=,this](){
-                    action->trigger();
-                });
-                hiddenMenuShortcuts.append(shortcut);
-                if (!anyPage.contains(action)) profileShortcuts.append(shortcut);
-            }
-        }
+        if (auto *sub = action->menu()) registerMenuShortcuts(sub, claimed);
+        else registerActionShortcuts(action, claimed);
+    }
+}
+
+void MainWindow::registerActionShortcuts(QAction *action, QSet<QKeySequence> &claimed) {
+    const QList<QAction *> anyPage{commandPaletteAction, ui->actionHide_window, ui->actionSpeedtest_Current, ui->menu_stop_testing};
+    for (const auto &seq : action->shortcuts()) {
+        if (claimed.contains(seq)) continue;
+        claimed.insert(seq);
+        auto *shortcut = new QShortcut(seq, this, [=,this](){
+            action->trigger();
+        });
+        hiddenMenuShortcuts.append(shortcut);
+        if (!anyPage.contains(action)) profileShortcuts.append(shortcut);
     }
 }
 
@@ -78,6 +79,8 @@ void MainWindow::RegisterHiddenMenuShortcuts(bool unregister) {
     for (auto *menu : {ui->menu_program, ui->menu_preferences, ui->menuRouting_Menu, ui->menuTesting, ui->menuTools, ui->menuHidden_menu, ui->menu_server}) {
         registerMenuShortcuts(menu, claimed);
     }
+    // In a menu only while tests run, and it stops them from any page.
+    registerActionShortcuts(ui->menu_stop_testing, claimed);
     syncMenuShortcuts();
 }
 

@@ -50,8 +50,8 @@ namespace {
     QColor serverListPingColor(int latency) {
         if (latency == Configs::kLatencyConnectOnly) return QColor(PorosTheme::Ok);
         if (latency <= 0) return QColor(PorosTheme::T3);
-        if (latency < 100) return QColor(PorosTheme::Ok);
-        return QColor(latency < 300 ? PorosTheme::Warn : PorosTheme::Bad);
+        if (latency < 80) return QColor(PorosTheme::Ok);
+        return QColor(latency < 180 ? PorosTheme::Warn : PorosTheme::Bad);
     }
 
     class ServerDelegate : public QStyledItemDelegate {

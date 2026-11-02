@@ -153,7 +153,7 @@ DialogBasicSettings::DialogBasicSettings(QWidget *parent)
         ui->start_with_windows->setChecked(AutoRun_IsEnabled());
         Engine::EngineEvents::SettingsChanged({QStringLiteral("auto_run")});
     });
-    connect(ui->diag_open_folder, &QPushButton::clicked, this, [] { QDesktopServices::openUrl(QUrl::fromLocalFile(QDir::currentPath() + "/config")); });
+    connect(ui->diag_open_folder, &QPushButton::clicked, this, [] { QDesktopServices::openUrl(QUrl::fromLocalFile(QDir::currentPath())); });
     ui->random_listen_port->setChecked(Configs::dataManager->settingsRepo->random_inbound_port);
     D_LOAD_INT(test_concurrent)
     D_LOAD_STRING(test_latency_url)

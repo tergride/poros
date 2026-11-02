@@ -521,6 +521,7 @@ private:
 
     void RegisterHiddenMenuShortcuts(bool unregister = false);
     void registerMenuShortcuts(QMenu *menu, QSet<QKeySequence> &claimed);
+    void registerActionShortcuts(QAction *action, QSet<QKeySequence> &claimed);
     void syncMenuShortcuts();
 
     void setActionsData();
@@ -531,6 +532,7 @@ private:
 
     QPointer<CommandPalette> commandPalette;
     QAction *commandPaletteAction = nullptr;
+    QAction *quickSetupAction = nullptr;
     QHash<QString, QAction *> settingsDialogOpeners;
 
     void setupCommandPalette();

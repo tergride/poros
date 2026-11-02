@@ -467,7 +467,7 @@ void MainWindow::showAppMenu(const QPoint &globalPos) {
         menu.addSeparator();
     }
 
-    connect(menu.addAction(PorosTheme::Icon(QStringLiteral("bolt")), tr("Quick setup…")), &QAction::triggered, this, &MainWindow::showOnboarding);
+    add(QStringLiteral("bolt"), quickSetupAction);
     menu.addSeparator();
     heading(tr("Interface mode"));
     auto *modeSwitch = new SegmentSwitch({tr("Simple"), tr("Advanced")}, &menu);

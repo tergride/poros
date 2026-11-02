@@ -40,7 +40,7 @@ namespace Configs_sys {
         // Turns an unrecovered Go panic into a real abort, so all goroutine stacks are dumped and WER captures the core too.
         env.insert("GOTRACEBACK", "crash");
         if (m_debugMode) env.insert("POROS_CORE_DEBUG", "1");
-        // Points Xray's asset loader at our writable config dir, so a geoip.dat/geosite.dat downloaded later is found with no core restart.
+        // Points Xray's asset loader at the data folder, where geoip.dat and geosite.dat are downloaded, so a new one is found with no core restart.
         env.insert("XRAY_LOCATION_ASSET", Configs::GetBasePath());
         setProcessEnvironment(env);
         IsolateChild(this);

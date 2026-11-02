@@ -14,7 +14,7 @@ namespace Engine::SettingsRegistry {
     };
 
     struct PutResult {
-        // Setting names, in request order.
+        // Setting names, sorted.
         QStringList changed;
         // A changed key takes effect only when the running profile restarts.
         bool restartNeeded = false;

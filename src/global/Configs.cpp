@@ -8,7 +8,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
-#include <QStandardPaths>
 #include <utility>
 #include <include/api/RPC.h>
 
@@ -81,9 +80,6 @@ namespace Configs {
     }
 
     QString GetBasePath() {
-        if (!basePathOverride.isEmpty()) return basePathOverride;
-        if (Configs::dataManager->settingsRepo->flag_use_appdata) return QStandardPaths::writableLocation(
-              QStandardPaths::AppConfigLocation);
-        return QCoreApplication::applicationDirPath();
+        return basePathOverride.isEmpty() ? QCoreApplication::applicationDirPath() : basePathOverride;
     }
 } // namespace Configs

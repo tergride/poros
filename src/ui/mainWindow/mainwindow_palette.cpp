@@ -24,6 +24,10 @@ void MainWindow::setupCommandPalette() {
     const auto toolsActions = ui->menuTools->actions();
     ui->menuTools->insertAction(toolsActions.value(0), commandPaletteAction);
     if (!toolsActions.isEmpty()) ui->menuTools->insertSeparator(toolsActions.first());
+
+    quickSetupAction = new QAction(tr("Quick setup…"), this);
+    connect(quickSetupAction, &QAction::triggered, this, &MainWindow::showOnboarding);
+    ui->menu_program->insertAction(ui->menu_program->actions().value(0), quickSetupAction);
 }
 
 void MainWindow::createCommandPalette() {

@@ -156,6 +156,8 @@ void SimpleSettings::put(const QJsonObject &patch) {
     if (const auto error = Engine::SettingsRegistry::Put(patch, context, &result)) {
         QMessageBox::warning(this, tr("Settings"), error->message);
         reload();
+    } else if (result.restartNeeded) {
+        Engine::host()->connection()->noteRestartNeeded(Engine::RestartReason::Settings);
     }
 }
 

@@ -728,7 +728,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->actionResolve_Out_IP, &QAction::triggered, this, [=,this]() {
         tests()->runIpTests(Configs::dataManager->groupsRepo->CurrentGroup()->Profiles());
     });
-    connect(ui->menu_stop_testing, &QAction::triggered, this, [=,this]() { tests()->stop(); });
+    connect(ui->menu_stop_testing, &QAction::triggered, this, [=,this]() {
+        if (tests()->isRunning()) tests()->stop();
+    });
     connect(ui->menu_server, &QMenu::aboutToHide, this, [=,this] {
         // A hidden action stays disabled whatever setEnabled says.
         ui->menu_export_config->setVisible(true);
