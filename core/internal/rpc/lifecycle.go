@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"runtime"
@@ -19,6 +18,11 @@ func (s *server) Start(ctx context.Context, in *gen.LoadConfigReq) (out *gen.Err
 	lifecycleMu.Lock()
 	defer lifecycleMu.Unlock()
 
+	// Answered before the cleanup below is armed: the running instance belongs to an earlier start and must stay reachable for Stop.
+	if currentBox() != nil {
+		return &gen.ErrorResp{Error: To("instance already started")}, nil
+	}
+
 	var err error
 
 	defer func() {
@@ -29,16 +33,9 @@ func (s *server) Start(ctx context.Context, in *gen.LoadConfigReq) (out *gen.Err
 		}
 	}()
 
+	// Sizes only: the configs hold the keys and passwords of every server.
 	if debugLog {
-		log.Println("Start:", *in.CoreConfig)
-		if in.XrayConfig != nil {
-			log.Println("Start Xray:", *in.XrayConfig)
-		}
-	}
-
-	if currentBox() != nil {
-		err = errors.New("instance already started")
-		return
+		log.Println("Start: core config of", len(in.GetCoreConfig()), "bytes, Xray config of", len(in.GetXrayConfig()), "bytes")
 	}
 
 	// Filled in below, once boxmain.Create has built the box these sidecars resolve through.

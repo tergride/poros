@@ -10,6 +10,8 @@ import (
 )
 
 func (s *server) Test(ctx context.Context, in *gen.TestReq) (*gen.TestResp, error) {
+	// Taken before the preparation, so a StopTest during it reaches this batch. StopTest rearms a fresh one.
+	testCtx := probe.TestContext()
 	env, err := prepareTestEnv(in.GetTestCurrent(), in.GetNeedXray(), in.GetXrayConfig(),
 		in.XrayFullConfigs, in.GetConfig(), in.OutboundTags, in.GetUseDefaultOutbound(),
 		in.GetXrayOutboundDnsStrategy())
@@ -25,8 +27,6 @@ func (s *server) Test(ctx context.Context, in *gen.TestReq) (*gen.TestResp, erro
 	}
 	defer env.close()
 
-	// Held, not re-read: StopTest rearms a fresh context, uncancelled.
-	testCtx := probe.TestContext()
 	if in.GetTestCurrent() {
 		testCtx = probe.LiveInstance(testCtx)
 	}
@@ -92,6 +92,7 @@ func (s *server) QueryURLTest(ctx context.Context, in *gen.EmptyReq) (out *gen.Q
 func (s *server) IPTest(ctx context.Context, in *gen.IPTestRequest) (*gen.IPTestResp, error) {
 	// Always builds its own box: there is no test-current variant of an IP test.
 	const current = false
+	testCtx := probe.TestContext()
 	env, err := prepareTestEnv(current, in.GetNeedXray(), in.GetXrayConfig(),
 		in.XrayFullConfigs, in.GetConfig(), in.OutboundTags, in.GetUseDefaultOutbound(),
 		in.GetXrayOutboundDnsStrategy())
@@ -101,7 +102,7 @@ func (s *server) IPTest(ctx context.Context, in *gen.IPTestRequest) (*gen.IPTest
 	defer env.close()
 
 	timeout := time.Duration(in.GetTestTimeoutMs()) * time.Millisecond
-	results := probe.BatchIPTest(probe.TestContext(), env.box, env.tags,
+	results := probe.BatchIPTest(testCtx, env.box, env.tags,
 		int(in.GetMaxConcurrency()), !current, timeout)
 
 	res := make([]*gen.IPTestRes, 0, len(results))

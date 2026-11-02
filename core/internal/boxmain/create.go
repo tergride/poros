@@ -19,7 +19,8 @@ import (
 func parseConfig(ctx context.Context, configContent []byte) (*option.Options, error) {
 	options, err := json.UnmarshalExtendedContext[option.Options](ctx, configContent)
 	if err != nil {
-		return nil, E.Cause(err, "decode config at ", string(configContent))
+		// The config is left out: it holds the keys of every server, and this error reaches the log.
+		return nil, E.Cause(err, "decode config")
 	}
 	return &options, nil
 }

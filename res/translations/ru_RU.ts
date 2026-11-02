@@ -8454,6 +8454,10 @@ Please try again.</source>
         <translation>Ошибка BuildConfig</translation>
     </message>
     <message>
+        <source>The core did not confirm the start, so it was stopped.</source>
+        <translation>Ядро не подтвердило запуск, поэтому он остановлен.</translation>
+    </message>
+    <message>
         <source>Another profile is starting...</source>
         <translation>Другой профиль запускается...</translation>
     </message>

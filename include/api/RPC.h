@@ -51,7 +51,8 @@ namespace API {
 
         QString CheckConfig(bool *rpcOK, const QString& config, bool isXray = false) const;
 
-        libcore::SpeedTestResponse SpeedTest(bool *rpcOK, const libcore::SpeedTestRequest &request, QString *coreError = nullptr);
+        // timeoutMs covers the whole batch; 0 keeps the default.
+        libcore::SpeedTestResponse SpeedTest(bool *rpcOK, const libcore::SpeedTestRequest &request, QString *coreError = nullptr, int timeoutMs = 0);
 
         libcore::QuerySpeedTestResponse QueryCurrentSpeedTests(bool *rpcOK);
 

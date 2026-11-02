@@ -259,11 +259,16 @@ func speedTestWithDialer(ctx context.Context, dialer func(ctx context.Context, n
 	for {
 		select {
 		case <-done:
+			// A transfer that never got going leaves a negative rate rather than an error.
+			if testErr == nil && (srv.DLSpeed < 0 || srv.ULSpeed < 0) {
+				testErr = errors.New("the speed test server sent nothing to measure")
+			}
 			if testErr != nil {
 				res.Error = testErr
+			} else {
+				res.DlSpeed = BrateToStr(float64(srv.DLSpeed))
+				res.UlSpeed = BrateToStr(float64(srv.ULSpeed))
 			}
-			res.DlSpeed = BrateToStr(float64(srv.DLSpeed))
-			res.UlSpeed = BrateToStr(float64(srv.ULSpeed))
 			res.DlBytes = srv.Context.GetTotalDownload()
 			res.UlBytes = srv.Context.GetTotalUpload()
 			res.Latency = int32(srv.Latency.Milliseconds())

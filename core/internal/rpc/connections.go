@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"os"
 	"strings"
 
@@ -35,24 +34,33 @@ func connMetaToProto(c *trafficcontrol.TrackerMetadata, ruleItem string) *gen.Co
 	if c.Rule != nil {
 		rule = c.Rule.String()
 	}
+	chain := make([]string, len(c.Chain))
+	for i, hop := range c.Chain {
+		chain[i] = validUTF8(hop)
+	}
 	return &gen.ConnectionMetaData{
 		Id:          To(c.ID.String()),
 		CreatedAt:   To(c.CreatedAt.UnixMilli()),
 		Upload:      To(c.Upload.Load()),
 		Download:    To(c.Download.Load()),
-		Outbound:    To(c.Outbound),
+		Outbound:    To(validUTF8(c.Outbound)),
 		Network:     To(c.Metadata.Network),
-		Dest:        To(c.Metadata.Destination.String()),
-		Protocol:    To(c.Metadata.Protocol),
-		Domain:      To(c.Metadata.Domain),
-		Process:     To(process),
-		ProcessPath: To(processPath),
-		Chain:       c.Chain,
+		Dest:        To(validUTF8(c.Metadata.Destination.String())),
+		Protocol:    To(validUTF8(c.Metadata.Protocol)),
+		Domain:      To(validUTF8(c.Metadata.Domain)),
+		Process:     To(validUTF8(process)),
+		ProcessPath: To(validUTF8(processPath)),
+		Chain:       chain,
 		ClosedAt:    To(closedAt),
 		Source:      To(source),
-		Rule:        To(rule),
-		RuleItem:    To(ruleItem),
+		Rule:        To(validUTF8(rule)),
+		RuleItem:    To(validUTF8(ruleItem)),
 	}
+}
+
+// The client refuses a whole reply for one string that is not UTF-8, and a sniffed domain or a process path can be anything.
+func validUTF8(s string) string {
+	return strings.ToValidUTF8(s, "\uFFFD")
 }
 
 // Non-draining: the recently-closed ring is re-reported every poll and the client dedups by id.
@@ -62,8 +70,9 @@ func (s *server) QueryConnections(ctx context.Context, in *gen.EmptyReq) (*gen.Q
 		return &gen.QueryConnectionsResp{}, nil
 	}
 	tm := service.PtrFromContext[trafficcontrol.Manager](box.Context())
+	// Statistics are off: nothing is tracked, which is no error to log twice a second.
 	if tm == nil {
-		return &gen.QueryConnectionsResp{}, errors.New("no traffic manager found")
+		return &gen.QueryConnectionsResp{}, nil
 	}
 
 	connRules.begin(box)

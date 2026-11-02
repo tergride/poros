@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 
 	"PorosCore/gen"
 	"PorosCore/internal/netmon"
@@ -36,8 +35,9 @@ func init() {
 
 func (s *server) GetDefaultInterface(ctx context.Context, in *gen.EmptyReq) (*gen.GetDefaultInterfaceResponse, error) {
 	ifc := netmon.DefaultInterface()
+	// No interface is an answer, not a failure: the client reads an empty name as "no network".
 	if ifc == nil {
-		return nil, errors.New("no default interface")
+		return &gen.GetDefaultInterfaceResponse{}, nil
 	}
 	return &gen.GetDefaultInterfaceResponse{
 		Name:  To(ifc.Name),

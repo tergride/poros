@@ -33,6 +33,8 @@ func (s *server) SpeedTest(ctx context.Context, in *gen.SpeedTestRequest) (*gen.
 		return nil, errors.New("cannot run empty test")
 	}
 
+	// Taken before the preparation, so a StopTest during it reaches this batch.
+	testCtx := probe.TestContext()
 	env, err := prepareTestEnv(in.GetTestCurrent(), in.GetNeedXray(), in.GetXrayConfig(),
 		in.XrayFullConfigs, in.GetConfig(), in.OutboundTags, in.GetUseDefaultOutbound(),
 		in.GetXrayOutboundDnsStrategy())
@@ -47,7 +49,7 @@ func (s *server) SpeedTest(ctx context.Context, in *gen.SpeedTestRequest) (*gen.
 	}
 	defer env.close()
 
-	results := probe.BatchSpeedTest(probe.TestContext(), env.box, env.tags,
+	results := probe.BatchSpeedTest(testCtx, env.box, env.tags,
 		*in.TestDownload, *in.TestUpload, *in.SimpleDownload, *in.SimpleDownloadAddr,
 		time.Duration(*in.TimeoutMs)*time.Millisecond, *in.OnlyCountry, *in.CountryConcurrency)
 

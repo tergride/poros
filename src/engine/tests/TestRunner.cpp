@@ -55,6 +55,9 @@ namespace Engine {
         constexpr int kTestRunnerTunnelHandshakeMs = 10000;
         constexpr int kTestRunnerCoreMaxConcurrency = 100;
         constexpr int kTestRunnerRpcSlackMs = 30000;
+        // The core's own fallback for a country check without a concurrency, and a bound for finding a speed test server.
+        constexpr int kTestRunnerCoreCountryConcurrency = 5;
+        constexpr int kTestRunnerSpeedServerLookupMs = 15000;
 
         // Test/IPTest answer only once the whole batch is done, so the deadline covers its worst case.
         int testRunnerBatchRpcTimeoutMs(qsizetype tagCount, int requestsPerTag) {
@@ -65,6 +68,17 @@ namespace Engine {
             const qint64 rounds = (qMax<qsizetype>(tagCount, 1) + concurrency - 1) / concurrency;
             const qint64 total = rounds * (kTestRunnerTunnelHandshakeMs + requestsPerTag * timeoutMs + kTestRunnerTunnelStartupMs) + kTestRunnerRpcSlackMs;
             return static_cast<int>(qMin<qint64>(total, std::numeric_limits<int>::max()));
+        }
+
+        // SpeedTest answers once the whole batch is done: speed one profile at a time, a download and an upload each,
+        // the country check in parallel.
+        int testRunnerSpeedRpcTimeoutMs(qsizetype tagCount, bool countryOnly) {
+            const auto& settings = Configs::dataManager->settingsRepo;
+            const qint64 perTag = kTestRunnerTunnelHandshakeMs + kTestRunnerTunnelStartupMs + kTestRunnerSpeedServerLookupMs
+                                  + 2LL * qMax(settings->speed_test_timeout_ms, 0);
+            const qint64 parallel = countryOnly ? (settings->test_concurrent > 0 ? settings->test_concurrent : kTestRunnerCoreCountryConcurrency) : 1;
+            const qint64 rounds = (qMax<qsizetype>(tagCount, 1) + parallel - 1) / parallel;
+            return static_cast<int>(qMin<qint64>(rounds * perTag + kTestRunnerRpcSlackMs, std::numeric_limits<int>::max()));
         }
 
         int testRunnerResolveEntID(const QMap<QString, int>& tag2entID, const std::string& tag, int fallback) {
@@ -667,7 +681,8 @@ namespace Engine {
                 else pollSpeedTest(tag2entID, testCurrent, gen);
             }, kTestRunnerSpeedPollIntervalMs);
 
-            result = API::defaultClient->SpeedTest(&rpcOK, req, &coreError);
+            result = API::defaultClient->SpeedTest(&rpcOK, req, &coreError,
+                                                   testRunnerSpeedRpcTimeoutMs(target.outboundTags.size(), req.only_country.value()));
         }
 
         if (!rpcOK || result.results.empty()) {

@@ -47,6 +47,12 @@ namespace API {
         static constexpr int kIOTimeoutMs = 30000;
 
     public:
+        // Wintun alone may spend 15 s on a leftover adapter, and rule sets download on the first start.
+        static constexpr int kStartTimeoutMs = 90000;
+
+    private:
+
+    public:
         static constexpr int CallOK = 0;
         static constexpr int CallNotConnected = -1919;
 
@@ -267,7 +273,7 @@ namespace API {
     QString Client::Start(bool *rpcOK, const libcore::LoadConfigReq &request) {
         libcore::ErrorResp reply;
         std::vector<uint8_t> resp;
-        auto status = channel->Call("Start", spb::pb::serialize<std::string>(request), resp);
+        auto status = channel->Call("Start", spb::pb::serialize<std::string>(request), resp, LocalSocketChannel::kStartTimeoutMs);
 
         if (status == LocalSocketChannel::CallOK && tryDeserialize(resp, reply)) {
             *rpcOK = true;
@@ -567,11 +573,11 @@ namespace API {
         }
     }
 
-    libcore::SpeedTestResponse Client::SpeedTest(bool *rpcOK, const libcore::SpeedTestRequest &request, QString *coreError)
+    libcore::SpeedTestResponse Client::SpeedTest(bool *rpcOK, const libcore::SpeedTestRequest &request, QString *coreError, int timeoutMs)
     {
         libcore::SpeedTestResponse reply;
         std::vector<uint8_t> resp;
-        auto status = channel->Call("SpeedTest", spb::pb::serialize<std::string>(request), resp);
+        auto status = channel->Call("SpeedTest", spb::pb::serialize<std::string>(request), resp, timeoutMs);
 
         if (status == LocalSocketChannel::CallOK && tryDeserialize(resp, reply)) {
             *rpcOK = true;

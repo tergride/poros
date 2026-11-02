@@ -132,7 +132,13 @@ namespace Engine {
             const QString error = API::defaultClient->Start(&rpcOK, req);
             // Queued ahead of every dialog below, so none of them can be shown over the prompt.
             runOnUiThread([slowStart] { slowStart.dismiss(); });
-            if (!rpcOK) return false;
+            if (!rpcOK) {
+                // The core may still be bringing it up: stopped now, it cannot come up later with nobody to stop it.
+                bool stopOK = false;
+                API::defaultClient->Stop(&stopOK);
+                failStart(resolved, QStringLiteral("Poros"), MainWindowTr::tr("The core did not confirm the start, so it was stopped."));
+                return false;
+            }
             if (!error.isEmpty()) {
                 if (Engine::AssetUpdates::HandleXrayGeoError(policy(), error, ent->outbound->DisplayTypeAndName(), resolved.interactive)) {
                     logUnattended(error);
