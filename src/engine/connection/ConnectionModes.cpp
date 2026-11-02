@@ -168,8 +168,4 @@ namespace Engine {
     QList<RestartReason> ConnectionManager::restartReasons() const {
         return m_restartReasons;
     }
-
-    bool ConnectionManager::restartPending() const {
-        return !m_restartReasons.isEmpty();
-    }
 } // namespace Engine

@@ -416,14 +416,6 @@ namespace Configs
         return true;
     }
 
-    bool Group::RemoveProfile(int ID)
-    {
-        QMutexLocker locker(&mutex);
-        if (!HasProfile(ID)) return false;
-        profiles.removeAll(ID);
-        return true;
-    }
-
     bool Group::RemoveProfileBatch(const QList<int>& IDs) {
         QSet<int> toDel;
         for (auto ID : IDs) {
@@ -437,14 +429,6 @@ namespace Configs
             }
         }
         profiles = newIDs;
-        return true;
-    }
-
-    bool Group::SwapProfiles(int idx1, int idx2)
-    {
-        QMutexLocker locker(&mutex);
-        if (profiles.size() <= idx1 || profiles.size() <= idx2) return false;
-        profiles.swapItemsAt(idx1, idx2);
         return true;
     }
 

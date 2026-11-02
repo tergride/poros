@@ -353,16 +353,6 @@ void MainWindow::display_qr_link(bool nkrFormat) {
     w->deleteLater();
 }
 
-void MainWindow::parseQrImage(const QPixmap *image)
-{
-    const QVector<QString> texts = QrDecoder().decode(image->toImage());
-    if (texts.isEmpty()) {
-        MessageBoxInfo(software_name, tr("QR Code not found"));
-    } else {
-        for (const QString &text : texts) import_text(text);
-    }
-}
-
 void MainWindow::on_menu_scan_qr_triggered() {
     bool captured = false;
     const auto texts = ScreenQr::ScanScreens(this, captured);
@@ -595,18 +585,6 @@ QList<int> MainWindow::get_now_selected_list() {
         list << idx.data(ProfilesTableModel::ProfileIdRole).toInt();
     }
     return list;
-}
-
-QList<int> MainWindow::get_selected_or_group() {
-    auto selected_or_group = ui->menu_server->property("selected_or_group").toInt();
-    QList<int> profileIDs;
-    if (selected_or_group > 0) {
-        profileIDs = get_now_selected_list();
-        if (profileIDs.isEmpty() && selected_or_group == 2) profileIDs = Configs::dataManager->groupsRepo->CurrentGroup()->Profiles();
-    } else {
-        profileIDs = Configs::dataManager->groupsRepo->CurrentGroup()->Profiles();
-    }
-    return profileIDs;
 }
 
 void MainWindow::saveProfileFocusState() {

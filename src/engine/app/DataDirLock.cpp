@@ -37,10 +37,6 @@ namespace Engine {
         release();
     }
 
-    bool DataDirLock::isHeld() const {
-        return handle != nullptr;
-    }
-
     DataDirLock::Result DataDirLock::tryAcquire(const QString &configDir, const QString &mode) {
         release();
         error.clear();

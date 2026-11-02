@@ -19,8 +19,6 @@ namespace Configs {
         // Deleted ids: never reused, so Save refuses them for the rest of the process.
         QSet<int> tombstones;
 
-        QJsonObject groupToJson(const Group* group) const;
-        
         std::shared_ptr<Group> groupFromJson(const QJsonObject& json) const;
         
         void saveToDatabase(const Group* group, int id) const;

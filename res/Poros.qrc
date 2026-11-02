@@ -1,7 +1,6 @@
 <RCC>
     <qresource prefix="/poros">
         <file alias="poros.qss">poros/poros.qss</file>
-        <file alias="img/horizon.jpg">poros/img/horizon.jpg</file>
         <file alias="img/mark.png">poros/img/mark.png</file>
         <file alias="img/portal.jpg">poros/img/portal.jpg</file>
         <file alias="img/wordmark.png">poros/img/wordmark.png</file>

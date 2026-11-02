@@ -32,15 +32,9 @@ namespace Configs {
 
         [[nodiscard]] std::shared_ptr<OtpProfile> GetOtpProfile(int id) const;
 
-        [[nodiscard]] std::shared_ptr<OtpProfile> GetOtpProfileByName(const QString &name) const;
-
         void DeleteOtpProfile(int id);
 
-        void DeleteOtpProfiles(const QList<int> &ids);
-
         [[nodiscard]] QList<std::shared_ptr<OtpProfile>> GetAllOtpProfiles() const;
-
-        [[nodiscard]] QList<int> GetAllOtpProfileIds() const;
 
         bool Save(const std::shared_ptr<OtpProfile> &profile);
 

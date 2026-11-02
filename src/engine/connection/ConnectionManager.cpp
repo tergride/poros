@@ -180,7 +180,7 @@ namespace Engine {
             Stats::SetVpnEndpointProfiles(result->vpnEndpointProfiles);
             m_stats->setOutboundNames(result->outboundNames);
             Configs::SetRunningProfiles(result->involvedProfiles);
-            setRunning(ent, !result->tunIPv4CIDR.isEmpty());
+            setRunning(ent);
             if (Configs::dataManager->settingsRepo->spmode_system_proxy) applySystemProxy(true);
 
             const bool exitIsEndpoint = Stats::VpnExitEndpoint(ent) != nullptr;
@@ -475,15 +475,9 @@ namespace Engine {
         return m_running;
     }
 
-    void ConnectionManager::setRunning(std::shared_ptr<Configs::Profile> profile, bool tun) {
+    void ConnectionManager::setRunning(std::shared_ptr<Configs::Profile> profile) {
         QMutexLocker locker(&m_runningMutex);
         m_running.swap(profile);
-        m_runningTun = m_running != nullptr && tun;
-    }
-
-    bool ConnectionManager::runningTun() const {
-        QMutexLocker locker(&m_runningMutex);
-        return m_runningTun;
     }
 
 } // namespace Engine

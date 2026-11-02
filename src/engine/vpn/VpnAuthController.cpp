@@ -130,10 +130,6 @@ namespace Engine {
         });
     }
 
-    QList<VpnAuthChallenge> VpnAuthController::pendingChallenges() const {
-        return m_vpnPendingChallenges;
-    }
-
     QString VpnAuthController::exitStateText() const {
         return m_vpnEndpointState;
     }

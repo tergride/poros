@@ -93,11 +93,6 @@ namespace Sys {
         return state() == State::Failed && failureCode_ == kPrivilege;
     }
 
-    bool KillSwitch::failedPersistently() const {
-        if (state() != State::Failed) return false;
-        return failureCode_ == kPrivilege || failureCode_ == kUnsupported || failureCode_ == kConfig;
-    }
-
     QString KillSwitch::failureText() const {
         QString text;
         if (failureCode_ == kPrivilege) {

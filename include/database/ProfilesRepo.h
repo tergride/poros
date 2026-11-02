@@ -61,8 +61,6 @@ namespace Configs {
 
         QList<std::pair<int, QString> > GetAllProfileIDNameMapped();
 
-        QStringList GetAllProfileNames();
-        
         // A running profile in ids is stopped (interactive per the flag) when stopRunningProfile, else dropped from ids.
         // A missing group is skipped. False when the rows could not be deleted.
         bool BatchDeleteProfiles(QList<int>& ids, bool stopRunningProfile = false, bool interactive = true);

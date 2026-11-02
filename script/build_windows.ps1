@@ -1,9 +1,11 @@
-# Local Windows x64 build, same steps as .github/workflows/build.yml. Output: deployment\windows-amd64.
+# Windows x64 build of the core and the GUI. Output: deployment\windows-amd64.
 # -Debugger builds the GUI for a debugger and never for shipping. Output: build-debug, with the core copied from deployment\windows-amd64.
+# -Clean starts the GUI from an empty build folder, so no cached CMake option or stale file reaches the result.
 param(
     [switch]$Core,
     [switch]$Gui,
     [switch]$Debugger,
+    [switch]$Clean,
     [string]$Toolchain = (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'toolchain')
 )
 
@@ -71,6 +73,7 @@ try {
             if ($name) { Set-Item "env:$name" $value }
         }
 
+        if ($Clean -and (Test-Path $build)) { Remove-Item -Recurse -Force $build }
         New-Item -ItemType Directory -Force $build | Out-Null
         if (-not (Test-Path $build\srslist.h)) {
             Invoke-Checked { curl.exe -fLso $build\srslist.h https://raw.githubusercontent.com/throneproj/routeprofiles/rule-set/srslist.h }
@@ -79,6 +82,8 @@ try {
         $env:CMAKE_PREFIX_PATH = "$Toolchain\Qt\lib\cmake"
         $env:OPENSSL_ROOT_DIR = "$Toolchain\openssl"
         Invoke-Checked { cmake -S . -B $build -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo "-DPOROS_DEBUGGER_BUILD=$Debugger" }
+        Invoke-Checked { ninja -C $build -j $jobs }
+        # After a change to a .ui file alone, the first pass only rewrites its ui_*.h; this one compiles what includes it.
         Invoke-Checked { ninja -C $build -j $jobs }
 
         if ($Debugger) {

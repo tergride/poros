@@ -49,9 +49,6 @@ namespace Engine {
 
         bool tunPrivileged();
 
-        // Any thread. The running config carries a tun inbound.
-        bool runningTun() const;
-
         ConnectionState connectionState() const;
 
         // Any thread.
@@ -81,8 +78,6 @@ namespace Engine {
         void clearRestartNeeded();
 
         QList<RestartReason> restartReasons() const;
-
-        bool restartPending() const;
 
     signals:
         // View hints, emitted where the old code refreshed a view; slots must not block, open a dialog, start or stop.
@@ -116,8 +111,7 @@ namespace Engine {
 
         void deferStartToCore(const StartRequest &request);
 
-        // tun: the running config carries a tun inbound (generated Tun or a custom config's).
-        void setRunning(std::shared_ptr<Configs::Profile> profile, bool tun = false);
+        void setRunning(std::shared_ptr<Configs::Profile> profile);
 
         void lookupExitCountry(const std::shared_ptr<Configs::Profile> &ent);
 
@@ -134,7 +128,6 @@ namespace Engine {
         // Written by the start/stop workers; read through runningSnapshot().
         mutable QMutex m_runningMutex;
         std::shared_ptr<Configs::Profile> m_running;
-        bool m_runningTun = false;
 
         // Main thread only.
         int m_lastProfileId = -1;

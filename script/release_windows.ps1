@@ -11,11 +11,42 @@ $repository = 'tergride/poros'
 $root = Split-Path $PSScriptRoot -Parent
 $deployment = Join-Path $root 'deployment\windows-amd64'
 $output = Join-Path $root 'deployment\release'
-# The archive is flat and holds the program only: updater.exe refuses anything else, and the data folder is never in it.
+# The archive is flat: the program, its license and the notices; the data folder is never in it.
 $programFiles = 'Poros.exe', 'PorosCore.exe', 'libcronet.dll', 'updater.exe'
 
 function Write-Utf8([string]$Path, [string]$Text) {
     [IO.File]::WriteAllText($Path, $Text, [Text.UTF8Encoding]::new($false))
+}
+
+# THIRD-PARTY-NOTICES.txt with the Go modules inside the executables appended, each with its license file. Uses the go that
+# build_windows.ps1 put on PATH, and its module cache.
+function Write-Notices([string]$Path) {
+    $cache = go env GOMODCACHE
+    $modules = [ordered]@{}
+    foreach ($binary in 'PorosCore.exe', 'updater.exe') {
+        $required = $null
+        foreach ($line in go version -m (Join-Path $deployment $binary)) {
+            $fields = $line.Trim() -split '\s+'
+            if ($fields[0] -eq 'dep') { $required = "$($fields[1])@$($fields[2])"; $modules[$required] = $required }
+            # A replacement follows the module it replaces.
+            elseif ($fields[0] -eq '=>' -and $required) { $modules[$required] = "$($fields[1])@$($fields[2])" }
+        }
+    }
+    $rule = '=' * 78
+    $text = [Text.StringBuilder]::new()
+    [void]$text.Append((Get-Content THIRD-PARTY-NOTICES.txt -Raw -Encoding utf8).TrimEnd())
+    [void]$text.Append("`n`n`n$rule`nGo modules in PorosCore.exe and updater.exe`n$rule`n")
+    foreach ($module in $modules.Values) {
+        # The module cache spells an upper-case letter as '!' and its lower case.
+        $folder = Join-Path $cache ([regex]::Replace($module, '[A-Z]', { '!' + $args[0].Value.ToLowerInvariant() }))
+        $licenses = @(Get-ChildItem $folder -File -ErrorAction Ignore | Where-Object Name -Match '^(licen[cs]e|copying|notice)')
+        if (-not $licenses) { throw "no license file for the Go module $module in $folder" }
+        foreach ($license in $licenses) {
+            $body = (Get-Content $license.FullName -Raw -Encoding utf8).Trim()
+            [void]$text.Append("`n$('-' * 78)`n$module, $($license.Name)`n$('-' * 78)`n`n$body`n")
+        }
+    }
+    Write-Utf8 $Path ($text.ToString() -replace "`r`n", "`n")
 }
 
 Set-Location $root
@@ -44,12 +75,15 @@ gh release view $tag --repo $repository --json tagName *> $null
 if ($LASTEXITCODE -eq 0) { throw "$repository already has ${tag}: add a newer section to CHANGELOG.md." }
 
 $env:INPUT_VERSION = $version
-try { & "$PSScriptRoot\build_windows.ps1" }
+try { & "$PSScriptRoot\build_windows.ps1" -Clean }
 finally { $env:INPUT_VERSION = $null }
 
 New-Item -ItemType Directory -Force $output | Out-Null
+$notices = Join-Path $output 'THIRD-PARTY-NOTICES.txt'
+Write-Notices $notices
 $archive = Join-Path $output "Poros-$version-windows-amd64.zip"
-Compress-Archive -Path ($programFiles | ForEach-Object { Join-Path $deployment $_ }) -DestinationPath $archive -Force
+$files = @($programFiles | ForEach-Object { Join-Path $deployment $_ }) + @((Join-Path $root 'LICENSE'), $notices)
+Compress-Archive -Path $files -DestinationPath $archive -Force
 
 $feed = [ordered]@{
     version = $version

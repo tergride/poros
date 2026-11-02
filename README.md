@@ -14,7 +14,7 @@ Needs the VS 2022 Build Tools C++ workload, Go, static Qt 6, OpenSSL, CMake, Nin
 script\build_windows.ps1 -Toolchain <folder>
 ```
 
-The output goes to `deployment\windows-amd64`. The build fails if a shipped file's name or properties mention a VPN or Throne, or if a binary contains a local path.
+The output goes to `deployment\windows-amd64`. `-Clean` starts from an empty build folder, as a release always does. The build fails if a shipped file's name or properties mention a VPN or Throne, or if a binary contains a local path.
 
 `script\build_windows.ps1 -Debugger` builds the GUI into `build-debug` for a debugger, with optimization off and full source paths. It copies the core from `deployment\windows-amd64`, so it needs a normal build first, and its output is never shipped.
 
@@ -25,7 +25,7 @@ Poros opens in one of two modes, and the app menu switches between them at any t
 - **Simple:** the servers of each subscription, a Start button, a TUN or System switch, ready presets and short settings. The first Start asks whether to use TUN or System.
 - **Advanced:** groups and manual profiles, routing rules, DNS, connections, logs, statistics, tools and all the settings.
 
-The first launch runs a short setup: subscription, how to start, interface mode. Every step can be skipped, and it runs again from the app menu.
+The first launch runs a short setup: interface mode, subscription, how to start, routing. Every step can be skipped, and it runs again from the app menu.
 
 Administrator rights are asked for only when an operation needs them, and you can always try without. A launch itself asks only when something has to work before the first click: a remembered TUN with `Connect to the last profile`, or the kill switch.
 
@@ -33,7 +33,7 @@ Built-in presets cannot be changed. A copy keeps its preset's rules and adds you
 
 ## Left out on purpose
 
-Compared to Throne, Poros has no Poros API or `thronectl`, background service, web panel, Clash API, IP scanner, WebDAV, Tailscale, Extra Core, themes, custom icons, custom inbound, or `Open with` for JSON and YAML files.
+Compared to Throne, Poros has no Throne API or `thronectl`, background service, web panel, Clash API, IP scanner, WebDAV, Tailscale, Extra Core, themes, custom icons, custom inbound, or `Open with` for JSON and YAML files.
 
 ## Next to Throne
 
@@ -45,18 +45,22 @@ Two things stay shared by Windows. Only one client can carry the traffic of the 
 
 Poros has no installer: put the folder anywhere you can write to and run `Poros.exe`. Profiles, settings, logs, crash reports and temporary files all stay in `config` next to it, so deleting the folder removes Poros. If the folder is read-only, Poros says so and exits.
 
-Windows only offers three features through its own stores, so they exist outside the folder if you turn them on, and stay there if you delete the folder first: Start with system (a Task Scheduler task), and `poros://` links and the Open with entry (`HKCU\Software\Classes`). TUN mode makes Windows install the Wintun driver, and the system proxy setting is restored when Poros stops it.
+Windows only offers two features through its own stores, so they exist outside the folder if you turn them on, and stay there if you delete the folder first: Start with system (a Task Scheduler task) and `poros://` links (`HKCU\Software\Classes`). TUN mode makes Windows install the Wintun driver, and the system proxy setting is restored when Poros stops it.
 
 ## Updates and releases
 
 Unless automatic updates are turned off in the settings, Poros checks for a new version at launch and every four hours, in `latest.json` of the newest release of this repository. It downloads the archive, verifies its size and SHA-256, and offers to install it. With automatic updates off, this happens only when you press Check. `updater.exe` replaces the program files after Poros exits and starts it again, and the `config` folder is not touched. If the install fails, the old files go back. A local build has no version, so it does not check.
 
-To release, add a section to `CHANGELOG.md` with `<!-- ru -->` and `<!-- en -->` parts, push `main`, and run `script\release_windows.ps1`. It builds the version, uploads the archive and `latest.json` as a draft, and publishes only when both are there. With `-DryRun` it builds and publishes nothing.
+To release, add a section to `CHANGELOG.md` with `<!-- ru -->` and `<!-- en -->` parts, push `main`, and run `script\release_windows.ps1`. It builds the version from a clean build folder, packs the program with `LICENSE` and `THIRD-PARTY-NOTICES.txt`, uploads the archive and `latest.json` as a draft, and publishes only when both are there. With `-DryRun` it builds and publishes nothing.
 
 ## Fonts
 
-The interface uses [Onest](https://github.com/googlefonts/onest), [Unbounded](https://github.com/googlefonts/unbounded) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) under the SIL Open Font License 1.1. The fonts and their license texts are in `res/font`.
+The interface uses [Onest](https://github.com/googlefonts/onest), [Unbounded](https://github.com/googlefonts/unbounded) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) under the SIL Open Font License 1.1, and shows emoji with a subset of Noto Color Emoji (SIL Open Font License 1.1), or with Twemoji (graphics under CC BY 4.0) before Windows 11 22H2. The fonts and the license texts of the first three are in `res/font`.
+
+## Third-party notices
+
+`THIRD-PARTY-NOTICES.txt` lists the projects Poros includes, with their licenses. In a release archive it ends with the Go modules built into `PorosCore.exe` and `updater.exe`, each with its license file.
 
 ## Upstream
 
-Poros does not follow Throne release by release. Fixes for performance, security and the connection itself are ported by hand, while the interface and the feature set are its own. The Go module, code identifiers, comments and `THRONE_*` variables keep their names for now. `throne://` links and `throne-route-profile` data stay importable.
+Poros does not follow Throne release by release. Fixes for performance, security and the connection itself are ported by hand, while the interface and the feature set are its own. The core is built on Throne's forks of sing-box, Xray-core, sing and wireguard-go. `throne://` links and `throne-route-profile` data stay importable.

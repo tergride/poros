@@ -148,8 +148,6 @@ namespace Configs {
 
         bool IsEmpty();
 
-        void ResetRules();
-
         void ResetSimpleRule(ruleType type);
 
         QString GetSimpleRules(simpleAction action);

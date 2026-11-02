@@ -99,28 +99,10 @@ namespace Configs {
         return profile;
     }
 
-    std::shared_ptr<OtpProfile> OtpProfilesRepo::GetOtpProfileByName(const QString &name) const {
-        auto query = db.query("SELECT id FROM otp_profiles WHERE name = ? ORDER BY id LIMIT 1", name.toStdString());
-        if (!query || !query->executeStep()) return nullptr;
-        return GetOtpProfile(query->getColumn(0).getInt());
-    }
-
     void OtpProfilesRepo::DeleteOtpProfile(int id) {
         QMutexLocker locker(&mutex);
         identityMap.erase(id);
         db.exec("DELETE FROM otp_profiles WHERE id = ?", id);
-    }
-
-    void OtpProfilesRepo::DeleteOtpProfiles(const QList<int> &ids) {
-        if (ids.isEmpty()) return;
-        QMutexLocker locker(&mutex);
-        std::vector<int> toDelete;
-        toDelete.reserve(ids.size());
-        for (const int id : ids) {
-            identityMap.erase(id);
-            toDelete.push_back(id);
-        }
-        db.execDeleteByIdIn("otp_profiles", "id", toDelete);
     }
 
     QList<std::shared_ptr<OtpProfile>> OtpProfilesRepo::GetAllOtpProfiles() const {
@@ -143,14 +125,6 @@ namespace Configs {
             profiles.append(profile);
         }
         return profiles;
-    }
-
-    QList<int> OtpProfilesRepo::GetAllOtpProfileIds() const {
-        QList<int> ids;
-        auto query = db.query("SELECT id FROM otp_profiles ORDER BY sort_order, id");
-        if (!query) return ids;
-        while (query->executeStep()) ids.append(query->getColumn(0).getInt());
-        return ids;
     }
 
     bool OtpProfilesRepo::Save(const std::shared_ptr<OtpProfile> &profile) {

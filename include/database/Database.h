@@ -319,11 +319,6 @@ namespace Configs {
             }
         }
 
-        // Throws std::exception on failure. Caller must delete destPath if it already exists.
-        void backupTo(const std::string& destPath);
-        // Throws std::exception on failure.
-        void restoreFrom(const std::string& srcPath);
-
         // entity_ids is always retained so restored IDs stay consistent; caller must delete destPath first. Throws on failure.
         // excludedSettingKeys (DB key names) are left out of a settings backup.
         void backupSelective(const std::string& destPath, const BackupParts& parts, const QStringList& excludedSettingKeys = {});

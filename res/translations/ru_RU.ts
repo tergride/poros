@@ -8914,6 +8914,10 @@ Name: %1</source>
         <translation>Poros %1 готов к установке. Нужен перезапуск, соединение ненадолго прервётся.</translation>
     </message>
     <message>
+        <source>While Poros restarts, the Kill switch is off and programs can reach the internet without it.</source>
+        <translation>Пока Poros перезапускается, Kill switch не работает и программы могут выходить в интернет без него.</translation>
+    </message>
+    <message>
         <source>Restart and update</source>
         <translation>Перезапустить и обновить</translation>
     </message>

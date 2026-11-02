@@ -53,9 +53,7 @@ namespace Configs {
 
         QStringList argv = {};
         bool flag_use_appdata = false;
-        bool flag_many = false;
         bool flag_tray = false;
-        bool flag_debug = false;
         bool flag_restart_tun_on = false;
         int flag_restart_profile = -1;
 
@@ -113,7 +111,6 @@ namespace Configs {
         int max_log_line = 500;
         // On-disk diagnostic log only; log_level is the core's browser verbosity.
         QString log_file_level = "debug";
-        QString splitter_state = "";
         bool enable_stats = true;
         int stats_tab = 0; // either connection or log
         // LiveChartState of the traffic graph; keys are Stats::TrafficLine keys.
@@ -228,8 +225,6 @@ namespace Configs {
         QString inbound_pass = "";
 
         // Routing
-        QString custom_route_global = "{\"rules\": []}";
-        QString active_routing = "Default";
         bool adblock_enable = false;
 
         // VPN

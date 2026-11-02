@@ -179,15 +179,11 @@ namespace Configs
         // Moves just the changed profiles into place; the rest must still be sorted. Falls back to Resort when many changed.
         bool Reposition(const QList<int>& changed);
 
-        bool RemoveProfile(int ID);
-
         bool RemoveProfileBatch(const QList<int>& IDs);
 
         bool AddProfile(int ID);
 
         bool AddProfileBatch(const QList<int>& IDs);
-
-        bool SwapProfiles(int idx1, int idx2);
 
         bool EmplaceProfile(int idx, int newIdx);
 

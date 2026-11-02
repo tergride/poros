@@ -25,8 +25,6 @@ namespace Engine {
 
         void release();
 
-        [[nodiscard]] bool isHeld() const;
-
         [[nodiscard]] QString errorString() const { return error; }
 
         // Readable while another process holds the lock; empty when there is no owner record.

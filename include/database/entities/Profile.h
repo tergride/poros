@@ -194,23 +194,5 @@ namespace Configs {
             QList<std::shared_ptr<Profile>> &outDst,
             bool ignoreMetadata = true
         );
-
-        static void OnlyInSrc(
-            const QList<std::shared_ptr<Profile>> &src,
-            const QList<std::shared_ptr<Profile>> &dst,
-            QList<std::shared_ptr<Profile>> &out,
-            bool ignoreMetadata = true
-        );
-
-        static void OnlyInSrc_ByPointer(
-            const QList<std::shared_ptr<Profile>> &src,
-            const QList<std::shared_ptr<Profile>> &dst,
-            QList<std::shared_ptr<Profile>> &out);
-
-        static void ChangedByIdentity(
-            QList<std::shared_ptr<Profile>> &src,
-            QList<std::shared_ptr<Profile>> &dst,
-            QList<std::shared_ptr<Profile>> &changedSrc,
-            QList<std::shared_ptr<Profile>> &changedDst);
     };
 } // namespace Configs

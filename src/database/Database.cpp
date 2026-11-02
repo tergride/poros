@@ -343,18 +343,6 @@ namespace Configs {
         }
     }
 
-    void Database::backupTo(const std::string& destPath) {
-        SQLite::Database destDb(destPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
-        SQLite::Backup backup(destDb, db);
-        databaseSnapshotStep(backup, writeMutex_);
-    }
-
-    void Database::restoreFrom(const std::string& srcPath) {
-        SQLite::Database srcDb(srcPath, SQLite::OPEN_READONLY);
-        SQLite::Backup restore(db, srcDb);
-        restore.executeStep(-1);
-    }
-
     namespace {
         // Child-first order: delete order matters once foreign keys are re-enabled.
         const std::vector<std::string> kProfileTables = {"profiles", "groups_order", "groups"};

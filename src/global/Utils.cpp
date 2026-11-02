@@ -1,8 +1,6 @@
 #include "include/global/Utils.hpp"
 #include "include/global/Logger.hpp"
 
-#include "3rdparty/QThreadCreateThread.hpp"
-
 #include <atomic>
 #include <cmath>
 #include <mutex>
@@ -12,6 +10,7 @@
 #include <QApplication>
 #include <QUrlQuery>
 #include <QTcpServer>
+#include <QThread>
 #include <QTimer>
 #include <QMessageBox>
 #include <QPointer>
@@ -462,8 +461,7 @@ void runOnUiThread(const std::function<void()> &callback, bool wait) {
 // carries its own.
 static bool launchArgTakesValue(const QString &arg) {
     static const QStringList names = {
-        QStringLiteral("appdata"), QStringLiteral("dump-configs"), QStringLiteral("data-dir"), QStringLiteral("api-listen"),
-        QStringLiteral("api-key-file"), QStringLiteral("api-allow"), QStringLiteral("restart-mode"), QStringLiteral("log-format"),
+        QStringLiteral("appdata"), QStringLiteral("dump-configs"),
     };
     const int dashes = arg.startsWith(QLatin1String("--")) ? 2 : (arg.startsWith('-') ? 1 : 0);
     return dashes > 0 && names.contains(arg.mid(dashes));

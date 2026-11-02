@@ -91,10 +91,12 @@ namespace Engine {
 
     void ReleaseUpdates::check(bool manual) {
         // Offering the install that just failed would only fail again, so the first automatic check after it stays quiet.
-        if (!Available() || (!manual && m_installFailed.exchange(false)) || m_checking.exchange(true)) return;
+        if (!Available() || (!manual && m_installFailed.exchange(false))) return;
+        if (manual) m_manualWaiting = true;
+        if (m_checking.exchange(true)) return;
         const QString error = run();
         m_checking = false;
-        emit checked(manual, error);
+        emit checked(m_manualWaiting.exchange(false), error);
     }
 
     void ReleaseUpdates::reportFailedInstall() {

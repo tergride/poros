@@ -382,16 +382,6 @@ namespace Configs {
         return res;
     }
 
-    QStringList ProfilesRepo::GetAllProfileNames() {
-        auto query = db.query("SELECT name FROM profiles ORDER BY id");
-        if (!query) return {};
-        QStringList names;
-        while (query->executeStep()) {
-            names.append(QString(query->getColumn(0).getString().c_str()));
-        }
-        return names;
-    }
-
     bool ProfilesRepo::BatchDeleteProfiles(QList<int>& ids, bool stopRunningProfile, bool interactive) {
         QSet<int> groupIDs;
         if (ids.contains(dataManager->settingsRepo->started_id)) {

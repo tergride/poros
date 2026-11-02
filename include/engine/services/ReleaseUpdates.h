@@ -63,6 +63,8 @@ namespace Engine {
         QString run();
 
         std::atomic<bool> m_checking{false};
+        // Set by a manual check before it tries m_checking, so a check already running reports as manual.
+        std::atomic<bool> m_manualWaiting{false};
         std::atomic<bool> m_installFailed{false};
         mutable QMutex m_mutex;
         std::optional<ReleaseFeed> m_ready;

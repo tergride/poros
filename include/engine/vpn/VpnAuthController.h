@@ -45,9 +45,6 @@ namespace Engine {
 
         void cancel(const QString &endpointTag, const QString &challengeId);
 
-        // Challenges of the current run left to a person, as of the last poll; nothing reads it yet.
-        QList<VpnAuthChallenge> pendingChallenges() const;
-
         QString exitStateText() const;
 
         // Main thread. Cancels the challenge at the earlier of its own deadline (epoch seconds) and now + capSec, unless it is

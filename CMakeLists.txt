@@ -428,9 +428,6 @@ set(PROJECT_SOURCES
         src/ui/setting/OtpListWidget.cpp
         include/ui/setting/OtpListWidget.h
 
-        include/ui/utils/ReorderListWidget.h
-        src/ui/utils/ReorderListWidget.cpp
-
 
         src/ui/stats/dialog_traffic_stats.cpp
         include/ui/stats/dialog_traffic_stats.h

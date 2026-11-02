@@ -26,8 +26,6 @@ namespace Sys {
         [[nodiscard]] QString failureCode() const { return failureCode_; }
         [[nodiscard]] QString failureMessage() const { return failureMessage_; }
         [[nodiscard]] bool failedForPrivileges() const;
-        // Failed with a code a respawn cannot fix while nothing changes: privilege, unsupported, config.
-        [[nodiscard]] bool failedPersistently() const;
         [[nodiscard]] QString failureText() const;
 
         void apply();

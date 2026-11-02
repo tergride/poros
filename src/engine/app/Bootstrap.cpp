@@ -11,7 +11,6 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
-#include <QStandardPaths>
 #include <QThread>
 
 #include "include/engine/app/DataDirLock.h"
@@ -90,13 +89,7 @@ namespace Engine::Bootstrap {
         // Portable: the program folder, unless the caller names another one.
         if (res.appdataDir.isEmpty()) res.useAppdata = false;
         QCoreApplication::setApplicationName("Poros");
-        if (res.useAppdata) {
-            if (!res.appdataDir.isEmpty()) {
-                res.wd.setPath(relativeBase.absoluteFilePath(res.appdataDir));
-            } else {
-                res.wd.setPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
-            }
-        }
+        if (res.useAppdata) res.wd.setPath(relativeBase.absoluteFilePath(res.appdataDir));
         if (!res.wd.exists()) res.wd.mkpath(res.wd.absolutePath());
         if (!res.wd.exists("config")) res.wd.mkdir("config");
         res.configDir = res.wd.absoluteFilePath("config");
@@ -200,18 +193,13 @@ namespace Engine::Bootstrap {
         Stats::trafficStatsManager->Init();
 
         Configs::dataManager->settingsRepo->argv = arguments;
-        if (Configs::dataManager->settingsRepo->argv.contains("-many")) Configs::dataManager->settingsRepo->flag_many = true;
         if (Configs::dataManager->settingsRepo->argv.contains("-tray")) Configs::dataManager->settingsRepo->flag_tray = true;
-        if (Configs::dataManager->settingsRepo->argv.contains("-debug")) Configs::dataManager->settingsRepo->flag_debug = true;
         if (Configs::dataManager->settingsRepo->argv.contains("-flag_restart_tun_on")) Configs::dataManager->settingsRepo->flag_restart_tun_on = true;
         for (const auto &argument : Configs::dataManager->settingsRepo->argv) {
             if (argument.startsWith(QLatin1String("-flag_restart_profile="))) Configs::dataManager->settingsRepo->flag_restart_profile = argument.section('=', 1).toInt();
         }
         Configs::dataManager->settingsRepo->flag_use_appdata = useAppdata;
         if(useAppdata && !appdataDir.isEmpty()) Configs::dataManager->settingsRepo->appdataDir = appdataDir;
-#ifdef NKR_CPP_DEBUG
-        Configs::dataManager->settingsRepo->flag_debug = true;
-#endif
     }
 
     void PrepareRuntime() {

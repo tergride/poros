@@ -35,8 +35,13 @@ void MainWindow::CheckUpdate() {
 }
 
 void MainWindow::showReleaseUpdate() {
-    m_banner->present(tr("Poros %1 is ready to install. It takes a restart, which drops the connection for a moment.")
-                          .arg(Engine::ReleaseUpdates::instance()->readyVersion()),
+    auto text = tr("Poros %1 is ready to install. It takes a restart, which drops the connection for a moment.")
+                    .arg(Engine::ReleaseUpdates::instance()->readyVersion());
+    // The guard stops with Poros: the update replaces PorosCore.exe, which runs it.
+    if (Configs::dataManager->settingsRepo->kill_switch) {
+        text += u' ' + tr("While Poros restarts, the Kill switch is off and programs can reach the internet without it.");
+    }
+    m_banner->present(text,
                       {{tr("Restart and update"), [this] {
                             m_restartProfileId = Configs::dataManager->settingsRepo->started_id;
                             exit_reason = ExitReason::RunUpdater;

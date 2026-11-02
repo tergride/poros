@@ -729,12 +729,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         tests()->runIpTests(Configs::dataManager->groupsRepo->CurrentGroup()->Profiles());
     });
     connect(ui->menu_stop_testing, &QAction::triggered, this, [=,this]() { tests()->stop(); });
-    auto set_selected_or_group = [=,this](int mode) {
-        // 0=group 1=select 2=unknown(menu is hide)
-        ui->menu_server->setProperty("selected_or_group", mode);
-    };
     connect(ui->menu_server, &QMenu::aboutToHide, this, [=,this] {
-        setTimeout([=,this] { set_selected_or_group(2); }, this, 200);
         // A hidden action stays disabled whatever setEnabled says.
         ui->menu_export_config->setVisible(true);
         for (auto *action : {ui->menu_edit, ui->menu_qr, ui->menu_export_config, ui->actionSpeedtest_Selected, ui->actionUrl_Test_Selected,
@@ -742,7 +737,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             action->setEnabled(true);
         }
     });
-    set_selected_or_group(2);
     auto *shareHeading = new QAction(tr("Share"), ui->menu_server);
     shareHeading->setEnabled(false);
     ui->menu_server->insertAction(ui->menu_qr, shareHeading);

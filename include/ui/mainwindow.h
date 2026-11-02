@@ -134,8 +134,6 @@ public:
 
     bool IsGlobalHotkeySupported() const;
 
-    bool StopVPNProcess();
-
     // Whole poll snapshot in the lister's order, never a delta. UI thread only.
     void UpdateConnectionList(const QList<Stats::ConnectionMetadata>& connections);
 
@@ -435,8 +433,6 @@ private:
 
     static QString restartReasonText(Engine::RestartReason reason);
 
-    QList<int> get_selected_or_group();
-
     void saveProfileFocusState();
 
     void restoreProfileFocusState(RefreshAnchor anchor);
@@ -488,8 +484,6 @@ private:
 
     // Replaces each server domain with the first address the core's dns-direct returns.
     void resolve_profile_domains(const QList<std::shared_ptr<Configs::Profile>> &profiles, const std::function<void()> &onFinished);
-
-    void parseQrImage(const QPixmap *image);
 
     void importFromFiles(const QStringList &paths);
 

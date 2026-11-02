@@ -42,19 +42,11 @@ namespace Engine {
         // Main thread; stops every restart, then waits in a nested loop until the core is killed (CoreProcess::Kill(killWaitMs)).
         void shutdown(int killWaitMs = 30000);
 
-        // Main thread, for a second stop signal during the teardown: ShuttingDown, timers stopped, QProcess::kill() posted to
-        // DS_cores without waiting; shutdown() still reaps. A pending Stop RPC fails at once, so the core is gone before
-        // KillSwitch::shutdown().
-        void killForExit();
-
         // These restarts are not core failures and leave GaveUp. Main thread unless noted; false when the core cannot run.
         // "Restart Core": crash-stops the running profile on DS_cores, then restarts the core with nothing to resume.
         bool resetCore();
         // The core is not listening: restart it and start profileId once it connects.
         bool restartNotListening(int profileId);
-        // Any thread; waits until a running core is killed. The core restarts and resumes the started profile.
-        void killForPrivilegeChange();
-
         // Main thread. A user stop while nothing runs: the profile waiting for the core to come back is not started.
         void cancelResume();
 
@@ -63,14 +55,9 @@ namespace Engine {
         CoreState state() const;
         // Main thread. Why the core cannot run (listen failure, give-up); empty otherwise.
         QString lastFailure() const;
-        // Main thread. What the latest core that exited said about it: its fatal line (Go log.Fatal, "panic:", "fatal error:"),
-        // the start error, or the connect timeout; one line, at most 300 chars; empty when unknown or after a restart request.
-        QString lastCoreError() const;
 
         qint64 corePid() const;                   // any thread
         QString coreVersion() const { return m_coreVersion; } // main thread; empty until the core has reported it
-        // Main thread. Every respawn, counted where they all funnel (postProcessRestart).
-        int restartCount() const;
         // Main thread. The failures counted towards giving up.
         int consecutiveFailures() const;
 
@@ -81,14 +68,8 @@ namespace Engine {
         void coreStarted(int profileId);
         // Main thread. The core kept exiting and is no longer restarted until a restart is requested.
         void coreGaveUp(const QString &reason);
-        // Main thread, from listen().
-        void listenFailed(const QString &error);
         // Main thread, for direct connections.
         void stateChanged(Engine::CoreState state);
-        // Main thread. Unexpected exits only, after the expected-exit return and before the give-up branch.
-        void coreExited(bool wasConnected);
-        // Main thread, from cancelResume(): a user stop with nothing running cancelled the resume that waits for the core.
-        void resumeCancelled();
 
     private:
         QString m_coreVersion;
@@ -102,8 +83,6 @@ namespace Engine {
 
         void onCoreSpawned(quint64 gen);
         void onCoreExited(quint64 gen, bool failedToStart);
-        // Main thread, queued from DS_cores in order with the exit post: a candidate cause line of core generation gen.
-        void noteCoreError(quint64 gen, const QString &line);
         void onConnectTimeout();
         void scheduleRestart(int delayMs);
         void postRestart();
@@ -130,8 +109,6 @@ namespace Engine {
         int m_failures = 0;
         // Consecutive exits of cores that never connected.
         int m_startFailures = 0;
-        QString m_lastCoreError;
-        quint64 m_lastCoreErrorGen = 0;
         // Exits of generations up to this one are handled or superseded by a restart already posted.
         quint64 m_handledExitGen = 0;
         quint64 m_acceptedGen = 0;
@@ -141,7 +118,6 @@ namespace Engine {
         QElapsedTimer m_connectedAt;
         QElapsedTimer m_profileCrashTimer;
         QString m_lastFailure;
-        int m_restartCount = 0;
 
         // DS_cores only.
         qint64 m_logWindowStartMs = 0;

@@ -177,11 +177,6 @@ void MainWindow::toggle_tun() {
     setModeSwitch(ConnectionModeController::Mode::Tun, !Configs::dataManager->settingsRepo->spmode_vpn);
 }
 
-bool MainWindow::StopVPNProcess() {
-    supervisor()->killForPrivilegeChange();
-    return true;
-}
-
 void MainWindow::show_startstop_menu() {
     if (!Configs::dataManager->settingsRepo->kill_switch) return;
     QMenu menu(this);

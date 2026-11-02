@@ -86,54 +86,6 @@ namespace Configs {
         )");
     }
 
-    QJsonObject RoutesRepo::routeRuleToJson(const RouteRule* rule) const {
-        QJsonObject json;
-        
-        json["name"] = rule->name;
-        json["type"] = rule->type;
-        json["disabled"] = rule->disabled;
-        json["ip_version"] = rule->ip_version;
-        json["network"] = rule->network;
-        json["protocol"] = rule->protocol;
-        json["inbound"] = QListStr2QJsonArray(rule->inbound);
-        json["domain"] = QListStr2QJsonArray(rule->domain);
-        json["domain_suffix"] = QListStr2QJsonArray(rule->domain_suffix);
-        json["domain_keyword"] = QListStr2QJsonArray(rule->domain_keyword);
-        json["domain_regex"] = QListStr2QJsonArray(rule->domain_regex);
-        json["source_ip_cidr"] = QListStr2QJsonArray(rule->source_ip_cidr);
-        json["source_ip_is_private"] = rule->source_ip_is_private;
-        json["ip_cidr"] = QListStr2QJsonArray(rule->ip_cidr);
-        json["ip_is_private"] = rule->ip_is_private;
-        json["source_port"] = QListStr2QJsonArray(rule->source_port);
-        json["source_port_range"] = QListStr2QJsonArray(rule->source_port_range);
-        json["port"] = QListStr2QJsonArray(rule->port);
-        json["port_range"] = QListStr2QJsonArray(rule->port_range);
-        json["process_name"] = QListStr2QJsonArray(rule->process_name);
-        json["process_path"] = QListStr2QJsonArray(rule->process_path);
-        json["process_path_regex"] = QListStr2QJsonArray(rule->process_path_regex);
-        json["package_name"] = QListStr2QJsonArray(rule->package_name);
-        json["wifi_ssid"] = QListStr2QJsonArray(rule->wifi_ssid);
-        json["wifi_bssid"] = QListStr2QJsonArray(rule->wifi_bssid);
-        json["rule_set"] = QListStr2QJsonArray(rule->rule_set);
-        json["invert"] = rule->invert;
-        json["outboundID"] = rule->outboundID;
-        json["action"] = rule->action;
-        json["rejectMethod"] = rule->rejectMethod;
-        json["no_drop"] = rule->no_drop;
-        json["override_address"] = rule->override_address;
-        json["override_port"] = rule->override_port;
-        json["tls_fragment"] = rule->tls_fragment;
-        json["tls_fragment_fallback_delay"] = rule->tls_fragment_fallback_delay;
-        json["tls_record_fragment"] = rule->tls_record_fragment;
-        json["tls_spoof"] = rule->tls_spoof;
-        json["tls_spoof_method"] = rule->tls_spoof_method;
-        json["sniffers"] = QListStr2QJsonArray(rule->sniffers);
-        json["sniffOverrideDest"] = rule->sniffOverrideDest;
-        json["strategy"] = rule->strategy;
-        
-        return json;
-    }
-
     std::shared_ptr<RouteRule> RoutesRepo::routeRuleFromJson(const QJsonObject& json) const {
         auto rule = std::make_shared<RouteRule>();
         
@@ -180,42 +132,6 @@ namespace Configs {
         rule->strategy = json["strategy"].toString();
         
         return rule;
-    }
-
-    QJsonObject RoutesRepo::routeProfileToJson(const RouteProfile* routeProfile) const {
-        QJsonObject json;
-        
-        json["id"] = routeProfile->id;
-        json["name"] = routeProfile->name;
-        json["defaultOutboundID"] = routeProfile->defaultOutboundID;
-        json["isRaw"] = routeProfile->isRaw;
-        json["rawRoute"] = routeProfile->rawRoute;
-        json["preventModifications"] = routeProfile->preventModifications;
-        json["isRemote"] = routeProfile->isRemote;
-        json["remoteURL"] = routeProfile->remoteURL;
-        json["autoUpdate"] = routeProfile->autoUpdate;
-        json["remoteLastUpdate"] = routeProfile->remoteLastUpdate;
-
-        QJsonArray endpointsArray;
-        for (const int endpointID : routeProfile->endpointProfileIDs) endpointsArray.append(endpointID);
-        json["endpointProfileIDs"] = endpointsArray;
-
-        QJsonArray innerHopsArray;
-        for (const int endpointID : routeProfile->innerHopEndpointIDs) innerHopsArray.append(endpointID);
-        json["innerHopEndpointIDs"] = innerHopsArray;
-        json["customDns"] = routeProfile->customDns;
-        if (routeProfile->dns) json["dns"] = routeProfile->dns->ToJson();
-        json["builtinKey"] = routeProfile->builtinKey;
-        json["baseKey"] = routeProfile->baseKey;
-        json["hardened"] = routeProfile->hardened;
-
-        QJsonArray rulesArray;
-        for (const auto& rule : routeProfile->Rules) {
-            rulesArray.append(routeRuleToJson(rule.get()));
-        }
-        json["rules"] = rulesArray;
-        
-        return json;
     }
 
     std::shared_ptr<RouteProfile> RoutesRepo::routeProfileFromJson(const QJsonObject& json) const {

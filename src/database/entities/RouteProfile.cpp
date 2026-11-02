@@ -1069,10 +1069,6 @@ namespace Configs {
         return true;
     }
 
-    void RouteProfile::ResetRules() {
-        Rules.clear();
-    }
-
     void RouteProfile::ResetSimpleRule(ruleType type) {
         for (std::shared_ptr<RouteRule> &item: Rules) {
             if (item->type == type) {

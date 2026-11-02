@@ -48,9 +48,6 @@ namespace Engine {
         // Main thread. Empty when stats are off or the last sample is older than maxAgeMs; the caller checks that a profile runs.
         std::optional<LiveRates> freshLiveRates(qint64 maxAgeMs) const;
 
-        // Main thread. Lines of the current run, empty before the first one; for observers that attach late.
-        QList<Stats::TrafficLine> trafficLines() const;
-
     signals:
         // All emitted on the main thread.
         void trafficLinesChanged(const QList<Stats::TrafficLine> &lines);
@@ -72,7 +69,6 @@ namespace Engine {
 
         LiveRates liveRates_;
         QElapsedTimer liveRatesAt_;
-        QList<Stats::TrafficLine> lines_;
         bool loopsStarted_ = false;
     };
 } // namespace Engine

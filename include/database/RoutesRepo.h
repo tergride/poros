@@ -20,11 +20,7 @@ namespace Configs {
         mutable std::mutex mutex;
         mutable std::map<int, std::weak_ptr<RouteProfile>> identityMap;
 
-        QJsonObject routeRuleToJson(const RouteRule* rule) const;
-        
         std::shared_ptr<RouteRule> routeRuleFromJson(const QJsonObject& json) const;
-        
-        QJsonObject routeProfileToJson(const RouteProfile* routeProfile) const;
         
         std::shared_ptr<RouteProfile> routeProfileFromJson(const QJsonObject& json) const;
         

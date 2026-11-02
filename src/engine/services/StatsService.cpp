@@ -78,13 +78,8 @@ namespace Engine {
         return liveRates_;
     }
 
-    QList<Stats::TrafficLine> StatsService::trafficLines() const {
-        return lines_;
-    }
-
     void StatsService::onTrafficLines(const QList<Stats::TrafficLine> &lines) {
         ENGINE_CHECK_MAIN_THREAD();
-        lines_ = lines;
         emit trafficLinesChanged(lines);
     }
 

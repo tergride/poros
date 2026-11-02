@@ -70,11 +70,6 @@ namespace Configs
         return key;
     }
 
-    QString ProfileFilter_ent_identity_key(const std::shared_ptr<Configs::Profile> &ent) {
-        auto obj = ent->outbound->ExportIdentity();
-        return ent->type + "|" + QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
-    }
-
     void ProfileFilter::Uniq(const QList<std::shared_ptr<Profile>> &in,
                              QList<std::shared_ptr<Profile>> &out,
                              bool keep_last, bool ignoreMetadata) {
@@ -114,58 +109,4 @@ namespace Configs
         }
     }
 
-    void ProfileFilter::OnlyInSrc(const QList<std::shared_ptr<Profile>> &src,
-                                  const QList<std::shared_ptr<Profile>> &dst,
-                                  QList<std::shared_ptr<Profile>> &out,
-                                  bool ignoreMetadata) {
-        QMap<QString, bool> hashMap;
-
-        for (const auto &ent: dst) {
-            QString key = ProfileFilter_ent_key(ent, ignoreMetadata);
-            hashMap[key] = true;
-        }
-        for (const auto &ent: src) {
-            QString key = ProfileFilter_ent_key(ent, ignoreMetadata);
-            if (!hashMap.contains(key)) out += ent;
-        }
-    }
-
-    void ProfileFilter::OnlyInSrc_ByPointer(const QList<std::shared_ptr<Profile>> &src,
-                                            const QList<std::shared_ptr<Profile>> &dst,
-                                            QList<std::shared_ptr<Profile>> &out) {
-        for (const auto &ent: src) {
-            if (!dst.contains(ent)) out += ent;
-        }
-    }
-
-    void ProfileFilter::ChangedByIdentity(QList<std::shared_ptr<Profile>> &src,
-                                          QList<std::shared_ptr<Profile>> &dst,
-                                          QList<std::shared_ptr<Profile>> &changedSrc,
-                                          QList<std::shared_ptr<Profile>> &changedDst) {
-        QMap<QString, QList<std::shared_ptr<Profile>>> srcByKey;
-        for (const auto &ent: src) {
-            srcByKey[ProfileFilter_ent_identity_key(ent)].append(ent);
-        }
-
-        QSet<Profile *> matchedSrc;
-        QList<std::shared_ptr<Profile>> remainingDst;
-        for (const auto &ent: dst) {
-            auto &bucket = srcByKey[ProfileFilter_ent_identity_key(ent)];
-            if (bucket.isEmpty()) {
-                remainingDst += ent;
-                continue;
-            }
-            auto srcEnt = bucket.takeFirst();
-            changedSrc += srcEnt;
-            changedDst += ent;
-            matchedSrc.insert(srcEnt.get());
-        }
-
-        QList<std::shared_ptr<Profile>> remainingSrc;
-        for (const auto &ent: src) {
-            if (!matchedSrc.contains(ent.get())) remainingSrc += ent;
-        }
-        src = remainingSrc;
-        dst = remainingDst;
-    }
 }

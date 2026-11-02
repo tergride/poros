@@ -55,35 +55,6 @@ namespace Configs {
         )");
     }
 
-    QJsonObject GroupsRepo::groupToJson(const Group* group) const {
-        QJsonObject json;
-        
-        json["id"] = group->id;
-        json["archive"] = group->archive;
-        json["skip_auto_update"] = group->skip_auto_update;
-        json["auto_clear_unavailable"] = group->auto_clear_unavailable;
-        json["name"] = group->name;
-        json["url"] = group->url;
-        json["info"] = group->info;
-        json["sub_metadata"] = group->sub_info.toJson();
-        json["sub_last_update"] = static_cast<qint64>(group->sub_last_update);
-        json["sub_options"] = group->sub_options.ToJson();
-        json["endpoint"] = group->endpoint.ToJson();
-        json["front_proxy_id"] = group->front_proxy_id;
-        json["landing_proxy_id"] = group->landing_proxy_id;
-        json["column_width"] = QListInt2QJsonArray(group->column_width);
-        json["profiles"] = QListInt2QJsonArray(group->profiles);
-        json["scroll_last_profile"] = group->scroll_last_profile;
-        json["test_sort_by"] = static_cast<int>(group->test_sort_by);
-        json["traffic_sort_by"] = static_cast<int>(group->traffic_sort_by);
-        json["type_sort_by"] = static_cast<int>(group->type_sort_by);
-        json["sort_method"] = static_cast<int>(group->sort.method);
-        json["sort_descending"] = group->sort.descending;
-        json["test_items_to_show"] = static_cast<int>(group->test_items_to_show);
-
-        return json;
-    }
-
     std::shared_ptr<Group> GroupsRepo::groupFromJson(const QJsonObject& json) const {
         auto group = std::make_shared<Group>();
         
