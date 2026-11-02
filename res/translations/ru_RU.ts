@@ -1056,6 +1056,14 @@ The local network stays reachable unless Private Range Bypass is turned off in T
             <numerusform>Пропущено %n правил маршрутизации, которые используют условия, не поддерживаемые данной версией Poros.</numerusform>
         </translation>
     </message>
+    <message numerus="yes">
+        <source>Removed what could start programs, open ports or write files from %n server profile(s).</source>
+        <translation>
+            <numerusform>Из %n профиля сервера удалено то, что могло запускать программы, открывать порты или записывать файлы.</numerusform>
+            <numerusform>Из %n профилей серверов удалено то, что могло запускать программы, открывать порты или записывать файлы.</numerusform>
+            <numerusform>Из %n профилей серверов удалено то, что могло запускать программы, открывать порты или записывать файлы.</numerusform>
+        </translation>
+    </message>
     <message>
         <source>Restore Complete</source>
         <translation>Восстановление завершено</translation>
@@ -1113,6 +1121,10 @@ Select which parts to restore:</source>
     <message>
         <source>Unknown or malformed parameter &quot;%1&quot;. Use hwid=…, os=…, osVersion=…, model=… separated by commas.</source>
         <translation>Неизвестный или некорректный параметр &quot;%1&quot;. Используйте hwid=…, os=…, osVersion=…, model=… через запятую.</translation>
+    </message>
+    <message>
+        <source>The connection is still stopping; try again in a moment.</source>
+        <translation>Подключение ещё останавливается, попробуйте чуть позже.</translation>
     </message>
     <message>
         <source>Automatic</source>
@@ -3222,6 +3234,14 @@ A domain listed with only one address family is answered NXDOMAIN for the other,
     <message>
         <source>Requesting profile error: %1</source>
         <translation>Ошибка запроса профиля: %1</translation>
+    </message>
+    <message numerus="yes">
+        <source>It also adds %n server profile(s).</source>
+        <translation>
+            <numerusform>Ещё добавится %n профиль сервера.</numerusform>
+            <numerusform>Ещё добавятся %n профиля серверов.</numerusform>
+            <numerusform>Ещё добавятся %n профилей серверов.</numerusform>
+        </translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -7471,9 +7491,33 @@ Improves hole-punching reliability. Requires IPv4.</source>
         <source>Ignored deeplink with unknown command: %1</source>
         <translation>Проигнорирован deep link с неизвестной командой: %1</translation>
     </message>
+    <message numerus="yes">
+        <source>It also adds %n server profile(s).</source>
+        <translation>
+            <numerusform>Ещё добавится %n профиль сервера.</numerusform>
+            <numerusform>Ещё добавятся %n профиля серверов.</numerusform>
+            <numerusform>Ещё добавятся %n профилей серверов.</numerusform>
+        </translation>
+    </message>
     <message>
         <source>Note:</source>
         <translation>Примечание:</translation>
+    </message>
+    <message>
+        <source>Add this server?
+
+Type: %1
+Name: %2
+Address: %3</source>
+        <translation>Добавить этот сервер?
+
+Тип: %1
+Имя: %2
+Адрес: %3</translation>
+    </message>
+    <message>
+        <source>Add server</source>
+        <translation>Добавить сервер</translation>
     </message>
     <message>
         <source>Add remote routing profiles</source>
@@ -9798,6 +9842,10 @@ Move the Poros folder somewhere you can write to.</source>
         <translation>Полную конфигурацию Xray нельзя сочетать с прокси группы</translation>
     </message>
     <message>
+        <source>no server behind it</source>
+        <translation>за ним нет сервера</translation>
+    </message>
+    <message>
         <source>never</source>
         <translation>никогда</translation>
     </message>
@@ -11487,8 +11535,8 @@ Core: %2</source>
         <translation>Создать копию</translation>
     </message>
     <message>
-        <source>The file can be moved to another computer.</source>
-        <translation>Файл можно перенести на другой компьютер.</translation>
+        <source>The file can be moved to another computer. It holds your server keys unencrypted, so keep it private.</source>
+        <translation>Файл можно перенести на другой компьютер. Ключи серверов в нём не зашифрованы, не передавайте его посторонним.</translation>
     </message>
     <message>
         <source>Choose a file</source>
@@ -11515,6 +11563,14 @@ Core: %2</source>
     <message>
         <source>Replace the current data and restart Poros?</source>
         <translation>Заменить текущие данные и перезапустить Poros?</translation>
+    </message>
+    <message numerus="yes">
+        <source>Removed what could start programs, open ports or write files from %n server profile(s).</source>
+        <translation>
+            <numerusform>Из %n профиля сервера удалено то, что могло запускать программы, открывать порты или записывать файлы.</numerusform>
+            <numerusform>Из %n профилей серверов удалено то, что могло запускать программы, открывать порты или записывать файлы.</numerusform>
+            <numerusform>Из %n профилей серверов удалено то, что могло запускать программы, открывать порты или записывать файлы.</numerusform>
+        </translation>
     </message>
     <message>
         <source>If something does not work.</source>
@@ -12069,6 +12125,10 @@ Core: %2</source>
         <translation>С транспортом QUIC uTLS не используется.</translation>
     </message>
     <message>
+        <source>Removed a path on another computer from the import: opening it would send that computer your Windows login.</source>
+        <translation>Путь на другом компьютере удалён из импорта: при открытии он передал бы тому компьютеру ваш вход в Windows.</translation>
+    </message>
+    <message>
         <source>%1 The value was ignored.</source>
         <translation>%1 Значение проигнорировано.</translation>
     </message>
@@ -12317,6 +12377,18 @@ Core: %2</source>
         <translation>Этот входящий удалён из импортированной конфигурации: он мог бы позволить другим устройствам подключаться через этот компьютер. Сохраняются только входящие tun и локальные прокси, слушающие 127.0.0.1 или ::1.</translation>
     </message>
     <message>
+        <source>Removed from the imported configuration: it would change this computer&apos;s proxy settings behind Poros&apos;s back.</source>
+        <translation>Удалено из импортированной конфигурации: меняло бы настройки прокси этого компьютера в обход Poros.</translation>
+    </message>
+    <message>
+        <source>Removed this endpoint from the imported configuration: it is a server that would open a port on this computer.</source>
+        <translation>Эта точка подключения удалена из импортированной конфигурации: это сервер, он открыл бы порт на этом компьютере.</translation>
+    </message>
+    <message>
+        <source>Removed from the imported configuration: it would set this computer&apos;s clock.</source>
+        <translation>Удалено из импортированной конфигурации: переводило бы часы этого компьютера.</translation>
+    </message>
+    <message>
         <source>Removed the Clash API from the imported configuration: web pages and programs on this computer could use it to control the core, and its external_ui setting downloads files.</source>
         <translation>Clash API удален из импортированной конфигурации: веб-страницы и программы на этом компьютере могли бы управлять через него ядром, а его параметр external_ui загружает файлы.</translation>
     </message>
@@ -12359,6 +12431,10 @@ Core: %2</source>
     <message>
         <source>Must not contain spaces.</source>
         <translation>Не должно содержать пробелов.</translation>
+    </message>
+    <message>
+        <source>Refused to import this configuration: its traffic goes out without any server, whatever its name says.</source>
+        <translation>Импорт конфигурации отклонён: её трафик идёт без сервера, как бы она ни называлась.</translation>
     </message>
     <message>
         <source>Enter a user name too; without one the password is not sent.</source>
@@ -12547,6 +12623,10 @@ Core: %2</source>
     <message>
         <source>Compression is disabled, so the mode must be empty or stateless.</source>
         <translation>Сжатие отключено, поэтому режим должен быть пустым или stateless.</translation>
+    </message>
+    <message>
+        <source>Removed the software token, which named a file on this computer for its secret; set the token up again in the profile&apos;s settings.</source>
+        <translation>Программный токен удалён: свой секрет он брал из файла на этом компьютере. Настройте токен заново в настройках профиля.</translation>
     </message>
     <message>
         <source>Removed the link to a one-time password entry; choose the entry again in the profile&apos;s settings.</source>
@@ -12841,10 +12921,6 @@ Core: %2</source>
         <translation>Заданы и вставленный ключ, и файл ключа; используется вставленный ключ.</translation>
     </message>
     <message>
-        <source>The link sets neither security nor sni, so the profile connects without TLS, which most Trojan servers refuse.</source>
-        <translation>В ссылке не заданы ни security, ни sni, поэтому профиль подключается без TLS, а большинство серверов Trojan такие подключения отклоняют.</translation>
-    </message>
-    <message>
         <source>Use 1 to 32 bytes in hex, optionally followed by /mask of the same length, for example a0b0/f0f0.</source>
         <translation>Укажите от 1 до 32 байт в hex, при необходимости с /маской той же длины, например a0b0/f0f0.</translation>
     </message>
@@ -12987,6 +13063,10 @@ Core: %2</source>
     <message>
         <source>XTLS Vision needs the raw network with TLS or REALITY, or VLESS encryption: change the network or security, or clear the flow.</source>
         <translation>XTLS Vision требует сеть raw с TLS или REALITY либо шифрование VLESS: измените сеть или безопасность либо очистите flow.</translation>
+    </message>
+    <message>
+        <source>Removed from the import: it would make Poros read and write files in a folder the sender chose.</source>
+        <translation>Удалено из импорта: Poros читал бы и записывал файлы в папке, которую выбрал отправитель.</translation>
     </message>
     <message>
         <source>Expected a whole number; ignored.</source>
@@ -13197,6 +13277,10 @@ Core: %2</source>
         <translation>Пустой объект сервера.</translation>
     </message>
     <message>
+        <source>This Clash config nests its values too deeply to be read.</source>
+        <translation>В этой конфигурации Clash слишком глубокая вложенность, её нельзя прочитать.</translation>
+    </message>
+    <message>
         <source>This Clash config only lists proxy-providers, which are not downloaded. Add each provider&apos;s URL as a subscription instead.</source>
         <translation>В этой конфигурации Clash есть только proxy-providers, а они не загружаются. Добавьте URL каждого провайдера как подписку.</translation>
     </message>
@@ -13253,6 +13337,10 @@ Core: %2</source>
         <translation>Неподдерживаемый тип ссылки &quot;%1://&quot;.</translation>
     </message>
     <message>
+        <source>A web address, not a proxy: it names neither a port nor a user.</source>
+        <translation>Это адрес сайта, а не прокси: в нём нет ни порта, ни пользователя.</translation>
+    </message>
+    <message>
         <source>The link is damaged: it is not a valid URL.</source>
         <translation>Ссылка повреждена: это недопустимый URL.</translation>
     </message>
@@ -13263,6 +13351,10 @@ Core: %2</source>
     <message>
         <source>The link is damaged: its payload is not a JSON object.</source>
         <translation>Ссылка повреждена: ее содержимое не является объектом JSON.</translation>
+    </message>
+    <message>
+        <source>Refused to import a Direct profile: its traffic goes out without any server, whatever its name says.</source>
+        <translation>Импорт профиля Direct отклонён: его трафик идёт без сервера, как бы он ни назывался.</translation>
     </message>
     <message>
         <source>Unsupported profile type &quot;%1&quot;.</source>

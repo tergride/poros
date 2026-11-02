@@ -67,6 +67,9 @@ namespace Configs
 
         void StripForeignState(Validation::Issues &issues) override;
 
+        // Direct, block and the like, or a full config without one proxy: whatever it is named, no server is behind it.
+        bool ReachesNoServer();
+
         void Validate(Validation::Issues &issues) override;
 
         bool IsEndpoint() override
@@ -140,6 +143,7 @@ namespace Configs
         QString CustomConfig(const QString &subtype, const QString &text);
     }
 
-    // Removes every spelling of masterKeyLog from an Xray stream's TLS and REALITY settings and its XHTTP download legs; true when any went.
-    bool StripXrayStreamKeyLog(QJsonObject &stream, const QString &at, Validation::Issues &issues);
+    // Removes what makes Xray write a file of the sender's choosing from a stream and its XHTTP download legs: every spelling of
+    // masterKeyLog and XDRIVE's local folder. True when any went.
+    bool StripXrayStreamFiles(QJsonObject &stream, const QString &at, Validation::Issues &issues);
 }

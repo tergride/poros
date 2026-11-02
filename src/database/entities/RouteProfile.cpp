@@ -625,7 +625,7 @@ namespace Configs {
 
     // *idMap is original id -> local id, hops included, so the paired rules can be remapped.
     static QList<int> routeProfileEndpointsFromJson(const QJsonArray& arr, QString* warnings, bool materialize,
-                                                   QMap<int, int>* idMap, QList<int>* innerHopIDs) {
+                                                   QMap<int, int>* idMap, QList<int>* innerHopIDs, int* pending) {
         QList<int> ids;
         for (const auto& item: arr) {
             int originalID = INVALID_ID;
@@ -639,7 +639,10 @@ namespace Configs {
                 const QJsonObject entry = item.toObject();
                 originalID = entry.value("id").toInt(INVALID_ID);
                 innerHops = entry.value("inner_hops").toBool();
-                if (!materialize) continue;
+                if (!materialize) {
+                    if (pending != nullptr) *pending += 1 + static_cast<int>(entry.value("hops").toArray().size());
+                    continue;
+                }
                 if (originalID != INVALID_ID) localID = routeProfileAdoptEndpoint(entry, warnings, &hopMap);
             }
             if (originalID == INVALID_ID || localID < 0 || ids.contains(localID)) continue;
@@ -713,7 +716,7 @@ namespace Configs {
         return QStringLiteral("poros://route/") + QString::fromLatin1(b64);
     }
 
-    std::shared_ptr<RouteProfile> RouteProfile::FromShareInput(const QString& input, QString* fatalError, QString* warnings, bool* wasOldArray, bool materializeEndpoints) {
+    std::shared_ptr<RouteProfile> RouteProfile::FromShareInput(const QString& input, QString* fatalError, QString* warnings, bool* wasOldArray, bool materializeEndpoints, int* pendingEndpoints) {
         if (wasOldArray) *wasOldArray = false;
         QString text = input.trimmed();
         if (text.isEmpty()) {
@@ -758,7 +761,7 @@ namespace Configs {
                 profile->isRaw = true;
                 profile->name = root.value("name").toString();
                 profile->preventModifications = root.value("prevent_modifications").toBool();
-                profile->endpointProfileIDs = routeProfileEndpointsFromJson(root.value("endpoints").toArray(), warnings, materializeEndpoints, nullptr, &profile->innerHopEndpointIDs);
+                profile->endpointProfileIDs = routeProfileEndpointsFromJson(root.value("endpoints").toArray(), warnings, materializeEndpoints, nullptr, &profile->innerHopEndpointIDs, pendingEndpoints);
                 QJsonObject routeObj = root.value("route").toObject();
                 routeObj = remapRawOutboundsByName(routeObj, root.value("outbound_names").toObject(), warnings);
                 profile->rawRoute = QJsonObject2QString(routeObj, false);
@@ -775,7 +778,7 @@ namespace Configs {
                 appendWarning(warnings, QCoreApplication::translate("Validation", "The default outbound \"%1\" is unknown, so proxy is used.").arg(defaultOutbound));
             }
             QMap<int, int> endpointIDMap;
-            profile->endpointProfileIDs = routeProfileEndpointsFromJson(root.value("endpoints").toArray(), warnings, materializeEndpoints, &endpointIDMap, &profile->innerHopEndpointIDs);
+            profile->endpointProfileIDs = routeProfileEndpointsFromJson(root.value("endpoints").toArray(), warnings, materializeEndpoints, &endpointIDMap, &profile->innerHopEndpointIDs, pendingEndpoints);
             int fallbackNum = 1;
             int position = 0;
             for (const auto& v: root.value("rules").toArray()) {

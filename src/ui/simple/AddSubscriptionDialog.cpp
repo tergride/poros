@@ -39,7 +39,6 @@ AddSubscriptionDialog::AddSubscriptionDialog(const QString &link, QWidget *paren
 
     m_status = new QLabel(this);
     m_status->setWordWrap(true);
-    m_status->setTextFormat(Qt::RichText);
     m_status->hide();
     connect(m_status, &QLabel::linkActivated, this, [this] {
         emit advancedModeRequested();
@@ -76,8 +75,9 @@ AddSubscriptionDialog::AddSubscriptionDialog(const QString &link, QWidget *paren
     syncLink();
 }
 
-void AddSubscriptionDialog::setStatus(const QString &text, bool problem) {
+void AddSubscriptionDialog::setStatus(const QString &text, bool problem, Qt::TextFormat format) {
     m_status->setVisible(!text.isEmpty());
+    m_status->setTextFormat(format);
     m_status->setText(text);
     m_status->setProperty("colorRole", problem ? QStringLiteral("danger") : QStringLiteral("muted"));
     m_status->setStyleSheet({});
@@ -91,7 +91,7 @@ void AddSubscriptionDialog::syncLink() {
     const auto kind = Subscription::ClassifyLink(m_link->text());
     m_add->setEnabled(kind == LinkKind::Subscription);
     if (kind == LinkKind::SingleServer) {
-        setStatus(tr("This link is one server, not a subscription. <a href=\"advanced\">You can add it in the advanced mode.</a>"), false);
+        setStatus(tr("This link is one server, not a subscription. <a href=\"advanced\">You can add it in the advanced mode.</a>"), false, Qt::RichText);
     } else if (kind == LinkKind::Unknown) {
         setStatus(tr("This does not look like a subscription link."), true);
     } else {

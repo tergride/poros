@@ -36,12 +36,19 @@ namespace Engine::BackupArchive {
 
     struct ApplyResult {
         int skippedRules = 0;
+        // Profiles that lost what an import would never have let in, see CleanProfiles().
+        int cleanedProfiles = 0;
     };
 
-    // Main thread, with no profile running. Replaces the chosen parts with the archive's; a settings restore keeps
+    // Main thread. Stops the connection, then replaces the chosen parts with the archive's; a settings restore keeps
     // DeviceLocalSettingKeys(). Ids that no longer resolve are reset. The program must restart afterwards: settings are no
     // longer saved. Returns an error text, empty on success.
     QString Apply(const QString &path, const Configs::BackupParts &parts, ApplyResult *result = nullptr);
+
+    // Any thread. Runs every profile of the database at path through the import's StripForeignState, as the file may come
+    // from anyone. With keepOtpLinks the one-time password entries the profiles name come along and stay linked.
+    // Returns how many profiles changed; throws on a database it cannot read.
+    int CleanProfiles(const QString &databasePath, bool keepOtpLinks);
 
     QStringList PartNames(const Configs::BackupParts &parts);
 

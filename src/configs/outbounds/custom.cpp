@@ -288,7 +288,12 @@ namespace Configs
                                        QStringLiteral("ServerTransportPlugin").startsWith(key, Qt::CaseInsensitive));
         }
 
-        // Removes what would make the core start a program or let tailnet peers reach this computer; true when anything went.
+        QString opensPortMessage()
+        {
+            return QCoreApplication::translate("Validation", "Removed from the imported configuration: it would open a port on this computer that other devices could reach.");
+        }
+
+        // Removes what would make the core start a program or open a port; true when anything went.
         bool stripLaunchers(QJsonObject& o, const QString& at, Validation::Issues& issues)
         {
             bool removed = false;
@@ -350,6 +355,9 @@ namespace Configs
                         if (wrapperChanged) o[sectionKey] = wrapper;
                     }
                 }
+            } else if (type == "wireguard") {
+                // Only a server needs one, and the core listens on every interface.
+                strip("listen_port", opensPortMessage(), false);
             }
             return removed;
         }
@@ -380,6 +388,72 @@ namespace Configs
             return changed;
         }
 
+        // A switch that is off needs no removing.
+        bool stripSwitch(QJsonObject& o, const QString& name, const QString& at, const QString& message, Validation::Issues& issues)
+        {
+            bool on = false;
+            for (const auto& key : keysNamed(o, name)) on = on || o.value(key).toBool();
+            return on && stripNamed(o, name, at, message, false, issues);
+        }
+
+        // Keeps the items keep() accepts, which may edit them; a dropped one is reported with message.
+        template <typename Keep>
+        bool keepListItems(QJsonObject& root, const QString& name, const QString& message, Keep&& keep, Validation::Issues& issues)
+        {
+            bool changed = false;
+            for (const auto& key : keysNamed(root, name)) {
+                const auto items = root.value(key).toArray();
+                QJsonArray kept;
+                for (qsizetype i = 0; i < items.size(); ++i) {
+                    auto item = items.at(i).toObject();
+                    if (keep(item, QStringLiteral("%1[%2].").arg(key).arg(i))) {
+                        kept << item;
+                        continue;
+                    }
+                    issues << Validation::Issue{Validation::Severity::Warning, QStringLiteral("%1[%2]").arg(key).arg(i), message,
+                                                customValueNamed(item, "type").toString()};
+                }
+                if (kept == items) continue;
+                root[key] = kept;
+                changed = true;
+            }
+            return changed;
+        }
+
+        // Keys that name a file, at any depth.
+        bool stripNetworkPaths(QJsonObject& o, const QString& at, Validation::Issues& issues)
+        {
+            bool removed = false;
+            for (const auto& key : o.keys()) {
+                const auto value = o.value(key);
+                const QString there = at + key;
+                if (value.isObject()) {
+                    auto inner = value.toObject();
+                    if (!stripNetworkPaths(inner, there + QLatin1Char('.'), issues)) continue;
+                    o[key] = inner;
+                    removed = true;
+                } else if (value.isArray()) {
+                    auto items = value.toArray();
+                    bool changed = false;
+                    for (qsizetype i = 0; i < items.size(); ++i) {
+                        auto item = items.at(i).toObject();
+                        if (!items.at(i).isObject() || !stripNetworkPaths(item, QStringLiteral("%1[%2].").arg(there).arg(i), issues)) continue;
+                        items.replace(i, item);
+                        changed = true;
+                    }
+                    if (!changed) continue;
+                    o[key] = items;
+                    removed = true;
+                } else if (key.endsWith(QLatin1String("path"), Qt::CaseInsensitive) || key.endsWith(QLatin1String("file"), Qt::CaseInsensitive)) {
+                    auto path = value.toString();
+                    if (!StripNetworkPath(path, there, issues)) continue;
+                    o.remove(key);
+                    removed = true;
+                }
+            }
+            return removed;
+        }
+
         template <typename Edit>
         bool editListNamed(QJsonObject& o, const QString& name, const QString& at, Edit&& edit)
         {
@@ -398,11 +472,6 @@ namespace Configs
                 changed = true;
             }
             return changed;
-        }
-
-        QString opensPortMessage()
-        {
-            return QCoreApplication::translate("Validation", "Removed from the imported configuration: it would open a port on this computer that other devices could reach.");
         }
 
         QString writesFileMessage()
@@ -442,27 +511,37 @@ namespace Configs
             return true;
         }
 
-        // Removes what would open a port on this computer or write a file; Poros runs a full config as it is.
+        // The client endpoints the core has; the servers among the rest would listen on this computer.
+        bool isClientSingBoxEndpoint(const QJsonObject& endpoint)
+        {
+            static const QStringList clientTypes{"wireguard", "openconnect", "openvpn-client", "masque-client", "masque"};
+            const auto typeKeys = keysNamed(endpoint, "type");
+            if (typeKeys.isEmpty()) return false;
+            for (const auto& key : typeKeys) {
+                if (!clientTypes.contains(endpoint.value(key).toString())) return false;
+            }
+            return true;
+        }
+
+        // Removes what would open a port on this computer, change its settings or write a file; Poros runs a full config as it is.
         bool stripSingBoxExposure(QJsonObject& root, Validation::Issues& issues)
         {
-            bool removed = false;
-            for (const auto& key : keysNamed(root, "inbounds")) {
-                const auto items = root.value(key).toArray();
-                QJsonArray kept;
-                for (qsizetype i = 0; i < items.size(); ++i) {
-                    const auto inbound = items.at(i).toObject();
-                    if (isLocalSingBoxInbound(inbound)) {
-                        kept << items.at(i);
-                        continue;
-                    }
-                    issues << Validation::Issue{Validation::Severity::Warning, QStringLiteral("%1[%2]").arg(key).arg(i),
-                                                QCoreApplication::translate("Validation", "Removed this inbound from the imported configuration: it could let other devices connect through this computer. Only tun inbounds and local proxies that listen on 127.0.0.1 or ::1 are kept."),
-                                                customValueNamed(inbound, "type").toString()};
-                }
-                if (kept.size() == items.size()) continue;
-                root[key] = kept;
-                removed = true;
-            }
+            bool removed = keepListItems(root, "inbounds",
+                QCoreApplication::translate("Validation", "Removed this inbound from the imported configuration: it could let other devices connect through this computer. Only tun inbounds and local proxies that listen on 127.0.0.1 or ::1 are kept."),
+                [&](QJsonObject& inbound, const QString& at) {
+                    if (!isLocalSingBoxInbound(inbound)) return false;
+                    stripSwitch(inbound, "set_system_proxy", at,
+                                QCoreApplication::translate("Validation", "Removed from the imported configuration: it would change this computer's proxy settings behind Poros's back."),
+                                issues);
+                    return true;
+                }, issues);
+            removed |= keepListItems(root, "endpoints",
+                QCoreApplication::translate("Validation", "Removed this endpoint from the imported configuration: it is a server that would open a port on this computer."),
+                [](QJsonObject& endpoint, const QString&) { return isClientSingBoxEndpoint(endpoint); }, issues);
+            removed |= editObjectNamed(root, "ntp", {}, [&](QJsonObject& ntp, const QString& at) {
+                return stripSwitch(ntp, "write_to_system", at,
+                                   QCoreApplication::translate("Validation", "Removed from the imported configuration: it would set this computer's clock."), issues);
+            });
             removed |= stripNamed(root, "services", {}, opensPortMessage(), false, issues);
             removed |= stripNamed(root, "certificate_providers", {}, opensPortMessage(), false, issues);
             removed |= editObjectNamed(root, "log", {}, [&](QJsonObject& log, const QString& at) {
@@ -513,9 +592,14 @@ namespace Configs
         }
 
         // XHTTP's download leg is a stream of its own, also reachable through "extra".
-        bool stripXrayKeyLog(QJsonObject& stream, const QString& at, Validation::Issues& issues)
+        bool stripXrayStreamFiles(QJsonObject& stream, const QString& at, Validation::Issues& issues)
         {
-            bool removed = false;
+            // XDRIVE's local service reads and writes that folder.
+            bool removed = editObjectNamed(stream, "xdriveSettings", at, [&](QJsonObject& drive, const QString& driveAt) {
+                bool local = false;
+                for (const auto& key : keysNamed(drive, "service")) local = local || XrayLower(drive.value(key).toString().trimmed()) == "local";
+                return local && stripNamed(drive, "remoteFolder", driveAt, writesFileMessage(), true, issues);
+            });
             for (const auto& name : {QStringLiteral("tlsSettings"), QStringLiteral("realitySettings")}) {
                 removed |= editObjectNamed(stream, name, at, [&](QJsonObject& security, const QString& securityAt) {
                     return stripXrayFilePath(security, "masterKeyLog", securityAt, issues);
@@ -523,7 +607,7 @@ namespace Configs
             }
             const auto stripDownload = [&](QJsonObject& o, const QString& oAt) {
                 return editObjectNamed(o, "downloadSettings", oAt, [&](QJsonObject& download, const QString& downloadAt) {
-                    return stripXrayKeyLog(download, downloadAt, issues);
+                    return stripXrayStreamFiles(download, downloadAt, issues);
                 });
             };
             for (const auto& name : {QStringLiteral("xhttpSettings"), QStringLiteral("splithttpSettings")}) {
@@ -542,7 +626,7 @@ namespace Configs
                 return stripNamed(settings, "reverse", settingsAt, xrayReverseMessage(), false, issues);
             });
             removed |= editObjectNamed(outbound, "streamSettings", at, [&](QJsonObject& stream, const QString& streamAt) {
-                return stripXrayKeyLog(stream, streamAt, issues);
+                return stripXrayStreamFiles(stream, streamAt, issues);
             });
             return removed;
         }
@@ -600,9 +684,9 @@ namespace Configs
         }
     } // namespace
 
-    bool StripXrayStreamKeyLog(QJsonObject& stream, const QString& at, Validation::Issues& issues)
+    bool StripXrayStreamFiles(QJsonObject& stream, const QString& at, Validation::Issues& issues)
     {
-        return stripXrayKeyLog(stream, at, issues);
+        return stripXrayStreamFiles(stream, at, issues);
     }
 
     namespace Checks {
@@ -737,6 +821,42 @@ namespace Configs
             // Build() hands every other subtype to the core as a sing-box outbound.
             removed = stripLaunchers(root, {}, issues);
         }
+        removed |= stripNetworkPaths(root, {}, issues);
         if (removed) config = QJsonObject2QString(root, false);
+        if (ReachesNoServer()) {
+            issues << Validation::Issue{Validation::Severity::Error, "config",
+                                        QCoreApplication::translate("Validation", "Refused to import this configuration: its traffic goes out without any server, whatever its name says."), {}};
+        }
+    }
+
+    bool Custom::ReachesNoServer()
+    {
+        const auto root = QString2QJsonObject(config);
+        // Every spelling counts: the core may read any of them.
+        const auto spelled = [](const QJsonObject& o, const QString& key, const auto& matches) {
+            for (const auto& spelling : keysNamed(o, key)) {
+                if (matches(o.value(spelling).toString().trimmed().toLower())) return true;
+            }
+            return false;
+        };
+        if (type == CustomOutbound) return spelled(root, "type", isSingBoxInfra);
+        if (type == CustomXrayOutbound) return spelled(root, "protocol", isXrayInfra);
+        if (type != CustomFullConfig && type != CustomXrayFullConfig) return false;
+        // A full config runs as it is, so a rule that goes direct is its own business; one without a single proxy is not.
+        const bool xray = type == CustomXrayFullConfig;
+        if (!xray) {
+            for (const auto& key : keysNamed(root, "endpoints")) {
+                if (!root.value(key).toArray().isEmpty()) return false;
+            }
+        }
+        const auto noProxy = [xray](const QString& value) {
+            return xray ? isXrayInfra(value) : isSingBoxInfra(value) || value == "selector" || value == "urltest" || value == "auto-selector";
+        };
+        for (const auto& key : keysNamed(root, "outbounds")) {
+            for (const auto& item : root.value(key).toArray()) {
+                if (!spelled(item.toObject(), xray ? "protocol" : "type", noProxy)) return false;
+            }
+        }
+        return true;
     }
 }

@@ -229,10 +229,17 @@ namespace Configs {
 
     // The XHTTP download leg is a whole Xray stream kept as written, so it can carry a TLS key log and the source's dialer settings.
     void xrayVless::StripForeignState(Validation::Issues &issues) {
+        // XDRIVE's local service reads and writes that folder.
+        if (auto &drive = *streamSetting->xdrive; drive.service.trimmed() == "local" && !drive.remoteFolder.isEmpty()) {
+            issues << Validation::Issue{Validation::Severity::Warning, "streamSettings.xdriveSettings.remoteFolder",
+                                        QCoreApplication::translate("Validation", "Removed from the import: it would make Poros read and write files in a folder the sender chose."),
+                                        drive.remoteFolder};
+            drive.remoteFolder.clear();
+        }
         auto &x = *streamSetting->xhttp;
         const QString at = QStringLiteral("streamSettings.xhttpSettings.extra.");
         const auto strip = [&](QJsonObject &download, const QString &downloadAt) {
-            const bool keyLog = StripXrayStreamKeyLog(download, downloadAt, issues);
+            const bool keyLog = StripXrayStreamFiles(download, downloadAt, issues);
             return StripXrayDialerState(download) || keyLog;
         };
         if (auto download = QString2QJsonObject(x.downloadSettings);

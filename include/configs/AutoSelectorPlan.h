@@ -22,6 +22,7 @@ namespace Configs
         CountryFilter,
         Unavailable,
         XrayFullChained,
+        NoServer,
     };
 
     QString AutoSelectorSkipReason(AutoSelectorSkip skip);

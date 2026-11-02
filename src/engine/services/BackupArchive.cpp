@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <exception>
+#include <memory>
 #include <string>
 
 #include <QDataStream>
@@ -18,8 +19,11 @@
 #include <QUuid>
 
 #include "NkrVersion.h"
+#include "include/configs/common/OutboundFactory.h"
 #include "include/configs/sub/GroupUpdater.hpp"
+#include "include/engine/EngineHost.h"
 #include "include/engine/ThreadCheck.h"
+#include "include/engine/connection/ConnectionManager.h"
 #include "include/global/Configs.hpp"
 
 // Error texts are English and equal to the settings dialog's tr() sources, which translates them for display.
@@ -211,6 +215,7 @@ namespace Engine::BackupArchive {
         if (!parts.any()) return QStringLiteral("Select at least one part to restore.");
 
         int skippedRules = 0;
+        int cleanedProfiles = 0;
         {
             const QString tempDbPath = TempPath(QStringLiteral("restore-"));
             const auto removeTemp = qScopeGuard([&tempDbPath] { RemoveTempDatabase(tempDbPath); });
@@ -224,6 +229,18 @@ namespace Engine::BackupArchive {
             if (const auto problem = CheckDatabase(tempDbPath); !problem.isEmpty()) {
                 return QStringLiteral("The backup's database is damaged: %1").arg(problem);
             }
+            if (parts.profiles) {
+                try {
+                    cleanedProfiles = CleanProfiles(tempDbPath, parts.otp);
+                } catch (std::exception &e) {
+                    return QStringLiteral("The backup's database is damaged: %1").arg(e.what());
+                }
+            }
+
+            // A running profile keeps writing the objects it holds, over the restored rows.
+            auto *connection = Engine::host()->connection();
+            connection->stop({.block = true, .manual = true});
+            if (connection->connectionState() != Engine::ConnectionState::Idle) return QStringLiteral("The connection is still stopping; try again in a moment.");
 
             auto &settings = *Configs::dataManager->settingsRepo;
             // Kept keys keep the database's values, so the live ones must reach it first.
@@ -239,8 +256,44 @@ namespace Engine::BackupArchive {
         }
 
         MW_show_log(QStringLiteral("[Backup] Restored %1 from %2").arg(PartNames(parts).join(", "), QFileInfo(path).fileName()));
-        if (result != nullptr) result->skippedRules = skippedRules;
+        if (result != nullptr) {
+            result->skippedRules = skippedRules;
+            result->cleanedProfiles = cleanedProfiles;
+        }
         return {};
+    }
+
+    int CleanProfiles(const QString &databasePath, bool keepOtpLinks) {
+        SQLite::Database database(databasePath.toStdString(), SQLite::OPEN_READWRITE);
+        QList<QPair<int, QByteArray>> changed;
+        {
+            // Read as ProfilesRepo reads a row: the type column picks the outbound, the JSON fills it.
+            SQLite::Statement rows(database, "SELECT id, type, outbound_json FROM profiles");
+            while (rows.executeStep()) {
+                const std::unique_ptr<Configs::outbound> outbound(Configs::NewOutboundByType(QString::fromUtf8(rows.getColumn(1).getText())));
+                const auto stored = QJsonDocument::fromJson(QByteArray(rows.getColumn(2).getText()));
+                if (outbound->invalid || !stored.isObject()) continue;
+                outbound->ParseFromJson(stored.object());
+                const auto before = outbound->ExportToJson();
+                Validation::Issues issues;
+                outbound->StripForeignState(issues);
+                auto after = outbound->ExportToJson();
+                if (keepOtpLinks && before.contains("otp_profile_id")) after["otp_profile_id"] = before["otp_profile_id"];
+                if (after == before) continue;
+                for (const auto &issue : issues) {
+                    if (issue.severity == Validation::Severity::Warning) MW_show_log(QStringLiteral("[Backup] %1: %2").arg(outbound->DisplayName(), issue.message));
+                }
+                changed << qMakePair(rows.getColumn(0).getInt(), QJsonDocument(after).toJson(QJsonDocument::Compact));
+            }
+        }
+        SQLite::Statement save(database, "UPDATE profiles SET outbound_json = ? WHERE id = ?");
+        for (const auto &[id, json] : changed) {
+            save.bind(1, json.toStdString());
+            save.bind(2, id);
+            save.exec();
+            save.reset();
+        }
+        return static_cast<int>(changed.size());
     }
 
     QStringList PartNames(const Configs::BackupParts &parts) {

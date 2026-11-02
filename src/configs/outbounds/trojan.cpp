@@ -1,10 +1,8 @@
 #include "include/configs/outbounds/trojan.h"
 
-#include <QCoreApplication>
 #include <QUrlQuery>
 #include <include/global/Utils.hpp>
 
-#include "include/configs/ParseDiagnostics.h"
 #include "include/configs/common/utils.h"
 
 namespace Configs {
@@ -17,9 +15,8 @@ namespace Configs {
         password = url.userName();
         if (server_port == 0) server_port = 443;
         tls->ParseFromLink(link);
-        if (!tls->enabled && QUrlQuery(url.query()).queryItemValue("security").trimmed().isEmpty()) {
-            ParseDiag::Warn("security", QCoreApplication::translate("Validation", "The link sets neither security nor sni, so the profile connects without TLS, which most Trojan servers refuse."));
-        }
+        // Trojan means TLS: without it the password and every destination go in the clear. Only security=none turns it off.
+        if (QUrlQuery(url.query()).queryItemValue("security").trimmed().isEmpty()) tls->enabled = true;
         transport->ParseFromLink(link);
         multiplex->ParseFromLink(link);
         return true;
@@ -56,6 +53,7 @@ namespace Configs {
         if (!name.isEmpty()) url.setFragment(name);
         url.setUserName(password);
         if (tls->enabled) mergeUrlQuery(query, tls->ExportToLink());
+        else query.addQueryItem("security", "none");
         if (!transport->type.isEmpty()) mergeUrlQuery(query, transport->ExportToLink(tls->enabled));
         if (multiplex->enabled) mergeUrlQuery(query, multiplex->ExportToLink());
         if (!query.isEmpty()) url.setQuery(query);

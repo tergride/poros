@@ -55,11 +55,14 @@ namespace Configs
         {
             if (member == nullptr || member->outbound == nullptr) return AutoSelectorSkip::Missing;
             if (member->type == "chain" || member->type == "autoselector") return AutoSelectorSkip::MetaType;
+            // The quickest of all, and it shows the connection as up while nothing goes through a server.
+            if (member->type == "direct") return AutoSelectorSkip::NoServer;
             if (member->type == "openvpn" || member->type == "openconnect")
                 return AutoSelectorSkip::ManagementEndpoint;
             if (member->type == "custom") {
                 const auto custom = member->Custom();
                 if (custom == nullptr) return AutoSelectorSkip::Missing;
+                if (custom->ReachesNoServer()) return AutoSelectorSkip::NoServer;
                 // Only a sing-box full config is excluded; an Xray one gets its own instance.
                 if (custom->type != Custom::CustomOutbound && custom->type != Custom::CustomXrayOutbound
                     && custom->type != Custom::CustomXrayFullConfig) {
@@ -259,6 +262,7 @@ namespace Configs
             case AutoSelectorSkip::Unavailable: return QObject::tr("last test failed");
             case AutoSelectorSkip::XrayFullChained:
                 return QObject::tr("Xray full config cannot be combined with the group's proxies");
+            case AutoSelectorSkip::NoServer: return QObject::tr("no server behind it");
             default: return {};
         }
     }

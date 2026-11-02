@@ -34,7 +34,9 @@ namespace {
         return QStringLiteral("%1s").arg(s);
     }
 
+    // Everything shown here comes from the server.
     void vpnAuthSetLabel(QLabel *label, const QString &text) {
+        label->setTextFormat(Qt::PlainText);
         label->setText(text);
         label->setVisible(!text.isEmpty());
     }
@@ -49,6 +51,7 @@ DialogVpnAuth::DialogVpnAuth(QWidget *parent, Engine::VpnAuthController *_auth, 
     challenge = _challenge;
     localOnly = _localOnly;
 
+    ui->label_endpoint->setTextFormat(Qt::PlainText);
     ui->label_endpoint->setText(tr("Endpoint: %1").arg(Stats::VpnEndpointDisplayName(challenge.endpointTag)));
 
     auto errorPalette = ui->label_error->palette();
@@ -92,7 +95,8 @@ DialogVpnAuth::DialogVpnAuth(QWidget *parent, Engine::VpnAuthController *_auth, 
         addStandard(QDialogButtonBox::Close | QDialogButtonBox::Cancel);
         dismissButton = ui->buttonBox->button(QDialogButtonBox::Close);
         cancelButton = ui->buttonBox->button(QDialogButtonBox::Cancel);
-        if (!challenge.url.isEmpty()) {
+        // The shell would open whatever scheme the server sent, a file:// one included.
+        if (const QUrl address(challenge.url); address.scheme() == "https" || address.scheme() == "http") {
             openUrlButton = ui->buttonBox->addButton(tr("Open in Browser"), QDialogButtonBox::ActionRole);
         }
         // The server resolves this one out of band, so dismissing must not cancel it.
@@ -177,7 +181,9 @@ DialogVpnAuth::~DialogVpnAuth()
 }
 
 void DialogVpnAuth::addRow(const QString &label, QWidget *field) {
-    ui->form_layout->addRow(label, field);
+    auto *caption = new QLabel(label, ui->form_container);
+    caption->setTextFormat(Qt::PlainText);
+    ui->form_layout->addRow(caption, field);
 }
 
 void DialogVpnAuth::buildCredentialFields() {

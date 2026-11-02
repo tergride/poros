@@ -5,10 +5,16 @@
 
 #include <climits>
 
+#include "include/global/Validation.hpp"
+
 namespace Configs
 {
     // Import gate for an optional value: a non-empty rule message is reported as ignored and the value is not kept.
     bool AcceptOptional(const QString& field, const QString& message, const QString& value = {});
+
+    // Clears a path to a file on another computer: Windows offers that computer this user's login as soon as the core
+    // opens it. True when the path was one.
+    bool StripNetworkPath(QString& path, const QString& field, Validation::Issues& issues);
 
     // A whole number in [min, max]; anything else leaves target unchanged and is reported.
     void ReadQueryInt(const QUrlQuery& query, const QString& key, int& target, int min = 0, int max = INT_MAX);

@@ -91,10 +91,12 @@ namespace Configs {
                 auto trimmed = lines[i];
                 trimmed.remove('\r');
                 trimmed = trimmed.trimmed();
-                if (pending.isEmpty() && trimmed.size() > 2 && trimmed.startsWith('<') && trimmed.endsWith('>') &&
-                    !trimmed.startsWith("</")) {
+                // "< >" names no block, so it stays an ordinary line.
+                const auto tag = trimmed.startsWith('<') && trimmed.endsWith('>') && !trimmed.startsWith("</")
+                                     ? trimmed.mid(1, trimmed.size() - 2).trimmed() : QString();
+                if (pending.isEmpty() && !tag.isEmpty()) {
                     vpnfiDirective item;
-                    item.inlineTag = trimmed.mid(1, trimmed.size() - 2).trimmed();
+                    item.inlineTag = tag;
                     const auto closing = "</" + item.inlineTag + ">";
                     for (i++; i < lines.size(); i++) {
                         auto inner = lines[i];

@@ -28,6 +28,10 @@ namespace Subscription {
         using ProfilePtr = std::shared_ptr<Configs::Profile>;
 
         constexpr int kMaxDepth = 16;
+        // Real Clash configs nest about ten levels deep; fkYAML has the stack for a thousand.
+        constexpr qsizetype kMaxClashDepth = 64;
+        // fkYAML's lexer recurses once per comment in a row and overflows near eight thousand.
+        constexpr int kMaxClashCommentRun = 1000;
         constexpr auto npos = std::string_view::npos;
 
         enum class SingBoxSubType {
@@ -570,11 +574,70 @@ namespace Subscription {
         }
 
         // A NUL in the first four bytes makes fkYAML decode as UTF-16/32 and read out of bounds (#1746).
+        // A long run of comment lines is cut short: they mean nothing, and the lexer recurses through them.
         std::string sanitizeClashYaml(std::string_view text) {
             QString normalized = QString::fromUtf8(text.data(), static_cast<qsizetype>(text.size()));
             normalized.remove(QChar(QChar::Null));
             if (normalized.startsWith(QChar(QChar::ByteOrderMark))) normalized.remove(0, 1);
-            return normalized.toStdString();
+            // fkYAML ends a line at a lone CR too.
+            normalized.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+            normalized.replace(QLatin1Char('\r'), QLatin1Char('\n'));
+            const auto utf8 = normalized.toStdString();
+            std::string kept;
+            kept.reserve(utf8.size());
+            int comments = 0;
+            scan::forEachLine(utf8, [&](std::string_view raw) {
+                if (const auto line = scan::trim(raw); !line.empty()) comments = line.front() == '#' ? comments + 1 : 0;
+                if (comments <= kMaxClashCommentRun) kept.append(raw).push_back('\n');
+                return true;
+            });
+            return kept;
+        }
+
+        // fkYAML recurses through the tree it builds, so deep nesting overflows the stack where no catch reaches it.
+        // Its own lexer reads the text here, so a level cannot hide from the count in a quote, a comment or a block scalar.
+        bool clashNestsTooDeep(const std::string &yaml) {
+            using namespace fkyaml::detail;
+            using Token = lexical_token_t;
+            auto adapter = input_adapter(yaml);
+            lexical_analyzer lexer(adapter.get_buffer_view());
+            // As the parser drives it: directives first, then flow context while any bracket is open.
+            lexer.enter_directives();
+            bool directives = true;
+            qsizetype flow = 0;
+            uint32_t lastLine = UINT32_MAX;
+            // The column of each open block collection. A collection under a key may share the key's column, so this
+            // counts at least half the real block depth, which keeps the limit far within the parser's reach.
+            QList<uint32_t> blocks;
+            for (;;) {
+                const auto type = lexer.get_next_token().type;
+                if (type == Token::END_OF_BUFFER) return false;
+                if (directives) {
+                    if (type == Token::YAML_VER_DIRECTIVE || type == Token::TAG_DIRECTIVE || type == Token::INVALID_DIRECTIVE
+                        || type == Token::END_OF_DIRECTIVES) {
+                        continue;
+                    }
+                    directives = false;
+                    lexer.exit_directives();
+                } else if (type == Token::END_OF_DOCUMENT || type == Token::END_OF_DIRECTIVES) {
+                    // The parser reads the first document only.
+                    return false;
+                }
+                if (type == Token::SEQUENCE_FLOW_BEGIN || type == Token::MAPPING_FLOW_BEGIN) {
+                    if (flow++ == 0) lexer.enter_flow_context();
+                } else if (type == Token::SEQUENCE_FLOW_END || type == Token::MAPPING_FLOW_END) {
+                    if (flow > 0 && --flow == 0) lexer.exit_flow_context();
+                }
+                const uint32_t line = lexer.get_lines_processed();
+                const uint32_t column = lexer.get_last_token_begin_pos();
+                const bool opensNode = line != lastLine || type == Token::SEQUENCE_BLOCK_PREFIX || type == Token::EXPLICIT_KEY_PREFIX;
+                lastLine = line;
+                if (flow == 0 && opensNode) {
+                    while (!blocks.isEmpty() && blocks.constLast() > column) blocks.removeLast();
+                    if (blocks.isEmpty() || blocks.constLast() < column) blocks.append(column);
+                }
+                if (blocks.size() + flow > kMaxClashDepth) return true;
+            }
         }
 
         // Diagnostics only: a hostile entry can make even the name lookup throw.
@@ -894,7 +957,12 @@ namespace Subscription {
 
         void Parser::clash(std::string_view text) {
             try {
-                const fkyaml::node root = fkyaml::node::deserialize(sanitizeClashYaml(text));
+                const auto yaml = sanitizeClashYaml(text);
+                if (clashNestsTooDeep(yaml)) {
+                    reportDocument({}, {parserError(QCoreApplication::translate("Validation", "This Clash config nests its values too deeply to be read."))});
+                    return;
+                }
+                const fkyaml::node root = fkyaml::node::deserialize(yaml);
                 const bool mapping = root.is_mapping();
                 if (!mapping || !root.contains("proxies") || !root["proxies"].is_sequence() || root["proxies"].empty()) {
                     const auto message = mapping && root.contains("proxy-providers")
@@ -1052,6 +1120,14 @@ namespace Subscription {
                 return;
             }
             const auto str = toQString(line);
+            // A provider's message often ends with the address of its site; a proxy has a port or a login.
+            if (sink.fetched && std::string_view(profileType) == "http") {
+                if (const QUrl url(str); url.port() < 0 && url.userInfo().isEmpty()) {
+                    report([&] { return linkSource(str, nullptr); }, false,
+                           {parserWarning(QCoreApplication::translate("Validation", "A web address, not a proxy: it names neither a port nor a user."))});
+                    return;
+                }
+            }
             ProfilePtr ent;
             if (line.starts_with("vless://") && Configs::useXrayVless(str)) {
                 ent = Configs::ProfilesRepo::NewProfile("xrayvless");
@@ -1104,6 +1180,11 @@ namespace Subscription {
                 type = data["type"].toString();
                 if (const auto refusal = Configs::RefusedForeignType(type); !refusal.isEmpty()) {
                     damaged(refusal);
+                    return;
+                }
+                // Whatever its name says, nothing behind it is a server.
+                if (type == "direct") {
+                    damaged(QCoreApplication::translate("Validation", "Refused to import a Direct profile: its traffic goes out without any server, whatever its name says."));
                     return;
                 }
                 ent = Configs::ProfilesRepo::NewProfile(type == "hysteria2" ? QStringLiteral("hysteria") : type);

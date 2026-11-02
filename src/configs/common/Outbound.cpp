@@ -274,6 +274,16 @@ namespace Configs {
         return object;
     }
 
+    void outbound::StripForeignState(Validation::Issues &issues)
+    {
+        if (!HasTLS()) return;
+        const auto tls = GetTLS();
+        StripNetworkPath(tls->certificate_path, "tls.certificate_path", issues);
+        StripNetworkPath(tls->client_certificate_path, "tls.client_certificate_path", issues);
+        StripNetworkPath(tls->client_key_path, "tls.client_key_path", issues);
+        StripNetworkPath(tls->ech->config_path, "tls.ech.config_path", issues);
+    }
+
     void outbound::Validate(Validation::Issues &issues)
     {
         using Validation::Severity;

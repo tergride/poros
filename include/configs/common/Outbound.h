@@ -171,7 +171,7 @@ namespace Configs
         virtual void Validate(Validation::Issues &issues);
 
         // Called on every import, before Validate: drops state that only means something on this installation or would run a program.
-        virtual void StripForeignState(Validation::Issues &issues) {}
+        virtual void StripForeignState(Validation::Issues &issues);
 
         // Base Validate's server checks: types without a server of their own, and inputs (port ranges, realm, server lists) that supply it.
         virtual bool HasServerEndpoint() { return true; }

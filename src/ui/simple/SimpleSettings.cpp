@@ -474,7 +474,7 @@ QWidget *SimpleSettings::buildBackup() {
 
     auto *create = new QPushButton(PorosTheme::Icon(QStringLiteral("upload")), tr("Create"));
     connect(create, &QPushButton::clicked, this, &SimpleSettings::createBackup);
-    simpleSettingsRow(card, tr("Create a backup"), tr("The file can be moved to another computer."), create);
+    simpleSettingsRow(card, tr("Create a backup"), tr("The file can be moved to another computer. It holds your server keys unencrypted, so keep it private."), create);
 
     auto *restore = new QPushButton(PorosTheme::Icon(QStringLiteral("download")), tr("Choose a file"));
     connect(restore, &QPushButton::clicked, this, &SimpleSettings::restoreBackup);
@@ -502,9 +502,14 @@ void SimpleSettings::restoreBackup() {
         return;
     }
     if (QMessageBox::question(this, tr("Restore from a backup"), tr("Replace the current data and restart Poros?")) != QMessageBox::Yes) return;
-    if (const auto error = Engine::BackupArchive::Apply(path, info.available); !error.isEmpty()) {
+    Engine::BackupArchive::ApplyResult result;
+    if (const auto error = Engine::BackupArchive::Apply(path, info.available, &result); !error.isEmpty()) {
         QMessageBox::critical(this, tr("Restore from a backup"), error);
         return;
+    }
+    if (result.cleanedProfiles > 0) {
+        QMessageBox::information(this, tr("Restore from a backup"),
+                                 tr("Removed what could start programs, open ports or write files from %n server profile(s).", nullptr, result.cleanedProfiles));
     }
     m_hooks.restartProgram();
 }

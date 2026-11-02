@@ -962,6 +962,12 @@ namespace Configs {
 
     void openvpn::StripForeignState(Validation::Issues& issues)
     {
+        StripNetworkPath(tls->certificate_path, "tls.certificate_path", issues);
+        StripNetworkPath(tls->client_certificate_path, "tls.client_certificate_path", issues);
+        StripNetworkPath(tls->client_key_path, "tls.client_key_path", issues);
+        StripNetworkPath(tls->crl_path, "tls.crl_path", issues);
+        StripNetworkPath(tls->control_wrap->key_path, "tls.control_wrap.key_path", issues);
+        StripNetworkPath(static_key_path, "static_key_path", issues);
         if (otp_profile_id < 0) return;
         otp_profile_id = -1;
         issues << Validation::Issue{Validation::Severity::Warning, "otp_profile_id",

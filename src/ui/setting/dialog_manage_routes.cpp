@@ -743,7 +743,9 @@ void DialogManageRoutes::downloadRouteProfile(const QString& country) {
     if (!applyEditor()) return;
     const QPointer<DialogManageRoutes> self(this);
     runOnNewThread([self, country] {
-        const auto resp = Configs_network::NetworkRequestHelper::HttpGet(Configs::get_jsdelivr_link("https://raw.githubusercontent.com/throneproj/routeprofiles/profile/Profile_" + country));
+        Configs_network::HttpGetOptions options;
+        options.maxBytes = RouteUpdate::kMaxBytes;
+        const auto resp = Configs_network::NetworkRequestHelper::HttpGet(Configs::get_jsdelivr_link("https://raw.githubusercontent.com/throneproj/routeprofiles/profile/Profile_" + country), options);
         runOnUiThread([self, resp] {
             if (self == nullptr) return;
             if (!resp.error.isEmpty()) {
@@ -829,18 +831,24 @@ void DialogManageRoutes::on_import_route_clicked()
     if (!clip.isEmpty()) {
         QString fatal, warnings;
         bool wasOldArray = false;
-        if (auto profile = Configs::RouteProfile::FromShareInput(clip, &fatal, &warnings, &wasOldArray)) {
+        int servers = 0;
+        // Only a look: the servers it carries are created once the answer is yes.
+        if (const auto preview = Configs::RouteProfile::FromShareInput(clip, &fatal, &warnings, &wasOldArray, false, &servers)) {
             const QString what = wasOldArray ? tr("a routing rule list")
-                                             : tr("routing profile \"%1\"").arg(profile->name);
+                                             : tr("routing profile \"%1\"").arg(preview->name);
             QString prompt = tr("Import %1 from the clipboard?").arg(what);
-            if (const auto dns = profile->ActiveDns()) prompt += "\n\n" + manageRoutesDnsNote(*dns);
-            // endpoints are already created by the parse above, before this prompt
+            if (servers > 0) prompt += "\n" + tr("It also adds %n server profile(s).", nullptr, servers);
+            if (const auto dns = preview->ActiveDns()) prompt += "\n\n" + manageRoutesDnsNote(*dns);
             if (!warnings.isEmpty()) prompt += "\n\n" + tr("Note:") + "\n" + warnings.trimmed();
             QMessageBox box(QMessageBox::Question, tr("Import from clipboard"), prompt,
                             QMessageBox::Yes | QMessageBox::No, this);
             box.setTextFormat(Qt::PlainText);
             if (box.exec() == QMessageBox::Yes) {
-                applyImportedProfile(profile, wasOldArray);
+                warnings.clear();
+                if (const auto profile = Configs::RouteProfile::FromShareInput(clip, &fatal, &warnings, &wasOldArray)) {
+                    if (servers > 0 && !warnings.isEmpty()) manageRoutesPlainBox(this, QMessageBox::Information, tr("Imported with warnings"), warnings.trimmed());
+                    applyImportedProfile(profile, wasOldArray);
+                }
                 return;
             }
         }

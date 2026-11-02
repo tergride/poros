@@ -22,6 +22,8 @@ namespace Subscription {
     struct ParseSink {
         std::function<void(std::shared_ptr<Configs::Profile>)> profile;
         std::function<void(const ParseReport &)> report;
+        // The body came from a server: a bare web address in it is part of a message, not a proxy.
+        bool fetched = false;
     };
 
     // Profiles are handed to the sink in document order; the body is consumed in place.

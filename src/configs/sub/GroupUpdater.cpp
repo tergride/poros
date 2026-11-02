@@ -223,8 +223,9 @@ namespace Subscription {
             QList<qsizetype> entryIndex;
         };
 
-        ParseSink sinkFor(ImportSink &sink, ImportReport &report) {
+        ParseSink sinkFor(ImportSink &sink, ImportReport &report, bool fetched) {
             ParseSink parseSink;
+            parseSink.fetched = fetched;
             parseSink.profile = [&sink](std::shared_ptr<Configs::Profile> ent) { sink.add(std::move(ent)); };
             parseSink.report = [&report](const ParseReport &item) { report.add(item); };
             return parseSink;
@@ -234,6 +235,7 @@ namespace Subscription {
         bool yieldsProfile(const QByteArray &body, ImportReport &diagnostics) {
             bool found = false;
             ParseSink probe;
+            probe.fetched = true;
             probe.profile = [&found](const std::shared_ptr<Configs::Profile> &) { found = true; };
             probe.report = [&diagnostics](const ParseReport &item) { diagnostics.add(item); };
             ParseDocument(body, probe);
@@ -654,7 +656,7 @@ namespace Subscription {
             QString error;
             if (fetch(content, QUrl(content).host(), ResolveIdentity(nullptr), body, subInfo, &error)) {
                 const auto emptyReason = groupUpdaterWebPageReason(body);
-                importDocuments(-1, {std::move(body)}, emptyReason);
+                importDocuments(-1, {std::move(body)}, emptyReason, false, true);
             } else {
                 ImportReport report;
                 report.addFatal(fetchFailure(error));
@@ -706,7 +708,7 @@ namespace Subscription {
             QString error;
             if (fetch(content, QUrl(content).host(), ResolveIdentity(nullptr), body, subInfo, &error)) {
                 const auto emptyReason = groupUpdaterWebPageReason(body);
-                *outcome = importDocuments(gid, {std::move(body)}, emptyReason, true);
+                *outcome = importDocuments(gid, {std::move(body)}, emptyReason, true, true);
             } else {
                 *outcome = groupUpdaterFailure(gid, UpdateOutcome::Failure::Fetch, groupUpdaterFetchError(error));
                 outcome->report.addFatal(fetchFailure(error));
@@ -917,14 +919,14 @@ namespace Subscription {
         return true;
     }
 
-    UpdateOutcome GroupUpdater::importDocuments(int gid, QList<QByteArray> documents, const QString &emptyReason, bool quiet) {
+    UpdateOutcome GroupUpdater::importDocuments(int gid, QList<QByteArray> documents, const QString &emptyReason, bool quiet, bool fetched) {
         auto &settings = Configs::dataManager->settingsRepo;
         settings->imported_count = 0;
         ImportSink sink(gid, nullptr);
         ImportReport report;
 
         MW_show_log(">>>>>>>> " + QObject::tr("Processing subscription data..."));
-        for (auto &document : documents) ParseDocument(std::move(document), sinkFor(sink, report));
+        for (auto &document : documents) ParseDocument(std::move(document), sinkFor(sink, report, fetched));
         sink.finish();
         MW_show_log(">>>>>>>> " + QObject::tr("Process complete, applying..."));
 
@@ -1064,7 +1066,7 @@ namespace Subscription {
         ImportReport report;
 
         MW_show_log(">>>>>>>> " + QObject::tr("Processing subscription data..."));
-        ParseDocument(std::move(body), sinkFor(sink, report));
+        ParseDocument(std::move(body), sinkFor(sink, report, true));
         sink.flush();
         MW_show_log(">>>>>>>> " + QObject::tr("Process complete, applying..."));
         report.setImported(sink.stored());

@@ -95,6 +95,7 @@ namespace {
         QT_TRANSLATE_NOOP("DialogBasicSettings", "The backup's database is damaged: %1"),
         QT_TRANSLATE_NOOP("DialogBasicSettings", "Failed to restore database: %1"),
         QT_TRANSLATE_NOOP("DialogBasicSettings", "A subscription update is running; try again when it finishes."),
+        QT_TRANSLATE_NOOP("DialogBasicSettings", "The connection is still stopping; try again in a moment."),
     };
 
     QString basicSettingsBackupError(const QString &error) {
@@ -695,6 +696,8 @@ void DialogBasicSettings::restoreBackupFile(const QString &filePath, const QStri
     QString done = tr("Backup restored successfully. Poros will now restart for the changes to take effect.");
     if (skippedRules > 0)
         done += "\n\n" + tr("Skipped %n routing rule(s) that use conditions this version of Poros does not support.", nullptr, skippedRules);
+    if (result.cleanedProfiles > 0)
+        done += "\n\n" + tr("Removed what could start programs, open ports or write files from %n server profile(s).", nullptr, result.cleanedProfiles);
     QMessageBox::information(this, tr("Restore Complete"), done);
     MW_dialog_message(MwMessage::RestartProgram, {});
     QDialog::reject();

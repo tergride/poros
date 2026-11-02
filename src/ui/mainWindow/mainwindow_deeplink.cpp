@@ -9,11 +9,13 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QStringConverter>
+#include <QTextDocument>
 #include <QUrl>
 
 #include "3rdparty/QrDecoder.h"
 #include "include/configs/sub/GroupUpdater.hpp"
 #include "include/configs/sub/RouteUpdater.hpp"
+#include "include/configs/sub/SubscriptionParser.hpp"
 #include "include/database/GroupsRepo.h"
 #include "include/database/RoutesRepo.h"
 #include "include/engine/EngineEvents.h"
@@ -129,7 +131,7 @@ void MainWindow::handle_deeplink_impl(const QString &url) {
     const QString cmd = u.host();
 
     if (cmd.compare("add", Qt::CaseInsensitive) == 0) {
-        import_text(url);
+        handle_add_profile(url);
         return;
     }
 
@@ -167,24 +169,56 @@ void MainWindow::handle_deeplink_impl(const QString &url) {
 void MainWindow::handle_import_route(const QString &url) {
     QString fatal, warnings;
     bool wasOldArray = false;
-    auto profile = Configs::RouteProfile::FromShareInput(url, &fatal, &warnings, &wasOldArray);
-    if (!profile) {
+    int servers = 0;
+    // Only a look: the servers it carries are created once the answer is yes.
+    const auto preview = Configs::RouteProfile::FromShareInput(url, &fatal, &warnings, &wasOldArray, false, &servers);
+    if (!preview) {
         MessageBoxWarning(tr("Import routing profile"), tr("The link could not be parsed:\n") + fatal);
         return;
     }
-    if (profile->name.trimmed().isEmpty()) profile->name = tr("Imported profile");
 
     ActivateWindow(this);
 
-    auto prompt = tr("Add this routing profile?\n\nName: %1").arg(profile->name);
+    auto prompt = tr("Add this routing profile?\n\nName: %1").arg(preview->name.trimmed().isEmpty() ? tr("Imported profile") : preview->name);
+    if (servers > 0) prompt += "\n" + tr("It also adds %n server profile(s).", nullptr, servers);
     if (!warnings.isEmpty()) prompt += "\n\n" + tr("Note:") + "\n" + warnings.trimmed();
     QMessageBox box(QMessageBox::Question, tr("Import routing profile"), prompt, QMessageBox::Yes | QMessageBox::No, GetMessageBoxParent());
     // The name and the notes come from the link: AutoText would render a tag-like one as HTML.
     box.setTextFormat(Qt::PlainText);
     if (box.exec() != QMessageBox::Yes) return;
 
+    warnings.clear();
+    auto profile = Configs::RouteProfile::FromShareInput(url, &fatal, &warnings, &wasOldArray);
+    if (!profile) return;
+    if (profile->name.trimmed().isEmpty()) profile->name = tr("Imported profile");
     Configs::dataManager->routesRepo->AddRouteProfile(profile);
     m_routingPage->rebuild();
+    if (servers > 0 && !warnings.isEmpty()) {
+        QMessageBox notes(QMessageBox::Information, tr("Import routing profile"), warnings.trimmed(), QMessageBox::Ok, GetMessageBoxParent());
+        notes.setTextFormat(Qt::PlainText);
+        notes.exec();
+    }
+}
+
+void MainWindow::handle_add_profile(const QString &url) {
+    // Any page may open a poros:// link, so nothing is added without a look at what it is.
+    std::shared_ptr<Configs::Profile> found;
+    Subscription::ParseSink sink;
+    sink.profile = [&found](std::shared_ptr<Configs::Profile> ent) {
+        if (found == nullptr) found = std::move(ent);
+    };
+    Subscription::ParseText(url, sink);
+    if (found != nullptr) {
+        ActivateWindow(this);
+        const auto &outbound = found->outbound;
+        const auto prompt = tr("Add this server?\n\nType: %1\nName: %2\nAddress: %3")
+                                .arg(outbound->DisplayType(), outbound->DisplayName(), outbound->DisplayAddress());
+        QMessageBox box(QMessageBox::Question, tr("Add server"), prompt, QMessageBox::Yes | QMessageBox::No, GetMessageBoxParent());
+        box.setTextFormat(Qt::PlainText);
+        if (box.exec() != QMessageBox::Yes) return;
+    }
+    // A link that yields nothing goes through too: the import says why.
+    import_text(url);
 }
 
 void MainWindow::handle_add_remote_routes(const QString &url) {
@@ -272,8 +306,9 @@ void MainWindow::import_text(const QString &text) {
             QObject::tr("Import HTTP proxy profile"),
         };
         bool ok = false;
+        // The address may come from a file or a QR code, and the label would render a tag in it.
         const auto choice = QInputDialog::getItem(nullptr, QObject::tr("url detected"),
-                                                  QObject::tr("%1\nHow to update?").arg(content), items, 0, false, &ok);
+                                                  Qt::convertFromPlainText(QObject::tr("%1\nHow to update?").arg(content)), items, 0, false, &ok);
         if (!ok) return;
         switch (items.indexOf(choice)) {
             case 0:

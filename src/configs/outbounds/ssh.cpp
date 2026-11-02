@@ -266,6 +266,11 @@ namespace Configs {
         return {QObject::tr("Encrypted"), {}, SecurityLevel::Secure};
     }
 
+    void ssh::StripForeignState(Validation::Issues& issues)
+    {
+        StripNetworkPath(private_key_path, "private_key_path", issues);
+    }
+
     void ssh::Validate(Validation::Issues& issues)
     {
         outbound::Validate(issues);

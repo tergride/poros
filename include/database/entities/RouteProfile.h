@@ -113,7 +113,8 @@ namespace Configs {
         // ToShareObject() compacted, base64url-encoded, wrapped as poros://route/<...>
         QString ToShareLink(QString* warnings = nullptr);
         // *wasOldArray = legacy bare rule array (no name / default outbound); materializeEndpoints=false matches shared endpoints without creating local ones.
-        static std::shared_ptr<RouteProfile> FromShareInput(const QString& input, QString* fatalError, QString* warnings, bool* wasOldArray, bool materializeEndpoints = true);
+        // Without materializeEndpoints the shared servers are left out; *pendingEndpoints then counts the profiles they would add.
+        static std::shared_ptr<RouteProfile> FromShareInput(const QString& input, QString* fatalError, QString* warnings, bool* wasOldArray, bool materializeEndpoints = true, int* pendingEndpoints = nullptr);
 
         // *wasRemoteRouteLink is true even when the payload is invalid; a non-remoteRoute input returns {} with it false so callers can fall through.
         static QList<std::shared_ptr<RouteProfile>> FromRemoteRoutesLink(const QString& input, bool* wasRemoteRouteLink, QString* error);

@@ -3,6 +3,8 @@
 #include <QCheckBox>
 #include <QDir>
 #include <QGridLayout>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QLabel>
 #include <QLineEdit>
@@ -16,9 +18,11 @@
 #include "include/configs/PresetCatalog.h"
 #include "include/configs/PresetRules.h"
 #include "include/configs/outbounds/autoselector.h"
+#include "include/configs/outbounds/custom.h"
 #include "include/configs/outbounds/hysteria.h"
 #include "include/configs/outbounds/vless.h"
 #include "include/configs/sub/LinkKind.h"
+#include "include/configs/sub/SubscriptionParser.hpp"
 #include "include/database/Database.h"
 #include "include/database/GroupsRepo.h"
 #include "include/database/OtpProfilesRepo.h"
@@ -27,6 +31,7 @@
 #include "include/database/TrafficStatsRepo.h"
 #include "include/engine/app/StartupElevation.h"
 #include "include/engine/services/AutoGroupService.h"
+#include "include/engine/services/BackupArchive.h"
 #include "include/engine/services/GroupService.h"
 #include "include/engine/services/ReleaseUpdates.h"
 #include "include/global/Configs.hpp"
@@ -43,6 +48,30 @@ namespace {
             if (route->builtinKey == key) return route;
         }
         return nullptr;
+    }
+
+    // The types the parse hands over; every reported message goes to *messages.
+    QStringList parsedTypes(const QByteArray &body, bool fetched = false, QStringList *messages = nullptr) {
+        QStringList types;
+        Subscription::ParseSink sink;
+        sink.fetched = fetched;
+        sink.profile = [&types](std::shared_ptr<Configs::Profile> profile) { types << profile->type; };
+        sink.report = [messages](const Subscription::ParseReport &report) {
+            if (messages == nullptr) return;
+            for (const auto &issue : report.issues) *messages << issue.message;
+        };
+        Subscription::ParseDocument(body, sink);
+        return types;
+    }
+
+    QByteArray repeated(const QByteArray &part, int times) {
+        QByteArray out;
+        for (int i = 0; i < times; ++i) out += part;
+        return out;
+    }
+
+    QJsonObject jsonOf(const QString &text) {
+        return QJsonDocument::fromJson(text.toUtf8()).object();
     }
 
     QStringList ruleSets(const std::shared_ptr<Configs::RouteProfile> &route) {
@@ -567,6 +596,156 @@ private slots:
         QCOMPARE(model.metaAt(model.index(2, 0))->id, QString("3"));
         filter.setSearch("steam");
         QCOMPARE(filter.rowCount(), 1);
+    }
+
+    void ovpnBlankTagIsAnOrdinaryLine() {
+        QStringList messages;
+        parsedTypes("client\nremote 203.0.113.1 1194\n< >\n", false, &messages);
+        QVERIFY(messages.join('\n').contains("Unknown OpenVPN directive, ignored: <"));
+    }
+
+    void deepClashIsRefused_data() {
+        QTest::addColumn<QByteArray>("body");
+        QTest::newRow("flow sequences") << "proxies: " + repeated("[", 20000) + repeated("]", 20000);
+        QTest::newRow("flow mappings") << "proxies: " + repeated("{a: ", 20000) + repeated("}", 20000);
+        QTest::newRow("dashes on a line") << "proxies:\n" + repeated("- ", 20000) + "x\n";
+        QTest::newRow("explicit keys") << "proxies:\n" + repeated("? ", 20000) + "x\n";
+        QByteArray stairs = "proxies:\n";
+        for (int i = 0; i < 200; ++i) stairs += QByteArray(i, ' ') + "- a:\n";
+        QTest::newRow("indented") << stairs;
+        QTest::newRow("behind a directive") << "%foo \"\n---\nproxies: " + repeated("[", 20000);
+    }
+
+    void deepClashIsRefused() {
+        QFETCH(QByteArray, body);
+        QStringList messages;
+        QVERIFY(parsedTypes(body, true, &messages).isEmpty());
+        QVERIFY(messages.join('\n').contains("too deeply"));
+    }
+
+    void clashThroughLongCommentsAndModestNesting() {
+        const QByteArray body = repeated("# a line of notes\r", 10000) + "proxies:\n"
+                                "  - name: a\n"
+                                "    type: ss\n"
+                                "    server: 198.51.100.1\n"
+                                "    port: 8388\n"
+                                "    cipher: aes-128-gcm\n"
+                                "    password: secret\n"
+                                "    extra: {a: {b: [1, [2, [3]]]}}\n";
+        QCOMPARE(parsedTypes(body, true), QStringList{"shadowsocks"});
+    }
+
+    void fetchedWebAddressIsNoProxy() {
+        const QByteArray message = "Subscription expired\nhttps://panel.example.com/renew\n";
+        QVERIFY(parsedTypes(message, true).isEmpty());
+        QCOMPARE(parsedTypes(message), QStringList{"http"});
+        QCOMPARE(parsedTypes("Proxy below\nhttp://user:pass@198.51.100.2:8080\n", true), QStringList{"http"});
+    }
+
+    void directIsRefusedOnImport_data() {
+        QTest::addColumn<QByteArray>("body");
+        const auto add = [](const QByteArray &json) { return "poros://add/" + json.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals); };
+        QTest::newRow("direct link") << add(R"({"type":"direct","tag":"Germany"})");
+        QTest::newRow("sing-box object") << QByteArray(R"({"type":"direct","tag":"Germany"})");
+        QTest::newRow("sing-box object, capitals") << QByteArray(R"({"TYPE":"Block","tag":"Germany"})");
+        QTest::newRow("xray object") << QByteArray(R"({"protocol":"Freedom","tag":"Germany"})");
+        QTest::newRow("full config without a proxy")
+            << add(R"({"type":"custom","name":"Germany","subtype":"fullconfig","config":"{\"outbounds\":[{\"type\":\"direct\"},{\"type\":\"selector\",\"outbounds\":[\"direct\"]}]}"})");
+    }
+
+    void directIsRefusedOnImport() {
+        QFETCH(QByteArray, body);
+        QVERIFY(parsedTypes(body).isEmpty());
+        QCOMPARE(parsedTypes(R"({"type":"socks","tag":"Germany","server":"198.51.100.1","server_port":1080})"), QStringList{"custom"});
+    }
+
+    void autoSkipsDirect() {
+        int gid = -1;
+        QVERIFY(!Engine::GroupService::Add({"Direct only", "https://sub.example.com/s/4", false}, &gid).has_value());
+        auto direct = Configs::ProfilesRepo::NewProfile("direct");
+        QVERIFY(Configs::dataManager->profilesRepo->AddProfile(direct, gid));
+        auto custom = Configs::ProfilesRepo::NewProfile("custom");
+        custom->Custom()->type = Configs::Custom::CustomXrayOutbound;
+        custom->Custom()->config = R"({"protocol":"FREEDOM","tag":"Germany"})";
+        QVERIFY(Configs::dataManager->profilesRepo->AddProfile(custom, gid));
+        QVERIFY(!Engine::AutoGroupService::HasEligibleServers(gid));
+        QVERIFY(!Engine::GroupService::Delete(gid).has_value());
+    }
+
+    void fullConfigLosesWhatOpensThisComputer() {
+        Configs::Custom custom;
+        custom.type = Configs::Custom::CustomFullConfig;
+        custom.config = R"({
+            "inbounds": [{"type": "mixed", "listen": "127.0.0.1", "set_system_proxy": true}],
+            "endpoints": [{"type": "openvpn-server", "tag": "s"}, {"type": "wireguard", "tag": "w", "listen_port": 51820}],
+            "ntp": {"enabled": true, "write_to_system": true},
+            "outbounds": [{"type": "socks", "tag": "p", "server": "198.51.100.1", "server_port": 1080,
+                           "tls": {"certificate_path": "\\\\evil\\share\\ca.pem"}}]})";
+        Validation::Issues issues;
+        custom.StripForeignState(issues);
+        QVERIFY(!Validation::HasError(issues));
+        const auto root = jsonOf(custom.config);
+        QVERIFY(!root["inbounds"].toArray().first().toObject().contains("set_system_proxy"));
+        const auto endpoints = root["endpoints"].toArray();
+        QCOMPARE(endpoints.size(), 1);
+        QVERIFY(!endpoints.first().toObject().contains("listen_port"));
+        QVERIFY(!root["ntp"].toObject().contains("write_to_system"));
+        QVERIFY(root["outbounds"].toArray().first().toObject()["tls"].toObject().isEmpty());
+
+        Configs::Custom xray;
+        xray.type = Configs::Custom::CustomXrayOutbound;
+        xray.config = R"({"protocol": "vless", "streamSettings": {"network": "xdrive", "xdriveSettings": {"service": "local", "remoteFolder": "C:/Users"}}})";
+        xray.StripForeignState(issues);
+        QVERIFY(!jsonOf(xray.config)["streamSettings"].toObject()["xdriveSettings"].toObject().contains("remoteFolder"));
+    }
+
+    void trojanLinkMeansTls() {
+        auto bare = Configs::ProfilesRepo::NewProfile("trojan");
+        QVERIFY(bare->outbound->ParseFromLink("trojan://pw@t.example.com:443?tls_certificate_path=//evil/share/ca.pem"));
+        QVERIFY(bare->outbound->GetTLS()->enabled);
+        Validation::Issues issues;
+        bare->outbound->StripForeignState(issues);
+        QVERIFY(bare->outbound->GetTLS()->certificate_path.isEmpty());
+
+        auto plain = Configs::ProfilesRepo::NewProfile("trojan");
+        QVERIFY(plain->outbound->ParseFromLink("trojan://pw@t.example.com:443?security=none"));
+        QVERIFY(!plain->outbound->GetTLS()->enabled);
+        auto again = Configs::ProfilesRepo::NewProfile("trojan");
+        QVERIFY(again->outbound->ParseFromLink(plain->outbound->ExportToLink()));
+        QVERIFY(!again->outbound->GetTLS()->enabled);
+    }
+
+    void restoreCleansProfiles() {
+        const auto path = dir.filePath("restore-clean.db");
+        {
+            SQLite::Database database(path.toStdString(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+            database.exec("CREATE TABLE profiles (id INTEGER PRIMARY KEY, type TEXT, outbound_json TEXT)");
+            SQLite::Statement insert(database, "INSERT INTO profiles VALUES (?, ?, ?)");
+            const QList<QPair<QString, QJsonObject>> rows{
+                {"custom", QJsonObject{{"type", "custom"}, {"name", "Tor"}, {"subtype", "outbound"},
+                                       {"config", R"({"type":"tor","executable_path":"C:/x.exe"})"}}},
+                {"openvpn", QJsonObject{{"type", "openvpn"}, {"server", "198.51.100.1"}, {"otp_profile_id", 3},
+                                        {"tls", QJsonObject{{"certificate_path", "//evil/share/ca.pem"}}}}},
+                {"socks", QJsonObject{{"type", "socks"}, {"server", "198.51.100.2"}, {"server_port", 1080}}},
+            };
+            for (int i = 0; i < rows.size(); ++i) {
+                insert.bind(1, i + 1);
+                insert.bind(2, rows[i].first.toStdString());
+                insert.bind(3, QJsonDocument(rows[i].second).toJson(QJsonDocument::Compact).toStdString());
+                insert.exec();
+                insert.reset();
+            }
+        }
+        QCOMPARE(Engine::BackupArchive::CleanProfiles(path, true), 2);
+        SQLite::Database database(path.toStdString(), SQLite::OPEN_READONLY);
+        const auto stored = [&database](int id) {
+            SQLite::Statement query(database, "SELECT outbound_json FROM profiles WHERE id = ?");
+            query.bind(1, id);
+            return query.executeStep() ? jsonOf(QString::fromUtf8(query.getColumn(0).getText())) : QJsonObject{};
+        };
+        QVERIFY(!jsonOf(stored(1)["config"].toString()).contains("executable_path"));
+        QCOMPARE(stored(2)["otp_profile_id"].toInt(), 3);
+        QVERIFY(!stored(2)["tls"].toObject().contains("certificate_path"));
     }
 
     void cleanStartIsSimple() {

@@ -24,6 +24,7 @@ namespace Configs
 
         QString DisplayType() override;
         SecurityInfo GetSecurity() override;
+        void StripForeignState(Validation::Issues& issues) override;
         void Validate(Validation::Issues& issues) override;
 
         // The core dials port 22 when none is set.

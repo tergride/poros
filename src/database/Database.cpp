@@ -352,6 +352,9 @@ namespace Configs {
         const std::vector<std::string> kRouteTables = {"route_rules", "route_profiles"};
         const std::vector<std::string> kSettingsTables = {"settings"};
         const std::vector<std::string> kOtpTables = {"otp_profiles"};
+        // This computer's connection history: never restored, so it never leaves either.
+        const std::vector<std::string> kTrafficTables = {"config_traffic_minute", "config_traffic_hour", "app_traffic_minute",
+                                                         "app_traffic_hour", "config_meta", "app_meta"};
 
         std::vector<std::string> tableColumns(SQLite::Database& d, const std::string& schema, const std::string& table) {
             std::vector<std::string> cols;
@@ -491,6 +494,7 @@ namespace Configs {
         if (!parts.routes) wipe(kRouteTables);
         if (!parts.settings) wipe(kSettingsTables);
         if (!parts.otp) wipe(kOtpTables);
+        wipe(kTrafficTables);
         if (parts.settings && !excludedSettingKeys.isEmpty() && tableExists(dest, "main", "settings")) {
             std::string placeholders;
             for (qsizetype i = 0; i < excludedSettingKeys.size(); ++i) placeholders += i == 0 ? "?" : ",?";

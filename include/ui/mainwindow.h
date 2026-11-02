@@ -460,6 +460,8 @@ private:
 
     void handle_addsub(const QString &url, const QString &name);
 
+    void handle_add_profile(const QString &url);
+
     void handle_import_route(const QString &url);
 
     void handle_add_remote_routes(const QString &url);

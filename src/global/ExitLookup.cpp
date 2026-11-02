@@ -12,6 +12,8 @@
 namespace Configs_network {
     namespace {
         constexpr qint64 kExitLookupAutoBudgetMs = 20000;
+        // The answers are a few hundred bytes; this one goes out through whatever server is connected.
+        constexpr qint64 kExitLookupMaxBytes = 64 * 1024;
 
         enum class ExitLookupFormat { IpApi, IpWho, IpInfo, IpApiCo, Ip2Location, FreeIpApi, CloudflareTrace };
 
@@ -113,7 +115,10 @@ namespace Configs_network {
         }
 
         bool exitLookupTry(const ExitLookupEntry &entry, ExitInfo *info, QString *error) {
-            const auto resp = NetworkRequestHelper::HttpGet(entry.provider.url, true);
+            HttpGetOptions options;
+            options.useProxy = true;
+            options.maxBytes = kExitLookupMaxBytes;
+            const auto resp = NetworkRequestHelper::HttpGet(entry.provider.url, options);
             QString reason = resp.error;
             if (reason.isEmpty()) reason = exitLookupParse(entry.format, resp.data, info);
             info->countryCode = exitLookupCountryCode(info->countryCode);

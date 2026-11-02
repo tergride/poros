@@ -22,7 +22,8 @@ signals:
 
 private:
     void syncLink();
-    void setStatus(const QString &text, bool problem);
+    // Plain text unless asked otherwise: an error may quote the server.
+    void setStatus(const QString &text, bool problem, Qt::TextFormat format = Qt::PlainText);
 
     QLineEdit *m_link;
     QLineEdit *m_name;

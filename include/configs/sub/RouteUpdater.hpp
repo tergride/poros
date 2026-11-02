@@ -6,6 +6,9 @@
 #include "include/database/entities/RouteProfile.h"
 
 namespace RouteUpdate {
+    // A routing profile, even a large one, is a fraction of this.
+    constexpr qint64 kMaxBytes = 16LL * 1024 * 1024;
+
     // Blocks on the network (worker thread only); returns an error string, empty on success.
     QString UpdateProfile(const std::shared_ptr<Configs::RouteProfile>& profile, QString* warnings = nullptr);
 }

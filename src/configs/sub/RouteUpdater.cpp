@@ -16,7 +16,9 @@ namespace RouteUpdate {
         const QString url = profile->remoteURL.trimmed();
         if (url.isEmpty()) return QObject::tr("remote URL is empty");
 
-        auto resp = NetworkRequestHelper::HttpGet(Configs::get_jsdelivr_link(url));
+        HttpGetOptions options;
+        options.maxBytes = kMaxBytes;
+        auto resp = NetworkRequestHelper::HttpGet(Configs::get_jsdelivr_link(url), options);
         if (!resp.error.isEmpty()) return resp.error;
 
         QString fatal, warn;

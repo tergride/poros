@@ -809,6 +809,19 @@ namespace Configs {
 
     void openconnect::StripForeignState(Validation::Issues& issues)
     {
+        StripNetworkPath(tls->certificate_authority_path, "tls.certificate_authority_path", issues);
+        StripNetworkPath(tls->client_certificate_path, "tls.client_certificate_path", issues);
+        StripNetworkPath(tls->client_key_path, "tls.client_key_path", issues);
+        StripNetworkPath(tls->mca_certificate_path, "tls.mca_certificate_path", issues);
+        StripNetworkPath(tls->mca_key_path, "tls.mca_key_path", issues);
+        for (const auto& cert : tncc->certificates) StripNetworkPath(cert->certificate_path, "tncc.certificates.certificate_path", issues);
+        // The core reads that file and sends what it holds to the server.
+        if (!token->secret_path.isEmpty()) {
+            issues << Validation::Issue{Validation::Severity::Warning, "token.secret_path",
+                                        QCoreApplication::translate("Validation", "Removed the software token, which named a file on this computer for its secret; set the token up again in the profile's settings."),
+                                        token->secret_path};
+            token = std::make_shared<OpenConnectToken>();
+        }
         if (otp_profile_id >= 0) {
             otp_profile_id = -1;
             issues << Validation::Issue{Validation::Severity::Warning, "otp_profile_id",

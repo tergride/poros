@@ -14,6 +14,19 @@
 
 namespace Configs
 {
+    bool StripNetworkPath(QString& path, const QString& field, Validation::Issues& issues)
+    {
+        // \\host\share and //host/share alike, the \\?\ and \\.\ device forms included.
+        const auto text = path.trimmed();
+        const auto slash = [](QChar c) { return c == u'\\' || c == u'/'; };
+        if (text.size() < 2 || !slash(text.at(0)) || !slash(text.at(1))) return false;
+        issues << Validation::Issue{Validation::Severity::Warning, field,
+                                    QCoreApplication::translate("Validation", "Removed a path on another computer from the import: opening it would send that computer your Windows login."),
+                                    path};
+        path.clear();
+        return true;
+    }
+
     bool AcceptOptional(const QString& field, const QString& message, const QString& value)
     {
         if (message.isEmpty()) return true;
