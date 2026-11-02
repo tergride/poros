@@ -263,17 +263,18 @@ namespace Configs {
         int newId = NewGroupID();
         group->id = newId;
         memMap[newId] = group;
-        saveToDatabase(group.get(), group->id);
-        int maxOrder = -1;
-        auto maxOrderQuery = db.query("SELECT MAX(display_order) FROM groups_order");
-        if (maxOrderQuery && maxOrderQuery->executeStep()) {
-            maxOrder = maxOrderQuery->getColumn(0).getInt();
-        }
-        db.exec("INSERT INTO groups_order (group_id, display_order) VALUES (?, ?)",
-            group->id,
-            maxOrder + 1
-        );
-        return true;
+        // One transaction: a group without its tab, or a tab without its group, would break the list.
+        const bool added = db.transaction("GroupsRepo::AddGroup", [&] {
+            saveToDatabase(group.get(), group->id);
+            int maxOrder = -1;
+            if (const auto maxOrderQuery = db.queryThrow("SELECT MAX(display_order) FROM groups_order"); maxOrderQuery->executeStep()) {
+                maxOrder = maxOrderQuery->getColumn(0).getInt();
+            }
+            db.execThrow("INSERT INTO groups_order (group_id, display_order) VALUES (?, ?)", group->id, maxOrder + 1);
+            return true;
+        });
+        if (!added) memMap.erase(newId);
+        return added;
     }
 
     bool GroupsRepo::AddHiddenGroup(std::shared_ptr<Group>& group) {
@@ -367,16 +368,16 @@ namespace Configs {
 
     void GroupsRepo::SetGroupsTabOrder(const QList<int>& order) {
         QMutexLocker locker(&mutex);
-        db.exec("DELETE FROM groups_order");
-        std::vector<int> pairs;
-        pairs.reserve(order.size() * 2);
-        int position = 0;
-        for (const int id : order) {
-            if (tombstones.contains(id)) continue;
-            pairs.push_back(id);
-            pairs.push_back(position++);
-        }
-        if (!pairs.empty()) db.execBatchInsertIntPairs("groups_order", "group_id", "display_order", pairs);
+        // One transaction: stopped halfway, the delete would leave no tab at all.
+        db.transaction("GroupsRepo::SetGroupsTabOrder", [&] {
+            db.execThrow("DELETE FROM groups_order");
+            int position = 0;
+            for (const int id : order) {
+                if (tombstones.contains(id)) continue;
+                db.execThrow("INSERT INTO groups_order (group_id, display_order) VALUES (?, ?)", id, position++);
+            }
+            return true;
+        });
     }
 
     bool GroupsRepo::Save(const std::shared_ptr<Group>& group) {

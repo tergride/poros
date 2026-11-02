@@ -94,10 +94,7 @@ void MainWindow::importFromFiles(const QStringList &paths)
                 problems << tr("%1: no QR code found").arg(name);
                 continue;
             }
-            for (const QString &text : texts) {
-                MW_show_log("QR Code Result:\n" + text);
-                payloads << text.trimmed();
-            }
+            for (const QString &text : texts) payloads << text.trimmed();
             continue;
         }
 

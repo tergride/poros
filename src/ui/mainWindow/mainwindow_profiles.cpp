@@ -359,10 +359,7 @@ void MainWindow::parseQrImage(const QPixmap *image)
     if (texts.isEmpty()) {
         MessageBoxInfo(software_name, tr("QR Code not found"));
     } else {
-        for (const QString &text : texts) {
-            MW_show_log("QR Code Result:\n" + text);
-            import_text(text);
-        }
+        for (const QString &text : texts) import_text(text);
     }
 }
 
@@ -378,10 +375,7 @@ void MainWindow::on_menu_scan_qr_triggered() {
         MessageBoxInfo(software_name, tr("QR Code not found"));
         return;
     }
-    for (const QString &text : texts) {
-        MW_show_log("QR Code Result:\n" + text);
-        import_text(text);
-    }
+    for (const QString &text : texts) import_text(text);
 }
 
 void MainWindow::on_menu_clear_test_result_triggered() {

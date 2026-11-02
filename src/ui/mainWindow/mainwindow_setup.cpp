@@ -517,7 +517,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     syncSettingsMirrors();
     ui->actionStart_with_system->setChecked(AutoRun_IsEnabled());
 
-    connect(ui->actionHide_window, &QAction::triggered, this, [=, this](){ HideWindow(this); });
+    connect(ui->actionHide_window, &QAction::triggered, this, [=, this]() {
+        // Without a tray icon only the taskbar brings it back.
+        if (tray->isVisible()) HideWindow(this);
+        else showMinimized();
+    });
     connect(ui->menu_open_config_folder, &QAction::triggered, this, [=,this] { QDesktopServices::openUrl(QUrl::fromLocalFile(QDir::currentPath())); });
     connect(ui->actionRestart_Proxy, &QAction::triggered, this, [=,this] { supervisor()->resetCore(); });
     connect(ui->actionRestart_Program, &QAction::triggered, this, [=,this] { MW_dialog_message(MwMessage::RestartProgram, {}); });
@@ -808,8 +812,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     if (Configs::dataManager->settingsRepo->onboarding_done || Configs::dataManager->settingsRepo->flag_tray) applyUiMode();
     else showOnboarding();
 
-    if (!Configs::dataManager->settingsRepo->flag_tray) show();
-    else if (tray->isVisible()) HideWindow(this);
+    // Without a tray icon a window that starts hidden could never be reached.
+    if (!Configs::dataManager->settingsRepo->flag_tray || !tray->isVisible()) show();
+    else HideWindow(this);
 
     ui->data_view->setStyleSheet("background: transparent; border: none;");
 

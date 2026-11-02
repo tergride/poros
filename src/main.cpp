@@ -24,6 +24,7 @@
 #include "include/engine/app/Bootstrap.h"
 #include "include/engine/app/ConfigDump.h"
 #include "include/engine/app/DataDirLock.h"
+#include "include/engine/app/ExitController.h"
 #include "include/engine/app/ExitCodes.h"
 #include "include/engine/app/InstanceServer.h"
 #include "include/ui/app/GuiStartup.h"
@@ -107,7 +108,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Listening before initDB lets a second launch hand off while the database opens; its payload waits in the pending buffers.
-    Engine::InstanceServer server(serverName, QLocalServer::WorldAccessOption);
+    // This user's processes only: what arrives here is opened as a link or a file.
+    Engine::InstanceServer server(serverName, QLocalServer::UserAccessOption);
     if (!server.listen()) {
         // Logging::Init has not run yet, so the file log never sees this.
         const QString error = QString("Failed to start the instance server %1: %2").arg(serverName, server.errorString());
@@ -120,7 +122,16 @@ int main(int argc, char* argv[]) {
     server.setHandlers(GuiStartup::HandleLaunchLine, [](QLocalSocket *) { MW_dialog_message(MwMessage::Raise, {}); });
     server.installQuitCleanup();
 
-    Engine::Bootstrap::OpenDataDir(dataDir, arguments);
+    try {
+        Engine::Bootstrap::OpenDataDir(dataDir, arguments);
+    } catch (const std::exception &e) {
+        // A damaged or locked database would otherwise end the process without a word.
+        const QString text = QObject::tr("Poros could not open its database:\n%1\n\n%2\n\nMove poros.db out of that folder to start with empty data, or put back a copy you trust.")
+                                 .arg(QDir::toNativeSeparators(QDir(dataDir.configDir).filePath(QStringLiteral("poros.db"))), QString::fromUtf8(e.what()));
+        std::fputs(qPrintable(text + '\n'), stderr);
+        if (!arguments.contains("-tray")) QMessageBox::critical(nullptr, "Poros", text);
+        return 1;
+    }
     Engine::Bootstrap::PrepareRuntime();
 
     LogThread = new QThread;
@@ -143,6 +154,8 @@ int main(int argc, char* argv[]) {
     Engine::EngineHost::create();
     auto *window = UI_InitMainWindow();
     Engine::host()->init(window, window);
+    // A launch during the exit waits for the data folder instead of handing its link to an instance that is going away.
+    QObject::connect(Engine::host()->exitController(), &Engine::ExitController::shutdownStarted, &a, [&server] { server.close(); });
 
     Configs::dataManager->RunDeferredMaintenance();
 

@@ -18,8 +18,8 @@ namespace {
     void fitMaximizedClient(HWND hwnd, NCCALCSIZE_PARAMS *params) {
         if (!IsZoomed(hwnd)) return;
         MONITORINFO info{sizeof(MONITORINFO)};
-        GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &info);
         auto &rect = params->rgrc[0];
+        GetMonitorInfoW(MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST), &info);
         rect.left = std::max(rect.left, info.rcWork.left);
         rect.top = std::max(rect.top, info.rcWork.top);
         rect.right = std::min(rect.right, info.rcWork.right);

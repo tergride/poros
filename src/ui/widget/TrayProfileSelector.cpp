@@ -6,6 +6,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QPointer>
 #include <QPushButton>
 #include <QTimer>
 #include <QKeyEvent>
@@ -226,12 +227,13 @@ void TrayProfileSelector::activateItem(QListWidgetItem *it) {
         m_groupId = id;
         m_page = 0;
         rebuild();
-    } else if (kind == KindProfile) {
-        if (m_cb.startProfile) m_cb.startProfile(id);
-        close();
-    } else if (kind == KindRoute) {
-        if (m_cb.chooseRoute) m_cb.chooseRoute(id);
-        close();
+    } else if (kind == KindProfile || kind == KindRoute) {
+        // Out of the way first: a box the callback opens takes the focus, and losing it deletes this popup under the call.
+        const auto run = kind == KindProfile ? m_cb.startProfile : m_cb.chooseRoute;
+        const QPointer<TrayProfileSelector> self(this);
+        hide();
+        if (run) run(id);
+        if (self != nullptr) close();
     }
 }
 

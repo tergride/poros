@@ -126,6 +126,15 @@ namespace Configs {
         }
     }
 
+    bool ReadStatement::executeStep() {
+        try {
+            return SQLite::Statement::executeStep();
+        } catch (std::exception& e) {
+            NotifyError(sql_, e);
+            return false;
+        }
+    }
+
     void Database::maybeCheckpoint(int count) {
         if (writeCount.fetch_add(count) >= WAL_CHECKPOINT_AFTER_WRITES) {
             writeCount = 0;

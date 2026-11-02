@@ -120,15 +120,20 @@ void MainWindow::on_menu_exit_triggered() {
     const auto program = QApplication::applicationFilePath();
     QStringList arguments;
     if (restart) {
-        arguments = Configs::dataManager->settingsRepo->argv;
-        if (arguments.length() > 0) {
-            arguments.removeFirst();
-            arguments.removeAll("-tray");
-            arguments.removeAll("-flag_restart_tun_on");
+        // Flags only, and -appdata with its folder: a link or a file handed over at launch must not open again.
+        const auto &argv = Configs::dataManager->settingsRepo->argv;
+        for (qsizetype i = 1; i < argv.size(); i++) {
+            const auto &argument = argv[i];
+            if (argument == QLatin1String("-appdata") && i + 1 < argv.size() && !argv[i + 1].startsWith('-')) {
+                arguments << argument << argv[++i];
+                continue;
+            }
+            if (!argument.startsWith('-') || argument == QLatin1String("-tray") || argument == QLatin1String("-flag_restart_tun_on")
+                || argument.startsWith(QLatin1String("-flag_restart_profile="))) {
+                continue;
+            }
+            arguments << argument;
         }
-        arguments.erase(std::remove_if(arguments.begin(), arguments.end(), [](const QString &argument) {
-            return argument.startsWith(QLatin1String("-flag_restart_profile="));
-        }), arguments.end());
         if (reason == ExitReason::RestartWithTun) arguments << "-flag_restart_tun_on";
         if (m_restartProfileId >= 0) arguments << QString("-flag_restart_profile=%1").arg(m_restartProfileId);
     }

@@ -176,7 +176,9 @@ void RuntimeStatsWidget::refreshLive() {
         ui->vCountry->setText(shown);
     }
 
-    const QString cfgName = runningConfigName();
+    // One snapshot: a stop between two reads would leave the second one null.
+    const auto running = runningProfile();
+    const QString cfgName = running != nullptr ? running->outbound->DisplayTypeAndName() : QString();
     const qint64 nowSecs = QDateTime::currentSecsSinceEpoch();
     if (cfgName.isEmpty()) {
         ui->vCfgName->setText(QStringLiteral("—"));
@@ -188,7 +190,7 @@ void RuntimeStatsWidget::refreshLive() {
         egressSnapshotDone_ = false;
     } else {
         setElided(ui->vCfgName, cfgName);
-        setElided(ui->vEndpoint, runningProfile()->outbound->DisplayAddress());
+        setElided(ui->vEndpoint, running->outbound->DisplayAddress());
         if (cfgName != lastProbedConfig_) {
             lastProbedConfig_ = cfgName;
             egressSnapshotDone_ = false;

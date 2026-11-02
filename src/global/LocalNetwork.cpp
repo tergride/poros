@@ -57,8 +57,10 @@ namespace LocalNetwork {
 
         bool IsTunnelInterface(const QNetworkInterface &iface) {
             // Prefixes are device names (Qt derives the Windows one from the interface LUID: ethernet_N,
-            // wireless_N, tunnel_N), so our own tun is matched by its friendly name as well.
+            // wireless_N, tunnel_N), so our own tun is matched by its friendly name as well. Another client's Wintun
+            // tun is Virtual: holding the default route, it would otherwise pass for the LAN address.
             static const QStringList devicePrefixes = {"utun", "tun", "tap", "wg", "ppp", "zt"};
+            if (iface.type() == QNetworkInterface::Virtual) return true;
             const auto device = iface.name().toLower();
             // Windows appends a suffix ("poros-net 2") when a stale adapter instance survives an unclean exit.
             if (device.startsWith(QStringLiteral("poros-net")) ||
@@ -72,7 +74,6 @@ namespace LocalNetwork {
         bool LooksVirtual(const QNetworkInterface &iface) {
             static const QStringList markers = {"vethernet", "virtualbox", "vmware", "vmnet", "hyper-v",
                                                 "docker", "wsl", "npcap", "bluetooth", "virbr", "veth"};
-            if (iface.type() == QNetworkInterface::Virtual) return true;
             const auto haystack = (iface.name() + ' ' + iface.humanReadableName()).toLower();
             return std::any_of(markers.cbegin(), markers.cend(),
                                [&haystack](const QString &marker) { return haystack.contains(marker); });

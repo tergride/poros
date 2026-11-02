@@ -73,6 +73,18 @@ namespace Configs {
     // Logs (rate-limited per query) and shows one passive notice per query per window; never blocks the caller.
     void NotifyError(const std::string& query, const DbError& err);
 
+    // executeStep() reports a failure through NotifyError and ends the rows instead of throwing: a damaged page met
+    // in the middle of a read must not end the process.
+    class ReadStatement : public SQLite::Statement {
+    public:
+        ReadStatement(SQLite::Database& db, const std::string& sql) : SQLite::Statement(db, sql), sql_(sql) {}
+
+        bool executeStep();
+
+    private:
+        std::string sql_;
+    };
+
     inline void NotifyError(const std::string& query, const std::exception& e) {
         NotifyError(query, DescribeDbError(e));
     }
@@ -152,8 +164,8 @@ namespace Configs {
         void checkpointWal();
 
         template<typename... Args>
-        std::unique_ptr<SQLite::Statement> query0(const std::string& sql, Args&&... args) {
-            auto query = std::make_unique<SQLite::Statement>(db, sql);
+        std::unique_ptr<ReadStatement> query0(const std::string& sql, Args&&... args) {
+            auto query = std::make_unique<ReadStatement>(db, sql);
             bindArgs(*query, 1, std::forward<Args>(args)...);
             return query;
         }
@@ -253,7 +265,7 @@ namespace Configs {
         }
 
         template<typename... Args>
-        std::unique_ptr<SQLite::Statement> query(const std::string& sql, Args&&... args) {
+        std::unique_ptr<ReadStatement> query(const std::string& sql, Args&&... args) {
             try {
                 auto query = query0(sql, std::forward<Args>(args)...);
                 return query;

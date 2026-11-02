@@ -9798,6 +9798,20 @@ Move the Poros folder somewhere you can write to.</source>
 %2</translation>
     </message>
     <message>
+        <source>Poros could not open its database:
+%1
+
+%2
+
+Move poros.db out of that folder to start with empty data, or put back a copy you trust.</source>
+        <translation>Poros не смог открыть свою базу данных:
+%1
+
+%2
+
+Уберите poros.db из этой папки, чтобы начать с пустыми данными, или верните копию, которой доверяете.</translation>
+    </message>
+    <message>
         <source>[Warn] Poros did not shut down cleanly last time. Diagnostics were saved to: %1</source>
         <translation>[Предупреждение] В прошлый раз Poros не завершил работу корректно. Результаты диагностики сохранены в: %1</translation>
     </message>

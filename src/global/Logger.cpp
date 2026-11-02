@@ -188,7 +188,9 @@ namespace Logging {
             out += "  os        : " + QSysInfo::prettyProductName() + " (kernel " + QSysInfo::kernelVersion() + ")\n";
             out += "  arch      : " + QSysInfo::currentCpuArchitecture() + "\n";
             out += "  pid       : " + QString::number(QCoreApplication::applicationPid()) + "\n";
-            const auto args = QCoreApplication::arguments();
+            // Flags only: a link or a file handed over at launch can carry keys.
+            QStringList args;
+            for (const auto &argument : QCoreApplication::arguments().mid(1)) args << (argument.startsWith('-') ? argument : QStringLiteral("<link or path>"));
             out += "  args      : " + (args.isEmpty() ? QStringLiteral("(none)") : args.join(' ')) + "\n";
             out += "  log dir   : " + g_logDir + "\n";
             out += "================================";
