@@ -192,7 +192,7 @@ namespace {
         key.type = profile->type;
         key.country = profile->test_country;
         if (profile->outbound) {
-            key.address = profile->outbound->server;
+            key.address = profile->outbound->GetAddress();
             key.effectiveAddress = Configs::EffectiveEndpointHost(profile);
             key.name = profile->outbound->name;
             key.port = profile->outbound->server_port;

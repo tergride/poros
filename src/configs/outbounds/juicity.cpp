@@ -54,7 +54,7 @@ namespace Configs {
         if (!name.isEmpty()) url.setFragment(name);
 
         mergeUrlQuery(query, tls->ExportToLink());
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);

@@ -84,6 +84,7 @@ namespace Configs {
                 // throneExtra holds what the V2RayN schema cannot; the dummy authority only satisfies QUrl.
                 if (const auto extra = objN["throneExtra"].toString(); !extra.isEmpty()) {
                     const QString extraLink = "vmess://x@127.0.0.1:1?" + extra;
+                    if (tls->enabled) tls->ParseFromLink(extraLink);
                     transport->ParseFromLink(extraLink);
                     multiplex->ParseFromLink(extraLink);
                     const auto extraQuery = QUrlQuery(extra);
@@ -168,6 +169,8 @@ namespace Configs {
 
         // What the V2RayN schema has no room for; other clients ignore the unknown key.
         QUrlQuery extra;
+        // The schema's TLS fields stop at fingerprint; pins, REALITY and the rest ride here.
+        mergeUrlQuery(extra, tls->ExportToLink());
         mergeUrlQuery(extra, transport->ExportToLink(tls->enabled));
         mergeUrlQuery(extra, multiplex->ExportToLink());
         if (global_padding) extra.addQueryItem("globalPadding", "true");

@@ -93,6 +93,9 @@ namespace Configs
         QString GetPort() override;
         void SetAddress(QString newAddr) override;
         QString GetAddress() override;
+
+        // By the peer: the base keys on server, which only a parsed link fills.
+        QJsonObject ExportIdentity() override;
         QString DisplayAddress() override;
         QString DisplayType() override;
         SecurityInfo GetSecurity() override;

@@ -110,7 +110,7 @@ namespace Configs {
         if (!password.isEmpty()) url.setPassword(password);
         if (uot) query.addQueryItem("uot", "1");
         
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);
     }

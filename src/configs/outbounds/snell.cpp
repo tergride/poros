@@ -130,17 +130,17 @@ namespace Configs {
         if (!name.isEmpty()) url.setFragment(name);
 
         query.addQueryItem("version", Int2String(version));
-        if (!userkey.isEmpty()) query.addQueryItem("userkey", userkey);
+        if (!userkey.isEmpty()) query.addQueryItem("userkey", QUrl::toPercentEncoding(userkey));
         if (reuse) query.addQueryItem("reuse", "1");
         if (!network.isEmpty()) query.addQueryItem("network", network);
         if (version == 6) {
             if (!mode.isEmpty()) query.addQueryItem("mode", mode);
         } else {
             if (!obfs_mode.isEmpty()) query.addQueryItem("obfs", obfs_mode);
-            if (!obfs_host.isEmpty()) query.addQueryItem("obfs-host", obfs_host);
+            if (!obfs_host.isEmpty()) query.addQueryItem("obfs-host", QUrl::toPercentEncoding(obfs_host));
         }
 
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
 
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);

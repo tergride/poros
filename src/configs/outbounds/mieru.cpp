@@ -164,7 +164,7 @@ namespace Configs {
         if (!multiplexing.isEmpty()) query.addQueryItem("multiplexing", multiplexing);
         if (!traffic_pattern.isEmpty()) query.addQueryItem("traffic-pattern", traffic_pattern);
 
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
 
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);

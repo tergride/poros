@@ -53,7 +53,8 @@ namespace Configs {
     bool DialFields::ParseFromLink(const QString& link)
     {
         auto url = QUrl(link);
-        if (!url.isValid()) return false;
+        // A port range (Hysteria) is no reason to drop the query.
+        if (!url.isValid() && !url.errorString().startsWith("Invalid port")) return false;
         auto query = QUrlQuery(url.query());
 
         if (query.hasQueryItem("reuse_addr")) reuse_addr = query.queryItemValue("reuse_addr") == "true";

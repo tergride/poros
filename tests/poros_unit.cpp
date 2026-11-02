@@ -20,6 +20,8 @@
 #include "include/configs/outbounds/autoselector.h"
 #include "include/configs/outbounds/custom.h"
 #include "include/configs/outbounds/hysteria.h"
+#include "include/configs/outbounds/ssh.h"
+#include "include/configs/outbounds/trojan.h"
 #include "include/configs/outbounds/vless.h"
 #include "include/configs/sub/LinkKind.h"
 #include "include/configs/sub/SubscriptionParser.hpp"
@@ -803,6 +805,43 @@ private slots:
         const auto before = copy->GetSimpleRules(Configs::proxy);
         QVERIFY(Configs::PresetRules::Write(*copy, Configs::PresetRules::Read(*copy)).isEmpty());
         QCOMPARE(copy->GetSimpleRules(Configs::proxy), before);
+    }
+
+    void linksCarryWhatTheySay() {
+        // Encoded on the way out, decoded on the way in: a password keeps its '%' and '&'.
+        auto ssh = Configs::ProfilesRepo::NewProfile("ssh");
+        dynamic_cast<Configs::ssh *>(ssh->outbound.get())->password = "a%41&b=c";
+        ssh->outbound->server = "s.example.com";
+        ssh->outbound->server_port = 22;
+        auto sshBack = Configs::ProfilesRepo::NewProfile("ssh");
+        QVERIFY(sshBack->outbound->ParseFromLink(ssh->outbound->ExportToLink()));
+        QCOMPARE(dynamic_cast<Configs::ssh *>(sshBack->outbound.get())->password, QString("a%41&b=c"));
+
+        // A type without a link of its own has none, so the callers fall back to its JSON link.
+        auto direct = Configs::ProfilesRepo::NewProfile("direct");
+        direct->outbound->dialFields->bind_interface = "Ethernet";
+        QVERIFY(direct->outbound->ExportToLink().isEmpty());
+
+        // A subscription update matches a WireGuard profile read from the database with the same one parsed again.
+        auto wg = Configs::ProfilesRepo::NewProfile("wireguard");
+        QVERIFY(wg->outbound->ParseFromLink("wg://key@198.51.100.7:51820?publickey=pk&address=10.0.0.2/32"));
+        auto loaded = Configs::ProfilesRepo::NewProfile("wireguard");
+        QVERIFY(loaded->outbound->ParseFromJson(wg->outbound->ExportToJson()));
+        QCOMPARE(loaded->outbound->ExportIdentity(), wg->outbound->ExportIdentity());
+
+        auto range = Configs::ProfilesRepo::NewProfile("hysteria");
+        QVERIFY(range->outbound->ParseFromLink("hysteria2://pw@h.example.com:20000-30000/?sni=h.example.com"));
+        QCOMPARE(range->outbound->server, QString("h.example.com"));
+        QVERIFY(range->outbound->ExportToLink().contains("20000-30000"));
+
+        // mux=false survives, or the import would take the global default.
+        auto trojan = Configs::ProfilesRepo::NewProfile("trojan");
+        QVERIFY(trojan->outbound->ParseFromLink("trojan://pw@t.example.com:443?mux=false"));
+        auto trojanBack = Configs::ProfilesRepo::NewProfile("trojan");
+        QVERIFY(trojanBack->outbound->ParseFromLink(trojan->outbound->ExportToLink()));
+        const auto mux = dynamic_cast<Configs::Trojan *>(trojanBack->outbound.get())->multiplex;
+        QVERIFY(!mux->unspecified);
+        QVERIFY(!mux->enabled);
     }
 
     void cleanStartIsSimple() {

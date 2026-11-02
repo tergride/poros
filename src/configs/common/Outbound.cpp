@@ -240,9 +240,7 @@ namespace Configs {
     }
     QString outbound::ExportToLink()
     {
-        QUrlQuery query;
-        mergeUrlQuery(query, dialFields->ExportToLink());
-        return query.toString();
+        return {};
     }
     QJsonObject outbound::ExportToJson()
     {

@@ -840,7 +840,8 @@ namespace Configs {
         const bool liveChallenge = otp_profile_id >= 0 && !static_challenge.isEmpty() &&
                                    !otpInCredentials && !BuildingTestConfig();
 
-        auto otpCode = liveChallenge ? QString() : ResolveOtpCode(otp_profile_id);
+        const bool codeNeeded = !liveChallenge && (otpInCredentials || !static_challenge.isEmpty());
+        auto otpCode = codeNeeded ? ResolveOtpCode(otp_profile_id) : QString();
         auto user = SubstituteOtp(creds.username, otpCode);
         auto pass = SubstituteOtp(creds.password, otpCode);
         // Upstream packs a static-challenge answer as SCRV1:<b64 password>:<b64 answer>.

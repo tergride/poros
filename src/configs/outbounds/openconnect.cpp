@@ -659,7 +659,12 @@ namespace Configs {
         if (auto url = ComposeServer(); !url.isEmpty()) object["server"] = url;
 
         const auto creds = ResolveVpnCredentials(profile_id, username, password);
-        auto otpCode = ResolveOtpCode(otp_profile_id);
+        const auto tokenObjAtStart = token->Build().object;
+        bool codeNeeded = creds.username.contains(kOtpPlaceholder) || creds.password.contains(kOtpPlaceholder)
+                          || tokenObjAtStart["pin"].toString().contains(kOtpPlaceholder) || tokenObjAtStart["password"].toString().contains(kOtpPlaceholder);
+        // A real connection withholds the form entries that take a code, so only a test box spends one on them.
+        for (const auto& entry : form_entries) codeNeeded = codeNeeded || (BuildingTestConfig() && entry->value.contains(kOtpPlaceholder));
+        auto otpCode = codeNeeded ? ResolveOtpCode(otp_profile_id) : QString();
         if (auto user = SubstituteOtp(creds.username, otpCode); !user.isEmpty()) object["username"] = user;
         if (auto pass = SubstituteOtp(creds.password, otpCode); !pass.isEmpty()) object["password"] = pass;
 

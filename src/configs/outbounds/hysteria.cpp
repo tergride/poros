@@ -261,31 +261,52 @@ namespace Configs {
         ParseDiag::Error(field, QCoreApplication::translate("Validation", "Only the udp protocol is supported, so this server cannot be reached."), transport);
     }
 
+    // QUrl refuses a port range, so host and ports come straight from the link: after the last '@', up to the path.
+    static void hysteriaLinkAuthority(const QString& link, QString& host, QString& ports)
+    {
+        auto rest = link.mid(link.indexOf(QLatin1String("://")) + 3);
+        if (const auto end = rest.indexOf(QRegularExpression(QStringLiteral("[/?#]"))); end >= 0) rest = rest.left(end);
+        if (const auto at = rest.lastIndexOf(u'@'); at >= 0) rest = rest.mid(at + 1);
+        const auto colon = rest.lastIndexOf(u':');
+        if (colon < 0 || rest.lastIndexOf(u']') > colon) {
+            host = rest;
+            return;
+        }
+        host = rest.left(colon);
+        ports = rest.mid(colon + 1);
+    }
+
     bool hysteria::ParseFromLink(const QString& link)
     {
         auto url = QUrl(link);
+        QString rangeHost;
         if (!url.isValid())
         {
             if(!url.errorString().startsWith("Invalid port"))
                 return false;
-            QString authority = url.authority();
-            int portStartIndex = link.indexOf(authority) + authority.length();
-            QRegularExpressionMatch match = QRegularExpression("^:([\\d,\\-]+)").match(link.mid(portStartIndex));
-            if (match.hasMatch()) {
-                server_ports = portsToPorts(match.captured(1).split(",", Qt::SkipEmptyParts));
+            QString ports;
+            hysteriaLinkAuthority(link, rangeHost, ports);
+            if (QRegularExpression(QStringLiteral("^[\\d,\\-]+$")).match(ports).hasMatch()) {
+                server_ports = portsToPorts(ports.split(",", Qt::SkipEmptyParts));
             }
         }
         auto query = QUrlQuery(url.query());
 
         outbound::ParseFromLink(link);
+        if (server.isEmpty() && !rangeHost.isEmpty()) server = toAceHost(rangeHost.remove(u'[').remove(u']'));
 
         if (url.scheme() == "hysteria") {
             protocol_version = "1";
             if (query.hasQueryItem("protocol")) hysteriaRejectTransport("protocol", query.queryItemValue("protocol"));
             if (query.hasQueryItem("obfsParam")) obfs = query.queryItemValue("obfsParam", QUrl::FullyDecoded);
             if (query.hasQueryItem("auth")) {
-                auth = query.queryItemValue("auth");
+                auth = query.queryItemValue("auth", QUrl::FullyDecoded);
                 auth_type = "STRING";
+            }
+            // Ours: the links of other clients have no room for a base64 auth.
+            if (query.hasQueryItem("auth_base64")) {
+                auth = query.queryItemValue("auth_base64", QUrl::FullyDecoded);
+                auth_type = "BASE64";
             }
             if (query.hasQueryItem("recv_window_conn")) recv_window_conn = query.queryItemValue("recv_window_conn").toInt();
             if (query.hasQueryItem("recv_window")) recv_window = query.queryItemValue("recv_window").toInt();
@@ -578,7 +599,8 @@ namespace Configs {
             if (!obfs.isEmpty()) {
                 query.addQueryItem("obfsParam", QUrl::toPercentEncoding(obfs));
             }
-            if (auth_type == "STRING" && !auth.isEmpty()) query.addQueryItem("auth", auth);
+            if (auth_type == "STRING" && !auth.isEmpty()) query.addQueryItem("auth", QUrl::toPercentEncoding(auth));
+            if (auth_type == "BASE64" && !auth.isEmpty()) query.addQueryItem("auth_base64", QUrl::toPercentEncoding(auth));
             if (recv_window_conn > 0) query.addQueryItem("recv_window_conn", QString::number(recv_window_conn));
             if (recv_window > 0) query.addQueryItem("recv_window", QString::number(recv_window));
             if (disable_mtu_discovery) query.addQueryItem("disable_mtu_discovery", "true");
@@ -607,7 +629,7 @@ namespace Configs {
         
         mergeUrlQuery(query, tls->ExportToLink());
         mergeUrlQuery(query, quic->ExportToLink());
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         
         if (!query.isEmpty()) url.setQuery(query);
         

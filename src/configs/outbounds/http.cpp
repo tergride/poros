@@ -40,7 +40,7 @@ namespace Configs {
             username = password;
         }
 
-        if (query.hasQueryItem("path")) path = query.queryItemValue("path");
+        if (query.hasQueryItem("path")) path = query.queryItemValue("path", QUrl::FullyDecoded);
         if (const auto raw = query.queryItemValue("headers"); !raw.isEmpty()) {
             headers = raw.split(",");
             if (headers.size() % 2 != 0) {
@@ -87,10 +87,10 @@ namespace Configs {
         if (!name.isEmpty()) url.setFragment(name);
         if (!username.isEmpty()) url.setUserName(username);
         if (!password.isEmpty()) url.setPassword(password);
-        if (!path.isEmpty()) query.addQueryItem("path", path);
+        if (!path.isEmpty()) query.addQueryItem("path", QUrl::toPercentEncoding(path));
         if (!headers.empty()) query.addQueryItem("headers", headers.join(","));
         mergeUrlQuery(query, tls->ExportToLink());
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);
     }

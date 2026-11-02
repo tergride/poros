@@ -228,7 +228,7 @@ namespace Configs {
         if (!client_random.isEmpty()) query.addQueryItem("client_random", client_random);
         
         mergeUrlQuery(query, tls->ExportToLink());
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);

@@ -591,6 +591,9 @@ namespace Configs {
         // An empty security= counts as absent, so an sni still turns TLS on.
         const auto security = query.queryItemValue("security").trimmed().toLower();
         const bool securityOff = security == "none" || security == "false" || security == "0";
+        if (!security.isEmpty() && !securityOff && security != "tls" && security != "true" && security != "1" && security != "reality") {
+            ParseDiag::Warn("security", QCoreApplication::translate("Validation", "Unknown security \"%1\", so the profile connects without TLS.").arg(security), security);
+        }
         if (!security.isEmpty()) enabled = security == "tls" || security == "true" || security == "1" || security == "reality";
         if (query.hasQueryItem("disable_sni")) disable_sni = query.queryItemValue("disable_sni").replace("1", "true") == "true";
         if (query.hasQueryItem("sni")) server_name = query.queryItemValue("sni");
@@ -716,6 +719,7 @@ namespace Configs {
             server_name = QString::fromStdString(object.server);
         }
         insecure = object.skip_cert_verify;
+        disable_sni = object.disable_sni;
         for (const auto& s : object.alpn) {
             if (const auto protocol = QString::fromStdString(s).trimmed(); !protocol.isEmpty()) alpn.append(protocol);
         }

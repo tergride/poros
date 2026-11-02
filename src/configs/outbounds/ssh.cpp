@@ -188,13 +188,14 @@ namespace Configs {
         url.setPort(server_port);
         if (!name.isEmpty()) url.setFragment(name);
 
-        if (!user.isEmpty()) query.addQueryItem("user", user);
-        if (!password.isEmpty()) query.addQueryItem("password", password);
+        // Encoded here, read back FullyDecoded: a '%' or '&' in a password would otherwise come back as something else.
+        if (!user.isEmpty()) query.addQueryItem("user", QUrl::toPercentEncoding(user));
+        if (!password.isEmpty()) query.addQueryItem("password", QUrl::toPercentEncoding(password));
         if (!private_key.isEmpty()) {
             query.addQueryItem("private_key", private_key.toUtf8().toBase64(QByteArray::OmitTrailingEquals));
         }
-        if (!private_key_path.isEmpty()) query.addQueryItem("private_key_path", private_key_path);
-        if (!private_key_passphrase.isEmpty()) query.addQueryItem("private_key_passphrase", private_key_passphrase);
+        if (!private_key_path.isEmpty()) query.addQueryItem("private_key_path", QUrl::toPercentEncoding(private_key_path));
+        if (!private_key_passphrase.isEmpty()) query.addQueryItem("private_key_passphrase", QUrl::toPercentEncoding(private_key_passphrase));
         
         if (!host_key.isEmpty()) {
             QStringList b64HostKeys;
@@ -214,7 +215,7 @@ namespace Configs {
         
         if (!client_version.isEmpty()) query.addQueryItem("client_version", client_version);
         
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);

@@ -12129,6 +12129,10 @@ Core: %2</source>
         <translation>Недопустимый short ID REALITY: он должен содержать не более 16 шестнадцатеричных символов, причем их количество должно быть четным.</translation>
     </message>
     <message>
+        <source>Unknown security &quot;%1&quot;, so the profile connects without TLS.</source>
+        <translation>Неизвестный security «%1», поэтому профиль подключается без TLS.</translation>
+    </message>
+    <message>
         <source>The headers must alternate names and values separated by |, for example User-Agent|curl, so they were ignored.</source>
         <translation>Заголовки проигнорированы: имена и значения должны чередоваться через |, например User-Agent|curl.</translation>
     </message>

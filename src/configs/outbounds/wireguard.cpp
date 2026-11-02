@@ -519,7 +519,7 @@ namespace Configs {
             if (disable_cookies) query.addQueryItem("disable_cookies", "true");
         }
 
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         mergeUrlQuery(query, peer->ExportToLink());
         
         if (!query.isEmpty()) url.setQuery(query);
@@ -585,6 +585,12 @@ namespace Configs {
 
     QString wireguard::GetPort() {
         return QString::number(peer->port);
+    }
+
+    QJsonObject wireguard::ExportIdentity() {
+        QJsonObject object{{"server", peer->address}, {"server_port", peer->port}};
+        if (!peer->public_key.isEmpty()) object["public_key"] = peer->public_key;
+        return object;
     }
 
     QString wireguard::DisplayAddress() {

@@ -97,7 +97,7 @@ namespace Configs {
         if (min_idle_session > 0) query.addQueryItem("min_idle_session", QString::number(min_idle_session));
         
         mergeUrlQuery(query, tls->ExportToLink());
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);

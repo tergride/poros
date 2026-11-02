@@ -72,7 +72,7 @@ namespace Configs {
         query.addQueryItem("version", Int2String(version));
 
         mergeUrlQuery(query, tls->ExportToLink());
-        mergeUrlQuery(query, outbound::ExportToLink());
+        mergeUrlQuery(query, dialFields->ExportToLink());
         
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);

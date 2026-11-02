@@ -37,6 +37,8 @@ EditAdvanced::EditAdvanced(QWidget *parent, const std::shared_ptr<Configs::Profi
     ent = _ent;
     bindValidation();
     auto dialFieldsObj = ent->outbound->dialFields;
+    // Xray dials on its own and keeps none of these.
+    if (ent->outbound->IsXray()) ui->dial_box->hide();
     ui->reuse_addr->setChecked(dialFieldsObj->reuse_addr);
     ui->tcp_fast_open->setChecked(dialFieldsObj->tcp_fast_open);
     ui->udp_fragment->setChecked(dialFieldsObj->udp_fragment);

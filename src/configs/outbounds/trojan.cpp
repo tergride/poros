@@ -55,7 +55,8 @@ namespace Configs {
         if (tls->enabled) mergeUrlQuery(query, tls->ExportToLink());
         else query.addQueryItem("security", "none");
         if (!transport->type.isEmpty()) mergeUrlQuery(query, transport->ExportToLink(tls->enabled));
-        if (multiplex->enabled) mergeUrlQuery(query, multiplex->ExportToLink());
+        // mux=false too: without it the import would take the global default.
+        mergeUrlQuery(query, multiplex->ExportToLink());
         if (!query.isEmpty()) url.setQuery(query);
         return url.toString(QUrl::FullyEncoded);
     }
