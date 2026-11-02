@@ -8,7 +8,7 @@ Project Poros is a modified version of [Throne](https://github.com/throneproj/Th
 
 ## Build
 
-Needs the VS 2022 Build Tools C++ workload, Go, static Qt 6, OpenSSL, CMake, Ninja and protoc. The script takes the tools from one folder:
+Needs the VS 2022 Build Tools C++ workload, Go, static Qt 6 with its OpenSSL backend, static OpenSSL 3, CMake, Ninja and protoc. Qt's OpenSSL plugin must be built against the same OpenSSL 3. The script takes the tools from one folder:
 
 ```powershell
 script\build_windows.ps1 -Toolchain <folder>

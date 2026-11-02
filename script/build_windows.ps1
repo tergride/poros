@@ -38,7 +38,9 @@ function Invoke-Checked([scriptblock]$Command) {
 function Test-ShippedIdentity([string]$Directory) {
     $problems = [Collections.Generic.List[string]]::new()
     $latin1 = [Text.Encoding]::GetEncoding(28591)
-    $roots = (Split-Path $root -Parent), ((Split-Path $root -Parent) -replace '\\', '/')
+    # As a path, in a forward-slash spelling, and escaped in a C string (OpenSSL keeps its compiler flags that way).
+    $workspace = Split-Path $root -Parent
+    $roots = $workspace, ($workspace -replace '\\', '/'), ($workspace -replace '\\', '\\')
     foreach ($file in Get-ChildItem $Directory -File) {
         if ($file.Name -match '(?i)vpn|throne') { $problems.Add("file name: $($file.Name)") }
         if ($file.Extension -ne '.exe') { continue }
