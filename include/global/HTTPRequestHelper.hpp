@@ -34,9 +34,9 @@ namespace Configs_network {
         bool strictTls = false;
     };
 
-    // Whether an app request goes through the mixed inbound. With net_use_proxy, the system proxy mode or useProxy it
-    // needs a running profile, and without the mixed inbound a running Tun Mode captures the request instead.
-    // False with *error set when nothing can proxy it.
+    // Whether an app request goes through the mixed inbound: with net_use_proxy or useProxy, and in the system proxy mode
+    // while a profile runs. Without the mixed inbound a running Tun Mode captures the request instead.
+    // False with *error set when net_use_proxy or useProxy asks for it and no profile runs.
     bool RequestUsesMixedInbound(bool useProxy, QString *error);
 
     // The proxy to set when RequestUsesMixedInbound says yes.

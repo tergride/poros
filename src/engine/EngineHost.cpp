@@ -28,6 +28,7 @@
 #include "include/global/PeriodicRunner.hpp"
 #include "include/sys/AutoRun.hpp"
 #include "include/sys/KillSwitch.hpp"
+#include "include/sys/SystemProxy.hpp"
 
 namespace Engine {
     namespace {
@@ -244,6 +245,9 @@ namespace Engine {
         m_initialized = true;
         m_policy->bind(frontEnd);
         m_observer->bind(testObserver);
+
+        // Before anything applies a proxy: a Poros that died with its proxy set left the browsers pointing at a dead port.
+        if (const auto error = SystemProxy_Recover(); !error.isEmpty()) MW_show_log(MainWindowTr::tr("System proxy: %1").arg(error));
 
         // Not in construct(): MkPort's failure line needs the front end's log sink; the emit repaints the port the window drew.
         if (Configs::dataManager->settingsRepo->random_inbound_port)

@@ -305,7 +305,6 @@ namespace Engine {
                     return false;
                 }
             }
-            if (Configs::dataManager->settingsRepo->spmode_system_proxy) applySystemProxy(false);
             return true;
         };
 
@@ -342,6 +341,8 @@ namespace Engine {
             if (!profile_stop_stage2(slowStop)) {
                 MW_show_log("<<<<<<<< " + MainWindowTr::tr("Failed to stop, please restart the program."));
             }
+            // Even after a failed stop: the profile counts as stopped, so nothing may lead to it.
+            applySystemProxy(false);
 
             if (manual) Configs::dataManager->settingsRepo->UpdateStartedId(Configs::NoProfileId);
             // Cleared here too: a restart prompt armed before the UI-thread teardown would have no id to start.

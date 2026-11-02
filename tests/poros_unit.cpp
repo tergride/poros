@@ -35,6 +35,7 @@
 #include "include/engine/services/GroupService.h"
 #include "include/engine/services/ReleaseUpdates.h"
 #include "include/global/Configs.hpp"
+#include "include/global/HTTPRequestHelper.hpp"
 #include "include/ui/utils/ConnectionModeController.h"
 #include "include/ui/utils/ConnectionsTreeFilterProxyModel.h"
 #include "include/ui/utils/ConnectionsTreeModel.h"
@@ -746,6 +747,24 @@ private slots:
         QVERIFY(!jsonOf(stored(1)["config"].toString()).contains("executable_path"));
         QCOMPARE(stored(2)["otp_profile_id"].toInt(), 3);
         QVERIFY(!stored(2)["tls"].toObject().contains("certificate_path"));
+    }
+
+    void systemProxyModeLeavesRequestsAloneBetweenRuns() {
+        auto &settings = Configs::dataManager->settingsRepo;
+        const auto saved = std::make_tuple(settings->spmode_system_proxy, settings->net_use_proxy, settings->started_id);
+        settings->spmode_system_proxy = true;
+        settings->net_use_proxy = false;
+        settings->started_id = Configs::NoProfileId;
+        QString error;
+        QVERIFY(!Configs_network::RequestUsesMixedInbound(false, &error));
+        QVERIFY(error.isEmpty());
+        settings->started_id = 5;
+        QVERIFY(Configs_network::RequestUsesMixedInbound(false, &error));
+        settings->started_id = Configs::NoProfileId;
+        settings->net_use_proxy = true;
+        QVERIFY(!Configs_network::RequestUsesMixedInbound(false, &error));
+        QVERIFY(!error.isEmpty());
+        std::tie(settings->spmode_system_proxy, settings->net_use_proxy, settings->started_id) = saved;
     }
 
     void cleanStartIsSimple() {

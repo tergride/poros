@@ -58,8 +58,8 @@ namespace Engine {
             QString error;
             if (!enable) {
                 error = SystemProxy_Clear();
-            } else if (Configs::dataManager->settingsRepo->spmode_system_proxy) {
-                // Rechecked: a profile start can queue this after the box was unchecked.
+            } else if (Configs::dataManager->settingsRepo->spmode_system_proxy && !Configs::dataManager->settingsRepo->prepare_exit) {
+                // Rechecked: a profile start can queue this after the box was unchecked or after the exit cleared it.
                 error = SystemProxy_Apply(host, port);
             }
             if (!error.isEmpty()) MW_show_log(MainWindowTr::tr("System proxy: %1").arg(error));
@@ -71,12 +71,12 @@ namespace Engine {
         const auto &settings = Configs::dataManager->settingsRepo;
         settings->spmode_system_proxy = enable;
         bool restarted = false;
-        if (const auto running = runningSnapshot()) {
-            applySystemProxy(enable);
-            if (!enable && settings->reset_proxy_on_disable_sp && change.restart) {
-                start(StartRequest{running->id, change.interactive});
-                restarted = true;
-            }
+        const auto running = runningSnapshot();
+        // An uncheck clears with nothing running too: a failed stop may have left the proxy behind.
+        if (running != nullptr || !enable) applySystemProxy(enable);
+        if (running != nullptr && !enable && settings->reset_proxy_on_disable_sp && change.restart) {
+            start(StartRequest{running->id, change.interactive});
+            restarted = true;
         }
 
         if (change.save) {

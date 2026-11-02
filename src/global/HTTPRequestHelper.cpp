@@ -53,8 +53,10 @@ namespace Configs_network {
 
     bool RequestUsesMixedInbound(bool useProxy, QString *error) {
         const auto &settings = Configs::dataManager->settingsRepo;
-        if (!settings->net_use_proxy && !settings->spmode_system_proxy && !useProxy) return false;
-        if (settings->started_id < 0) {
+        const bool running = settings->started_id >= 0;
+        // The system proxy leads to the mixed inbound only while a profile runs; between runs requests go out as everyone's do.
+        if (!settings->net_use_proxy && !useProxy) return settings->spmode_system_proxy && running;
+        if (!running) {
             *error = QObject::tr("Request with proxy but no profile started.");
             return false;
         }
