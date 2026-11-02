@@ -75,5 +75,5 @@ private slots:
 
     void accept() override;
 
-    QString get_proxy_name(int id);
+    QString get_proxy_name(int id) const;
 };

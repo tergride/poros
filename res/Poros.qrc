@@ -65,6 +65,7 @@
         <file alias="qss/dash.svg">poros/qss/dash.svg</file>
         <file alias="qss/dot.svg">poros/qss/dot.svg</file>
         <file alias="qss/switch-disabled.svg">poros/qss/switch-disabled.svg</file>
+        <file alias="qss/switch-disabled-on.svg">poros/qss/switch-disabled-on.svg</file>
         <file alias="qss/switch-off.svg">poros/qss/switch-off.svg</file>
         <file alias="qss/switch-on.svg">poros/qss/switch-on.svg</file>
         <file alias="presets/all.json">presets/all.json</file>

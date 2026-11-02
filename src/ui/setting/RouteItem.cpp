@@ -799,6 +799,8 @@ bool RouteItem::apply() {
         chain->autoUpdate = ui->autoUpdateCheck->isChecked();
     }
 
+    // Rules removed or changed on another tab since the editors were last filled win over their stale text.
+    if (ui->routeTabs->currentWidget() != ui->tab_2 && simpleRuleTexts() != simpleTextsAtLeave) loadSimpleEditors();
     const QString res = commitSimpleEditors();
     if (!res.isEmpty()) {
         QTimer::singleShot(0, this, [this, res] {

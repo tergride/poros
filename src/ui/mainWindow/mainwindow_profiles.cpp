@@ -56,14 +56,23 @@ void MainWindow::on_profilesTableView_doubleClicked(const QModelIndex &index) {
         finish_select_mode(id);
         return;
     }
-    auto dialog = new DialogEditProfile("", id, this);
-    connect(dialog, &QDialog::finished, dialog, &QDialog::deleteLater);
+    editProfile(id);
 }
 
 void MainWindow::on_menu_edit_triggered() {
     const auto selected = get_now_selected_list();
     if (selected.count() != 1) return;
-    auto dialog = new DialogEditProfile("", selected.first(), this);
+    editProfile(selected.first());
+}
+
+void MainWindow::editProfile(int id) {
+    if (const auto open = m_profileEditors.value(id); open != nullptr) {
+        open->raise();
+        open->activateWindow();
+        return;
+    }
+    auto dialog = new DialogEditProfile("", id, this);
+    m_profileEditors.insert(id, dialog);
     connect(dialog, &QDialog::finished, dialog, &QDialog::deleteLater);
 }
 
@@ -657,6 +666,7 @@ void MainWindow::selectProfileRows(const QList<int> &rows) {
     if (rows.isEmpty() || !profilesFilterModel) return;
 
     auto *view = ui->profilesTableView;
+    view->forgetTick();
     // setCurrentIndex() scrolls the current row into sight unless autoScroll is off.
     const bool autoScroll = view->hasAutoScroll();
     view->setAutoScroll(false);

@@ -234,6 +234,7 @@ void EditAdvanced::syncEndpoint() {
     if (!resolution.address.isEmpty()) hint = tr("Connects to %1 (%2).").arg(resolution.address, resolution.origin);
     ui->endpoint_hint->setText(hint);
     ui->endpoint_hint->setHidden(hint.isEmpty());
+    emit endpointChanged(source);
 }
 
 bool EditAdvanced::apply() {

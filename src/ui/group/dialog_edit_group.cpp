@@ -57,14 +57,19 @@ namespace {
         return DialogEditGroup::tr("Must be shorter than 1000 characters, on a single line.");
     }
 
-    bool editGroupRunningProfileInherits(const QList<int> &profileIds) {
+    // The group's profiles the running config uses.
+    QList<int> editGroupRunningProfiles(const QList<int> &profileIds) {
         const int startedId = Configs::dataManager->settingsRepo->started_id;
-        if (startedId < 0) return false;
+        if (startedId < 0) return {};
         QList<int> running;
         for (const int id : profileIds) {
             if (id == startedId || Configs::RunningUsesProfile(id)) running << id;
         }
-        for (const auto &profile : Configs::dataManager->profilesRepo->GetProfileBatch(running)) {
+        return running;
+    }
+
+    bool editGroupRunningProfileInherits(const QList<int> &profileIds) {
+        for (const auto &profile : Configs::dataManager->profilesRepo->GetProfileBatch(editGroupRunningProfiles(profileIds))) {
             if (profile != nullptr && profile->endpoint.mode == Configs::EndpointSource::Mode::Inherit) return true;
         }
         return false;
@@ -417,6 +422,8 @@ int DialogEditGroup::resolve_proxy_selection(QComboBox *combo, int fallback) con
         return -1;
     }
 
+    // Untouched or picked from the list, it keeps its profile even where another one has the same name.
+    if (fallback >= 0 && text == get_proxy_name(fallback)) return fallback;
     const int index = combo->findText(text, Qt::MatchExactly);
     if (index >= 0) {
         return combo->itemData(index).value<int>();
@@ -445,14 +452,18 @@ void DialogEditGroup::accept() {
     ent->skip_auto_update = ui->skip_auto_update->isChecked();
     ent->sub_options = optionsFromUi();
     const auto endpoint = endpointFromUi();
-    restartNeeded = endpoint != ent->endpoint && editGroupRunningProfileInherits(ent->Profiles());
+    const int front = resolve_proxy_selection(ui->front_proxy, CACHE.front_proxy);
+    const int landing = resolve_proxy_selection(ui->landing_proxy, LANDING.landing_proxy);
+    // The running profile dials through the group's front and landing proxies as well.
+    restartNeeded = (endpoint != ent->endpoint && editGroupRunningProfileInherits(ent->Profiles()))
+                    || ((front != ent->front_proxy_id || landing != ent->landing_proxy_id) && !editGroupRunningProfiles(ent->Profiles()).isEmpty());
     ent->endpoint = endpoint;
-    ent->front_proxy_id = resolve_proxy_selection(ui->front_proxy, CACHE.front_proxy);
-    ent->landing_proxy_id = resolve_proxy_selection(ui->landing_proxy, LANDING.landing_proxy);
+    ent->front_proxy_id = front;
+    ent->landing_proxy_id = landing;
     QDialog::accept();
 }
 
-QString DialogEditGroup::get_proxy_name(int id) {
+QString DialogEditGroup::get_proxy_name(int id) const {
     if (id == -1) return tr("None");
     if (auto profile = Configs::dataManager->profilesRepo->GetProfile(id)) {
         auto group = Configs::dataManager->groupsRepo->GetGroup(profile->gid);

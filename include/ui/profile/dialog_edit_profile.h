@@ -28,6 +28,8 @@ public slots:
 
     void accept() override;
 
+    void reject() override;
+
 private slots:
     void on_certificate_edit_clicked();
     void on_xray_downloadsettings_edit_clicked();
@@ -52,6 +54,11 @@ private:
     bool newEnt = false;
     std::shared_ptr<Configs::Profile> ent;
     std::optional<Engine::EditLock> editLock;
+    // As opened: the sub-dialogs and the Advanced tab write into the shared profile before Save, and Cancel takes it back.
+    QJsonObject outboundAtOpen;
+    Configs::EndpointSource endpointAtOpen;
+    // What the Advanced tab chose, which the General tab's address row follows before Save.
+    Configs::EndpointSource endpointChoice;
 
     struct {
         QStringList certificate;

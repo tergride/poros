@@ -277,7 +277,8 @@ void DialogOtpManager::on_otp_scan_clicked() {
 
 void DialogOtpManager::importOtpFromScreen() {
     bool captured = false;
-    const auto texts = ScreenQr::ScanScreens(this, captured);
+    // The page sits inside the main window, which would cover the code.
+    const auto texts = ScreenQr::ScanScreens(window(), captured);
 
     if (!captured) {
         MessageBoxWarning(tr("Import OTP"), tr("Unable to capture screen"));

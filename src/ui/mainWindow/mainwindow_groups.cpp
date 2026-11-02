@@ -130,7 +130,11 @@ void MainWindow::refresh_groups() {
     Configs::dataManager->settingsRepo->refreshing_group_list = true;
 
     for (int i = ui->tabWidget->count() - 1; i > 0; i--) {
+        auto *page = ui->tabWidget->widget(i);
         ui->tabWidget->removeTab(i);
+        // The table moves between the pages, and it outlives every one of them.
+        if (page->isAncestorOf(ui->profilesTableView)) ui->tabWidget->widget(0)->layout()->addWidget(ui->profilesTableView);
+        page->deleteLater();
     }
 
     int index = 0;

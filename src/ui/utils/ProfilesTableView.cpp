@@ -2,6 +2,7 @@
 #include "include/ui/setting/PorosTheme.h"
 #include "include/ui/utils/ProfilesFilterProxyModel.h"
 #include "include/ui/utils/ProfilesTableModel.h"
+#include <QDrag>
 #include <QDragMoveEvent>
 #include <QHeaderView>
 #include <QKeyEvent>
@@ -158,6 +159,15 @@ void ProfilesTableView::notifyBulkRows() {
 void ProfilesTableView::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected) {
     QTableView::selectionChanged(selected, deselected);
     notifyBulkRows();
+}
+
+// The model moves one row, the one the drag started on, whatever else is selected.
+void ProfilesTableView::startDrag(Qt::DropActions supportedActions) {
+    const QModelIndex pressed = currentIndex();
+    if (!pressed.isValid()) return;
+    auto *drag = new QDrag(this);
+    drag->setMimeData(model()->mimeData({pressed}));
+    drag->exec(supportedActions, defaultDropAction());
 }
 
 // A tick adds to the selection or takes from it, whatever the other rows hold.

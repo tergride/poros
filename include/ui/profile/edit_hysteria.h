@@ -23,6 +23,8 @@ public:
 
     void bindValidation(Validation::Form &form) override;
 
+    bool usesQuic() override { return true; }
+
     bool locksServerAddress() override;
 
     bool serverPortOptional() override;

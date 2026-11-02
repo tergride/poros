@@ -43,8 +43,8 @@ EditAutoSelector::EditAutoSelector(QWidget *parent) : QWidget(parent), ui(new Ui
                 Configs::dataManager->profilesRepo->Save(ent);
             }
         }
-        // The running core holds its own copy of the pin.
-        if (Stats::autoSelectorMonitor->Active()) {
+        // The running core holds its own copy of the pin; another selector's is not this one to drop.
+        if (Stats::autoSelectorMonitor->Active() && ent != nullptr && Stats::autoSelectorMonitor->Snapshot().profileID == ent->id) {
             (void) Stats::autoSelectorMonitor->RequestSelect({});
         }
     });

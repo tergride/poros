@@ -27,8 +27,8 @@ namespace ScreenQr {
             ok = false;
             return p;
         }
-        const QRect geom = screen->geometry();
-        return screen->grabWindow(0, geom.x(), geom.y(), geom.width(), geom.height());
+        // The whole screen: the offsets are relative to it, so its global position would miss every screen but the first.
+        return screen->grabWindow(0);
     }
 
     QStringList ScanScreens(QWidget *hideDuringScan, bool &captured) {

@@ -307,6 +307,9 @@ private:
     QMenu *trayMenu = nullptr;
     QAction *trayConnectAction = nullptr;
     QPointer<TrayProfileSelector> traySelector;
+    // One editor per profile: a second would save over the first.
+    void editProfile(int id);
+    QHash<int, QPointer<QDialog>> m_profileEditors;
     void openTraySelector(bool routing);
     QPointer<TrayOtpCodes> trayOtpCodes;
     void openTrayOtpCodes();

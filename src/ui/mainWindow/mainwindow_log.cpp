@@ -300,16 +300,8 @@ void MainWindow::clearLogs() {
 }
 
 void MainWindow::on_masterLogBrowser_customContextMenuRequested(const QPoint &pos) {
-    QMenu *menu = ui->masterLogBrowser->createStandardContextMenu();
-
-    auto sep = new QAction(this);
-    sep->setSeparator(true);
-    menu->addAction(sep);
-
-    auto action_clear = new QAction(this);
-    action_clear->setText(tr("Clear"));
-    connect(action_clear, &QAction::triggered, this, &MainWindow::clearLogs);
-    menu->addAction(action_clear);
-
+    const std::unique_ptr<QMenu> menu(ui->masterLogBrowser->createStandardContextMenu());
+    menu->addSeparator();
+    menu->addAction(tr("Clear"), this, &MainWindow::clearLogs);
     menu->exec(ui->masterLogBrowser->viewport()->mapToGlobal(pos));
 }

@@ -2062,6 +2062,10 @@ Poros will restart to complete the restore.</source>
         <translation>Источник: %1; собственный адрес профиля — %2.</translation>
     </message>
     <message>
+        <source>The profile could not be added: its group no longer exists.</source>
+        <translation>Профиль не добавлен: его группы больше нет.</translation>
+    </message>
+    <message>
         <source>Not set</source>
         <translation>Не задано</translation>
     </message>

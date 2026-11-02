@@ -22,6 +22,8 @@ public:
 
     void bindValidation(Validation::Form &form) override;
 
+    bool usesQuic() override { return true; }
+
 private:
     Ui::EditTuic *ui;
     std::shared_ptr<Configs::Profile> ent;

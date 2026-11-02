@@ -24,6 +24,9 @@ public:
     // Writes into the profile when the page validates.
     bool apply();
 
+signals:
+    void endpointChanged(const Configs::EndpointSource &source);
+
 private slots:
     void on_ech_config_clicked();
 

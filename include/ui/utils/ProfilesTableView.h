@@ -17,6 +17,9 @@ public:
 
     [[nodiscard]] int hoveredRow() const { return m_hoveredRow; }
 
+    // A selection the program makes was ticked by nobody.
+    void forgetTick() { m_ticked = false; }
+
 signals:
     void focusSearchRequested();
     // The rows the selection panel acts on, or 0 to hide it: a plain click selects a row without opening the panel.
@@ -36,6 +39,7 @@ protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void selectionChanged(const QItemSelection &selected, const QItemSelection &deselected) override;
+    void startDrag(Qt::DropActions supportedActions) override;
 
 private:
     bool tickAt(const QMouseEvent *event);

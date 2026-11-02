@@ -99,10 +99,12 @@ bool serverFieldsEditable(const QString &type, ProfileEditor *editor) {
     return hasServerAddress(type) && editor != nullptr && !editor->locksServerAddress();
 }
 
-// What an endpoint source makes the profile dial instead of its own address.
-Configs::EndpointResolution endpointOverride(const std::shared_ptr<Configs::Profile> &ent, bool editable) {
+// What an endpoint source, the editor's choice rather than the stored one, makes the profile dial instead of its own address.
+Configs::EndpointResolution endpointOverride(const std::shared_ptr<Configs::Profile> &ent, bool editable, const Configs::EndpointSource &source) {
     if (!editable || !Configs::EndpointOverrideBlocker(ent).isEmpty()) return {};
-    return Configs::ResolveEndpointSource(Configs::EffectiveEndpointSource(*ent));
+    if (source.mode != Configs::EndpointSource::Mode::Inherit) return Configs::ResolveEndpointSource(source);
+    const auto group = Configs::dataManager->groupsRepo->GetGroup(ent->gid);
+    return Configs::ResolveEndpointSource(group != nullptr ? group->endpoint : Configs::EndpointSource{});
 }
 
 QWidget *effectiveFocusWidget(QWidget *widget) {
@@ -193,6 +195,8 @@ DialogEditProfile::DialogEditProfile(const QString &_type, int profileOrGroupId,
             return;
         }
         editLock.emplace(Engine::EditTarget::Profile, ent->id);
+        outboundAtOpen = ent->outbound->ExportToJson();
+        endpointAtOpen = ent->endpoint;
         type = ent->type;
         setRowVisible(ui->type_l, ui->type, false);
     }
@@ -317,8 +321,13 @@ void DialogEditProfile::mountEditor(QWidget *widget, ProfileEditor *editor) {
 
 void DialogEditProfile::mountAdvanced() {
     delete advanced;
+    endpointChoice = ent->endpoint;
     advanced = new EditAdvanced(ui->tab_advanced_contents, ent);
     ui->tab_advanced_column->insertWidget(0, advanced);
+    connect(advanced, &EditAdvanced::endpointChanged, this, [this](const Configs::EndpointSource &source) {
+        endpointChoice = source;
+        relayout();
+    });
 }
 
 void DialogEditProfile::setTabVisible(QWidget *tab, bool visible) {
@@ -362,7 +371,7 @@ void DialogEditProfile::updateCommonRows() {
         w->setVisible(server);
         w->setEnabled(!locked);
     }
-    const auto endpoint = endpointOverride(ent, server && !locked);
+    const auto endpoint = endpointOverride(ent, server && !locked, endpointChoice);
     const bool overridden = !endpoint.address.isEmpty();
     ui->address->setVisible(server && !overridden);
     ui->address_effective->setVisible(overridden);
@@ -389,6 +398,8 @@ bool DialogEditProfile::onEnd() {
     if (!innerEditor->onEnd()) return false;
 
     ent->outbound->name = ui->name->text().trimmed();
+    // The tray, the logs and the lists read the profile's own copy.
+    ent->name = ent->outbound->name;
     ent->outbound->SetAddress(ui->address->text().remove(' '));
     ent->outbound->SetPort(ui->port->text().trimmed().toInt());
     saveSingboxStream();
@@ -401,7 +412,12 @@ void DialogEditProfile::accept() {
 
     QStringList args;
     if (newEnt) {
-        if (!Configs::dataManager->profilesRepo->AddProfile(ent, groupId)) MessageBoxWarning("???", "id exists");
+        // The group may have gone while the editor was open; the profile then goes to the current one.
+        const int target = Configs::dataManager->groupsRepo->GetGroup(groupId) != nullptr ? groupId : -1;
+        if (!Configs::dataManager->profilesRepo->AddProfile(ent, target)) {
+            MessageBoxWarning(software_name, tr("The profile could not be added: its group no longer exists."));
+            return;
+        }
     } else if (!Configs::dataManager->profilesRepo->Save(ent)) {
         MessageBoxWarning(software_name, tr("This profile was deleted while you were editing it."));
         QDialog::reject();
@@ -413,6 +429,18 @@ void DialogEditProfile::accept() {
 
     MW_dialog_message(MwMessage::ProfileChanged, args);
     QDialog::accept();
+}
+
+void DialogEditProfile::reject() {
+    if (!newEnt && ent != nullptr) {
+        // A fresh object, as a reload from the database would give: parsing over the edited one keeps fields the JSON omits.
+        auto restored = Configs::ProfilesRepo::NewProfile(ent->type)->outbound;
+        restored->ParseFromJson(outboundAtOpen);
+        restored->profile_id = ent->id;
+        ent->outbound = restored;
+        ent->endpoint = endpointAtOpen;
+    }
+    QDialog::reject();
 }
 
 void DialogEditProfile::editor_cache_updated_impl() {
