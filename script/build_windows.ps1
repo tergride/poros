@@ -22,7 +22,7 @@ $env:CARGO_BUILD_JOBS = "$jobs"
 # With HTTP/2 multiplexing cargo hung on the crates.io index behind a VPN tunnel.
 $env:CARGO_HTTP_MULTIPLEXING = 'false'
 $env:npm_config_cache = "$Toolchain\npm-cache"
-$env:PATH = "$Toolchain\go\go\bin;$Toolchain\gopath\bin;$Toolchain\protoc\bin;$Toolchain\rust\cargo\bin;$Toolchain\node;$env:PATH"
+$env:PATH = "$Toolchain\go\go\bin;$Toolchain\rust\cargo\bin;$Toolchain\node;$env:PATH"
 
 function Invoke-Step([string]$name, [scriptblock]$step) {
     Write-Host "== $name"
@@ -38,7 +38,8 @@ $env:GOOS = 'windows'; $env:GOARCH = 'amd64'; $env:CGO_ENABLED = '0'
 
 Push-Location (Join-Path $root 'core')
 try {
-    Invoke-Step 'protoc' { protoc -I gen --go_out=gen --go-grpc_out=gen gen/libcore.proto }
+    # The interface is built from these types: a change to core/engine/api.go reaches it here.
+    Invoke-Step 'types' { go tool tygo generate }
     $cronet = 'github.com/sagernet/cronet-go/lib/windows_amd64'
     Invoke-Step 'cronet' { go mod download $cronet }
     Copy-Item (Join-Path (go list -m -f '{{.Dir}}' $cronet) 'libcronet.dll') $out

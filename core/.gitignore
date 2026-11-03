@@ -1,8 +1,5 @@
 *.log
 *.pem
-*.json
 *.exe
 *.dat
 *.db
-gen/*.pb.go
-gen/*.pb.*.go

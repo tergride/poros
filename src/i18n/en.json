@@ -6,6 +6,12 @@
   },
   "skeleton": {
     "note": "This is the app skeleton. The screens come in the next stages.",
-    "version": "Version {version}"
+    "version": "Version {version}",
+    "core": "Core: sing-box {singBox} · Xray {xray}",
+    "coreState": {
+      "starting": "Core: starting…",
+      "ready": "Core: ready",
+      "down": "Core: stopped"
+    }
   }
 }

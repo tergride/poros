@@ -7,6 +7,7 @@ test('the shell renders with the mockup fonts and the system language', async ({
   await expect(page.getByRole('button', { name: 'Развернуть' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Закрыть' })).toBeVisible()
   await expect(page.getByTestId('app-info')).toContainText('Версия dev')
+  await expect(page.getByTestId('core-info')).toHaveText('Ядро: sing-box stub · Xray stub')
 
   const loaded = await page.evaluate(async () => {
     await document.fonts.ready

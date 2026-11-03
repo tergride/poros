@@ -1,6 +1,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
+import { type CoreClient, createStubCore, createTauriCore } from './core'
+
+export type { CoreClient, CoreError, CoreEvent, CoreMethod, CoreStatus } from './core'
+export { isCoreError } from './core'
+
 export interface AppInfo {
   version: string
   dataDir: string
@@ -13,6 +18,14 @@ const stubInfo: AppInfo = { version: 'dev', dataDir: 'browser' }
 
 export function appInfo(): Promise<AppInfo> {
   return inTauri ? invoke<AppInfo>('app_info') : Promise.resolve(stubInfo)
+}
+
+let corePromise: Promise<CoreClient> | undefined
+
+/** The one client of the core for the whole interface: the real core in Tauri, the in-memory one elsewhere. */
+export function useCore(): Promise<CoreClient> {
+  corePromise ??= inTauri ? createTauriCore() : Promise.resolve(createStubCore())
+  return corePromise
 }
 
 export const windowControls = {

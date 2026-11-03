@@ -18,14 +18,14 @@ Project Poros is a modified version of [Throne](https://github.com/throneproj/Th
 |---|---|
 | `src` | The interface: Vue 3, TypeScript, Tailwind CSS, shadcn-vue components, fonts and images |
 | `src-tauri` | The Tauri shell in Rust: the window, the data folder, the bridge to the interface |
-| `core` | The Go core: sing-box and Xray-core, server tests, the kill switch guard, the updater |
+| `core` | The Go core: the engine and its routing presets, sing-box and Xray-core, server tests, the kill switch guard, the updater |
 | `e2e` | Playwright checks of the interface |
-| `res` | Routing presets, tray icons and the sing-box JSON schema |
+| `res` | Tray icons and the sing-box JSON schema |
 | `script` | `build_windows.ps1` builds the portable folder, `gen_schema.sh` regenerates `res/schema/sing-box.json` |
 
 ## Building
 
-Needs the VS 2022 Build Tools C++ workload and the WebView2 Runtime, plus Go, protoc with `protoc-gen-go` and `protoc-gen-go-grpc`, Rust with the MSVC target and Node.js. The script takes them from one folder: `go\go`, `gopath`, `protoc`, `rust` (with `rustup` and `cargo` inside) and `node`.
+Needs the VS 2022 Build Tools C++ workload and the WebView2 Runtime, plus Go, Rust with the MSVC target and Node.js. The script takes them from one folder: `go\go`, `gopath`, `rust` (with `rustup` and `cargo` inside) and `node`.
 
 ```powershell
 script\build_windows.ps1 -Toolchain <folder>
@@ -58,4 +58,8 @@ The interface uses [Onest](https://github.com/googlefonts/onest), [Unbounded](ht
 
 ## Upstream
 
-Poros does not follow Throne release by release. Fixes for performance, security and the connection itself are ported by hand. The core is built on Throne's forks of sing-box, Xray-core, sing and wireguard-go, to be replaced by the upstream projects.
+Poros does not follow Throne release by release. Fixes for performance, security and the connection itself are ported by hand. The core is built on the upstream sing-box and Xray-core, without Throne's forks of them.
+
+## The core and the app
+
+`Poros.exe` starts `PorosCore.exe` from its own folder and talks to it over a named pipe it creates with a random name, one instance only. Both speak JSON-RPC 2.0, one message per line, and the core answers nothing before a hello carrying the token it got in its environment. The interface reaches the core only through the shell. The core's methods and events are the Go types in `core/engine/api.go`, and `go tool tygo generate` in `core` writes them to `src/platform/core-types.ts`. For `npm run tauri dev`, `POROS_CORE_PATH` points at a built `PorosCore.exe`.

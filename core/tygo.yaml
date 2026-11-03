@@ -1,0 +1,9 @@
+# go tool tygo generate: the contract of core/engine/api.go as TypeScript for the interface.
+packages:
+  - path: "PorosCore/engine"
+    output_path: "../src/platform/core-types.ts"
+    include_files:
+      - "api.go"
+    preserve_comments: "types"
+    frontmatter: |
+      // Source: core/engine/api.go. Change the Go types and run `go tool tygo generate` in core.

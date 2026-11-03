@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log"
-	"net"
 	"os"
 	"runtime"
 	runtimeDebug "runtime/debug"
@@ -13,11 +15,11 @@ import (
 
 	"github.com/xtls/xray-core/core"
 
+	"PorosCore/engine"
 	"PorosCore/internal/boxmain"
 	"PorosCore/internal/guard"
 	"PorosCore/internal/ipc"
-	"PorosCore/internal/parentcheck"
-	"PorosCore/internal/rpc"
+	"PorosCore/internal/jsonrpc"
 
 	C "github.com/sagernet/sing-box/constant"
 
@@ -80,50 +82,44 @@ func writeHeapProfile() (string, error) {
 	return f.Name(), f.Sync()
 }
 
-func RunCore() {
-	socketName := os.Getenv("POROS_CORE_SOCKET")
-	if socketName == "" {
-		log.Fatal("POROS_CORE_SOCKET not set")
+// The host passes these in the environment, so they do not show in the process list.
+const (
+	envPipe    = "POROS_CORE_PIPE"
+	envToken   = "POROS_CORE_TOKEN"
+	envDataDir = "POROS_DATA_DIR"
+)
+
+// runCore serves the host over its channel and exits when the host goes away: the channel is the core's lifetime.
+func runCore() {
+	pipe, token, dataDir := os.Getenv(envPipe), os.Getenv(envToken), os.Getenv(envDataDir)
+	if pipe == "" || token == "" || dataDir == "" {
+		log.Fatalf("%s, %s and %s must be set", envPipe, envToken, envDataDir)
 	}
-	debug := os.Getenv("POROS_CORE_DEBUG") == "1"
-
-	parentcheck.CheckParentProcess()
-
-	go func() {
-		parent, err := os.FindProcess(parentcheck.ParentPID)
-		if err != nil {
-			log.Fatalln("find parent:", err)
-		}
-		state, err := parent.Wait()
-		log.Fatalln("parent exited:", state, err)
-	}()
+	// The token is for this process only; children such as the guard must not inherit it.
+	os.Unsetenv(envToken)
 
 	boxmain.DisableColor()
 
-	var conn net.Conn
-	var err error
-	for i := 0; i < 10; i++ {
-		conn, err = ipc.ConnectIPC(socketName, parentcheck.ParentPID)
-		if err == nil {
-			break
-		}
-		log.Printf("IPC connect attempt %d/10 failed: %v", i+1, err)
-		time.Sleep(500 * time.Millisecond)
-	}
+	conn, err := ipc.Dial(pipe)
 	if err != nil {
-		log.Fatalf("failed to connect to GUI socket after 10 attempts: %v", err)
+		log.Fatalf("connect to the host: %v", err)
 	}
-
-	fmt.Println("Core Has Successfully Connected to Poros!")
-	rpc.Serve(conn, debug)
-	log.Fatal("IPC connection dropped, exiting")
+	peer := jsonrpc.NewConn(conn)
+	eng, err := engine.Open(dataDir, peer.Notify)
+	if err != nil {
+		log.Fatalf("open the data folder: %v", err)
+	}
+	err = peer.Serve(context.Background(), token, eng.Handlers())
+	eng.Close()
+	if !errors.Is(err, io.EOF) {
+		log.Fatalf("host connection: %v", err)
+	}
 }
 
 func main() {
 	// Before anything prints: stdout is the guard's protocol channel.
 	if len(os.Args) > 1 && os.Args[1] == "--guard" {
-		parentcheck.CheckParentProcess()
-		guard.Run(parentcheck.ParentPID)
+		guard.Run(os.Getppid())
 	}
 
 	defer func() {
@@ -139,6 +135,5 @@ func main() {
 	runtimeDebug.SetMemoryLimit(memoryLimit)
 	go watchMemory()
 
-	RunCore()
-	return
+	runCore()
 }

@@ -44,11 +44,11 @@ Fonts
 PorosCore.exe
 -------------
 
-sing-box, in the fork of the Throne project
+sing-box
     GPL-3.0-or-later. Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>.
 
-Xray-core, in the fork of the Throne project
-    MPL-2.0. Copyright (c) Project X. Its source code is the Go module github.com/throneproj/xray-core at the version
+Xray-core
+    MPL-2.0. Copyright (c) Project X. Its source code is the Go module github.com/xtls/xray-core at the version
     named in core/go.mod of the Poros source.
 
 Go

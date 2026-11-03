@@ -6,6 +6,12 @@
   },
   "skeleton": {
     "note": "Это каркас приложения. Экраны появятся на следующих этапах.",
-    "version": "Версия {version}"
+    "version": "Версия {version}",
+    "core": "Ядро: sing-box {singBox} · Xray {xray}",
+    "coreState": {
+      "starting": "Ядро: запускается…",
+      "ready": "Ядро: готово",
+      "down": "Ядро: остановлено"
+    }
   }
 }
