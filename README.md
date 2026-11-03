@@ -1,66 +1,43 @@
 # Project Poros
 
-Windows desktop client, shipped as **Poros**.
+A VPN and proxy client, shipped as **Poros**. It is being rebuilt as a cross-platform app on Tauri 2, Vue 3 and a Go core, and has no release yet. The earlier Windows client on Qt is no longer developed.
 
 ## Based on Throne
 
 Project Poros is a modified version of [Throne](https://github.com/throneproj/Throne), forked from tag `1.4.0-beta.4` in October 2026, and is licensed under GPL-3.0: see [LICENSE](LICENSE). It builds on [sing-box](https://github.com/SagerNet/sing-box) and [Xray-core](https://github.com/XTLS/Xray-core).
 
-## Build
+## Direction
 
-Needs the VS 2022 Build Tools C++ workload, Go, static Qt 6 with its OpenSSL backend, static OpenSSL 3, CMake, Ninja and protoc. Qt's OpenSSL plugin must be built against the same OpenSSL 3. The script takes the tools from one folder:
+- The client logic lives in the Go core: subscriptions, links, the sing-box and Xray-core configurations, the connection, server tests. The same library serves the desktop app and, later, the mobile ones.
+- The desktop app is a Tauri 2 shell with a Vue 3 interface: Windows first, then Linux and macOS. Android and iOS come after them.
+- Protocols are those of sing-box and Xray-core, VLESS with REALITY and XHTTP among them, plus OpenVPN and OpenConnect.
 
-```powershell
-script\build_windows.ps1 -Toolchain <folder>
+## Layout
+
+| Folder | What is in it |
+|---|---|
+| `core` | The Go core: sing-box and Xray-core, server tests, the kill switch guard, the updater |
+| `res` | Fonts, images, icons, routing presets and the sing-box JSON schema for the new interface |
+| `script` | `build_go.sh` builds the core, `gen_schema.sh` regenerates `res/schema/sing-box.json` |
+
+## Building the core
+
+The core needs Go, protoc and its Go plugins `protoc-gen-go` and `protoc-gen-go-grpc`. From Git Bash, with all of them on `PATH`:
+
+```bash
+DEST=<output folder> GOOS=windows GOARCH=amd64 script/build_go.sh
 ```
 
-The output goes to `deployment\windows-amd64`. `-Clean` starts from an empty build folder, as a release always does. The build fails if a shipped file's name or properties mention a VPN or Throne, or if a binary contains a local path.
-
-`script\build_windows.ps1 -Debugger` builds the GUI into `build-debug` for a debugger, with optimization off and full source paths. It copies the core from `deployment\windows-amd64`, so it needs a normal build first, and its output is never shipped.
-
-## Interface
-
-Poros opens in one of two modes, and the app menu switches between them at any time without dropping the connection.
-
-- **Simple:** the servers of each subscription, a Start button, a TUN or System switch, ready presets and short settings. The first Start asks whether to use TUN or System.
-- **Advanced:** groups and manual profiles, routing rules, DNS, connections, logs, statistics, tools and all the settings.
-
-The first launch runs a short setup: interface mode, subscription, how to start, routing. Every step can be skipped, and it runs again from the app menu.
-
-Administrator rights are asked for only when an operation needs them, and you can always try without. A launch itself asks only when something has to work before the first click: a remembered TUN with `Connect to the last profile`, or the kill switch.
-
-Built-in presets cannot be changed. A copy keeps its preset's rules and adds your own sites and programs ahead of them.
-
-## Left out on purpose
-
-Compared to Throne, Poros has no Throne API or `thronectl`, background service, web panel, Clash API, IP scanner, WebDAV, Tailscale, Extra Core, themes, custom icons, custom inbound, or `Open with` for JSON and YAML files.
-
-## Next to Throne
-
-Poros and Throne can run at the same time: each has its own folder, data, autostart entry and `poros://` or `throne://` links, and Poros keeps clear of Throne's default ports and TUN addresses (mixed port 2090, DNS port 5543, TUN 172.19.1.1/24).
-
-Two things stay shared by Windows. Only one client can carry the traffic of the whole computer, so run TUN in one of them at a time; with TUN in Throne, Poros in System goes out through it. The system proxy is also one per user: the client that set it last holds it, and Poros's kill switch blocks every other client, Throne included.
-
-## Portable
-
-Poros has no installer: put the folder anywhere you can write to and run `Poros.exe`. Profiles, settings, logs, crash reports and temporary files all stay in `config` next to it, so deleting the folder removes Poros. If the folder is read-only, Poros says so and exits.
-
-Windows only offers two features through its own stores, so they exist outside the folder if you turn them on, and stay there if you delete the folder first: Start with system (a Task Scheduler task) and `poros://` links (`HKCU\Software\Classes`). TUN mode makes Windows install the Wintun driver, and the system proxy setting is restored when Poros stops it.
-
-## Updates and releases
-
-Unless automatic updates are turned off in the settings, Poros checks for a new version at launch and every four hours, in `latest.json` of the newest release of this repository. It downloads the archive, verifies its size and SHA-256, and offers to install it. With automatic updates off, this happens only when you press Check. `updater.exe` replaces the program files after Poros exits and starts it again, and the `config` folder is not touched. If the install fails, the old files go back. A local build has no version, so it does not check.
-
-To release, add a section to `CHANGELOG.md` with `<!-- ru -->` and `<!-- en -->` parts, push `main`, and run `script\release_windows.ps1`. It builds the version from a clean build folder, packs the program with `LICENSE` and `THIRD-PARTY-NOTICES.txt`, uploads the archive and `latest.json` as a draft, and publishes only when both are there. With `-DryRun` it builds and publishes nothing.
+The script empties `DEST` first, then writes `PorosCore.exe`, `updater.exe` and `libcronet.dll` there.
 
 ## Fonts
 
-The interface uses [Onest](https://github.com/googlefonts/onest), [Unbounded](https://github.com/googlefonts/unbounded) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) under the SIL Open Font License 1.1, and shows emoji with a subset of Noto Color Emoji (SIL Open Font License 1.1), or with Twemoji (graphics under CC BY 4.0) before Windows 11 22H2. The fonts and the license texts of the first three are in `res/font`.
+The interface is to use [Onest](https://github.com/googlefonts/onest), [Unbounded](https://github.com/googlefonts/unbounded) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) under the SIL Open Font License 1.1, and to show emoji with a subset of Noto Color Emoji (SIL Open Font License 1.1) or with Twemoji (graphics under CC BY 4.0). The fonts and the license texts of the first three are in `res/font`.
 
 ## Third-party notices
 
-`THIRD-PARTY-NOTICES.txt` lists the projects Poros includes, with their licenses. In a release archive it ends with the Go modules built into `PorosCore.exe` and `updater.exe`, each with its license file.
+`THIRD-PARTY-NOTICES.txt` lists the projects Poros includes, with their licenses.
 
 ## Upstream
 
-Poros does not follow Throne release by release. Fixes for performance, security and the connection itself are ported by hand, while the interface and the feature set are its own. The core is built on Throne's forks of sing-box, Xray-core, sing and wireguard-go. `throne://` links and `throne-route-profile` data stay importable.
+Poros does not follow Throne release by release. Fixes for performance, security and the connection itself are ported by hand. The core is built on Throne's forks of sing-box, Xray-core, sing and wireguard-go.
