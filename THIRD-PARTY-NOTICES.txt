@@ -31,8 +31,7 @@ The interface
     Lucide icons: ISC. Copyright (c) 2026 Lucide Icons and Contributors. Portions are Copyright (c) Cole Bemis
         2013-2026 as part of Feather, under MIT.
     class-variance-authority: Apache-2.0. Copyright Joe Bell.
-    clsx: MIT. Copyright (c) Luke Edwards.
-    tailwind-merge: MIT. Copyright (c) 2021 Dany Castillo.
+    cn: MIT. Copyright (c) 2026 shadcn.
     Tailwind CSS, the base styles it writes into the page: MIT. Copyright (c) Tailwind Labs, Inc.
 
 Fonts
