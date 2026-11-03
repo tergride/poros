@@ -1,0 +1,11 @@
+{
+  "window": {
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "close": "Close"
+  },
+  "skeleton": {
+    "note": "This is the app skeleton. The screens come in the next stages.",
+    "version": "Version {version}"
+  }
+}

@@ -1,12 +1,20 @@
 # Build output
 /build*
 /deployment
+/dist
+/src-tauri/target
+/src-tauri/gen
 *.exe
 *.dll
 *.a
 *.o
 *.obj
 *.pdb
+
+# Dependencies and test output
+node_modules/
+/test-results
+/playwright-report
 
 # Core dumps, but not the core folder
 core
