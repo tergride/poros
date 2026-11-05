@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,6 +14,11 @@ import (
 	"time"
 
 	"github.com/sagernet/bbolt"
+	tun "github.com/sagernet/sing-tun"
+	"github.com/sagernet/sing/common/x/list"
+
+	"PorosCore/internal/netmon"
+	"PorosCore/internal/sysproxy"
 )
 
 // Notify delivers an event to the interface.
@@ -25,6 +31,8 @@ type Config struct {
 	Version string
 	// Notify may be nil.
 	Notify Notify
+	// MixedPort is the port of the local proxy; 0 is DefaultMixedPort.
+	MixedPort uint16
 }
 
 type Engine struct {
@@ -44,6 +52,12 @@ type Engine struct {
 
 	stop    context.CancelFunc
 	stopped sync.WaitGroup
+
+	conn      connection
+	mixedPort uint16
+	sysProxy  *sysproxy.Proxy
+	// netCallback follows the default interface for connections on Xray.
+	netCallback *list.Element[tun.DefaultInterfaceUpdateCallback]
 }
 
 // fetchTimeout keeps an update inside the host's 30 seconds for an answer.
@@ -78,7 +92,11 @@ func Open(cfg Config) (*Engine, error) {
 	// Subscriptions download directly: the system proxy may be Poros's own, which is not running yet.
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
-	return &Engine{
+	mixedPort := cfg.MixedPort
+	if mixedPort == 0 {
+		mixedPort = DefaultMixedPort
+	}
+	e := &Engine{
 		dataDir:   cfg.DataDir,
 		userAgent: userAgent,
 		db:        db,
@@ -88,14 +106,30 @@ func Open(cfg Config) (*Engine, error) {
 		client:    &http.Client{Timeout: fetchTimeout, Transport: transport},
 		updating:  map[string]*sync.Mutex{},
 		stop:      func() {},
-	}, nil
+		mixedPort: mixedPort,
+		sysProxy:  sysproxy.New(filepath.Join(cfg.DataDir, "system-proxy.json")),
+	}
+	e.conn.state = ConnectionState{State: ConnectionIdle}
+	// Only now, with the data folder locked: the proxy of another core on the folder is not this one's to clear.
+	if err = e.sysProxy.Recover(); err != nil {
+		e.conn.state.Error, e.conn.state.ErrorText = ReasonSystemProxyFailed, err.Error()
+	}
+	if monitor := netmon.Monitor(); monitor != nil {
+		e.netCallback = monitor.RegisterCallback(e.onDefaultInterface)
+	}
+	return e, nil
 }
 
-// Close stops the schedule, waits for an update in flight and closes the data.
+// Close stops the schedule and the connection, gives the system proxy back, waits for an update in flight and
+// closes the data.
 func (e *Engine) Close() error {
+	if e.netCallback != nil {
+		netmon.Monitor().UnregisterCallback(e.netCallback)
+	}
 	e.stop()
 	e.stopped.Wait()
-	return e.db.Close()
+	err := e.closeConnection()
+	return errors.Join(err, e.db.Close())
 }
 
 func newID() string {

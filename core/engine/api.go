@@ -19,10 +19,16 @@ type Settings struct {
 	// Tun and SystemProxy are independent: both, either or neither can be on.
 	Tun         bool `json:"tun"`
 	SystemProxy bool `json:"systemProxy"`
+	// Server is the ID of the server to connect to, "" before one is chosen.
+	Server string `json:"server"`
 	// Preset is the ID of the routing preset in use.
 	Preset   string `json:"preset"`
 	CheckIP  bool   `json:"checkIp"`
 	AllowLAN bool   `json:"allowLan"`
+	// IPv6 lets connections use IPv6; off, names resolve to IPv4 only and IPv6 connections are refused.
+	IPv6 bool `json:"ipv6"`
+	// RealityOnXray runs VLESS with REALITY over TCP and gRPC on Xray rather than sing-box.
+	RealityOnXray bool `json:"realityOnXray"`
 	// SubscriptionAutoUpdate updates the subscriptions on a schedule, every SubscriptionUpdateHours hours; 0 hours
 	// is what each provider advises, or 6 hours.
 	SubscriptionAutoUpdate  bool `json:"subscriptionAutoUpdate"`
@@ -92,6 +98,30 @@ type Server struct {
 	Country string `json:"country"`
 }
 
+// Connection states.
+const (
+	ConnectionIdle     = "idle"
+	ConnectionStarting = "starting"
+	ConnectionRunning  = "running"
+	ConnectionStopping = "stopping"
+)
+
+// ConnectionState is the connection as it is.
+type ConnectionState struct {
+	// State is idle, starting, running or stopping.
+	State string `json:"state"`
+	// ServerID, Tun and SystemProxy are what the connection runs with; the settings may already say otherwise.
+	ServerID    string `json:"serverId"`
+	Tun         bool   `json:"tun"`
+	SystemProxy bool   `json:"systemProxy"`
+	// Since is when the connection came up, Unix milliseconds.
+	Since int64 `json:"since"`
+	// Error is the reason the last start failed or a running connection lost a part, such as system_proxy_failed;
+	// ErrorText tells more, in English.
+	Error     string `json:"error"`
+	ErrorText string `json:"errorText"`
+}
+
 // Preset is a routing preset: which traffic goes through the server.
 type Preset struct {
 	ID      string `json:"id"`
@@ -131,6 +161,11 @@ const (
 	MethodSubscriptionsRemove = "subscriptions.remove"
 	MethodServersList         = "servers.list"
 	MethodPresetsList         = "presets.list"
+	// MethodConnectionStart connects with the settings, or reconnects with them: it answers at once with the
+	// starting state, and connection.changed tells how it went.
+	MethodConnectionStart = "connection.start"
+	MethodConnectionStop  = "connection.stop"
+	MethodConnectionState = "connection.state"
 )
 
 // Events the core sends without a request.
@@ -138,6 +173,7 @@ const (
 	EventSettingsChanged      = "settings.changed"
 	EventSubscriptionsChanged = "subscriptions.changed"
 	EventServersChanged       = "servers.changed"
+	EventConnectionChanged    = "connection.changed"
 )
 
 // Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
@@ -155,4 +191,18 @@ const (
 	ReasonInvalidSubscription = "invalid_subscription"
 	// ReasonNoServers is a subscription without a server Poros can run.
 	ReasonNoServers = "no_servers"
+	// ReasonNoServer is a start before a server is chosen, or after it left its subscription.
+	ReasonNoServer = "no_server"
+	// ReasonServerUnsupported is a server neither core runs.
+	ReasonServerUnsupported = "server_unsupported"
+	// ReasonNeedsElevation is TUN in a core without administrator rights.
+	ReasonNeedsElevation = "needs_elevation"
+	// ReasonPortBusy is the port of the mixed inbound held by another program.
+	ReasonPortBusy = "port_busy"
+	// ReasonStartFailed is a core that refused to start; ErrorText has its words.
+	ReasonStartFailed = "start_failed"
+	// ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
+	ReasonSystemProxyFailed = "system_proxy_failed"
+	// ReasonStopTimeout is a connection that did not close in time; the core has to restart to let go of it.
+	ReasonStopTimeout = "stop_timeout"
 )

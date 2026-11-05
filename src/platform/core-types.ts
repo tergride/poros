@@ -31,11 +31,23 @@ export interface Settings {
   tun: boolean;
   systemProxy: boolean;
   /**
+   * Server is the ID of the server to connect to, "" before one is chosen.
+   */
+  server: string;
+  /**
    * Preset is the ID of the routing preset in use.
    */
   preset: string;
   checkIp: boolean;
   allowLan: boolean;
+  /**
+   * IPv6 lets connections use IPv6; off, names resolve to IPv4 only and IPv6 connections are refused.
+   */
+  ipv6: boolean;
+  /**
+   * RealityOnXray runs VLESS with REALITY over TCP and gRPC on Xray rather than sing-box.
+   */
+  realityOnXray: boolean;
   /**
    * SubscriptionAutoUpdate updates the subscriptions on a schedule, every SubscriptionUpdateHours hours; 0 hours
    * is what each provider advises, or 6 hours.
@@ -133,6 +145,47 @@ export interface Server {
   country: string;
 }
 /**
+ * Connection states.
+ */
+export const ConnectionIdle = "idle";
+/**
+ * Connection states.
+ */
+export const ConnectionStarting = "starting";
+/**
+ * Connection states.
+ */
+export const ConnectionRunning = "running";
+/**
+ * Connection states.
+ */
+export const ConnectionStopping = "stopping";
+/**
+ * ConnectionState is the connection as it is.
+ */
+export interface ConnectionState {
+  /**
+   * State is idle, starting, running or stopping.
+   */
+  state: string;
+  /**
+   * ServerID, Tun and SystemProxy are what the connection runs with; the settings may already say otherwise.
+   */
+  serverId: string;
+  tun: boolean;
+  systemProxy: boolean;
+  /**
+   * Since is when the connection came up, Unix milliseconds.
+   */
+  since: number /* int64 */;
+  /**
+   * Error is the reason the last start failed or a running connection lost a part, such as system_proxy_failed;
+   * ErrorText tells more, in English.
+   */
+  error: string;
+  errorText: string;
+}
+/**
  * Preset is a routing preset: which traffic goes through the server.
  */
 export interface Preset {
@@ -202,6 +255,19 @@ export const MethodServersList = "servers.list";
  */
 export const MethodPresetsList = "presets.list";
 /**
+ * MethodConnectionStart connects with the settings, or reconnects with them: it answers at once with the
+ * starting state, and connection.changed tells how it went.
+ */
+export const MethodConnectionStart = "connection.start";
+/**
+ * Methods the core answers.
+ */
+export const MethodConnectionStop = "connection.stop";
+/**
+ * Methods the core answers.
+ */
+export const MethodConnectionState = "connection.state";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -213,6 +279,10 @@ export const EventSubscriptionsChanged = "subscriptions.changed";
  * Events the core sends without a request.
  */
 export const EventServersChanged = "servers.changed";
+/**
+ * Events the core sends without a request.
+ */
+export const EventConnectionChanged = "connection.changed";
 /**
  * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
@@ -249,3 +319,31 @@ export const ReasonInvalidSubscription = "invalid_subscription";
  * ReasonNoServers is a subscription without a server Poros can run.
  */
 export const ReasonNoServers = "no_servers";
+/**
+ * ReasonNoServer is a start before a server is chosen, or after it left its subscription.
+ */
+export const ReasonNoServer = "no_server";
+/**
+ * ReasonServerUnsupported is a server neither core runs.
+ */
+export const ReasonServerUnsupported = "server_unsupported";
+/**
+ * ReasonNeedsElevation is TUN in a core without administrator rights.
+ */
+export const ReasonNeedsElevation = "needs_elevation";
+/**
+ * ReasonPortBusy is the port of the mixed inbound held by another program.
+ */
+export const ReasonPortBusy = "port_busy";
+/**
+ * ReasonStartFailed is a core that refused to start; ErrorText has its words.
+ */
+export const ReasonStartFailed = "start_failed";
+/**
+ * ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
+ */
+export const ReasonSystemProxyFailed = "system_proxy_failed";
+/**
+ * ReasonStopTimeout is a connection that did not close in time; the core has to restart to let go of it.
+ */
+export const ReasonStopTimeout = "stop_timeout";

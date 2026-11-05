@@ -250,7 +250,9 @@ func TestPresetRules(t *testing.T) {
 			allPreset.Rules[1],
 		},
 	}
-	configs, err := Build(Input{Server: mustParse(t, sampleLinks(t)["trojan tcp"]), Preset: hardened(preset), Tun: true, AllowLAN: true, MixedPort: 2090})
+	configs, err := Build(Input{
+		Server: mustParse(t, sampleLinks(t)["trojan tcp"]), Preset: hardened(preset), Tun: true, AllowLAN: true, DisableIPv6: true, MixedPort: 2090,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

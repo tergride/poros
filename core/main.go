@@ -22,8 +22,6 @@ import (
 	"PorosCore/internal/jsonrpc"
 
 	C "github.com/sagernet/sing-box/constant"
-
-	_ "PorosCore/internal/distro/all"
 )
 
 const (

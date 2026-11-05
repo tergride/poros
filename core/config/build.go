@@ -58,7 +58,10 @@ type Input struct {
 	// Tun and the mixed inbound always exist; SystemProxy is the engine's business, not the config's.
 	Tun bool
 	// AllowLAN opens the mixed inbound to other devices.
-	AllowLAN      bool
+	AllowLAN bool
+	// DisableIPv6 answers names with IPv4 only and refuses IPv6 connections other than DNS. The TUN still takes
+	// IPv6, so that it never goes around the tunnel.
+	DisableIPv6   bool
 	MixedPort     uint16
 	RealityOnXray bool
 	// LogLevel is sing-box's; "" is info.
@@ -121,7 +124,7 @@ func Build(in Input) (Configs, error) {
 	}
 	configs.SingBox = option.Options{
 		Log:      &option.LogOptions{Level: logLevel},
-		DNS:      buildDNS(in.Preset),
+		DNS:      buildDNS(in.Preset, in.DisableIPv6),
 		Inbounds: buildInbounds(in),
 		Outbounds: []option.Outbound{
 			proxy,
@@ -184,6 +187,9 @@ func tunExcluded(preset Preset) badoption.Listable[netip.Prefix] {
 
 func buildRoute(in Input) *option.RouteOptions {
 	rules := []option.Rule{actionRule(option.RawDefaultRule{}, option.RuleAction{Action: C.RuleActionTypeSniff})}
+	if in.DisableIPv6 {
+		rules = append(rules, ipv6Block())
+	}
 	if in.AllowLAN {
 		rules = append(rules, lanGuard())
 	}
@@ -198,12 +204,30 @@ func buildRoute(in Input) *option.RouteOptions {
 		final = TagDirect
 		rules = append(rules, actionRule(option.RawDefaultRule{}, option.RuleAction{Action: C.RuleActionTypeReject}))
 	}
+	resolver := &option.DomainResolveOptions{Server: dnsDirect}
+	if in.DisableIPv6 {
+		resolver.Strategy = option.DomainStrategy(C.DomainStrategyIPv4Only)
+	}
 	return &option.RouteOptions{
 		Rules:                 rules,
 		Final:                 final,
 		AutoDetectInterface:   in.Tun,
-		DefaultDomainResolver: &option.DomainResolveOptions{Server: dnsDirect},
+		DefaultDomainResolver: resolver,
 	}
+}
+
+// ipv6Block refuses IPv6 connections at once, so that programs fall back to IPv4; DNS over IPv6 is still answered.
+func ipv6Block() option.Rule {
+	return option.Rule{Type: C.RuleTypeLogical, LogicalOptions: option.LogicalRule{
+		RawLogicalRule: option.RawLogicalRule{Mode: C.LogicalTypeAnd, Rules: []option.Rule{
+			{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultRule{RawDefaultRule: option.RawDefaultRule{IPVersion: 6}}},
+			{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultRule{RawDefaultRule: option.RawDefaultRule{
+				Protocol: badoption.Listable[string]{C.ProtocolDNS},
+				Invert:   true,
+			}}},
+		}},
+		RuleAction: option.RuleAction{Action: C.RuleActionTypeReject},
+	}}
 }
 
 // lanGuard keeps other devices on the mixed inbound away from this computer's own services.
@@ -261,7 +285,7 @@ func prefixables(prefixes []netip.Prefix) badoption.Listable[*badoption.Prefixab
 
 // buildDNS resolves the names of direct traffic with the system's DNS and the rest with DoH through the server, in
 // the order of the rules, so that a name follows the same rule as its connection.
-func buildDNS(preset Preset) *option.DNSOptions {
+func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
 	servers := []option.DNSServerOptions{
 		{Type: C.DNSTypeHTTPS, Tag: dnsRemote, Options: &option.RemoteHTTPSDNSServerOptions{
 			RemoteTLSDNSServerOptions: option.RemoteTLSDNSServerOptions{RemoteDNSServerOptions: option.RemoteDNSServerOptions{
@@ -301,5 +325,9 @@ func buildDNS(preset Preset) *option.DNSOptions {
 	if preset.DefaultOutbound == OutboundDirect {
 		final = dnsDirect
 	}
-	return &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: servers, Rules: rules, Final: final}}
+	options := &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: servers, Rules: rules, Final: final}}
+	if disableIPv6 {
+		options.Strategy = option.DomainStrategy(C.DomainStrategyIPv4Only)
+	}
+	return options
 }

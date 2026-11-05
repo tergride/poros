@@ -5,6 +5,7 @@ import type {
   AddSubscription,
   AppInfo,
   ByID,
+  ConnectionState,
   Preset,
   Server,
   ServersChanged,
@@ -14,10 +15,18 @@ import type {
   SubscriptionUpdate,
 } from './core-types'
 import {
+  ConnectionIdle,
+  ConnectionRunning,
+  ConnectionStarting,
+  ConnectionStopping,
+  EventConnectionChanged,
   EventServersChanged,
   EventSettingsChanged,
   EventSubscriptionsChanged,
   MethodAppInfo,
+  MethodConnectionStart,
+  MethodConnectionState,
+  MethodConnectionStop,
   MethodPresetsList,
   MethodServersList,
   MethodSettingsGet,
@@ -28,6 +37,7 @@ import {
   MethodSubscriptionsUpdate,
   ReasonDuplicate,
   ReasonInvalidURL,
+  ReasonNoServer,
   ReasonNotFound,
   ReasonSingleServer,
 } from './core-types'
@@ -43,12 +53,16 @@ export interface CoreMethods {
   [MethodSubscriptionsRemove]: { params: ByID; result: null }
   [MethodServersList]: { params: ServersQuery; result: Server[] }
   [MethodPresetsList]: { params: undefined; result: Preset[] }
+  [MethodConnectionStart]: { params: undefined; result: ConnectionState }
+  [MethodConnectionStop]: { params: undefined; result: ConnectionState }
+  [MethodConnectionState]: { params: undefined; result: ConnectionState }
 }
 
 export interface CoreEvents {
   [EventSettingsChanged]: Settings
   [EventSubscriptionsChanged]: Subscription[]
   [EventServersChanged]: ServersChanged
+  [EventConnectionChanged]: ConnectionState
 }
 
 export type CoreMethod = keyof CoreMethods
@@ -111,9 +125,12 @@ const defaultSettings: Settings = {
   onboardingDone: false,
   tun: false,
   systemProxy: false,
+  server: '',
   preset: 'all',
   checkIp: true,
   allowLan: false,
+  ipv6: true,
+  realityOnXray: true,
   subscriptionAutoUpdate: true,
   subscriptionUpdateHours: 0,
 }
@@ -130,6 +147,16 @@ const builtinPresets: Preset[] = [
   { id: 'hardened', name: 'Hardened bypass', builtin: true },
 ]
 
+const idle: ConnectionState = {
+  state: ConnectionIdle,
+  serverId: '',
+  tun: false,
+  systemProxy: false,
+  since: 0,
+  error: '',
+  errorText: '',
+}
+
 function failed(reason: string, message: string): CoreError {
   return { code: 1, message, data: { reason } }
 }
@@ -142,6 +169,7 @@ export function createStubCore(): CoreClient {
   let settings = { ...defaultSettings }
   let subscriptions: Subscription[] = []
   let servers: Server[] = []
+  let connection = { ...idle }
   let nextId = 1
   const handlers = new Map<string, Set<(params: never) => void>>()
   const emit = <E extends CoreEvent>(event: E, params: CoreEvents[E]) =>
@@ -154,6 +182,16 @@ export function createStubCore(): CoreClient {
     const sub = subscriptions.find((s) => s.id === id)
     if (!sub) throw failed(ReasonNotFound, `there is no subscription "${id}"`)
     return sub
+  }
+  // Like the engine, a start or stop answers at once and settles a moment later; the latest request wins.
+  let serial = 0
+  const setConnection = (next: ConnectionState) => {
+    connection = next
+    emit(EventConnectionChanged, { ...connection })
+  }
+  const settle = (next: () => ConnectionState) => {
+    const mine = ++serial
+    setTimeout(() => mine === serial && setConnection(next()), 0)
   }
   const noChanges = (sub: Subscription): SubscriptionUpdate => ({
     subscription: { ...sub },
@@ -229,6 +267,28 @@ export function createStubCore(): CoreClient {
     [MethodServersList]: ({ subscriptionId }) =>
       servers.filter((s) => subscriptionId === '' || s.subscriptionId === subscriptionId).map((s) => ({ ...s })),
     [MethodPresetsList]: () => [...builtinPresets],
+    [MethodConnectionStart]: () => {
+      setConnection({ ...idle, state: ConnectionStarting })
+      settle(() =>
+        servers.some((s) => s.id === settings.server)
+          ? {
+              ...idle,
+              state: ConnectionRunning,
+              serverId: settings.server,
+              tun: settings.tun,
+              systemProxy: settings.systemProxy,
+              since: Date.now(),
+            }
+          : { ...idle, error: ReasonNoServer, errorText: 'no server is chosen' },
+      )
+      return { ...connection }
+    },
+    [MethodConnectionStop]: () => {
+      if (connection.state !== ConnectionIdle) setConnection({ ...connection, state: ConnectionStopping })
+      settle(() => ({ ...idle }))
+      return { ...connection }
+    },
+    [MethodConnectionState]: () => ({ ...connection }),
   }
 
   return {

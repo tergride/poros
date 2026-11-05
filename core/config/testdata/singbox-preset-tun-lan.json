@@ -29,7 +29,8 @@
         "server": "dns-direct"
       }
     ],
-    "final": "dns-remote"
+    "final": "dns-remote",
+    "strategy": "ipv4_only"
   },
   "inbounds": [
     {
@@ -90,6 +91,20 @@
         "mode": "and",
         "rules": [
           {
+            "ip_version": 6
+          },
+          {
+            "protocol": "dns",
+            "invert": true
+          }
+        ],
+        "action": "reject"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
             "inbound": "mixed-in",
             "domain": "localhost",
             "domain_suffix": ".localhost",
@@ -141,6 +156,9 @@
     ],
     "final": "proxy",
     "auto_detect_interface": true,
-    "default_domain_resolver": "dns-direct"
+    "default_domain_resolver": {
+      "server": "dns-direct",
+      "strategy": "ipv4_only"
+    }
   }
 }

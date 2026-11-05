@@ -2,8 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createStubCore, isCoreError } from './core'
 import {
+  ConnectionIdle,
+  ConnectionRunning,
+  ConnectionStarting,
+  EventConnectionChanged,
   EventServersChanged,
   EventSubscriptionsChanged,
+  MethodConnectionStart,
+  MethodConnectionStop,
   MethodServersList,
   MethodSettingsGet,
   MethodSettingsSet,
@@ -12,6 +18,7 @@ import {
   MethodSubscriptionsRemove,
   ReasonDuplicate,
   ReasonInvalidURL,
+  ReasonNoServer,
   ReasonNotFound,
   ReasonSingleServer,
 } from './core-types'
@@ -66,5 +73,30 @@ describe('the stub core', () => {
     off()
     await core.call(MethodSettingsSet, { ...settings, tun: false })
     expect(handler).toHaveBeenCalledOnce()
+  })
+
+  it('answers a start at once and settles it the way the engine does', async () => {
+    const core = createStubCore()
+    const states = vi.fn()
+    core.on(EventConnectionChanged, states)
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect((await core.call(MethodConnectionStart)).state).toBe(ConnectionStarting)
+    await settle()
+    expect(states).toHaveBeenLastCalledWith(expect.objectContaining({ state: ConnectionIdle, error: ReasonNoServer }))
+
+    await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
+    const [server] = await core.call(MethodServersList, { subscriptionId: '' })
+    const settings = await core.call(MethodSettingsGet)
+    await core.call(MethodSettingsSet, { ...settings, server: server!.id, tun: true })
+    await core.call(MethodConnectionStart)
+    await settle()
+    expect(states).toHaveBeenLastCalledWith(
+      expect.objectContaining({ state: ConnectionRunning, serverId: server!.id, tun: true, error: '' }),
+    )
+
+    await core.call(MethodConnectionStop)
+    await settle()
+    expect(states).toHaveBeenLastCalledWith(expect.objectContaining({ state: ConnectionIdle, error: '' }))
   })
 })

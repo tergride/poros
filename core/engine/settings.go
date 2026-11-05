@@ -14,6 +14,8 @@ func DefaultSettings() Settings {
 		UIMode:                 "simple",
 		Preset:                 "all",
 		CheckIP:                true,
+		IPv6:                   true,
+		RealityOnXray:          true,
 		SubscriptionAutoUpdate: true,
 	}
 }
@@ -43,6 +45,7 @@ func (e *Engine) SetSettings(settings Settings) (Settings, error) {
 		return Settings{}, err
 	}
 	e.notify(EventSettingsChanged, settings)
+	go e.syncSystemProxy()
 	return settings, nil
 }
 

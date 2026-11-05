@@ -26,6 +26,9 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodSubscriptionsRemove: withParams(func(p ByID) (any, error) { return nil, e.RemoveSubscription(p.ID) }),
 		MethodServersList:         withParams(e.Servers),
 		MethodPresetsList:         noParams(func() ([]Preset, error) { return e.Presets(), nil }),
+		MethodConnectionStart:     noParams(e.StartConnection),
+		MethodConnectionStop:      noParams(e.StopConnection),
+		MethodConnectionState:     noParams(func() (ConnectionState, error) { return e.ConnectionState(), nil }),
 	}
 }
 
