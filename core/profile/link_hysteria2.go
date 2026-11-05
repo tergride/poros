@@ -47,7 +47,7 @@ func parseHysteria2Link(link string) (Profile, error) {
 			obfs = "gecko"
 		}
 		if obfs != "" && obfs != "salamander" {
-			return Profile{}, fmt.Errorf("the Hysteria2 obfuscation %q is not supported", obfs)
+			return Profile{}, unsupported("the Hysteria2 obfuscation %q is not supported", obfs)
 		}
 		h.ObfsType, h.ObfsPassword = "salamander", password
 	}

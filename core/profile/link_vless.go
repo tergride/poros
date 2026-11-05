@@ -36,12 +36,17 @@ func parseVLESSLink(link string) (Profile, error) {
 	if v.TLS, err = linkTLS(q, false); err != nil {
 		return Profile{}, err
 	}
-	// An unknown flow stops the core and a misplaced Vision fails every connection, while no flow at worst loses
-	// Vision's speed-up. VLESS encryption carries Vision over any transport.
+	fitVisionFlow(v)
+	return Profile{Type: TypeVLESS, Name: l.name, Server: l.host, ServerPort: port, VLESS: v}, nil
+}
+
+// fitVisionFlow drops a flow the server cannot run: an unknown flow stops the core and a misplaced Vision fails
+// every connection, while no flow at worst loses Vision's speed-up. VLESS encryption carries Vision over any
+// transport.
+func fitVisionFlow(v *VLESS) {
 	if v.Flow != vlessFlowVision || v.Encryption == "" && (!v.TLS.Enabled || v.Transport.Type != TransportTCP) {
 		v.Flow = ""
 	}
-	return Profile{Type: TypeVLESS, Name: l.name, Server: l.host, ServerPort: port, VLESS: v}, nil
 }
 
 func vlessLinkFlow(raw string) string {

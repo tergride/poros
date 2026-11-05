@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+var (
+	tuicCongestionControls = []string{"cubic", "new_reno", "bbr"}
+	tuicRelayModes         = []string{"native", "quic"}
+)
+
 // parseTUICLink reads tuic://uuid:password@host:port?query#name, TUIC v5.
 func parseTUICLink(link string) (Profile, error) {
 	l, err := parseShareLink(link)
@@ -19,9 +24,9 @@ func parseTUICLink(link string) (Profile, error) {
 	t := &TUIC{
 		UUID:              l.user,
 		Password:          l.password,
-		CongestionControl: tuicLinkChoice(q.get("congestion_control"), []string{"cubic", "new_reno", "bbr"}),
+		CongestionControl: tuicLinkChoice(q.get("congestion_control"), tuicCongestionControls),
 		// The core treats an unknown mode as native.
-		UDPRelayMode: tuicLinkChoice(q.get("udp_relay_mode"), []string{"native", "quic"}),
+		UDPRelayMode: tuicLinkChoice(q.get("udp_relay_mode"), tuicRelayModes),
 		ZeroRTT:      q.get("zero_rtt_handshake") == "true",
 		Heartbeat:    linkDuration(q, "heartbeat"),
 	}

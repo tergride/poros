@@ -2,11 +2,26 @@ package profile
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
 // ErrNotLink is returned for text that is not a share link of a known scheme.
 var ErrNotLink = errors.New("not a server link")
+
+// ErrUnsupported matches the errors about a server neither core can run, as opposed to a broken one.
+var ErrUnsupported = errors.New("not supported")
+
+type unsupportedError string
+
+func (e unsupportedError) Error() string { return string(e) }
+
+func (unsupportedError) Is(target error) bool { return target == ErrUnsupported }
+
+// unsupported formats an error that matches ErrUnsupported.
+func unsupported(format string, args ...any) error {
+	return unsupportedError(fmt.Sprintf(format, args...))
+}
 
 type linkParser func(link string) (Profile, error)
 

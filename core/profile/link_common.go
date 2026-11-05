@@ -218,7 +218,12 @@ func linkInt(q linkQuery, key string, low, high int) (int, bool) {
 
 // linkDuration reads a Go duration such as 30s; anything else is dropped.
 func linkDuration(q linkQuery, key string) string {
-	value := q.trimmed(key)
+	return goDuration(q.get(key))
+}
+
+// goDuration keeps a Go duration such as 30s; anything else is dropped.
+func goDuration(value string) string {
+	value = strings.TrimSpace(value)
 	if d, err := time.ParseDuration(value); err != nil || d < 0 {
 		return ""
 	}
@@ -463,7 +468,7 @@ func linkTransport(q linkQuery) (Transport, error) {
 	case "xhttp", "splithttp":
 		t.Type = TransportXHTTP
 	default:
-		return Transport{}, fmt.Errorf("the transport %q is not supported", network)
+		return Transport{}, unsupported("the transport %q is not supported", network)
 	}
 	t.Host, t.Path = q.get("host"), q.get("path")
 	t.Headers = linkHeaders(q.get("headers"), "|")

@@ -391,6 +391,8 @@ func TestParseLinkRejects(t *testing.T) {
 		{"port not a number", "vless://" + testUUID + "@v.example.com:abc", "not a number from 1 to 65535"},
 		{"unsupported transport", "vless://" + testUUID + "@v.example.com?type=kcp", `transport "kcp"`},
 		{"reality without a key", "vless://" + testUUID + "@v.example.com?security=reality&sni=a.example.com", "pbk"},
+		// sing-box panics on a short ID longer than 8 bytes.
+		{"reality short id too long", "vless://" + testUUID + "@v.example.com?security=reality&pbk=" + testPBK + "&sid=0123456789abcdef01", "short ID"},
 		{"unclosed ipv6", "vless://" + testUUID + "@[2001:db8::1", "closing bracket"},
 		{"ipv6 without brackets", "vless://" + testUUID + "@2001:db8::1:443", "in brackets"},
 		{"host with a space", "vless://" + testUUID + "@bad%20host:443", "not a host name"},

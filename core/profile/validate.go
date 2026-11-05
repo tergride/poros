@@ -2,10 +2,12 @@ package profile
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -18,7 +20,11 @@ var shadowsocksMethods = []string{
 
 var shadowsocksPlugins = []string{"", "obfs-local", "v2ray-plugin"}
 
-// Validate checks what every core needs to start the profile: its type and part, the server and the credentials.
+// sing-quic refuses to hop ports more often.
+const minHopInterval = 5 * time.Second
+
+// Validate checks what every core needs to start the profile: its type and part, the server, the credentials and
+// TLS settings a core would start with.
 func (p Profile) Validate() error {
 	if err := p.validatePart(); err != nil {
 		return err
@@ -31,28 +37,85 @@ func (p Profile) Validate() error {
 	}
 	switch p.Type {
 	case TypeVLESS:
-		return requiredField(p.VLESS.UUID, "the VLESS UUID")
+		if err := requiredField(p.VLESS.UUID, "the VLESS UUID"); err != nil {
+			return err
+		}
+		return p.VLESS.TLS.validate(p.VLESS.Transport.Type)
 	case TypeVMess:
-		return requiredField(p.VMess.UUID, "the VMess UUID")
+		if err := requiredField(p.VMess.UUID, "the VMess UUID"); err != nil {
+			return err
+		}
+		return p.VMess.TLS.validate(p.VMess.Transport.Type)
 	case TypeTrojan:
-		return requiredField(p.Trojan.Password, "the Trojan password")
+		if err := requiredField(p.Trojan.Password, "the Trojan password"); err != nil {
+			return err
+		}
+		return p.Trojan.TLS.validate(p.Trojan.Transport.Type)
 	case TypeShadowsocks:
 		return p.Shadowsocks.validate()
 	case TypeHysteria2:
-		// The password may be empty, as the Qt client allowed.
-		for _, item := range p.Hysteria2.ServerPorts {
-			if ranges, err := hysteriaPortRanges(item); err != nil || len(ranges) != 1 || !strings.Contains(item, ":") {
-				return fmt.Errorf("the port range %q is not written as 20000:30000", item)
-			}
-		}
+		return p.Hysteria2.validate()
 	case TypeTUIC:
 		if !isUUID(strings.TrimSpace(p.TUIC.UUID)) {
-			return fmt.Errorf("the TUIC UUID %q is not a UUID; only TUIC v5 servers work", p.TUIC.UUID)
+			// The value stays out of the message: a TUIC v4 server puts its token there.
+			return unsupported("the TUIC UUID is not a UUID; only TUIC v5 servers work")
 		}
+		return p.TUIC.TLS.validate("")
+	case TypeHTTP:
+		return p.HTTP.TLS.validate("")
 	case TypeAnyTLS:
-		return requiredField(p.AnyTLS.Password, "the AnyTLS password")
+		if err := requiredField(p.AnyTLS.Password, "the AnyTLS password"); err != nil {
+			return err
+		}
+		return p.AnyTLS.TLS.validate("")
 	}
 	return nil
+}
+
+// validate refuses TLS settings a core would not start with, or would start and then fail every connection on.
+// transport is the transport type TLS runs over.
+func (t TLS) validate(transport string) error {
+	if transport == TransportQUIC {
+		if !t.Enabled {
+			return errors.New("the QUIC transport needs TLS")
+		}
+		if t.Reality.Enabled {
+			return errors.New("REALITY does not work over the QUIC transport")
+		}
+	}
+	if t.MinVersion != "" && t.MaxVersion != "" && t.MinVersion > t.MaxVersion {
+		return errors.New("the minimum TLS version is above the maximum")
+	}
+	if !t.Reality.Enabled {
+		return nil
+	}
+	if key, err := base64.RawURLEncoding.DecodeString(t.Reality.PublicKey); err != nil || len(key) != 32 {
+		return errors.New("the REALITY public key is not 32 bytes in URL-safe base64")
+	}
+	// sing-box decodes the short ID into 8 bytes and panics on a longer one.
+	if _, err := hex.DecodeString(t.Reality.ShortID); err != nil || len(t.Reality.ShortID) > 16 {
+		return errors.New("the REALITY short ID must be up to 16 hex digits, an even number of them")
+	}
+	if t.ECH.Enabled {
+		return errors.New("REALITY cannot be combined with ECH")
+	}
+	if t.DisableSNI && !t.Insecure {
+		return errors.New("REALITY cannot run with disable_sni")
+	}
+	return nil
+}
+
+func (h *Hysteria2) validate() error {
+	// The password may be empty, as the Qt client allowed.
+	for _, item := range h.ServerPorts {
+		if ranges, err := hysteriaPortRanges(item); err != nil || len(ranges) != 1 || !strings.Contains(item, ":") {
+			return fmt.Errorf("the port range %q is not written as 20000:30000", item)
+		}
+	}
+	if interval, _ := time.ParseDuration(h.HopInterval); len(h.ServerPorts) > 0 && interval > 0 && interval < minHopInterval {
+		return fmt.Errorf("port hopping needs at least %v between hops", minHopInterval)
+	}
+	return h.TLS.validate("")
 }
 
 func (p Profile) validatePart() error {
@@ -93,10 +156,10 @@ func (s *Shadowsocks) validate() error {
 		return errors.New("the Shadowsocks method is missing")
 	}
 	if !slices.Contains(shadowsocksMethods, s.Method) {
-		return fmt.Errorf("unknown Shadowsocks method %q", s.Method)
+		return unsupported("unknown Shadowsocks method %q", s.Method)
 	}
 	if !slices.Contains(shadowsocksPlugins, s.Plugin) {
-		return fmt.Errorf("the Shadowsocks plugin %q is not supported; use obfs-local or v2ray-plugin", s.Plugin)
+		return unsupported("the Shadowsocks plugin %q is not supported; use obfs-local or v2ray-plugin", s.Plugin)
 	}
 	keySize := 32
 	switch s.Method {
