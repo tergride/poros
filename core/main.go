@@ -87,6 +87,7 @@ const (
 	envPipe    = "POROS_CORE_PIPE"
 	envToken   = "POROS_CORE_TOKEN"
 	envDataDir = "POROS_DATA_DIR"
+	envVersion = "POROS_VERSION"
 )
 
 // runCore serves the host over its channel and exits when the host goes away: the channel is the core's lifetime.
@@ -105,10 +106,11 @@ func runCore() {
 		log.Fatalf("connect to the host: %v", err)
 	}
 	peer := jsonrpc.NewConn(conn)
-	eng, err := engine.Open(dataDir, peer.Notify)
+	eng, err := engine.Open(engine.Config{DataDir: dataDir, Version: os.Getenv(envVersion), Notify: peer.Notify})
 	if err != nil {
 		log.Fatalf("open the data folder: %v", err)
 	}
+	eng.StartSchedule()
 	err = peer.Serve(context.Background(), token, eng.Handlers())
 	eng.Close()
 	if !errors.Is(err, io.EOF) {

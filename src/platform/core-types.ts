@@ -36,19 +36,101 @@ export interface Settings {
   preset: string;
   checkIp: boolean;
   allowLan: boolean;
+  /**
+   * SubscriptionAutoUpdate updates the subscriptions on a schedule, every SubscriptionUpdateHours hours; 0 hours
+   * is what each provider advises, or 6 hours.
+   */
+  subscriptionAutoUpdate: boolean;
+  subscriptionUpdateHours: number /* int */;
 }
 /**
- * Subscription is a link from a provider; its servers arrive when it is updated.
+ * Subscription is a link from a provider and what its last update brought.
  */
 export interface Subscription {
   id: string;
+  /**
+   * Name is the user's name for it, else the provider's title, else the host of the URL.
+   */
   name: string;
   url: string;
   /**
-   * AddedAt and UpdatedAt are Unix milliseconds; UpdatedAt is 0 before the first update.
+   * AddedAt, UpdatedAt and Expire are Unix milliseconds. UpdatedAt is the last update that worked, Expire 0 is no
+   * end date.
    */
   addedAt: number /* int64 */;
   updatedAt: number /* int64 */;
+  /**
+   * Servers counts the servers it holds; Skipped the items of the last update that did not become servers.
+   */
+  servers: number /* int */;
+  skipped: number /* int */;
+  /**
+   * Upload and Download are the bytes used, Total the quota; Total 0 is no quota.
+   */
+  upload: number /* int64 */;
+  download: number /* int64 */;
+  total: number /* int64 */;
+  expire: number /* int64 */;
+  webPageUrl: string;
+  supportUrl: string;
+  announce: string;
+  /**
+   * Error is the reason the last update failed, "" when it worked; ErrorText tells more, in English.
+   */
+  error: string;
+  errorText: string;
+}
+/**
+ * SubscriptionUpdate is what adding or updating a subscription did.
+ */
+export interface SubscriptionUpdate {
+  subscription: Subscription;
+  /**
+   * Added and Removed count the servers that came and went, and name up to 50 of each; Changed counts servers
+   * that stayed with new settings.
+   */
+  added: number /* int */;
+  removed: number /* int */;
+  changed: number /* int */;
+  addedNames: string[];
+  removedNames: string[];
+  /**
+   * Skips groups the skipped items by reason.
+   */
+  skips: SkipReason[];
+}
+/**
+ * SkipReason is why some items of a subscription did not become servers.
+ */
+export interface SkipReason {
+  /**
+   * Reason is in English. Unsupported is a server Poros cannot run, as opposed to a broken one.
+   */
+  reason: string;
+  unsupported: boolean;
+  count: number /* int */;
+  /**
+   * Names are up to three of the items.
+   */
+  names: string[];
+}
+/**
+ * Server is one server of a subscription.
+ */
+export interface Server {
+  id: string;
+  subscriptionId: string;
+  name: string;
+  /**
+   * Protocol is vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http or anytls.
+   */
+  protocol: string;
+  host: string;
+  port: number /* int */;
+  /**
+   * Country is the ISO 3166 code of a flag in the name, "" without one.
+   */
+  country: string;
 }
 /**
  * Preset is a routing preset: which traffic goes through the server.
@@ -59,7 +141,7 @@ export interface Preset {
   builtin: boolean;
 }
 /**
- * AddSubscription asks to add a subscription. An empty name takes the host of the URL.
+ * AddSubscription asks to add a subscription. An empty name takes the provider's title or the host of the URL.
  */
 export interface AddSubscription {
   url: string;
@@ -70,6 +152,18 @@ export interface AddSubscription {
  */
 export interface ByID {
   id: string;
+}
+/**
+ * ServersQuery picks the servers of one subscription, or of all with an empty ID.
+ */
+export interface ServersQuery {
+  subscriptionId: string;
+}
+/**
+ * ServersChanged tells which subscription's servers changed.
+ */
+export interface ServersChanged {
+  subscriptionId: string;
 }
 /**
  * Methods the core answers.
@@ -94,7 +188,15 @@ export const MethodSubscriptionsAdd = "subscriptions.add";
 /**
  * Methods the core answers.
  */
+export const MethodSubscriptionsUpdate = "subscriptions.update";
+/**
+ * Methods the core answers.
+ */
 export const MethodSubscriptionsRemove = "subscriptions.remove";
+/**
+ * Methods the core answers.
+ */
+export const MethodServersList = "servers.list";
 /**
  * Methods the core answers.
  */
@@ -108,22 +210,42 @@ export const EventSettingsChanged = "settings.changed";
  */
 export const EventSubscriptionsChanged = "subscriptions.changed";
 /**
- * Reasons in the data of a failed request, for the interface to translate.
+ * Events the core sends without a request.
+ */
+export const EventServersChanged = "servers.changed";
+/**
+ * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
 export const ReasonInvalidURL = "invalid_url";
 /**
- * Reasons in the data of a failed request, for the interface to translate.
+ * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
 export const ReasonDuplicate = "duplicate";
 /**
- * Reasons in the data of a failed request, for the interface to translate.
+ * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
 export const ReasonNotFound = "not_found";
 /**
- * Reasons in the data of a failed request, for the interface to translate.
+ * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
 export const ReasonUnknownPreset = "unknown_preset";
 /**
- * Reasons in the data of a failed request, for the interface to translate.
+ * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
 export const ReasonInvalidValue = "invalid_value";
+/**
+ * ReasonSingleServer is a link to one server where a subscription was asked for.
+ */
+export const ReasonSingleServer = "single_server";
+/**
+ * ReasonFetchFailed is a subscription that did not download: no network, an error page, a timeout.
+ */
+export const ReasonFetchFailed = "fetch_failed";
+/**
+ * ReasonInvalidSubscription is a download that is no subscription format Poros reads.
+ */
+export const ReasonInvalidSubscription = "invalid_subscription";
+/**
+ * ReasonNoServers is a subscription without a server Poros can run.
+ */
+export const ReasonNoServers = "no_servers";

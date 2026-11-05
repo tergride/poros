@@ -296,6 +296,7 @@ fn spawn(config: &CoreConfig, channel: &str, token: &str) -> std::io::Result<Chi
         .env("POROS_CORE_PIPE", channel)
         .env("POROS_CORE_TOKEN", token)
         .env("POROS_DATA_DIR", &config.data_dir)
+        .env("POROS_VERSION", env!("CARGO_PKG_VERSION"))
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped())

@@ -21,8 +21,10 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodSettingsGet:         noParams(e.Settings),
 		MethodSettingsSet:         withParams(e.SetSettings),
 		MethodSubscriptionsList:   noParams(e.Subscriptions),
-		MethodSubscriptionsAdd:    withParams(e.AddSubscription),
+		MethodSubscriptionsAdd:    withContext(e.AddSubscription),
+		MethodSubscriptionsUpdate: withContext(func(ctx context.Context, p ByID) (SubscriptionUpdate, error) { return e.UpdateSubscription(ctx, p.ID) }),
 		MethodSubscriptionsRemove: withParams(func(p ByID) (any, error) { return nil, e.RemoveSubscription(p.ID) }),
+		MethodServersList:         withParams(e.Servers),
 		MethodPresetsList:         noParams(func() ([]Preset, error) { return e.Presets(), nil }),
 	}
 }
@@ -32,11 +34,16 @@ func noParams[R any](f func() (R, error)) jsonrpc.Handler {
 }
 
 func withParams[P, R any](f func(P) (R, error)) jsonrpc.Handler {
-	return func(_ context.Context, raw json.RawMessage) (any, error) {
+	return withContext(func(_ context.Context, params P) (R, error) { return f(params) })
+}
+
+// withContext is for methods that wait on the network: the request's context ends with the host's connection.
+func withContext[P, R any](f func(context.Context, P) (R, error)) jsonrpc.Handler {
+	return func(ctx context.Context, raw json.RawMessage) (any, error) {
 		var params P
 		if err := jsonrpc.DecodeParams(raw, &params); err != nil {
 			return nil, err
 		}
-		return f(params)
+		return f(ctx, params)
 	}
 }

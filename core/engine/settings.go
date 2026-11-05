@@ -11,11 +11,15 @@ import (
 // DefaultSettings are what a new data folder starts with. TUN and System are both off: the first Start asks.
 func DefaultSettings() Settings {
 	return Settings{
-		UIMode:  "simple",
-		Preset:  "all",
-		CheckIP: true,
+		UIMode:                 "simple",
+		Preset:                 "all",
+		CheckIP:                true,
+		SubscriptionAutoUpdate: true,
 	}
 }
+
+// maxUpdateHours is a week: a longer interval is as good as no updates.
+const maxUpdateHours = 7 * 24
 
 func (e *Engine) Settings() (Settings, error) {
 	settings := DefaultSettings()
@@ -51,6 +55,9 @@ func (e *Engine) validateSettings(settings Settings) error {
 	}
 	if !slices.ContainsFunc(e.presets, func(p Preset) bool { return p.ID == settings.Preset }) {
 		return jsonrpc.Failed(ReasonUnknownPreset, "there is no preset %q", settings.Preset)
+	}
+	if settings.SubscriptionUpdateHours < 0 || settings.SubscriptionUpdateHours > maxUpdateHours {
+		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionUpdateHours must be from 0 to %d, not %d", maxUpdateHours, settings.SubscriptionUpdateHours)
 	}
 	return nil
 }

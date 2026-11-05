@@ -1,20 +1,35 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
-import type { AddSubscription, AppInfo, ByID, Preset, Settings, Subscription } from './core-types'
+import type {
+  AddSubscription,
+  AppInfo,
+  ByID,
+  Preset,
+  Server,
+  ServersChanged,
+  ServersQuery,
+  Settings,
+  Subscription,
+  SubscriptionUpdate,
+} from './core-types'
 import {
+  EventServersChanged,
   EventSettingsChanged,
   EventSubscriptionsChanged,
   MethodAppInfo,
   MethodPresetsList,
+  MethodServersList,
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsAdd,
   MethodSubscriptionsList,
   MethodSubscriptionsRemove,
+  MethodSubscriptionsUpdate,
   ReasonDuplicate,
   ReasonInvalidURL,
   ReasonNotFound,
+  ReasonSingleServer,
 } from './core-types'
 
 /** What each method of core/engine/api.go takes and returns. */
@@ -23,14 +38,17 @@ export interface CoreMethods {
   [MethodSettingsGet]: { params: undefined; result: Settings }
   [MethodSettingsSet]: { params: Settings; result: Settings }
   [MethodSubscriptionsList]: { params: undefined; result: Subscription[] }
-  [MethodSubscriptionsAdd]: { params: AddSubscription; result: Subscription }
+  [MethodSubscriptionsAdd]: { params: AddSubscription; result: SubscriptionUpdate }
+  [MethodSubscriptionsUpdate]: { params: ByID; result: SubscriptionUpdate }
   [MethodSubscriptionsRemove]: { params: ByID; result: null }
+  [MethodServersList]: { params: ServersQuery; result: Server[] }
   [MethodPresetsList]: { params: undefined; result: Preset[] }
 }
 
 export interface CoreEvents {
   [EventSettingsChanged]: Settings
   [EventSubscriptionsChanged]: Subscription[]
+  [EventServersChanged]: ServersChanged
 }
 
 export type CoreMethod = keyof CoreMethods
@@ -96,7 +114,16 @@ const defaultSettings: Settings = {
   preset: 'all',
   checkIp: true,
   allowLan: false,
+  subscriptionAutoUpdate: true,
+  subscriptionUpdateHours: 0,
 }
+
+/** The servers every subscription of the stub core holds. */
+const stubServers: Omit<Server, 'id' | 'subscriptionId'>[] = [
+  { name: '🇩🇪 Germany', protocol: 'vless', host: 'de.example.com', port: 443, country: 'DE' },
+  { name: '🇳🇱 Netherlands', protocol: 'vless', host: 'nl.example.com', port: 443, country: 'NL' },
+  { name: '🇫🇮 Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI' },
+]
 
 const builtinPresets: Preset[] = [
   { id: 'all', name: 'All traffic', builtin: true },
@@ -116,10 +143,29 @@ function failed(reason: string, message: string): CoreError {
 export function createStubCore(): CoreClient {
   let settings = { ...defaultSettings }
   let subscriptions: Subscription[] = []
+  let servers: Server[] = []
   let nextId = 1
   const handlers = new Map<string, Set<(params: never) => void>>()
   const emit = <E extends CoreEvent>(event: E, params: CoreEvents[E]) =>
     handlers.get(event)?.forEach((handler) => handler(params as never))
+  const changed = (subscriptionId: string) => {
+    emit(EventSubscriptionsChanged, [...subscriptions])
+    emit(EventServersChanged, { subscriptionId })
+  }
+  const find = (id: string) => {
+    const sub = subscriptions.find((s) => s.id === id)
+    if (!sub) throw failed(ReasonNotFound, `there is no subscription "${id}"`)
+    return sub
+  }
+  const noChanges = (sub: Subscription): SubscriptionUpdate => ({
+    subscription: { ...sub },
+    added: 0,
+    removed: 0,
+    changed: 0,
+    addedNames: [],
+    removedNames: [],
+    skips: [],
+  })
 
   const methods: { [M in CoreMethod]: (params: CoreMethods[M]['params']) => CoreMethods[M]['result'] } = {
     [MethodAppInfo]: () => ({ singBox: 'stub', xray: 'stub', dataDir: 'browser' }),
@@ -138,20 +184,52 @@ export function createStubCore(): CoreClient {
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error()
         host = parsed.hostname
       } catch {
+        if (/^[a-z][a-z0-9+.-]*:\/\/\S/i.test(link)) {
+          throw failed(ReasonSingleServer, 'this is a link to one server, not a subscription')
+        }
         throw failed(ReasonInvalidURL, 'a subscription link starts with http:// or https://')
       }
       if (subscriptions.some((s) => s.url === link)) throw failed(ReasonDuplicate, 'this subscription is already added')
-      const sub: Subscription = { id: String(nextId++), name: name.trim() || host, url: link, addedAt: Date.now(), updatedAt: 0 }
+      const now = Date.now()
+      const sub: Subscription = {
+        id: String(nextId++),
+        name: name.trim() || host,
+        url: link,
+        addedAt: now,
+        updatedAt: now,
+        servers: stubServers.length,
+        skipped: 0,
+        upload: 0,
+        download: 0,
+        total: 0,
+        expire: 0,
+        webPageUrl: '',
+        supportUrl: '',
+        announce: '',
+        error: '',
+        errorText: '',
+      }
+      const added = stubServers.map((server) => ({ ...server, id: String(nextId++), subscriptionId: sub.id }))
       subscriptions = [...subscriptions, sub]
-      emit(EventSubscriptionsChanged, [...subscriptions])
-      return sub
+      servers = [...servers, ...added]
+      changed(sub.id)
+      return { ...noChanges(sub), added: added.length, addedNames: added.map((s) => s.name) }
+    },
+    [MethodSubscriptionsUpdate]: ({ id }) => {
+      const sub = { ...find(id), updatedAt: Date.now() }
+      subscriptions = subscriptions.map((s) => (s.id === id ? sub : s))
+      changed(id)
+      return noChanges(sub)
     },
     [MethodSubscriptionsRemove]: ({ id }) => {
-      if (!subscriptions.some((s) => s.id === id)) throw failed(ReasonNotFound, `there is no subscription "${id}"`)
+      find(id)
       subscriptions = subscriptions.filter((s) => s.id !== id)
-      emit(EventSubscriptionsChanged, [...subscriptions])
+      servers = servers.filter((s) => s.subscriptionId !== id)
+      changed(id)
       return null
     },
+    [MethodServersList]: ({ subscriptionId }) =>
+      servers.filter((s) => subscriptionId === '' || s.subscriptionId === subscriptionId).map((s) => ({ ...s })),
     [MethodPresetsList]: () => [...builtinPresets],
   }
 

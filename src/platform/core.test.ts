@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createStubCore, isCoreError } from './core'
 import {
+  EventServersChanged,
   EventSubscriptionsChanged,
+  MethodServersList,
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsAdd,
@@ -11,6 +13,7 @@ import {
   ReasonDuplicate,
   ReasonInvalidURL,
   ReasonNotFound,
+  ReasonSingleServer,
 } from './core-types'
 
 async function reasonOf(promise: Promise<unknown>): Promise<string | undefined> {
@@ -29,21 +32,29 @@ describe('the stub core', () => {
     expect(settings.systemProxy).toBe(false)
   })
 
-  it('keeps subscriptions by the rules of the engine and announces each change', async () => {
+  it('keeps subscriptions and their servers by the rules of the engine and announces each change', async () => {
     const core = createStubCore()
     const changes = vi.fn()
+    const serverChanges = vi.fn()
     core.on(EventSubscriptionsChanged, changes)
+    core.on(EventServersChanged, serverChanges)
 
-    expect(await reasonOf(core.call(MethodSubscriptionsAdd, { url: 'vless://id@example.com:443', name: '' }))).toBe(ReasonInvalidURL)
-    const sub = await core.call(MethodSubscriptionsAdd, { url: ' https://sub.example.com/u/1 ', name: '' })
+    expect(await reasonOf(core.call(MethodSubscriptionsAdd, { url: 'sub.example.com/u/1', name: '' }))).toBe(ReasonInvalidURL)
+    expect(await reasonOf(core.call(MethodSubscriptionsAdd, { url: 'vless://id@example.com:443', name: '' }))).toBe(ReasonSingleServer)
+    const { subscription: sub, added } = await core.call(MethodSubscriptionsAdd, { url: ' https://sub.example.com/u/1 ', name: '' })
     expect(sub.name).toBe('sub.example.com')
     expect(await reasonOf(core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' }))).toBe(ReasonDuplicate)
     expect(await core.call(MethodSubscriptionsList)).toEqual([sub])
+    const servers = await core.call(MethodServersList, { subscriptionId: sub.id })
+    expect(servers).toHaveLength(added)
+    expect(sub.servers).toBe(added)
 
     expect(await reasonOf(core.call(MethodSubscriptionsRemove, { id: 'nope' }))).toBe(ReasonNotFound)
     await core.call(MethodSubscriptionsRemove, { id: sub.id })
     expect(changes).toHaveBeenCalledTimes(2)
     expect(changes).toHaveBeenLastCalledWith([])
+    expect(serverChanges).toHaveBeenLastCalledWith({ subscriptionId: sub.id })
+    expect(await core.call(MethodServersList, { subscriptionId: '' })).toEqual([])
   })
 
   it('stops delivering events to a handler once it unsubscribes', async () => {
