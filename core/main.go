@@ -172,6 +172,7 @@ func runCore() {
 		log.Fatalf("open the data folder: %v", err)
 	}
 	eng.StartSchedule()
+	eng.StartNetworkChecks()
 	if opts.hostPID != 0 {
 		// A shell that is killed may leave the channel open for a while; its process is the surer sign.
 		gone := host.Watch(opts.hostPID)

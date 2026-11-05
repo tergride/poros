@@ -39,6 +39,10 @@ func (e *Engine) SetSettings(settings Settings) (Settings, error) {
 	}
 	e.writeMu.Lock()
 	defer e.writeMu.Unlock()
+	previous, err := e.Settings()
+	if err != nil {
+		return Settings{}, err
+	}
 	if err := e.db.Update(func(tx *bbolt.Tx) error {
 		return putJSON(tx, bucketSettings, keySettings, settings)
 	}); err != nil {
@@ -46,6 +50,12 @@ func (e *Engine) SetSettings(settings Settings) (Settings, error) {
 	}
 	e.notify(EventSettingsChanged, settings)
 	go e.syncSystemProxy()
+	switch {
+	case settings.CheckIP && !previous.CheckIP:
+		go e.requestNetworkCheck()
+	case !settings.CheckIP && previous.CheckIP:
+		e.clearNetworkCheck()
+	}
 	return settings, nil
 }
 

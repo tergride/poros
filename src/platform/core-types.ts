@@ -190,6 +190,73 @@ export interface ConnectionState {
   errorText: string;
 }
 /**
+ * IPInfo is what an outside service knows about an address.
+ */
+export interface IPInfo {
+  ip: string;
+  /**
+   * CountryCode is ISO 3166; the interface names the country.
+   */
+  countryCode: string;
+  city: string;
+  isp: string;
+  /**
+   * ASN is the provider's autonomous system, 0 when unknown.
+   */
+  asn: number /* int */;
+}
+/**
+ * DNSServer is a server that resolved the names of a leak test.
+ */
+export interface DNSServer {
+  ip: string;
+  countryCode: string;
+  city: string;
+  isp: string;
+  asn: number /* int */;
+  /**
+   * Home is a server of the user's own provider: the names went past the VPN.
+   */
+  home: boolean;
+}
+/**
+ * LeakUnknown is no leak test: no connection, or the test failed.
+ */
+export const LeakUnknown = "";
+/**
+ * Leak results.
+ */
+export const LeakNone = "none";
+/**
+ * Leak results.
+ */
+export const LeakFound = "leak";
+/**
+ * NetworkState is what outside services saw at the last check.
+ */
+export interface NetworkState {
+  checking: boolean;
+  /**
+   * Direct is the address without the VPN; Proxy the one through it, empty without a connection.
+   */
+  direct: IPInfo;
+  proxy: IPInfo;
+  dns: DNSServer[];
+  /**
+   * Leak is "", none or leak.
+   */
+  leak: string;
+  /**
+   * CheckedAt is Unix milliseconds, 0 before the first check.
+   */
+  checkedAt: number /* int64 */;
+  /**
+   * Error is check_failed when a part did not work; ErrorText tells which, in English.
+   */
+  error: string;
+  errorText: string;
+}
+/**
  * Preset is a routing preset: which traffic goes through the server.
  */
 export interface Preset {
@@ -272,6 +339,14 @@ export const MethodConnectionStop = "connection.stop";
  */
 export const MethodConnectionState = "connection.state";
 /**
+ * MethodNetworkCheck starts a check of the addresses and DNS at once; network.changed brings the result.
+ */
+export const MethodNetworkCheck = "network.check";
+/**
+ * Methods the core answers.
+ */
+export const MethodNetworkState = "network.state";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -287,6 +362,10 @@ export const EventServersChanged = "servers.changed";
  * Events the core sends without a request.
  */
 export const EventConnectionChanged = "connection.changed";
+/**
+ * Events the core sends without a request.
+ */
+export const EventNetworkChanged = "network.changed";
 /**
  * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
@@ -355,3 +434,11 @@ export const ReasonStopTimeout = "stop_timeout";
  * ReasonTunBusy is a TUN adapter of an earlier core that Windows has not removed yet.
  */
 export const ReasonTunBusy = "tun_busy";
+/**
+ * ReasonCheckOff is a check asked for while the user has it turned off.
+ */
+export const ReasonCheckOff = "check_off";
+/**
+ * ReasonCheckFailed is a check of which a part did not work: a service did not answer.
+ */
+export const ReasonCheckFailed = "check_failed";

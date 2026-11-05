@@ -124,6 +124,52 @@ type ConnectionState struct {
 	ErrorText string `json:"errorText"`
 }
 
+// IPInfo is what an outside service knows about an address.
+type IPInfo struct {
+	IP string `json:"ip"`
+	// CountryCode is ISO 3166; the interface names the country.
+	CountryCode string `json:"countryCode"`
+	City        string `json:"city"`
+	ISP         string `json:"isp"`
+	// ASN is the provider's autonomous system, 0 when unknown.
+	ASN int `json:"asn"`
+}
+
+// DNSServer is a server that resolved the names of a leak test.
+type DNSServer struct {
+	IP          string `json:"ip"`
+	CountryCode string `json:"countryCode"`
+	City        string `json:"city"`
+	ISP         string `json:"isp"`
+	ASN         int    `json:"asn"`
+	// Home is a server of the user's own provider: the names went past the VPN.
+	Home bool `json:"home"`
+}
+
+// Leak results.
+const (
+	// LeakUnknown is no leak test: no connection, or the test failed.
+	LeakUnknown = ""
+	LeakNone    = "none"
+	LeakFound   = "leak"
+)
+
+// NetworkState is what outside services saw at the last check.
+type NetworkState struct {
+	Checking bool `json:"checking"`
+	// Direct is the address without the VPN; Proxy the one through it, empty without a connection.
+	Direct IPInfo      `json:"direct"`
+	Proxy  IPInfo      `json:"proxy"`
+	DNS    []DNSServer `json:"dns"`
+	// Leak is "", none or leak.
+	Leak string `json:"leak"`
+	// CheckedAt is Unix milliseconds, 0 before the first check.
+	CheckedAt int64 `json:"checkedAt"`
+	// Error is check_failed when a part did not work; ErrorText tells which, in English.
+	Error     string `json:"error"`
+	ErrorText string `json:"errorText"`
+}
+
 // Preset is a routing preset: which traffic goes through the server.
 type Preset struct {
 	ID      string `json:"id"`
@@ -168,6 +214,9 @@ const (
 	MethodConnectionStart = "connection.start"
 	MethodConnectionStop  = "connection.stop"
 	MethodConnectionState = "connection.state"
+	// MethodNetworkCheck starts a check of the addresses and DNS at once; network.changed brings the result.
+	MethodNetworkCheck = "network.check"
+	MethodNetworkState = "network.state"
 )
 
 // Events the core sends without a request.
@@ -176,6 +225,7 @@ const (
 	EventSubscriptionsChanged = "subscriptions.changed"
 	EventServersChanged       = "servers.changed"
 	EventConnectionChanged    = "connection.changed"
+	EventNetworkChanged       = "network.changed"
 )
 
 // Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
@@ -209,4 +259,8 @@ const (
 	ReasonStopTimeout = "stop_timeout"
 	// ReasonTunBusy is a TUN adapter of an earlier core that Windows has not removed yet.
 	ReasonTunBusy = "tun_busy"
+	// ReasonCheckOff is a check asked for while the user has it turned off.
+	ReasonCheckOff = "check_off"
+	// ReasonCheckFailed is a check of which a part did not work: a service did not answer.
+	ReasonCheckFailed = "check_failed"
 )

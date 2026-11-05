@@ -132,6 +132,7 @@ func (e *Engine) runStart(serial uint64) {
 	// A newer request is waiting for the lifecycle and will set the state; this result is already out of date.
 	if serial == e.conn.serial {
 		e.setState(state)
+		go e.requestNetworkCheck()
 	}
 }
 
@@ -149,6 +150,7 @@ func (e *Engine) runStop(serial uint64) {
 	defer e.conn.mu.Unlock()
 	if serial == e.conn.serial {
 		e.setState(state)
+		go e.requestNetworkCheck()
 	}
 }
 
@@ -335,7 +337,9 @@ func (e *Engine) onDefaultInterface(iface *control.Interface, _ int) {
 		e.conn.lifecycle.Unlock()
 		if changed && e.ConnectionState().State == ConnectionRunning {
 			e.StartConnection()
+			return
 		}
+		e.requestNetworkCheck()
 	}()
 }
 

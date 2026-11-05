@@ -85,8 +85,9 @@ type shell struct {
 	conn    net.Conn
 	mu      sync.Mutex
 	nextID  int
-	replies map[int]chan json.RawMessage
-	states  chan map[string]any
+	replies  map[int]chan json.RawMessage
+	states   chan map[string]any
+	networks chan map[string]any
 }
 
 func startShell(t *testing.T, program, dataDir string, waitPID int) *shell {
@@ -118,7 +119,10 @@ func startShell(t *testing.T, program, dataDir string, waitPID int) *shell {
 		process.Process.Kill()
 		t.Fatal("the core did not connect")
 	}
-	s := &shell{t: t, process: process, conn: conn, replies: map[int]chan json.RawMessage{}, states: make(chan map[string]any, 64)}
+	s := &shell{
+		t: t, process: process, conn: conn, replies: map[int]chan json.RawMessage{},
+		states: make(chan map[string]any, 64), networks: make(chan map[string]any, 64),
+	}
 	go s.read()
 	s.call("hello", map[string]string{"token": token})
 	return s
@@ -149,10 +153,13 @@ func (s *shell) read() {
 			}
 			continue
 		}
-		if message.Method == "connection.changed" {
-			var state map[string]any
-			json.Unmarshal(message.Params, &state)
+		var state map[string]any
+		json.Unmarshal(message.Params, &state)
+		switch message.Method {
+		case "connection.changed":
 			s.states <- state
+		case "network.changed":
+			s.networks <- state
 		}
 	}
 }
@@ -239,42 +246,16 @@ func TestTUNAfterAKilledCore(t *testing.T) {
 		t.Skip("brings up a TUN; runs only in the virtual machine")
 	}
 	dataDir := t.TempDir()
-
-	// The server binds its own connections to the network adapter, or they would loop back into the TUN.
-	serverPort := freePort(t)
-	server, cancel, err := boxmain.Create([]byte(fmt.Sprintf(`{"log":{"level":"warn"},`+
-		`"inbounds":[{"type":"trojan","listen":"127.0.0.1","listen_port":%d,"users":[{"password":"secret"}]}],`+
-		`"outbounds":[{"type":"direct","tag":"direct"}],"route":{"auto_detect_interface":true}}`, serverPort)), nil)
-	if err != nil {
-		t.Fatalf("the test server: %v", err)
-	}
-	defer func() { cancel(); server.Close() }()
-	relay := newCounter(t, fmt.Sprintf("127.0.0.1:%d", serverPort))
-	link := fmt.Sprintf("trojan://secret@%s?security=none#vm", relay.listener.Addr())
-	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, link) }))
-	defer provider.Close()
-
+	relay, providerURL := startTestServer(t)
 	first := startShell(t, program, dataDir, 0)
-	var update struct {
-		Subscription struct{ ID string } `json:"subscription"`
-	}
-	json.Unmarshal(first.call("subscriptions.add", map[string]string{"url": provider.URL + "/sub", "name": ""}), &update)
-	var servers []struct{ ID string }
-	json.Unmarshal(first.call("servers.list", map[string]string{"subscriptionId": update.Subscription.ID}), &servers)
-	if len(servers) != 1 {
-		t.Fatalf("servers: %v", servers)
-	}
-	var settings map[string]any
-	json.Unmarshal(first.call("settings.get", nil), &settings)
-	settings["server"], settings["tun"], settings["preset"] = servers[0].ID, true, "all"
-	first.call("settings.set", settings)
+	first.useServer(providerURL)
 
 	took := first.connect()
 	if !tunPresent() {
 		t.Fatal("the TUN adapter is missing while the connection runs")
 	}
 	before := relay.count.Load()
-	if err = fetch(30 * time.Second); err != nil {
+	if err := fetch(30 * time.Second); err != nil {
 		t.Fatalf("the page does not open through the TUN: %v", err)
 	}
 	if relay.count.Load() == before {
@@ -293,7 +274,7 @@ func TestTUNAfterAKilledCore(t *testing.T) {
 	second := startShell(t, program, dataDir, killedPID)
 	took = second.connect()
 	before = relay.count.Load()
-	if err = fetch(30 * time.Second); err != nil {
+	if err := fetch(30 * time.Second); err != nil {
 		t.Fatalf("after the killed core the page does not open again: %v", err)
 	}
 	if relay.count.Load() == before {
@@ -318,8 +299,87 @@ func TestTUNAfterAKilledCore(t *testing.T) {
 	if tunPresent() {
 		t.Error("the TUN adapter stayed after a clean exit")
 	}
-	if err = fetch(20 * time.Second); err != nil {
+	if err := fetch(20 * time.Second); err != nil {
 		t.Errorf("after the clean exit the network does not work without Poros: %v", err)
+	}
+}
+
+// startTestServer runs a Trojan server behind a counting relay and a subscription with it, all on loopback. The
+// server binds its own connections to the network adapter, or they would loop back into the TUN, and resolves
+// names over DoH: strict_route lets no other process than Poros's core send DNS past the TUN.
+func startTestServer(t *testing.T) (*counter, string) {
+	t.Helper()
+	serverPort := freePort(t)
+	server, cancel, err := boxmain.Create([]byte(fmt.Sprintf(`{"log":{"level":"warn"},`+
+		`"dns":{"servers":[{"type":"https","tag":"doh","server":"1.1.1.1"}]},`+
+		`"inbounds":[{"type":"trojan","listen":"127.0.0.1","listen_port":%d,"users":[{"password":"secret"}]}],`+
+		`"outbounds":[{"type":"direct","tag":"direct"}],"route":{"auto_detect_interface":true,"default_domain_resolver":"doh"}}`,
+		serverPort)), nil)
+	if err != nil {
+		t.Fatalf("the test server: %v", err)
+	}
+	t.Cleanup(func() { cancel(); server.Close() })
+	relay := newCounter(t, fmt.Sprintf("127.0.0.1:%d", serverPort))
+	link := fmt.Sprintf("trojan://secret@%s?security=none#vm", relay.listener.Addr())
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, link) }))
+	t.Cleanup(provider.Close)
+	return relay, provider.URL + "/sub"
+}
+
+// useServer adds the subscription and chooses its server, with TUN and the preset that sends all through it.
+func (s *shell) useServer(providerURL string) {
+	s.t.Helper()
+	var update struct {
+		Subscription struct{ ID string } `json:"subscription"`
+	}
+	json.Unmarshal(s.call("subscriptions.add", map[string]string{"url": providerURL, "name": ""}), &update)
+	var servers []struct{ ID string }
+	json.Unmarshal(s.call("servers.list", map[string]string{"subscriptionId": update.Subscription.ID}), &servers)
+	if len(servers) != 1 {
+		s.t.Fatalf("servers: %v", servers)
+	}
+	var settings map[string]any
+	json.Unmarshal(s.call("settings.get", nil), &settings)
+	settings["server"], settings["tun"], settings["preset"] = servers[0].ID, true, "all"
+	s.call("settings.set", settings)
+}
+
+// TestNetworkCheckThroughTUN asks the outside services who sees the machine, with and without the VPN, and runs
+// the DNS leak test with the TUN up. The addresses are not printed: through the host they are the host's.
+func TestNetworkCheckThroughTUN(t *testing.T) {
+	program := os.Getenv("POROS_TEST_CORE")
+	if os.Getenv("POROS_VM_TESTS") != "1" || program == "" {
+		t.Skip("brings up a TUN and asks outside services; runs only in the virtual machine")
+	}
+	_, providerURL := startTestServer(t)
+	s := startShell(t, program, t.TempDir(), 0)
+	defer s.conn.Close()
+	s.useServer(providerURL)
+	s.connect()
+	s.call("network.check", nil)
+	deadline := time.After(90 * time.Second)
+	for {
+		select {
+		case state := <-s.networks:
+			if state["checking"] == true {
+				continue
+			}
+			direct, _ := state["direct"].(map[string]any)
+			proxy, _ := state["proxy"].(map[string]any)
+			dns, _ := state["dns"].([]any)
+			t.Logf("without the VPN: found %v, %v, AS%v; through the VPN: found %v, %v, AS%v; DNS servers: %d; leak %q; %v",
+				direct["ip"] != "", direct["countryCode"], direct["asn"], proxy["ip"] != "", proxy["countryCode"], proxy["asn"],
+				len(dns), state["leak"], state["errorText"])
+			if direct["ip"] == "" || proxy["ip"] == "" || len(dns) == 0 {
+				t.Fatalf("the check is incomplete: %v", state["errorText"])
+			}
+			if state["leak"] != "none" {
+				t.Fatalf("with the TUN up the DNS must not leak: %q", state["leak"])
+			}
+			return
+		case <-deadline:
+			t.Fatal("the check did not finish in 90 seconds")
+		}
 	}
 }
 

@@ -57,6 +57,7 @@ type Engine struct {
 	stopped sync.WaitGroup
 
 	conn        connection
+	net         networkCheck
 	mixedPort   uint16
 	sysProxy    *sysproxy.Proxy
 	foreignUser bool
@@ -115,6 +116,7 @@ func Open(cfg Config) (*Engine, error) {
 		sysProxy:    sysproxy.New(filepath.Join(cfg.DataDir, "system-proxy.json")),
 	}
 	e.conn.state = ConnectionState{State: ConnectionIdle}
+	e.net.state = NetworkState{DNS: []DNSServer{}}
 	// Only now, with the data folder locked: the proxy of another core on the folder is not this one's to clear.
 	if err = e.sysProxy.Recover(); err != nil {
 		e.conn.state.Error, e.conn.state.ErrorText = ReasonSystemProxyFailed, err.Error()
@@ -133,6 +135,7 @@ func (e *Engine) Close() error {
 	}
 	e.stop()
 	e.stopped.Wait()
+	e.closeNetworkChecks()
 	err := e.closeConnection()
 	return errors.Join(err, e.db.Close())
 }

@@ -6,6 +6,7 @@ import type {
   AppInfo,
   ByID,
   ConnectionState,
+  NetworkState,
   Preset,
   Server,
   ServersChanged,
@@ -20,6 +21,7 @@ import {
   ConnectionStarting,
   ConnectionStopping,
   EventConnectionChanged,
+  EventNetworkChanged,
   EventServersChanged,
   EventSettingsChanged,
   EventSubscriptionsChanged,
@@ -27,6 +29,8 @@ import {
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodNetworkCheck,
+  MethodNetworkState,
   MethodPresetsList,
   MethodServersList,
   MethodSettingsGet,
@@ -35,6 +39,8 @@ import {
   MethodSubscriptionsList,
   MethodSubscriptionsRemove,
   MethodSubscriptionsUpdate,
+  LeakNone,
+  ReasonCheckOff,
   ReasonDuplicate,
   ReasonInvalidURL,
   ReasonNoServer,
@@ -56,6 +62,8 @@ export interface CoreMethods {
   [MethodConnectionStart]: { params: undefined; result: ConnectionState }
   [MethodConnectionStop]: { params: undefined; result: ConnectionState }
   [MethodConnectionState]: { params: undefined; result: ConnectionState }
+  [MethodNetworkCheck]: { params: undefined; result: NetworkState }
+  [MethodNetworkState]: { params: undefined; result: NetworkState }
 }
 
 export interface CoreEvents {
@@ -63,6 +71,7 @@ export interface CoreEvents {
   [EventSubscriptionsChanged]: Subscription[]
   [EventServersChanged]: ServersChanged
   [EventConnectionChanged]: ConnectionState
+  [EventNetworkChanged]: NetworkState
 }
 
 export type CoreMethod = keyof CoreMethods
@@ -159,6 +168,19 @@ const idle: ConnectionState = {
   errorText: '',
 }
 
+const noAddress = { ip: '', countryCode: '', city: '', isp: '', asn: 0 }
+
+const noCheck: NetworkState = {
+  checking: false,
+  direct: noAddress,
+  proxy: noAddress,
+  dns: [],
+  leak: '',
+  checkedAt: 0,
+  error: '',
+  errorText: '',
+}
+
 function failed(reason: string, message: string): CoreError {
   return { code: 1, message, data: { reason } }
 }
@@ -172,6 +194,7 @@ export function createStubCore(): CoreClient {
   let subscriptions: Subscription[] = []
   let servers: Server[] = []
   let connection = { ...idle }
+  let network = { ...noCheck }
   let nextId = 1
   const handlers = new Map<string, Set<(params: never) => void>>()
   const emit = <E extends CoreEvent>(event: E, params: CoreEvents[E]) =>
@@ -291,6 +314,30 @@ export function createStubCore(): CoreClient {
       return { ...connection }
     },
     [MethodConnectionState]: () => ({ ...connection }),
+    [MethodNetworkCheck]: () => {
+      if (!settings.checkIp) throw failed(ReasonCheckOff, 'the IP and DNS check is turned off')
+      network = { ...network, checking: true }
+      emit(EventNetworkChanged, { ...network })
+      const connected = connection.state === ConnectionRunning
+      setTimeout(() => {
+        // Documentation addresses: the stub asks no outside service.
+        network = {
+          ...noCheck,
+          direct: { ip: '203.0.113.5', countryCode: 'RU', city: 'Moscow', isp: 'Home Telecom', asn: 64500 },
+          proxy: connected
+            ? { ip: '198.51.100.24', countryCode: 'DE', city: 'Frankfurt am Main', isp: 'Example Hosting', asn: 64501 }
+            : noAddress,
+          dns: connected
+            ? [{ ip: '192.0.2.53', countryCode: 'DE', city: '', isp: 'Example DNS', asn: 64510, home: false }]
+            : [],
+          leak: connected ? LeakNone : '',
+          checkedAt: Date.now(),
+        }
+        emit(EventNetworkChanged, { ...network })
+      }, 0)
+      return { ...network }
+    },
+    [MethodNetworkState]: () => ({ ...network }),
   }
 
   return {

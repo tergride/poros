@@ -6,16 +6,19 @@ import {
   ConnectionRunning,
   ConnectionStarting,
   EventConnectionChanged,
+  EventNetworkChanged,
   EventServersChanged,
   EventSubscriptionsChanged,
   MethodConnectionStart,
   MethodConnectionStop,
+  MethodNetworkCheck,
   MethodServersList,
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsAdd,
   MethodSubscriptionsList,
   MethodSubscriptionsRemove,
+  ReasonCheckOff,
   ReasonDuplicate,
   ReasonInvalidURL,
   ReasonNoServer,
@@ -98,5 +101,22 @@ describe('the stub core', () => {
     await core.call(MethodConnectionStop)
     await settle()
     expect(states).toHaveBeenLastCalledWith(expect.objectContaining({ state: ConnectionIdle, error: '' }))
+  })
+
+  it('checks the addresses only while the user keeps the check on', async () => {
+    const core = createStubCore()
+    const checks = vi.fn()
+    core.on(EventNetworkChanged, checks)
+    const settings = await core.call(MethodSettingsGet)
+    await core.call(MethodSettingsSet, { ...settings, checkIp: false })
+    expect(await reasonOf(core.call(MethodNetworkCheck))).toBe(ReasonCheckOff)
+
+    await core.call(MethodSettingsSet, { ...settings, checkIp: true })
+    expect((await core.call(MethodNetworkCheck)).checking).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    // Without a connection there is neither an address through the VPN nor a leak test.
+    expect(checks).toHaveBeenLastCalledWith(
+      expect.objectContaining({ checking: false, proxy: expect.objectContaining({ ip: '' }), leak: '' }),
+    )
   })
 })
