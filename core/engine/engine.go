@@ -32,7 +32,7 @@ type Engine struct {
 	userAgent string
 	db        *bbolt.DB
 	notify    Notify
-	presets   []Preset
+	presets   []presetRecord
 	now       func() time.Time
 	client    *http.Client
 

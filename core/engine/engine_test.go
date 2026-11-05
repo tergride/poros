@@ -49,7 +49,7 @@ func TestSettingsStartFromDefaultsAndPersist(t *testing.T) {
 	}
 
 	want := DefaultSettings()
-	want.Tun, want.SystemProxy, want.Preset, want.Language, want.SubscriptionUpdateHours = true, true, "except-ru", "ru", 24
+	want.Tun, want.SystemProxy, want.Preset, want.Language, want.SubscriptionUpdateHours = true, true, "hardened", "ru", 24
 	if _, err = e.SetSettings(want); err != nil {
 		t.Fatalf("SetSettings: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestBuiltinPresets(t *testing.T) {
 			t.Errorf("preset %+v must be builtin and named", p)
 		}
 	}
-	if !slices.Equal(ids, []string{"all", "except-ru", "blocked-only", "hardened"}) {
+	if !slices.Equal(ids, []string{"all", "hardened"}) {
 		t.Fatalf("builtin presets: %v", ids)
 	}
 }

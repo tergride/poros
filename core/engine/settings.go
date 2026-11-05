@@ -53,7 +53,7 @@ func (e *Engine) validateSettings(settings Settings) error {
 	if !slices.Contains([]string{"", "en", "ru"}, settings.Language) {
 		return jsonrpc.Failed(ReasonInvalidValue, "language must be empty, en or ru, not %q", settings.Language)
 	}
-	if !slices.ContainsFunc(e.presets, func(p Preset) bool { return p.ID == settings.Preset }) {
+	if !slices.ContainsFunc(e.presets, func(p presetRecord) bool { return p.ID == settings.Preset }) {
 		return jsonrpc.Failed(ReasonUnknownPreset, "there is no preset %q", settings.Preset)
 	}
 	if settings.SubscriptionUpdateHours < 0 || settings.SubscriptionUpdateHours > maxUpdateHours {

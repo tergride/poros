@@ -40,14 +40,29 @@ func (p Profile) Validate() error {
 		if err := requiredField(p.VLESS.UUID, "the VLESS UUID"); err != nil {
 			return err
 		}
-		return p.VLESS.TLS.validate(p.VLESS.Transport.Type)
+		if err := p.VLESS.TLS.validate(p.VLESS.Transport.Type); err != nil {
+			return err
+		}
+		if p.VLESS.NeedsXray() {
+			if t := p.VLESS.Transport.Type; t == TransportHTTP || t == TransportQUIC {
+				return unsupported("Xray no longer runs the %s transport", t)
+			}
+			return p.VLESS.TLS.validateXray()
+		}
+		return nil
 	case TypeVMess:
 		if err := requiredField(p.VMess.UUID, "the VMess UUID"); err != nil {
+			return err
+		}
+		if err := p.VMess.Transport.validateSingBox(p.VMess.TLS.Enabled); err != nil {
 			return err
 		}
 		return p.VMess.TLS.validate(p.VMess.Transport.Type)
 	case TypeTrojan:
 		if err := requiredField(p.Trojan.Password, "the Trojan password"); err != nil {
+			return err
+		}
+		if err := p.Trojan.Transport.validateSingBox(p.Trojan.TLS.Enabled); err != nil {
 			return err
 		}
 		return p.Trojan.TLS.validate(p.Trojan.Transport.Type)
@@ -101,6 +116,43 @@ func (t TLS) validate(transport string) error {
 	}
 	if t.DisableSNI && !t.Insecure {
 		return errors.New("REALITY cannot run with disable_sni")
+	}
+	return nil
+}
+
+// NeedsXray tells whether only Xray runs the profile: VLESS encryption, XHTTP, or Xray's HTTP header obfuscation
+// under TLS, which sing-box would send as HTTP/2.
+func (v *VLESS) NeedsXray() bool {
+	return v.Encryption != "" || v.Transport.Type == TransportXHTTP || (v.Transport.HeaderType == "http" && v.TLS.Enabled)
+}
+
+// validateSingBox refuses the Xray transports of a protocol only sing-box runs.
+func (t Transport) validateSingBox(tls bool) error {
+	if t.Type == TransportXHTTP {
+		return unsupported("XHTTP works only with VLESS")
+	}
+	if t.HeaderType == "http" && tls {
+		return unsupported("HTTP header obfuscation under TLS works only with VLESS")
+	}
+	return nil
+}
+
+// validateXray refuses TLS settings Xray has no way to express.
+func (t TLS) validateXray() error {
+	if !t.Enabled || t.Reality.Enabled {
+		return nil
+	}
+	if t.Insecure && len(t.CertificateSHA256) == 0 {
+		return unsupported("Xray no longer skips the certificate check; the server needs a certificate pin")
+	}
+	if len(t.CertificatePublicKeySHA256) > 0 {
+		return unsupported("Xray pins only the certificate, not the server key")
+	}
+	if t.DisableSNI {
+		return unsupported("Xray always sends the server name")
+	}
+	if t.ECH.Enabled && len(t.ECH.Config) == 0 {
+		return unsupported("Xray needs the ECH config itself, not a DNS lookup for it")
 	}
 	return nil
 }

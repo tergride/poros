@@ -1,0 +1,71 @@
+{
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 23456,
+      "protocol": "socks",
+      "settings": {
+        "accounts": [
+          {
+            "pass": "bridge-pass",
+            "user": "bridge-user"
+          }
+        ],
+        "auth": "password",
+        "ip": "127.0.0.1",
+        "udp": true
+      },
+      "tag": "bridge"
+    }
+  ],
+  "log": {
+    "access": "none",
+    "loglevel": "warning"
+  },
+  "outbounds": [
+    {
+      "protocol": "vless",
+      "settings": {
+        "address": "203.0.113.1",
+        "encryption": "none",
+        "id": "b831381d-6324-4d53-ad4f-8cda48b30811",
+        "port": 443
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "tls",
+        "sockopt": {
+          "interface": "Wi-Fi"
+        },
+        "tlsSettings": {
+          "serverName": "up.example.com"
+        },
+        "xhttpSettings": {
+          "extra": {
+            "downloadSettings": {
+              "address": "2001:db8::7",
+              "network": "xhttp",
+              "port": 443,
+              "security": "tls",
+              "sockopt": {
+                "interface": "Wi-Fi"
+              },
+              "tlsSettings": {
+                "serverName": "dl.example.com"
+              },
+              "xhttpSettings": {
+                "host": "dl.example.com",
+                "path": "/down"
+              }
+            },
+            "xPaddingBytes": "100-1000"
+          },
+          "host": "up.example.com",
+          "mode": "packet-up",
+          "path": "/up"
+        }
+      },
+      "tag": "proxy"
+    }
+  ]
+}

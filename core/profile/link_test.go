@@ -413,6 +413,11 @@ func TestParseLinkRejects(t *testing.T) {
 		{"vmess json port 0", vmessJSONLink(`{"add":"vm.example.com","port":"0","id":"` + testUUID + `"}`), "server port 0"},
 		{"vmess json without server", vmessJSONLink(`{"port":443,"id":"` + testUUID + `"}`), "server address is missing"},
 		{"anytls without password", "anytls://@at.example.com", "AnyTLS password is missing"},
+		// sing-box runs VMess and Trojan, and has no XHTTP.
+		{"vmess xhttp", "vmess://" + testUUID + "@vm.example.com?type=xhttp&security=tls", "only with VLESS"},
+		{"trojan http header over tls", "trojan://pw@t.example.com?type=raw&headerType=http&security=tls", "only with VLESS"},
+		// Only Xray runs XHTTP, and it refuses allowInsecure.
+		{"xhttp insecure without pin", "vless://" + testUUID + "@x.example.com?type=xhttp&security=tls&allowInsecure=1", "certificate pin"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

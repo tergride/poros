@@ -18,10 +18,12 @@ func (e unsupportedError) Error() string { return string(e) }
 
 func (unsupportedError) Is(target error) bool { return target == ErrUnsupported }
 
-// unsupported formats an error that matches ErrUnsupported.
-func unsupported(format string, args ...any) error {
+// Unsupported formats an error that matches ErrUnsupported; the config builder reports with it too.
+func Unsupported(format string, args ...any) error {
 	return unsupportedError(fmt.Sprintf(format, args...))
 }
+
+func unsupported(format string, args ...any) error { return Unsupported(format, args...) }
 
 type linkParser func(link string) (Profile, error)
 

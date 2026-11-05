@@ -1,0 +1,146 @@
+{
+  "log": {
+    "level": "info"
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "https",
+        "tag": "dns-remote",
+        "detour": "proxy",
+        "server": "8.8.8.8",
+        "path": "/dns-query"
+      },
+      {
+        "type": "local",
+        "tag": "dns-direct"
+      }
+    ],
+    "rules": [
+      {
+        "domain_suffix": [
+          "bank.example",
+          ".xn--p1ai"
+        ],
+        "server": "dns-direct"
+      },
+      {
+        "process_name": "steam.exe",
+        "server": "dns-direct"
+      }
+    ],
+    "final": "dns-remote"
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "0.0.0.0",
+      "listen_port": 2090
+    },
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "interface_name": "poros-net",
+      "mtu": 1500,
+      "address": [
+        "172.19.1.1/24",
+        "fdfe:dcba:9877::1/96"
+      ],
+      "auto_route": true,
+      "strict_route": true,
+      "route_exclude_address": [
+        "255.255.255.255/32",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "169.254.0.0/16",
+        "224.0.0.0/4",
+        "fc00::/7",
+        "fe80::/10",
+        "ff00::/8"
+      ]
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "trojan",
+      "tag": "proxy",
+      "server": "t.example.com",
+      "server_port": 443,
+      "password": "secret",
+      "tls": {
+        "enabled": true,
+        "server_name": "t.example.com",
+        "insecure": true,
+        "fragment": true
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "sniff"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": "mixed-in",
+            "domain": "localhost",
+            "domain_suffix": ".localhost",
+            "ip_cidr": [
+              "127.0.0.0/8",
+              "::1"
+            ]
+          },
+          {
+            "source_ip_cidr": [
+              "127.0.0.0/8",
+              "::1"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "reject"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "domain_suffix": [
+          "bank.example",
+          ".xn--p1ai"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "ip_cidr": [
+          "10.20.0.0/16",
+          "192.0.2.1"
+        ],
+        "outbound": "proxy"
+      },
+      {
+        "process_name": "steam.exe",
+        "outbound": "direct"
+      },
+      {
+        "domain": "ads.example",
+        "action": "reject"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      }
+    ],
+    "final": "proxy",
+    "auto_detect_interface": true,
+    "default_domain_resolver": "dns-direct"
+  }
+}

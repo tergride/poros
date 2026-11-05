@@ -127,8 +127,6 @@ const stubServers: Omit<Server, 'id' | 'subscriptionId'>[] = [
 
 const builtinPresets: Preset[] = [
   { id: 'all', name: 'All traffic', builtin: true },
-  { id: 'except-ru', name: 'Except Russian sites', builtin: true },
-  { id: 'blocked-only', name: 'Blocked sites only', builtin: true },
   { id: 'hardened', name: 'Hardened bypass', builtin: true },
 ]
 
