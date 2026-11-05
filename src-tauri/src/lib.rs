@@ -1,3 +1,4 @@
+mod core_launch;
 mod core_process;
 mod data_dir;
 mod fatal;
@@ -43,6 +44,28 @@ fn core_status(core: tauri::State<'_, Core>) -> CoreStatus {
     core.status()
 }
 
+/// Restarts the core with administrator rights for TUN; the UAC prompt shows over the window.
+#[tauri::command]
+async fn core_elevate(
+    core: tauri::State<'_, Core>,
+    window: tauri::WebviewWindow,
+) -> Result<(), CoreError> {
+    #[cfg(windows)]
+    let handle = window.hwnd().ok().map(|hwnd| hwnd.0 as isize);
+    #[cfg(not(windows))]
+    let handle = {
+        let _ = window;
+        None
+    };
+    core.elevate(handle).await
+}
+
+/// Restarts the core without rights; it also brings back a core that gave up.
+#[tauri::command]
+async fn core_restart(core: tauri::State<'_, Core>) -> Result<(), CoreError> {
+    core.restart().await
+}
+
 /// Core events and state changes go to the interface as `core-event` and `core-status`.
 struct WindowSink(AppHandle);
 
@@ -83,7 +106,13 @@ pub fn run() {
     }
 
     let app = tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![app_info, core_call, core_status])
+        .invoke_handler(tauri::generate_handler![
+            app_info,
+            core_call,
+            core_status,
+            core_elevate,
+            core_restart
+        ])
         .setup(|app| {
             let data_dir = match data_dir::resolve(app.handle()) {
                 Ok(dir) => dir,

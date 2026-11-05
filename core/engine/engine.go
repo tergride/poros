@@ -33,6 +33,9 @@ type Config struct {
 	Notify Notify
 	// MixedPort is the port of the local proxy; 0 is DefaultMixedPort.
 	MixedPort uint16
+	// ForeignUser is a core elevated under another account than the shell's: the system proxy it would set is
+	// that account's, so it sets none.
+	ForeignUser bool
 }
 
 type Engine struct {
@@ -53,9 +56,10 @@ type Engine struct {
 	stop    context.CancelFunc
 	stopped sync.WaitGroup
 
-	conn      connection
-	mixedPort uint16
-	sysProxy  *sysproxy.Proxy
+	conn        connection
+	mixedPort   uint16
+	sysProxy    *sysproxy.Proxy
+	foreignUser bool
 	// netCallback follows the default interface for connections on Xray.
 	netCallback *list.Element[tun.DefaultInterfaceUpdateCallback]
 }
@@ -97,17 +101,18 @@ func Open(cfg Config) (*Engine, error) {
 		mixedPort = DefaultMixedPort
 	}
 	e := &Engine{
-		dataDir:   cfg.DataDir,
-		userAgent: userAgent,
-		db:        db,
-		notify:    notify,
-		presets:   presets,
-		now:       time.Now,
-		client:    &http.Client{Timeout: fetchTimeout, Transport: transport},
-		updating:  map[string]*sync.Mutex{},
-		stop:      func() {},
-		mixedPort: mixedPort,
-		sysProxy:  sysproxy.New(filepath.Join(cfg.DataDir, "system-proxy.json")),
+		dataDir:     cfg.DataDir,
+		userAgent:   userAgent,
+		db:          db,
+		notify:      notify,
+		presets:     presets,
+		now:         time.Now,
+		client:      &http.Client{Timeout: fetchTimeout, Transport: transport},
+		updating:    map[string]*sync.Mutex{},
+		stop:        func() {},
+		mixedPort:   mixedPort,
+		foreignUser: cfg.ForeignUser,
+		sysProxy:    sysproxy.New(filepath.Join(cfg.DataDir, "system-proxy.json")),
 	}
 	e.conn.state = ConnectionState{State: ConnectionIdle}
 	// Only now, with the data folder locked: the proxy of another core on the folder is not this one's to clear.

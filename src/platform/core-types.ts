@@ -11,6 +11,10 @@ export interface AppInfo {
   singBox: string;
   xray: string;
   dataDir: string;
+  /**
+   * Elevated is a core with the administrator rights TUN needs.
+   */
+  elevated: boolean;
 }
 /**
  * Settings are the user's choices the core keeps between runs.
@@ -347,3 +351,7 @@ export const ReasonSystemProxyFailed = "system_proxy_failed";
  * ReasonStopTimeout is a connection that did not close in time; the core has to restart to let go of it.
  */
 export const ReasonStopTimeout = "stop_timeout";
+/**
+ * ReasonTunBusy is a TUN adapter of an earlier core that Windows has not removed yet.
+ */
+export const ReasonTunBusy = "tun_busy";

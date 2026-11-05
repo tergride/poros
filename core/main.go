@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	runtimeDebug "runtime/debug"
 	"runtime/metrics"
@@ -18,6 +20,7 @@ import (
 	"PorosCore/engine"
 	"PorosCore/internal/boxmain"
 	"PorosCore/internal/guard"
+	"PorosCore/internal/host"
 	"PorosCore/internal/ipc"
 	"PorosCore/internal/jsonrpc"
 
@@ -80,40 +83,117 @@ func writeHeapProfile() (string, error) {
 	return f.Name(), f.Sync()
 }
 
-// The host passes these in the environment, so they do not show in the process list.
+// options are what the shell passes: its channel and the token it will greet the core with, the data folder, the
+// app's version, its own process, and the core this one replaces. An elevated core gets no environment from its
+// shell, so all of it comes as arguments.
+type options struct {
+	pipe    string
+	token   string
+	dataDir string
+	version string
+	hostPID int
+	waitPID int
+}
+
+func parseOptions(args []string) (options, error) {
+	var opts options
+	flags := flag.NewFlagSet("PorosCore", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.StringVar(&opts.pipe, "pipe", "", "")
+	flags.StringVar(&opts.token, "token", "", "")
+	flags.StringVar(&opts.dataDir, "data-dir", "", "")
+	flags.StringVar(&opts.version, "version", "", "")
+	flags.IntVar(&opts.hostPID, "host-pid", 0, "")
+	flags.IntVar(&opts.waitPID, "wait-pid", 0, "")
+	if err := flags.Parse(args); err != nil {
+		return opts, err
+	}
+	if opts.pipe == "" || opts.token == "" || opts.dataDir == "" {
+		return opts, errors.New("--pipe, --token and --data-dir are required")
+	}
+	return opts, nil
+}
+
 const (
-	envPipe    = "POROS_CORE_PIPE"
-	envToken   = "POROS_CORE_TOKEN"
-	envDataDir = "POROS_DATA_DIR"
-	envVersion = "POROS_VERSION"
+	// waitPrevious is how long a core waits for the one it replaces: that one closes its connection first.
+	waitPrevious = 20 * time.Second
+	// exitDeadline bounds the way out once the shell is gone: a connection that does not close goes with the process.
+	exitDeadline = 15 * time.Second
+	logFile      = "core.log"
+	oldLogFile   = "core.1.log"
 )
 
-// runCore serves the host over its channel and exits when the host goes away: the channel is the core's lifetime.
-func runCore() {
-	pipe, token, dataDir := os.Getenv(envPipe), os.Getenv(envToken), os.Getenv(envDataDir)
-	if pipe == "" || token == "" || dataDir == "" {
-		log.Fatalf("%s, %s and %s must be set", envPipe, envToken, envDataDir)
+// openLog keeps this run's log and the previous one in the logs folder of the data folder.
+func openLog(dataDir string) (*os.File, error) {
+	dir := filepath.Join(dataDir, "logs")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
 	}
-	// The token is for this process only; children such as the guard must not inherit it.
-	os.Unsetenv(envToken)
+	_ = os.Rename(filepath.Join(dir, logFile), filepath.Join(dir, oldLogFile))
+	return os.OpenFile(filepath.Join(dir, logFile), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+}
+
+// runCore serves the shell over its channel and exits when the shell goes away: the channel is the core's lifetime.
+func runCore() {
+	opts, err := parseOptions(os.Args[1:])
+	if err != nil {
+		log.Fatalf("arguments: %v", err)
+	}
+	if opts.waitPID != 0 {
+		if err = host.WaitExit(opts.waitPID, waitPrevious); err != nil {
+			log.Fatalf("%v", err)
+		}
+	}
+	if logOutput, err := openLog(opts.dataDir); err == nil {
+		if err = host.RedirectOutput(logOutput); err != nil {
+			log.Printf("log to %s: %v", logOutput.Name(), err)
+		}
+		log.SetOutput(logOutput)
+		_ = runtimeDebug.SetCrashOutput(logOutput, runtimeDebug.CrashOptions{})
+	}
+	log.Printf("sing-box %s, Xray %s", C.Version, core.Version())
 
 	boxmain.DisableColor()
 
-	conn, err := ipc.Dial(pipe)
+	conn, err := ipc.Dial(opts.pipe)
 	if err != nil {
-		log.Fatalf("connect to the host: %v", err)
+		log.Fatalf("connect to the shell: %v", err)
+	}
+	foreignUser := false
+	if opts.hostPID != 0 {
+		same, err := host.SameUser(opts.hostPID)
+		foreignUser = err == nil && !same
 	}
 	peer := jsonrpc.NewConn(conn)
-	eng, err := engine.Open(engine.Config{DataDir: dataDir, Version: os.Getenv(envVersion), Notify: peer.Notify})
+	eng, err := engine.Open(engine.Config{
+		DataDir: opts.dataDir, Version: opts.version, Notify: peer.Notify, ForeignUser: foreignUser,
+	})
 	if err != nil {
 		log.Fatalf("open the data folder: %v", err)
 	}
 	eng.StartSchedule()
-	err = peer.Serve(context.Background(), token, eng.Handlers())
-	eng.Close()
-	if !errors.Is(err, io.EOF) {
-		log.Fatalf("host connection: %v", err)
+	if opts.hostPID != 0 {
+		// A shell that is killed may leave the channel open for a while; its process is the surer sign.
+		gone := host.Watch(opts.hostPID)
+		go func() {
+			<-gone
+			log.Print("the shell is gone")
+			time.AfterFunc(exitDeadline+5*time.Second, func() { os.Exit(3) })
+			conn.Close()
+		}()
 	}
+	err = peer.Serve(context.Background(), opts.token, eng.Handlers())
+	if err != nil && !errors.Is(err, io.EOF) {
+		log.Printf("shell connection: %v", err)
+	}
+	time.AfterFunc(exitDeadline, func() {
+		log.Print("the connection did not close in time")
+		os.Exit(3)
+	})
+	if err = eng.Close(); err != nil {
+		log.Printf("close: %v", err)
+	}
+	os.Exit(0)
 }
 
 func main() {
@@ -129,9 +209,6 @@ func main() {
 			os.Exit(2)
 		}
 	}()
-	fmt.Println("sing-box:", C.Version)
-	fmt.Println("Xray-core:", core.Version())
-	fmt.Println()
 	runtimeDebug.SetMemoryLimit(memoryLimit)
 	go watchMemory()
 

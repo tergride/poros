@@ -70,6 +70,8 @@ export type CoreEvent = keyof CoreEvents
 
 export interface CoreStatus {
   state: 'starting' | 'ready' | 'down'
+  /** The core runs with administrator rights, which TUN needs. */
+  elevated: boolean
   error?: string
 }
 
@@ -204,7 +206,7 @@ export function createStubCore(): CoreClient {
   })
 
   const methods: { [M in CoreMethod]: (params: CoreMethods[M]['params']) => CoreMethods[M]['result'] } = {
-    [MethodAppInfo]: () => ({ singBox: 'stub', xray: 'stub', dataDir: 'browser' }),
+    [MethodAppInfo]: () => ({ singBox: 'stub', xray: 'stub', dataDir: 'browser', elevated: false }),
     [MethodSettingsGet]: () => ({ ...settings }),
     [MethodSettingsSet]: (next) => {
       settings = { ...next }
@@ -302,7 +304,7 @@ export function createStubCore(): CoreClient {
       handlers.set(event, set)
       return () => set.delete(handler as (params: never) => void)
     },
-    status: async () => ({ state: 'ready' }),
+    status: async () => ({ state: 'ready', elevated: false }),
     onStatus: () => () => {},
   }
 }

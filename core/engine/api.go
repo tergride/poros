@@ -7,6 +7,8 @@ type AppInfo struct {
 	SingBox string `json:"singBox"`
 	Xray    string `json:"xray"`
 	DataDir string `json:"dataDir"`
+	// Elevated is a core with the administrator rights TUN needs.
+	Elevated bool `json:"elevated"`
 }
 
 // Settings are the user's choices the core keeps between runs.
@@ -205,4 +207,6 @@ const (
 	ReasonSystemProxyFailed = "system_proxy_failed"
 	// ReasonStopTimeout is a connection that did not close in time; the core has to restart to let go of it.
 	ReasonStopTimeout = "stop_timeout"
+	// ReasonTunBusy is a TUN adapter of an earlier core that Windows has not removed yet.
+	ReasonTunBusy = "tun_busy"
 )

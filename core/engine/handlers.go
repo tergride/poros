@@ -11,7 +11,7 @@ import (
 )
 
 func (e *Engine) Info() AppInfo {
-	return AppInfo{SingBox: C.Version, Xray: core.Version(), DataDir: e.dataDir}
+	return AppInfo{SingBox: C.Version, Xray: core.Version(), DataDir: e.dataDir, Elevated: elevated()}
 }
 
 // Handlers maps the methods of api.go onto the engine.

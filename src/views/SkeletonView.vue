@@ -8,7 +8,7 @@ import { MethodAppInfo } from '@/platform/core-types'
 
 const { t } = useI18n()
 const info = ref<AppInfo | null>(null)
-const status = ref<CoreStatus>({ state: 'starting' })
+const status = ref<CoreStatus>({ state: 'starting', elevated: false })
 const engine = ref<CoreInfo | null>(null)
 let unsubscribe = () => {}
 

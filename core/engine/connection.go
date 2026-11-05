@@ -190,6 +190,9 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(e.mixedPort)))) {
 		return ConnectionState{}, failure(ReasonPortBusy, "port %d is taken by another program", e.mixedPort)
 	}
+	if settings.Tun && !waitTunGone(tunGoneTimeout) {
+		return ConnectionState{}, failure(ReasonTunBusy, "Windows still holds the TUN adapter of an earlier start; try again, or restart Windows if it stays")
+	}
 
 	in := config.Input{
 		Server:        server,
@@ -250,7 +253,7 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 
 	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Since: e.now().UnixMilli()}
 	if settings.SystemProxy {
-		if err = e.sysProxy.Apply("127.0.0.1", e.mixedPort); err != nil {
+		if err = e.applySystemProxy(); err != nil {
 			state.Error, state.ErrorText = ReasonSystemProxyFailed, err.Error()
 		}
 		// Apply may have set some connections before failing on others: Clear must still see them.
@@ -301,7 +304,7 @@ func (e *Engine) syncSystemProxy() {
 	state := e.ConnectionState()
 	state.Error, state.ErrorText = "", ""
 	if settings.SystemProxy {
-		err = e.sysProxy.Apply("127.0.0.1", e.mixedPort)
+		err = e.applySystemProxy()
 		running.systemProxy = true
 	} else {
 		err = e.sysProxy.Clear()
@@ -334,6 +337,31 @@ func (e *Engine) onDefaultInterface(iface *control.Interface, _ int) {
 			e.StartConnection()
 		}
 	}()
+}
+
+func (e *Engine) applySystemProxy() error {
+	if e.foreignUser {
+		return errors.New("the core runs as another account than Poros: its system proxy would be that account's")
+	}
+	return e.sysProxy.Apply("127.0.0.1", e.mixedPort)
+}
+
+// tunGoneTimeout covers Windows removing the adapter of a core that was killed with the TUN up.
+const tunGoneTimeout = 10 * time.Second
+
+// waitTunGone waits until no adapter has the name of Poros's TUN: sing-box would otherwise take over an adapter
+// that is about to disappear, with its routes still pointing into it.
+func waitTunGone(timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for {
+		if _, err := net.InterfaceByName(config.TunName); err != nil {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
 }
 
 func (e *Engine) closeConnection() error {
