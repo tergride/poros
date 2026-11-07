@@ -90,6 +90,8 @@ type shell struct {
 	replies  map[int]chan json.RawMessage
 	states   chan map[string]any
 	networks chan map[string]any
+	// downloaded is the last total download of the connection through the server.
+	downloaded atomic.Int64
 }
 
 func startShell(t *testing.T, program, dataDir string, waitPID int) *shell {
@@ -188,11 +190,25 @@ func (s *shell) read() {
 			s.states <- state
 		case "network.changed":
 			s.networks <- state
+		case "connection.traffic":
+			if total, ok := state["totalDownload"].(float64); ok {
+				s.downloaded.Store(int64(total))
+			}
 		}
 	}
 }
 
 func (s *shell) call(method string, params any) json.RawMessage {
+	s.t.Helper()
+	result, failure := s.request(method, params)
+	if failure != "" {
+		s.t.Fatalf("%s: %s", method, failure)
+	}
+	return result
+}
+
+// request returns the result of a call, or the error message of the core for the caller to print or hide.
+func (s *shell) request(method string, params any) (json.RawMessage, string) {
 	s.t.Helper()
 	s.mu.Lock()
 	id := s.nextID
@@ -210,29 +226,35 @@ func (s *shell) call(method string, params any) json.RawMessage {
 			Error *struct{ Message string } `json:"error"`
 		}
 		if json.Unmarshal(result, &failed) == nil && failed.Error != nil {
-			s.t.Fatalf("%s: %s", method, failed.Error.Message)
+			return nil, failed.Error.Message
 		}
-		return result
+		return result, ""
 	case <-time.After(60 * time.Second):
 		s.t.Fatalf("%s: no answer", method)
 	}
-	return nil
+	return nil, ""
 }
 
 // connect starts the connection and waits until it runs; it returns how long that took.
 func (s *shell) connect() time.Duration {
 	s.t.Helper()
 	started := time.Now()
+	if state := s.start(); state["state"] != "running" {
+		s.t.Fatalf("the connection did not come up: %v %v", state["error"], state["errorText"])
+	}
+	return time.Since(started)
+}
+
+// start starts the connection and returns its state once it runs or has failed.
+func (s *shell) start() map[string]any {
+	s.t.Helper()
 	s.call("connection.start", nil)
 	deadline := time.After(90 * time.Second)
 	for {
 		select {
 		case state := <-s.states:
-			switch state["state"] {
-			case "running":
-				return time.Since(started)
-			case "idle":
-				s.t.Fatalf("the connection did not come up: %v %v", state["error"], state["errorText"])
+			if state["state"] == "running" || state["state"] == "idle" {
+				return state
 			}
 		case <-deadline:
 			s.t.Fatal("the connection did not come up in 90 seconds")
