@@ -5,10 +5,12 @@ import { useI18n } from 'vue-i18n'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Switch } from '@/components/ui'
+import { useAttempt } from '@/composables/useAttempt'
 import { useSetting } from '@/composables/useSetting'
 import { type UrlScheme, urlScheme } from '@/platform'
 
 const { t } = useI18n()
+const attempt = useAttempt()
 const autostart = useSetting('autostart')
 const autoConnect = useSetting('autoConnect')
 const startMinimized = useSetting('startMinimized')
@@ -19,7 +21,7 @@ const scheme = ref<UrlScheme | null>(null)
 onMounted(async () => (scheme.value = await urlScheme.get()))
 const schemeOn = computed({
   get: () => scheme.value?.owner === 'this',
-  set: (on: boolean) => void urlScheme.set(on).then((next) => (scheme.value = next)),
+  set: (on: boolean) => void attempt(async () => (scheme.value = await urlScheme.set(on))),
 })
 const schemeHint = computed(() =>
   scheme.value?.owner === 'other' ? t('settings.start.urlSchemeOther', { program: scheme.value.program }) : '',
@@ -35,8 +37,12 @@ const schemeHint = computed(() =>
     <OptionRow :title="t('wizard.start.urlScheme')" :hint="schemeHint">
       <Switch v-model="schemeOn" :disabled="!scheme" data-testid="url-scheme" />
     </OptionRow>
-    <OptionRow :title="t('settings.start.startMinimized')" :hint="t('settings.start.startMinimizedHint')">
-      <Switch v-model="startMinimized" />
+    <!-- Only the start with Windows comes minimized: a start by hand always shows the window. -->
+    <OptionRow
+      :title="t('settings.start.startMinimized')"
+      :hint="autostart ? t('settings.start.startMinimizedHint') : t('settings.start.startMinimizedOff')"
+    >
+      <Switch v-model="startMinimized" :disabled="!autostart" />
     </OptionRow>
     <OptionRow :title="t('settings.start.closeToTray')" :hint="t('settings.start.closeToTrayHint')">
       <Switch v-model="closeToTray" />

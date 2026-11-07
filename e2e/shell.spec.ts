@@ -231,13 +231,19 @@ test('the kill switch asks for rights, blocks from a Start and lets go on Stop',
   await expect(page.getByTestId('segment-off')).toHaveAttribute('data-state', 'checked')
   await shot(page, 'settings-conn')
 
-  // Without rights the mode is kept and the dialog asks for them; Cancel leaves the core as it is.
+  // Without rights the dialog asks for them; Cancel puts the mode back, and the note says how the kill switch works.
+  await expect(page.getByTestId('kill-switch').getByTestId('option-note')).toContainText('Как работает Kill switch')
   await page.getByTestId('segment-connected').click()
   await expect(page.getByRole('dialog', { name: 'Для Kill switch нужны права администратора' })).toBeVisible()
   await shot(page, 'settings-conn-admin')
   await page.getByRole('button', { name: 'Отмена' }).click()
-  await expect(page.getByTestId('kill-switch')).toContainText('пока вы не нажмёте «Стоп»')
+  await expect(page.getByTestId('segment-off')).toHaveAttribute('data-state', 'checked')
   await expect(page.getByTestId('restart-banner')).toBeHidden()
+
+  // "Try without rights" keeps the mode, which a Start without rights cannot apply.
+  await page.getByTestId('segment-connected').click()
+  await page.getByRole('button', { name: 'Попробовать без прав' }).click()
+  await expect(page.getByTestId('kill-switch')).toContainText('пока вы не нажмёте «Стоп»')
 
   // A Start without rights does not connect past the block: the banner says why.
   await page.getByRole('link', { name: 'К серверам' }).click()

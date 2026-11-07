@@ -335,7 +335,10 @@ func golden(t *testing.T, name string, data []byte) {
 }
 
 func TestBuildTestMeasuresEveryServer(t *testing.T) {
-	in := TestInput{RealityOnXray: true, Interface: "Ethernet", Resolved: map[string]netip.Addr{}}
+	// The engine looks the names up past any TUN; sing-box answers them from that list.
+	in := TestInput{RealityOnXray: true, Interface: "Ethernet", Resolved: map[string]netip.Addr{
+		"example.com": netip.MustParseAddr("192.0.2.1"), "server.example": netip.MustParseAddr("192.0.2.2"),
+	}}
 	port := uint16(30000)
 	for name, link := range sampleLinks(t) {
 		port++
@@ -362,6 +365,12 @@ func TestBuildTestMeasuresEveryServer(t *testing.T) {
 	}
 	if err = boxmain.Check(data); err != nil {
 		t.Fatalf("sing-box refuses the test config: %v", err)
+	}
+	if resolver := configs.SingBox.Route.DefaultDomainResolver; resolver == nil || resolver.Server != dnsTestHosts {
+		t.Errorf("the servers' names must come from the engine's lookups: %+v", resolver)
+	}
+	if !strings.Contains(string(data), `"server.example":"192.0.2.2"`) && !strings.Contains(string(data), `"server.example":["192.0.2.2"]`) {
+		t.Error("the looked-up addresses must be in the config")
 	}
 	if configs.Xray == nil {
 		t.Fatal("the servers on Xray need an Xray config")

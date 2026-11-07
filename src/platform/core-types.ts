@@ -851,3 +851,8 @@ export const ReasonUpdateUnavailable = "update_unavailable";
  * ReasonUpdateNotReady is an install asked for before a release was downloaded, or after its archive changed.
  */
 export const ReasonUpdateNotReady = "update_not_ready";
+/**
+ * ReasonPresetNameTaken is a preset saved under the name of another one: the tray and the lists would not tell
+ * them apart.
+ */
+export const ReasonPresetNameTaken = "preset_name_taken";

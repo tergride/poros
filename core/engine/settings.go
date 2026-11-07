@@ -78,6 +78,11 @@ func (e *Engine) validateSettings(settings Settings) error {
 	if _, found, err := e.preset(settings.Preset); err != nil || !found {
 		return jsonrpc.Failed(ReasonUnknownPreset, "there is no preset %q", settings.Preset)
 	}
+	if settings.Server != "" {
+		if _, found, err := e.serverProfile(settings.Server); err != nil || !found {
+			return jsonrpc.Failed(ReasonNotFound, "there is no server %q", settings.Server)
+		}
+	}
 	if !slices.Contains([]string{KillSwitchOff, KillSwitchConnected, KillSwitchAlways}, settings.KillSwitch) {
 		return jsonrpc.Failed(ReasonInvalidValue, "killSwitch must be off, connected or always, not %q", settings.KillSwitch)
 	}

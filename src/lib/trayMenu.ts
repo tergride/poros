@@ -1,6 +1,12 @@
 import { serverTitle } from '@/lib/format'
 import type { ConnectionState, Preset, Server, Settings } from '@/platform/core-types'
-import { ConnectionIdle, ConnectionRunning, ConnectionStarting, ConnectionStopping } from '@/platform/core-types'
+import {
+  ConnectionIdle,
+  ConnectionRunning,
+  ConnectionStarting,
+  ConnectionStopping,
+  KillSwitchConnected,
+} from '@/platform/core-types'
 
 /** The tray menu as plain data; the platform turns it into the system menu. */
 export type TrayItem =
@@ -14,6 +20,10 @@ export interface TrayState {
   settings: Settings
   servers: Server[]
   presets: Preset[]
+  /** The kill switch blocks: after a lost connection until Stop, or in Always without one. */
+  blocked?: boolean
+  /** The core does not answer: nothing that needs it can be done. */
+  coreDown?: boolean
 }
 
 export interface TrayActions {
@@ -31,8 +41,13 @@ export interface TrayWords {
   connected(server: string): string
   connecting(): string
   disconnected(): string
+  blocked(): string
+  blockedAlways(): string
+  coreDown(): string
+  starting(): string
   connect(): string
   disconnect(): string
+  stop(): string
   route(preset: string): string
   presets(): string
   show(): string
@@ -42,12 +57,29 @@ export interface TrayWords {
 
 const separator: TrayItem = { kind: 'separator' }
 
+/** The kill switch holds the block after a lost connection: only Stop gives the internet back. */
+function held(state: TrayState): boolean {
+  return !!state.blocked && state.connection.state === ConnectionIdle && state.settings.killSwitch === KillSwitchConnected
+}
+
 export function statusText(state: TrayState, words: TrayWords): string {
   const { connection } = state
+  if (state.coreDown) return words.coreDown()
   if (connection.state === ConnectionStarting || connection.state === ConnectionStopping) return words.connecting()
-  if (connection.state !== ConnectionRunning) return words.disconnected()
+  if (held(state)) return words.blocked()
+  if (connection.state !== ConnectionRunning) return state.blocked ? words.blockedAlways() : words.disconnected()
   const server = state.servers.find((s) => s.id === connection.serverId)
   return words.connected(server ? serverTitle(server.name, server.country) : '')
+}
+
+/** The menu while the core has not given its data, or never will: the window and the way out stay. */
+export function trayFallback(down: boolean, actions: Pick<TrayActions, 'show' | 'exit'>, words: TrayWords): TrayItem[] {
+  return [
+    { kind: 'item', text: down ? words.coreDown() : words.starting(), enabled: false },
+    separator,
+    { kind: 'item', text: words.show(), action: actions.show },
+    { kind: 'item', text: words.exit(), action: actions.exit },
+  ]
 }
 
 /**
@@ -74,11 +106,15 @@ export function trayMenu(state: TrayState, actions: TrayActions, words: TrayWord
   ]
   const current = state.presets.find((p) => p.id === settings.preset)
 
+  const main: TrayItem = held(state)
+    ? { kind: 'item', text: words.stop(), enabled: !state.coreDown, action: actions.disconnect }
+    : active
+      ? { kind: 'item', text: words.disconnect(), enabled: !state.coreDown, action: actions.disconnect }
+      : { kind: 'item', text: words.connect(), enabled: Boolean(settings.server) && !state.coreDown, action: actions.connect }
+
   return [
     { kind: 'item', text: statusText(state, words), enabled: false },
-    active
-      ? { kind: 'item', text: words.disconnect(), action: actions.disconnect }
-      : { kind: 'item', text: words.connect(), enabled: Boolean(settings.server), action: actions.connect },
+    main,
     separator,
     { kind: 'submenu', text: words.route(current ? words.presetName(current) : ''), items: presetItems },
     separator,

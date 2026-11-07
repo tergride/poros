@@ -6,6 +6,7 @@ import AdminDialog from '@/components/main/AdminDialog.vue'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Segmented, Switch } from '@/components/ui'
+import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useSetting } from '@/composables/useSetting'
 import { KillSwitchAlways, KillSwitchConnected, KillSwitchOff } from '@/platform/core-types'
@@ -13,6 +14,7 @@ import { useCoreStore } from '@/stores/core'
 
 const core = useCoreStore()
 const connect = useConnect()
+const attempt = useAttempt()
 const { t } = useI18n()
 const allowLan = useSetting('allowLan')
 const checkIp = useSetting('checkIp')
@@ -26,7 +28,7 @@ const modes = computed(() => [
 ])
 const killSwitch = computed({
   get: () => core.settings?.killSwitch ?? KillSwitchOff,
-  set: (mode: string) => void connect.setKillSwitch(mode),
+  set: (mode: string) => void attempt(() => connect.setKillSwitch(mode)),
 })
 </script>
 
@@ -37,6 +39,7 @@ const killSwitch = computed({
     <OptionRow
       :title="t('settings.conn.killSwitch')"
       :hint="t(`settings.conn.killSwitchHint.${killSwitch}`)"
+      :note="t('settings.conn.killSwitchNote')"
       :shield="!core.status.elevated"
       data-testid="kill-switch"
     >

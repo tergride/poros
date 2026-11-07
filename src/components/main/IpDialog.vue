@@ -19,7 +19,7 @@ const connected = computed(() => core.running)
 const checkOn = computed(() => core.settings?.checkIp ?? false)
 
 function check(): void {
-  if (checkOn.value && !core.network.checking) void core.core().call(MethodNetworkCheck)
+  if (checkOn.value && !core.network.checking) void core.core().call(MethodNetworkCheck).catch(() => undefined)
 }
 
 // Each opening checks again unless a check is fresh: the window shows what is now.

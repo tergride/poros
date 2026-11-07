@@ -130,24 +130,39 @@ func TestUpdatesDownloadAndInstall(t *testing.T) {
 	}
 	e.Close()
 
-	// The next run reuses the archive that is whole.
+	// The next run, a core started again among them, offers the archive that is whole at once, without a check.
 	next := openUpdatesTest(t, dir, releases.url, "0.1.0", true)
-	next.CheckUpdates()
-	if state := waitUpdates(t, next, settled); state.State != UpdateReady || releases.downloads.Load() != 1 {
-		t.Fatalf("the archive was downloaded again: %+v, %d downloads", state, releases.downloads.Load())
+	if state := next.UpdatesState(); state.State != UpdateReady || state.Version != "0.1.1" {
+		t.Fatalf("the ready release is offered at the start: %+v", state)
 	}
-	// An archive changed after its check is not given to the updater.
+	next.CheckUpdates()
+	if releases.feeds.Load() != 1 || releases.downloads.Load() != 1 {
+		t.Fatalf("the ready release was looked for again: %d feeds, %d downloads", releases.feeds.Load(), releases.downloads.Load())
+	}
+	// An archive changed after its check is not given to the updater, and the release is downloaded again at once.
 	if err := os.WriteFile(archive, []byte("changed"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := next.InstallUpdate(); reason(err) != ReasonUpdateNotReady {
 		t.Fatalf("a changed archive: %v", err)
 	}
-	if state := next.UpdatesState(); state.State != UpdateIdle || state.Error != ReasonUpdateFailed {
+	if state := waitUpdates(t, next, func(s UpdateState) bool { return s.State == UpdateReady }); state.Error != "" {
 		t.Errorf("after a changed archive: %+v", state)
 	}
-	if _, err := os.Stat(archive); !os.IsNotExist(err) {
-		t.Errorf("the changed archive stayed: %v", err)
+	if releases.downloads.Load() != 2 {
+		t.Errorf("the release must come again: %d downloads", releases.downloads.Load())
+	}
+	next.Close()
+
+	// A release that is no longer newer, or whose archive went, is not offered.
+	if err := os.Remove(archive); err != nil {
+		t.Fatal(err)
+	}
+	if state := openUpdatesTest(t, dir, releases.url, "0.1.0", true).UpdatesState(); state.State != UpdateIdle {
+		t.Errorf("an archive that went is no ready release: %+v", state)
+	}
+	if _, err := os.Stat(filepath.Join(dir, updateFolder, readyFile)); !os.IsNotExist(err) {
+		t.Errorf("the note of a ready release that went must go too: %v", err)
 	}
 }
 

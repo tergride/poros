@@ -7,6 +7,7 @@ import AddSubscriptionDialog from '@/components/main/AddSubscriptionDialog.vue'
 import LinkPresetDialog from '@/components/main/LinkPresetDialog.vue'
 import LogsDialog from '@/components/shell/LogsDialog.vue'
 import TitleBar from '@/components/shell/TitleBar.vue'
+import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useLinks } from '@/composables/useLinks'
 import { useTray } from '@/composables/useTray'
@@ -19,11 +20,18 @@ const core = useCoreStore()
 const ui = useUiStore()
 const route = useRoute()
 const router = useRouter()
+const attempt = useAttempt()
 const { locale } = useI18n()
 
 onMounted(() => void core.start())
 useTray()
 useLinks()
+
+// A notice belongs to the screen it came from.
+watch(
+  () => route.path,
+  () => (ui.notice = null),
+)
 
 // Once per launch: a core restarted later for rights must not connect on its own.
 const connect = useConnect()
@@ -32,7 +40,7 @@ const stopAutoStart = watch(
   (loaded) => {
     if (!loaded) return
     stopAutoStart()
-    void connect.autoStart()
+    void attempt(() => connect.autoStart())
   },
 )
 
@@ -58,7 +66,7 @@ const withMenu = computed(() => route.path.startsWith('/main') || route.path.sta
 const updates = useUpdates()
 async function checkUpdates(): Promise<void> {
   await router.push('/settings/help')
-  if (core.updates.available) await updates.check()
+  if (core.updates.available) await attempt(() => updates.check())
 }
 
 async function addSubscription(): Promise<void> {

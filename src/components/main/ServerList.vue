@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { Download, Gauge, LoaderCircle, Plus, RefreshCw, Search, X, Zap } from '@lucide/vue'
+import { Download, Gauge, LoaderCircle, Plus, RefreshCw, ScrollText, Search, X, Zap } from '@lucide/vue'
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import mark from '@/assets/img/mark.png'
+import CoreBanner from '@/components/main/CoreBanner.vue'
 import ServerGroup from '@/components/main/ServerGroup.vue'
 import SubscriptionLink from '@/components/main/SubscriptionLink.vue'
 import { Banner, Button, Dialog, Input } from '@/components/ui'
+import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
-import { useReason } from '@/composables/useReason'
+import { useFailure, useReason } from '@/composables/useReason'
 import { useUpdates } from '@/composables/useUpdates'
 import type { Subscription } from '@/platform/core-types'
 import {
@@ -26,12 +28,15 @@ const ui = useUiStore()
 const connect = useConnect()
 const updates = useUpdates()
 const reason = useReason()
+const failure = useFailure()
+const attempt = useAttempt()
 const { t } = useI18n()
 
 const query = ref('')
 const closed = reactive(new Set<string>())
 const updating = reactive(new Set<string>())
-const notice = ref<{ tone: 'info' | 'warn'; text: string } | null>(null)
+// The connection's failure stays until the next start, or until the user closes it.
+const errorClosed = ref('')
 
 // The offer tells what the restart takes away for a moment and what comes back by itself.
 const updateText = computed(() =>
@@ -48,7 +53,7 @@ async function installUpdate(): Promise<void> {
   try {
     await updates.install()
   } catch (error) {
-    notice.value = { tone: 'warn', text: t('updates.installFailed', { reason: reason(error) }) }
+    ui.notice = { tone: 'warn', text: t('updates.installFailed', { reason: reason(error) }) }
   }
 }
 
@@ -56,8 +61,18 @@ async function installUpdate(): Promise<void> {
 const killSwitchReasons = [ReasonKillSwitchNeedsElevation, ReasonKillSwitchFailed]
 const killSwitchBroken = computed(() => core.killSwitch.error === ReasonKillSwitchFailed)
 const connectionError = computed(
-  () => !!core.connection.error && !connect.tunFailed && !killSwitchReasons.includes(core.connection.error),
+  () =>
+    !!core.connection.error &&
+    !connect.tunFailed &&
+    !killSwitchReasons.includes(core.connection.error) &&
+    errorClosed.value !== `${core.connection.error}:${core.connection.since}:${core.connection.errorText}`,
 )
+const connectionErrorText = computed(() =>
+  failure({ code: 1, message: core.connection.errorText, data: { reason: core.connection.error } }),
+)
+function closeConnectionError(): void {
+  errorClosed.value = `${core.connection.error}:${core.connection.since}:${core.connection.errorText}`
+}
 
 const groups = computed(() => {
   const needle = query.value.trim().toLowerCase()
@@ -73,21 +88,24 @@ const groups = computed(() => {
 
 async function update(subscription: Subscription): Promise<void> {
   updating.add(subscription.id)
-  notice.value = null
+  ui.notice = null
   try {
     const result = await core.core().call(MethodSubscriptionsUpdate, { id: subscription.id })
     if (core.settings?.showChanges) {
-      notice.value = { tone: 'info', text: t('list.updated', { added: result.added, removed: result.removed, changed: result.changed }) }
+      ui.notice = { tone: 'info', text: t('list.updated', { added: result.added, removed: result.removed, changed: result.changed }) }
     }
   } catch (error) {
-    notice.value = { tone: 'warn', text: t('list.failed', { reason: reason(error) }) }
+    ui.notice = { tone: 'warn', text: t('list.failed', { name: subscription.name, reason: reason(error) }) }
   } finally {
     updating.delete(subscription.id)
   }
 }
 
-async function copyLink(subscription: Subscription): Promise<void> {
-  await navigator.clipboard.writeText(subscription.url)
+function copyLink(subscription: Subscription): Promise<void> {
+  return attempt(async () => {
+    await navigator.clipboard.writeText(subscription.url)
+    ui.notice = { tone: 'info', text: t('list.copied') }
+  })
 }
 
 const renaming = ref<Subscription | null>(null)
@@ -96,17 +114,19 @@ function startRename(subscription: Subscription): void {
   renaming.value = subscription
   newName.value = subscription.name
 }
-async function rename(): Promise<void> {
-  if (!renaming.value) return
-  await core.core().call(MethodSubscriptionsRename, { id: renaming.value.id, name: newName.value })
+function rename(): Promise<void> {
+  const subscription = renaming.value
   renaming.value = null
+  if (!subscription) return Promise.resolve()
+  return attempt(() => core.core().call(MethodSubscriptionsRename, { id: subscription.id, name: newName.value }))
 }
 
 const removing = ref<Subscription | null>(null)
-async function remove(): Promise<void> {
-  if (!removing.value) return
-  await core.core().call(MethodSubscriptionsRemove, { id: removing.value.id })
+function remove(): Promise<void> {
+  const subscription = removing.value
   removing.value = null
+  if (!subscription) return Promise.resolve()
+  return attempt(() => core.core().call(MethodSubscriptionsRemove, { id: subscription.id }))
 }
 
 function toggle(id: string): void {
@@ -118,6 +138,7 @@ function toggle(id: string): void {
 <template>
   <main class="flex min-w-0 flex-1 flex-col bg-s1">
     <div v-if="core.subscriptions.length === 0" class="flex flex-1 flex-col items-center justify-center gap-3.5 p-10 text-center">
+      <div class="w-full max-w-[520px] text-left empty:hidden"><CoreBanner /></div>
       <img :src="mark" alt="" class="h-16 w-auto opacity-90" />
       <h2 class="font-disp text-xl font-normal">{{ t('list.emptyTitle') }}</h2>
       <p class="max-w-[400px] text-t2">{{ t('list.emptyText') }}</p>
@@ -128,30 +149,34 @@ function toggle(id: string): void {
     </div>
 
     <template v-else>
+      <!-- A narrow window keeps the buttons' icons and gives the search its room. -->
       <div class="flex gap-2 border-b border-line px-4 py-3.5">
-        <div class="relative min-w-0 flex-1">
+        <div class="relative min-w-[150px] flex-1">
           <Search class="absolute top-2.5 left-[11px] size-4 text-t3" />
           <Input v-model="query" class="pl-[33px]" :placeholder="t('list.search')" :aria-label="t('list.search')" />
         </div>
-        <Button :disabled="core.testing" @click="core.testServers()">
+        <Button :disabled="core.testing || !core.ready" @click="attempt(() => core.testServers())">
           <LoaderCircle v-if="core.testing" class="animate-spin" /><Gauge v-else />
-          {{ core.testing ? t('list.testing') : t('list.test') }}
+          <span class="max-[1079px]:sr-only">{{ core.testing ? t('list.testing') : t('list.test') }}</span>
         </Button>
-        <Button @click="ui.addSubscription = true"><Plus />{{ t('list.subscription') }}</Button>
+        <Button @click="ui.addSubscription = true">
+          <Plus /><span class="max-[1079px]:sr-only">{{ t('list.subscription') }}</span>
+        </Button>
       </div>
       <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-4 pt-3 pb-4">
+        <CoreBanner />
         <Banner v-if="connect.tunFailed" data-testid="tun-failed">
           {{ t('admin.failed') }}
           <template #actions>
-            <Button size="sm" @click="connect.elevateAndConnect()">{{ t('admin.restart') }}</Button>
-            <Button size="sm" @click="connect.useSystemInstead()">{{ t('admin.useSystemShort') }}</Button>
+            <Button size="sm" @click="attempt(() => connect.elevateAndConnect())">{{ t('admin.restart') }}</Button>
+            <Button size="sm" @click="attempt(() => connect.useSystemInstead())">{{ t('admin.useSystemShort') }}</Button>
             <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="connect.tunFailed = false"><X /></Button>
           </template>
         </Banner>
         <Banner v-if="connect.killSwitchFailed && !connect.tunFailed" data-testid="kill-switch-failed">
           {{ t('admin.killSwitchFailed') }}
           <template #actions>
-            <Button size="sm" @click="connect.elevateForKillSwitch()">{{ t('admin.restart') }}</Button>
+            <Button size="sm" @click="attempt(() => connect.elevateForKillSwitch())">{{ t('admin.restart') }}</Button>
             <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="connect.killSwitchFailed = false"><X /></Button>
           </template>
         </Banner>
@@ -162,7 +187,11 @@ function toggle(id: string): void {
           </template>
         </Banner>
         <Banner v-if="connectionError" data-testid="connection-error">
-          {{ reason({ code: 1, message: core.connection.errorText, data: { reason: core.connection.error } }) }}
+          {{ connectionErrorText }}
+          <template #actions>
+            <Button size="sm" @click="ui.logs = true"><ScrollText />{{ t('menu.logs') }}</Button>
+            <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="closeConnectionError()"><X /></Button>
+          </template>
         </Banner>
         <Banner v-if="updates.offer" tone="info" data-testid="update-ready">
           <template #icon><Download class="size-4 flex-none text-blue" /></template>
@@ -178,10 +207,10 @@ function toggle(id: string): void {
             <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="updates.failureClosed = true"><X /></Button>
           </template>
         </Banner>
-        <Banner v-if="notice" :tone="notice.tone">
-          {{ notice.text }}
+        <Banner v-if="ui.notice" :tone="ui.notice.tone" data-testid="notice">
+          {{ ui.notice.text }}
           <template #actions>
-            <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="notice = null"><X /></Button>
+            <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="ui.notice = null"><X /></Button>
           </template>
         </Banner>
         <ServerGroup
@@ -193,9 +222,9 @@ function toggle(id: string): void {
           :open="!closed.has(group.subscription.id) || query !== ''"
           :updating="updating.has(group.subscription.id)"
           @toggle="toggle(group.subscription.id)"
-          @pick="(id) => connect.chooseServer(id)"
+          @pick="(id) => attempt(() => connect.chooseServer(id))"
           @update="update(group.subscription)"
-          @test="core.testServers(group.subscription.id)"
+          @test="attempt(() => core.testServers(group.subscription.id))"
           @copy-link="copyLink(group.subscription)"
           @rename="startRename(group.subscription)"
           @remove="removing = group.subscription"

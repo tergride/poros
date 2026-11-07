@@ -96,6 +96,8 @@ export const useCoreStore = defineStore('core', () => {
   const loaded = ref(false)
 
   const running = computed(() => connection.value.state === ConnectionRunning)
+  /** The core answers: a call now gets a reply. */
+  const ready = computed(() => status.value.state === 'ready' && status.value.reason === undefined)
   const server = computed(() => servers.value.find((s) => s.id === settings.value?.server) ?? null)
   const preset = computed(() => presets.value.find((p) => p.id === settings.value?.preset) ?? null)
 
@@ -108,9 +110,12 @@ export const useCoreStore = defineStore('core', () => {
     servers.value = await core().call(MethodServersList, { subscriptionId: '' })
   }
 
-  // Reads everything again: at the start and whenever a new core takes over.
+  // Reads everything again: at the start and whenever a new core takes over. A new core knows no delays and no
+  // addresses yet; the ones measured before stay until it measures again, since the servers and the network are the
+  // same. A test the old core ran is over: its results never come.
   async function load(): Promise<void> {
     const c = core()
+    testing.value = false
     const [s, subs, list, presetList, conn, net, block, upd] = await Promise.all([
       c.call(MethodSettingsGet),
       c.call(MethodSubscriptionsList),
@@ -121,12 +126,13 @@ export const useCoreStore = defineStore('core', () => {
       c.call(MethodKillSwitchState),
       c.call(MethodUpdatesState),
     ])
+    const known = new Map(servers.value.map((server) => [server.id, server.latency]))
     settings.value = s
     subscriptions.value = subs
-    servers.value = list
+    servers.value = list.map((server) => (server.latency === 0 && known.get(server.id) ? { ...server, latency: known.get(server.id)! } : server))
     presets.value = presetList
     connection.value = conn
-    network.value = net
+    if (net.checkedAt !== 0 || net.checking || network.value.checkedAt === 0 || conn.state !== ConnectionIdle) network.value = net
     killSwitch.value = block
     updates.value = upd
     loaded.value = true
@@ -159,7 +165,8 @@ export const useCoreStore = defineStore('core', () => {
       c.onStatus((next) => {
         const wasReady = status.value.state === 'ready'
         status.value = next
-        if (next.state === 'ready' && !wasReady) void load()
+        if (next.state !== 'ready') testing.value = false
+        if (next.state === 'ready' && !wasReady) void load().catch(() => undefined)
       })
       status.value = await c.status()
       if (status.value.state === 'ready') await load()
@@ -199,6 +206,7 @@ export const useCoreStore = defineStore('core', () => {
     testing,
     loaded,
     running,
+    ready,
     server,
     preset,
     core,

@@ -5,7 +5,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { Banner, Button, Dialog, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui'
-import { useReason } from '@/composables/useReason'
+import { useFailure } from '@/composables/useReason'
 import type { PresetEntries, PresetListProblem, PresetListsRead } from '@/platform/core-types'
 import {
   ActionBlock,
@@ -24,7 +24,7 @@ const emit = defineEmits<{ apply: [entries: PresetEntries] }>()
 const open = defineModel<boolean>('open', { default: false })
 
 const core = useCoreStore()
-const reason = useReason()
+const reason = useFailure()
 const { t } = useI18n()
 
 const tabs = [ActionProxy, ActionDirect, ActionBlock]

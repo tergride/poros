@@ -4,7 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { Button, Dialog } from '@/components/ui'
-import { useReason } from '@/composables/useReason'
+import { useFailure } from '@/composables/useReason'
 import { MethodPresetsImport } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
@@ -12,7 +12,7 @@ import { useUiStore } from '@/stores/ui'
 // A poros://route/ link from a browser or a messenger: the preset is added only after a yes.
 const core = useCoreStore()
 const ui = useUiStore()
-const reason = useReason()
+const reason = useFailure()
 const { t, te } = useI18n()
 const busy = ref(false)
 const failure = ref('')

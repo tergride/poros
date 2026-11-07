@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { russianPlural } from '@/i18n'
 
-import { formatBytes, formatDuration, latencyTone, serverTitle } from './format'
+import { formatBytes, formatDate, formatDuration, latencyTone, serverTitle } from './format'
 
 describe('the formats of the screens', () => {
   it('drops the flag a name starts with only when the country is shown beside it', () => {
@@ -23,6 +23,13 @@ describe('the formats of the screens', () => {
   it('counts a connection in hours, minutes and seconds', () => {
     expect(formatDuration(768_000)).toBe('00:12:48')
     expect(formatDuration(-5)).toBe('00:00:00')
+  })
+
+  it('writes a date with its year only when it is not this one', () => {
+    const now = new Date(2026, 10, 7).getTime()
+    expect(formatDate(new Date(2026, 11, 7).getTime(), 'ru', now)).toBe('7 декабря')
+    expect(formatDate(new Date(2027, 11, 7).getTime(), 'ru', now)).toBe('7 декабря 2027 г.')
+    expect(formatDate(new Date(2025, 10, 2).getTime(), 'en', now)).toBe('November 2, 2025')
   })
 
   it('colours a delay', () => {

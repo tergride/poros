@@ -93,9 +93,12 @@ mod windows {
     }
 
     impl Incoming {
-        /// Passes the arguments of every later start to `handler`, for as long as the program runs.
-        pub fn serve(self, handler: impl Fn(Vec<String>) + Send + 'static) {
-            tauri::async_runtime::spawn(async move {
+        /// Passes the arguments of every later start to `handler` until the task it gives back is aborted.
+        pub fn serve(
+            self,
+            handler: impl Fn(Vec<String>) + Send + 'static,
+        ) -> Option<tauri::async_runtime::JoinHandle<()>> {
+            Some(tauri::async_runtime::spawn(async move {
                 let Incoming { name, mut server } = self;
                 loop {
                     let connected = server.connect().await;
@@ -116,7 +119,7 @@ mod windows {
                         handler(args);
                     }
                 }
-            });
+            }))
         }
     }
 }
@@ -126,7 +129,12 @@ pub struct Incoming;
 
 #[cfg(not(windows))]
 impl Incoming {
-    pub fn serve(self, _handler: impl Fn(Vec<String>) + Send + 'static) {}
+    pub fn serve(
+        self,
+        _handler: impl Fn(Vec<String>) + Send + 'static,
+    ) -> Option<tauri::async_runtime::JoinHandle<()>> {
+        None
+    }
 }
 
 /// Linux and Android come later; until then every start runs on its own.

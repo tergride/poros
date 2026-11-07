@@ -317,6 +317,7 @@ func (e *Engine) UpdateSubscription(ctx context.Context, id string) (Subscriptio
 		return SubscriptionUpdate{}, err
 	}
 	e.announce(id)
+	e.keepServerChosen(id)
 	return update, nil
 }
 
@@ -341,7 +342,45 @@ func (e *Engine) RemoveSubscription(id string) error {
 		return jsonrpc.Failed(ReasonNotFound, "there is no subscription %q", id)
 	}
 	e.announce(id)
+	e.keepServerChosen("")
 	return nil
+}
+
+// keepServerChosen moves the choice on when the chosen server went away with its subscription or an update: to the
+// first server left in that subscription, else to the first of all, else to none. It runs under writeMu.
+func (e *Engine) keepServerChosen(subscriptionID string) {
+	settings, err := e.Settings()
+	if err != nil || settings.Server == "" {
+		return
+	}
+	if _, found, err := e.serverProfile(settings.Server); err != nil || found {
+		return
+	}
+	subs, err := e.records()
+	if err != nil {
+		return
+	}
+	slices.SortStableFunc(subs, func(a, b subscriptionRecord) int {
+		return cmp.Compare(boolRank(a.ID != subscriptionID), boolRank(b.ID != subscriptionID))
+	})
+	settings.Server = ""
+	for _, sub := range subs {
+		if list, err := e.serverRecords(sub.ID); err == nil && len(list) > 0 {
+			settings.Server = list[0].ID
+			break
+		}
+	}
+	if err = e.db.Update(func(tx *bbolt.Tx) error { return putJSON(tx, bucketSettings, keySettings, settings) }); err != nil {
+		return
+	}
+	e.notify(EventSettingsChanged, settings)
+}
+
+func boolRank(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // maxSkipGroups bounds the reasons an update reports; the items beyond still count in Subscription.Skipped.

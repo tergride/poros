@@ -7,6 +7,8 @@ import (
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json/badjson"
+	"github.com/sagernet/sing/common/json/badoption"
 )
 
 // TestServer is a server to measure, under its own tag.
@@ -21,7 +23,8 @@ type TestServer struct {
 type TestInput struct {
 	Servers       []TestServer
 	RealityOnXray bool
-	// Interface and Resolved serve the servers on Xray, as for a connection.
+	// Interface serves the servers on Xray, as for a connection. Resolved holds the addresses of the servers' names,
+	// for Xray and sing-box alike.
 	Interface string
 	Resolved  map[string]netip.Addr
 }
@@ -73,19 +76,35 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 		}
 		configs.Xray = xray
 	}
+	servers := []option.DNSServerOptions{{Type: C.DNSTypeLocal, Tag: dnsDirect, Options: &option.LocalDNSServerOptions{}}}
+	resolver := dnsDirect
+	if len(in.Resolved) > 0 {
+		servers = append(servers, testHosts(in.Resolved))
+		resolver = dnsTestHosts
+	}
 	configs.SingBox = option.Options{
-		Log: &option.LogOptions{Level: "error"},
-		DNS: &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{
-			Servers: []option.DNSServerOptions{{Type: C.DNSTypeLocal, Tag: dnsDirect, Options: &option.LocalDNSServerOptions{}}},
-		}},
+		Log:       &option.LogOptions{Level: "error"},
+		DNS:       &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: servers}},
 		Outbounds: append(outbounds, option.Outbound{Type: C.TypeDirect, Tag: TagDirect, Options: &option.DirectOutboundOptions{}}),
 		Route: &option.RouteOptions{
 			Final:                 TagDirect,
 			AutoDetectInterface:   true,
-			DefaultDomainResolver: &option.DomainResolveOptions{Server: dnsDirect},
+			DefaultDomainResolver: &option.DomainResolveOptions{Server: resolver},
 		},
 	}
 	return configs, nil
+}
+
+// dnsTestHosts answers the servers' names with the addresses the engine looked up: the system's DNS may be held by
+// the TUN of another client, which a test dials past.
+const dnsTestHosts = "dns-test-hosts"
+
+func testHosts(resolved map[string]netip.Addr) option.DNSServerOptions {
+	predefined := &badjson.TypedMap[string, badoption.Listable[netip.Addr]]{}
+	for host, addr := range resolved {
+		predefined.Put(host, badoption.Listable[netip.Addr]{addr})
+	}
+	return option.DNSServerOptions{Type: C.DNSTypeHosts, Tag: dnsTestHosts, Options: &option.HostsDNSServerOptions{Predefined: predefined}}
 }
 
 // SingBoxJSON writes the sing-box config the way the core reads it.

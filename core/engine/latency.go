@@ -91,6 +91,10 @@ func (e *Engine) TestServers(query ServersQuery) (any, error) {
 				}
 				server.Bridge = bridge
 				hosts = append(hosts, config.XrayHosts(t.server, settings.RealityOnXray)...)
+			} else {
+				// sing-box gets the addresses too: its own lookup would go to the system's DNS, which a TUN of
+				// another client may hold or answer with fake addresses.
+				hosts = append(hosts, t.server.Server)
 			}
 			in.Servers = append(in.Servers, server)
 		}
@@ -105,15 +109,23 @@ func resolveEach(ctx context.Context, hosts []string, ipv4Only bool) map[string]
 	resolved := map[string]netip.Addr{}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	slots := make(chan struct{}, latencyConcurrency)
+	seen := map[string]bool{}
 	for _, host := range hosts {
+		if seen[host] {
+			continue
+		}
+		seen[host] = true
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			lookupCtx, cancel := context.WithTimeout(ctx, latencyTimeout)
+			slots <- struct{}{}
+			defer func() { <-slots }()
+			lookupCtx, cancel := context.WithTimeout(ctx, latencyTimeout+dohTimeout)
 			defer cancel()
-			if one, err := resolveHosts(lookupCtx, []string{host}, ipv4Only); err == nil {
+			if addr, err := lookupPast(lookupCtx, host, ipv4Only); err == nil {
 				mu.Lock()
-				resolved[host] = one[host]
+				resolved[host] = addr
 				mu.Unlock()
 			}
 		}()

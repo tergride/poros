@@ -80,6 +80,7 @@ import {
   ReasonNoServer,
   ReasonNotFound,
   ReasonSingleServer,
+  ReasonPresetNameTaken,
   ReasonUnknownPreset,
   ReasonUpdateNotReady,
   ReasonUpdateUnavailable,
@@ -481,9 +482,26 @@ export function createStubCore(): CoreClient {
     removedNames: [],
     skips: [],
   })
+  // As in the core: a name of another preset, built-in or not, is taken, whatever its case.
+  const nameTaken = (name: string, id: string): boolean =>
+    builtins.some((b) => b.name.toLowerCase() === name.toLowerCase()) ||
+    copies.some((c) => c.id !== id && c.name.trim().toLowerCase() === name.toLowerCase())
+  const freeName = (name: string): string => {
+    let free = name.trim()
+    for (let n = 2; free && nameTaken(free, ''); n++) free = `${name.trim()} ${n}`
+    return free
+  }
+  // As in the core: the chosen server moves on when it goes away, to its subscription first, else to the first left.
+  const keepServerChosen = (subscriptionId: string): void => {
+    if (!settings.server || servers.some((s) => s.id === settings.server)) return
+    const next = servers.find((s) => s.subscriptionId === subscriptionId) ?? servers[0]
+    settings = { ...settings, server: next?.id ?? '' }
+    emit(EventSettingsChanged, { ...settings })
+  }
   const saveCopy = (draft: PresetCopy): Preset => {
     const name = draft.name.trim()
     if (!name) throw failed(ReasonInvalidValue, 'the preset needs a name')
+    if (nameTaken(name, draft.id)) throw failed(ReasonPresetNameTaken, `there is a preset named "${name}" already`)
     const base = foundation(draft.basedOn)
     if (!base) throw failed(ReasonUnknownPreset, `there is no built-in preset "${draft.basedOn}"`)
     checkEntries(draft.sites, looksLikeSite)
@@ -508,6 +526,7 @@ export function createStubCore(): CoreClient {
     [MethodSettingsGet]: () => ({ ...settings }),
     [MethodSettingsSet]: (next) => {
       if (!presetList().some((p) => p.id === next.preset)) throw failed(ReasonUnknownPreset, `there is no preset "${next.preset}"`)
+      if (next.server && !servers.some((s) => s.id === next.server)) throw failed(ReasonNotFound, `there is no server "${next.server}"`)
       if (![KillSwitchOff, KillSwitchConnected, KillSwitchAlways].includes(next.killSwitch)) {
         throw failed(ReasonInvalidValue, `killSwitch must be off, connected or always, not "${next.killSwitch}"`)
       }
@@ -568,6 +587,7 @@ export function createStubCore(): CoreClient {
       subscriptions = subscriptions.filter((s) => s.id !== id)
       servers = servers.filter((s) => s.subscriptionId !== id)
       changed(id)
+      keepServerChosen('')
       return null
     },
     [MethodSubscriptionsRename]: ({ id, name }) => {
@@ -605,7 +625,10 @@ export function createStubCore(): CoreClient {
       return null
     },
     [MethodPresetsExport]: ({ id }) => ({ link: encodeLink(copyOf(id)) }),
-    [MethodPresetsImport]: ({ link }) => saveCopy(decodeLink(link)),
+    [MethodPresetsImport]: ({ link }) => {
+      const copy = decodeLink(link)
+      return saveCopy({ ...copy, name: freeName(copy.name) })
+    },
     [MethodPresetsWriteLists]: (entries) => writeLists(entries),
     [MethodPresetsReadLists]: ({ lists }) => readLists(lists),
     [MethodLinksParse]: ({ link }) => parseOutsideLink(link),
@@ -698,6 +721,9 @@ export function createStubCore(): CoreClient {
         startBlock()
         setStatus({ state: 'ready', elevated: false })
       }, 0)
+    },
+    async resetData() {
+      await this.restart()
     },
   }
 }

@@ -123,6 +123,8 @@ const (
 	exitDeadline = 15 * time.Second
 	logFile      = "core.log"
 	oldLogFile   = "core.1.log"
+	// exitDataDamaged tells the shell that the data file cannot be read: no restart helps, the user decides.
+	exitDataDamaged = 4
 )
 
 // openLog keeps this run's log and the previous one in the logs folder of the data folder.
@@ -172,7 +174,11 @@ func runCore() {
 		Guard: engine.NewGuard(opts.hostPID, opts.dataDir), UpdateFeed: opts.updateFeed,
 	})
 	if err != nil {
-		log.Fatalf("open the data folder: %v", err)
+		log.Printf("open the data folder: %v", err)
+		if errors.Is(err, engine.ErrDataDamaged) {
+			os.Exit(exitDataDamaged)
+		}
+		os.Exit(1)
 	}
 	eng.StartSchedule()
 	eng.StartNetworkChecks()

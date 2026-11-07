@@ -127,8 +127,13 @@
     user-select: none;
   }
 
-  /* The Large text size of the settings: the whole window scales, as a browser zoom would. */
-  html.text-large {
+  /*
+   * The Large text size of the settings: the whole window scales, as a browser zoom would. The zoom sits on the app
+   * and on each menu, not on the page: a menu placed from inside a zoomed page lands off its button, past the edge
+   * of a narrow window. Dialogs open inside the app and scale with it.
+   */
+  html.text-large #app,
+  html.text-large [data-reka-popper-content-wrapper] > * {
     zoom: 1.125;
   }
 

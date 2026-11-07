@@ -124,7 +124,15 @@ export interface CoreStatus {
   /** The core runs with administrator rights, which TUN needs. */
   elevated: boolean
   error?: string
+  /**
+   * data_damaged: the core cannot read its data file and waits for the user; not_answering: a ready core stopped
+   * answering, and the shell starts it again if it stays so.
+   */
+  reason?: typeof StatusDataDamaged | typeof StatusNotAnswering
 }
+
+export const StatusDataDamaged = 'data_damaged'
+export const StatusNotAnswering = 'not_answering'
 
 /** A JSON-RPC error from the core; `data.reason` is one of the Reason constants. */
 export interface CoreError {
@@ -148,6 +156,8 @@ export interface CoreClient {
   elevate(): Promise<void>
   /** Replaces the core with one without rights; it also brings back a core that gave up. */
   restart(): Promise<void>
+  /** Puts a damaged data file aside and starts a core on clean data; the user asked for it. */
+  resetData(): Promise<void>
 }
 
 export function isCoreError(value: unknown): value is CoreError {
@@ -179,5 +189,6 @@ export async function createTauriCore(): Promise<CoreClient> {
     },
     elevate: () => invoke('core_elevate'),
     restart: () => invoke('core_restart'),
+    resetData: () => invoke('core_reset_data'),
   }
 }

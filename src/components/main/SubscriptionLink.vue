@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { Button, Input } from '@/components/ui'
-import { useReason } from '@/composables/useReason'
+import { useFailure } from '@/composables/useReason'
 import type { SubscriptionUpdate } from '@/platform/core-types'
 import { MethodServersList, MethodSubscriptionsAdd } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
@@ -16,20 +16,23 @@ const props = defineProps<{ large?: boolean; name?: string; manual?: boolean }>(
 const emit = defineEmits<{ added: [update: SubscriptionUpdate] }>()
 
 const core = useCoreStore()
-const reason = useReason()
+const describe = useFailure()
 const { t } = useI18n()
 const link = ref('')
 const busy = ref(false)
 const added = ref<SubscriptionUpdate | null>(null)
 const failure = ref('')
+// The link tried last: leaving the field does not try it twice. Enter or Add try a failed one again.
 let last = ''
+let lastFailed = false
 
 const servers = computed(() => (added.value ? t('servers.count', added.value.subscription.servers) : ''))
 
-async function add(): Promise<void> {
+async function add(again = true): Promise<void> {
   const text = link.value.trim()
-  if (!text || text === last || busy.value) return
+  if (!text || busy.value || (text === last && !(again && lastFailed))) return
   last = text
+  lastFailed = false
   busy.value = true
   failure.value = ''
   added.value = null
@@ -42,7 +45,8 @@ async function add(): Promise<void> {
     }
     emit('added', update)
   } catch (error) {
-    failure.value = reason(error)
+    lastFailed = true
+    failure.value = describe(error)
   } finally {
     busy.value = false
   }
@@ -70,8 +74,8 @@ defineExpose({ add, fill, busy, added })
         :class="large ? 'h-[46px] text-sm' : ''"
         :aria-label="t('wizard.subscription.label')"
         placeholder="https://…"
-        @keydown.enter="add"
-        @blur="manual || add()"
+        @keydown.enter="add()"
+        @blur="manual || add(false)"
       />
       <Button :size="large ? 'lg' : 'default'" @click="paste"><ClipboardPaste />{{ t('common.paste') }}</Button>
     </div>

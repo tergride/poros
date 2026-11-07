@@ -8,7 +8,7 @@ import { type CoreClient, createTauriCore } from './core'
 import { createStubCore } from './stubCore'
 
 export type { CoreClient, CoreError, CoreEvent, CoreMethod, CoreStatus } from './core'
-export { CodeElevationCancelled, CodeStartFailed, isCoreError } from './core'
+export { CodeElevationCancelled, CodeStartFailed, StatusDataDamaged, StatusNotAnswering, isCoreError } from './core'
 
 const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 

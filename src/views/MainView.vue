@@ -13,15 +13,17 @@ const core = useCoreStore()
 const ipOpen = ref(false)
 
 // The core checks after connecting and disconnecting; the first look at the address is the window's to ask for.
+// Behind the kill switch's block the services are out of reach, and without a core there is no one to ask.
 onMounted(() => {
-  if (core.settings?.checkIp && core.network.checkedAt === 0 && !core.network.checking) {
-    void core.core().call(MethodNetworkCheck)
+  if (core.settings?.checkIp && core.network.checkedAt === 0 && !core.network.checking && !core.killSwitch.on && core.ready) {
+    void core.core().call(MethodNetworkCheck).catch(() => undefined)
   }
 })
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1">
+  <!-- min-w-0: the truncated names inside would otherwise widen the view past a narrow window. -->
+  <div class="flex min-h-0 min-w-0 flex-1">
     <Portal @ip="ipOpen = true" />
     <ServerList />
     <ModesDialog />

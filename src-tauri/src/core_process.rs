@@ -6,6 +6,9 @@
 //! TUN needs administrator rights, which only the core gets: `elevate` starts a core through UAC next to the
 //! running one, which keeps working if the user says no. The new core waits for the old one to exit, so the data
 //! folder, the port and the TUN are free when it takes them.
+//!
+//! A ready core is asked every few seconds whether it answers: one that stops answering is said to, and after a few
+//! checks it is killed and started again, so that the interface never waits on a core that hangs.
 
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
@@ -32,6 +35,17 @@ const MAX_RESTARTS: u32 = 5;
 const EXIT_GRACE: Duration = Duration::from_secs(20);
 /// The last lines the core wrote, to show why it stopped.
 const TAIL_LINES: usize = 20;
+const HEARTBEAT_EVERY: Duration = Duration::from_secs(5);
+const HEARTBEAT_TIMEOUT: Duration = Duration::from_secs(5);
+/// A core that misses this many checks in a row hangs: it is killed and started again.
+const HEARTBEAT_MISSES: u32 = 3;
+/// The exit code of a core that cannot read its data file (core/main.go): starting it again changes nothing.
+const EXIT_DATA_DAMAGED: i64 = 4;
+const DATA_FILE: &str = "poros.db";
+
+/// Why the core is not working, beyond its state: its data file is damaged, or it stopped answering.
+pub const REASON_DATA_DAMAGED: &str = "data_damaged";
+pub const REASON_NOT_ANSWERING: &str = "not_answering";
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -48,6 +62,8 @@ pub struct CoreStatus {
     pub elevated: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<&'static str>,
 }
 
 /// The error object of a JSON-RPC response, or one made here when the core cannot answer.
@@ -116,11 +132,15 @@ struct Shared {
 
 impl Shared {
     fn set_status(&self, state: CoreState, elevated: bool, error: Option<String>) {
-        let status = CoreStatus {
+        self.report(CoreStatus {
             state,
             elevated,
             error,
-        };
+            reason: None,
+        });
+    }
+
+    fn report(&self, status: CoreStatus) {
         *self.status.lock().unwrap() = status.clone();
         self.sink.status(&status);
     }
@@ -129,6 +149,7 @@ impl Shared {
 #[derive(Clone)]
 pub struct Core {
     shared: Arc<Shared>,
+    data_dir: PathBuf,
 }
 
 impl Core {
@@ -141,6 +162,7 @@ impl Core {
                 state: CoreState::Starting,
                 elevated: false,
                 error: None,
+                reason: None,
             }),
             next_id: AtomicU64::new(1),
             sink: Box::new(sink),
@@ -148,9 +170,10 @@ impl Core {
             requests,
             supervisor: Mutex::new(None),
         });
+        let data_dir = config.data_dir.clone();
         let task = tauri::async_runtime::spawn(supervise(config, shared.clone(), received));
         *shared.supervisor.lock().unwrap() = Some(task);
-        Self { shared }
+        Self { shared, data_dir }
     }
 
     pub fn status(&self) -> CoreStatus {
@@ -176,6 +199,30 @@ impl Core {
     /// Replaces the core with one without rights; it also brings back a core that gave up after failing.
     pub async fn restart(&self) -> Result<(), CoreError> {
         self.replace(false, None).await
+    }
+
+    /// Puts a data file the core cannot read aside, as poros.db.damaged-<seconds>, and starts a core on clean data.
+    /// The old file stays for the user; nothing is deleted.
+    pub async fn reset_data(&self) -> Result<(), CoreError> {
+        if self.status().reason != Some(REASON_DATA_DAMAGED) {
+            return Err(CoreError::local(
+                CODE_START_FAILED,
+                "the data file is not damaged",
+            ));
+        }
+        let file = self.data_dir.join(DATA_FILE);
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|since| since.as_secs())
+            .unwrap_or_default();
+        let aside = self.data_dir.join(format!("{DATA_FILE}.damaged-{stamp}"));
+        std::fs::rename(&file, &aside).map_err(|err| {
+            CoreError::local(
+                CODE_START_FAILED,
+                format!("cannot move {}: {err}", file.display()),
+            )
+        })?;
+        self.restart().await
     }
 
     async fn replace(&self, elevated: bool, window: Option<isize>) -> Result<(), CoreError> {
@@ -241,15 +288,30 @@ struct Prepared {
     handover: bool,
 }
 
-/// How a core's run ended: why, and the core that takes over, if one was asked for.
+/// How a core's run ended: why, what kind of end it was, and the core that takes over, if one was asked for.
 struct Outcome {
     reason: String,
+    kind: Option<&'static str>,
     next: Option<Prepared>,
 }
 
 impl From<String> for Outcome {
     fn from(reason: String) -> Self {
-        Self { reason, next: None }
+        Self {
+            reason,
+            kind: None,
+            next: None,
+        }
+    }
+}
+
+/// The end of a core whose process exited, with its last words; exit code 4 is a damaged data file.
+fn exited(exit: core_launch::Exit, stderr: &Mutex<VecDeque<String>>, data_dir: &Path) -> Outcome {
+    let kind = (exit.code == Some(EXIT_DATA_DAMAGED)).then_some(REASON_DATA_DAMAGED);
+    Outcome {
+        reason: with_tail(exit.text, stderr, data_dir),
+        kind,
+        next: None,
     }
 }
 
@@ -288,6 +350,23 @@ async fn supervise(
             restarts = 0;
             continue;
         }
+        // Another start would read the same file: the user chooses between clean data and leaving it.
+        if outcome.kind == Some(REASON_DATA_DAMAGED) {
+            shared.report(CoreStatus {
+                state: CoreState::Down,
+                elevated: false,
+                error: Some(outcome.reason),
+                reason: outcome.kind,
+            });
+            match wait_for_request(&config, &shared, &mut stop, &mut requests).await {
+                Some(prepared) => {
+                    restarts = 0;
+                    next = Some(prepared);
+                }
+                None => return,
+            }
+            continue;
+        }
         if started.elapsed() >= STABLE_RUN {
             restarts = 0;
         }
@@ -302,7 +381,12 @@ async fn supervise(
         } else {
             outcome.reason
         };
-        shared.set_status(CoreState::Down, false, Some(reason));
+        shared.report(CoreStatus {
+            state: CoreState::Down,
+            elevated: false,
+            error: Some(reason),
+            reason: outcome.kind,
+        });
         if restarts > MAX_RESTARTS {
             match wait_for_request(&config, &shared, &mut stop, &mut requests).await {
                 Some(prepared) => {
@@ -467,7 +551,7 @@ async fn run_once(
                 return format!("the core did not connect in {connect_timeout:?}").into();
             }
         },
-        reason = process.wait() => return with_tail(reason, &stderr, &config.data_dir).into(),
+        exit = process.wait() => return exited(exit, &stderr, &config.data_dir),
         _ = stopped(stop) => {
             process.kill().await;
             return "stopped".to_string().into();
@@ -494,26 +578,33 @@ async fn run_once(
     let hello = json!({ "jsonrpc": "2.0", "id": hello_id, "method": "hello", "params": { "token": token } });
     let _ = tx.send(hello.to_string());
 
-    let handshake: Result<(), String> = tokio::select! {
+    // A core that cannot read its data exits before it answers the handshake.
+    let handshake: Result<(), Outcome> = tokio::select! {
         reply = tokio::time::timeout(CALL_TIMEOUT, hello_rx) => match reply {
             Ok(Ok(Ok(_))) => Ok(()),
-            Ok(Ok(Err(err))) => Err(format!("the core refused the handshake: {}", err.message)),
-            _ => Err("the core did not answer the handshake".to_string()),
+            Ok(Ok(Err(err))) => Err(format!("the core refused the handshake: {}", err.message).into()),
+            _ => Err("the core did not answer the handshake".to_string().into()),
         },
-        reason = process.wait() => Err(with_tail(reason, &stderr, &config.data_dir)),
-        _ = stopped(stop) => Err("stopped".to_string()),
+        exit = process.wait() => Err(exited(exit, &stderr, &config.data_dir)),
+        _ = stopped(stop) => Err("stopped".to_string().into()),
     };
+    // Unanswered checks in a row; the core is killed at once on the way out when it does not answer.
+    let mut misses = 0;
     let outcome = match handshake {
-        Err(reason) => reason.into(),
+        Err(outcome) => outcome,
         Ok(()) => {
+            let elevated = process.elevated();
             *shared.link.lock().unwrap() = Some(Link {
-                tx,
+                tx: tx.clone(),
                 pending: pending.clone(),
             });
-            shared.set_status(CoreState::Ready, process.elevated(), None);
+            shared.set_status(CoreState::Ready, elevated, None);
+            let mut heartbeat = tokio::time::interval(HEARTBEAT_EVERY);
+            heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            heartbeat.reset();
             loop {
                 tokio::select! {
-                    reason = process.wait() => break with_tail(reason, &stderr, &config.data_dir).into(),
+                    exit = process.wait() => break exited(exit, &stderr, &config.data_dir),
                     _ = &mut reader_task => break "the core closed its channel".to_string().into(),
                     _ = stopped(stop) => break "stopped".to_string().into(),
                     Some(request) = requests.recv() => {
@@ -523,11 +614,40 @@ async fn run_once(
                                 shared.link.lock().unwrap().take();
                                 shared.set_status(CoreState::Starting, next.process.elevated(), None);
                                 let _ = request.reply.send(Ok(()));
-                                break Outcome { reason: "replaced".to_string(), next: Some(next) };
+                                break Outcome { reason: "replaced".to_string(), kind: None, next: Some(next) };
                             }
                             Err(err) => {
                                 let _ = request.reply.send(Err(err));
                             }
+                        }
+                    }
+                    _ = heartbeat.tick() => {
+                        let answered = tokio::select! {
+                            answered = answers(&tx, &pending, shared) => answered,
+                            _ = stopped(stop) => break "stopped".to_string().into(),
+                        };
+                        if answered {
+                            if misses > 0 {
+                                shared.set_status(CoreState::Ready, elevated, None);
+                            }
+                            misses = 0;
+                            continue;
+                        }
+                        misses += 1;
+                        if misses == 1 {
+                            shared.report(CoreStatus {
+                                state: CoreState::Ready,
+                                elevated,
+                                error: None,
+                                reason: Some(REASON_NOT_ANSWERING),
+                            });
+                        }
+                        if misses >= HEARTBEAT_MISSES {
+                            break Outcome {
+                                reason: format!("the core did not answer for {:?}", HEARTBEAT_EVERY * HEARTBEAT_MISSES),
+                                kind: Some(REASON_NOT_ANSWERING),
+                                next: None,
+                            };
                         }
                     }
                 }
@@ -543,13 +663,35 @@ async fn run_once(
     // and exits. Killing it with a TUN up would leave the adapter and its routes behind for a while.
     writer_task.abort();
     reader_task.abort();
-    if tokio::time::timeout(EXIT_GRACE, process.wait())
-        .await
-        .is_err()
+    // A core that does not answer would not close anything either: it goes at once.
+    if misses > 0
+        || tokio::time::timeout(EXIT_GRACE, process.wait())
+            .await
+            .is_err()
     {
         process.kill().await;
     }
     outcome
+}
+
+/// Asks the core for its version and tells whether the answer came in time.
+async fn answers(tx: &mpsc::UnboundedSender<String>, pending: &Pending, shared: &Shared) -> bool {
+    let id = shared.next_id.fetch_add(1, Ordering::Relaxed);
+    let (reply_tx, reply_rx) = oneshot::channel();
+    pending.lock().unwrap().insert(id, reply_tx);
+    let message = json!({ "jsonrpc": "2.0", "id": id, "method": "app.info", "params": null });
+    if tx.send(message.to_string()).is_err() {
+        pending.lock().unwrap().remove(&id);
+        return false;
+    }
+    let answered = matches!(
+        tokio::time::timeout(HEARTBEAT_TIMEOUT, reply_rx).await,
+        Ok(Ok(Ok(_)))
+    );
+    if !answered {
+        pending.lock().unwrap().remove(&id);
+    }
+    answered
 }
 
 fn collect_stderr(process: &mut Process) -> Tail {
@@ -744,15 +886,31 @@ mod tests {
     ) -> (Core, PathBuf, mpsc::UnboundedReceiver<(String, Value)>) {
         let data_dir =
             std::env::temp_dir().join(format!("poros-core-test-{}", random_hex(4).unwrap()));
+        let core = start_test_core_with(program, data_dir.clone());
+        (core.0, data_dir, core.1)
+    }
+
+    fn start_test_core_in(
+        data_dir: PathBuf,
+    ) -> (Core, PathBuf, mpsc::UnboundedReceiver<(String, Value)>) {
+        let program = std::env::var_os("POROS_TEST_CORE").expect("POROS_TEST_CORE");
+        let core = start_test_core_with(program, data_dir.clone());
+        (core.0, data_dir, core.1)
+    }
+
+    fn start_test_core_with(
+        program: std::ffi::OsString,
+        data_dir: PathBuf,
+    ) -> (Core, mpsc::UnboundedReceiver<(String, Value)>) {
         let (tx, events) = mpsc::unbounded_channel();
         let core = Core::start(
             CoreConfig {
                 program: program.into(),
-                data_dir: data_dir.clone(),
+                data_dir,
             },
             Channel(tx),
         );
-        (core, data_dir, events)
+        (core, events)
     }
 
     /// Talks to a real core. Set POROS_TEST_CORE to the built PorosCore.exe to run it.
@@ -841,6 +999,60 @@ mod tests {
         let info = core.call("app.info", Value::Null).await.expect("app.info");
         assert_eq!(info["elevated"], Value::Bool(false), "{info}");
 
+        core.shutdown().await;
+        std::fs::remove_dir_all(&data_dir).expect("the stopped core must release its data folder");
+    }
+
+    /// A data file the core cannot read stops it at once, without restarts, until the user asks for clean data;
+    /// the old file stays beside. Set POROS_TEST_CORE to run it.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn waits_for_the_user_on_damaged_data() {
+        let Some(program) = std::env::var_os("POROS_TEST_CORE") else {
+            eprintln!("POROS_TEST_CORE is not set, skipping");
+            return;
+        };
+        let (core, data_dir, _events) = start_test_core(program);
+        wait_ready(&core, false, CONNECT_TIMEOUT).await;
+        core.shutdown().await;
+        let file = data_dir.join(DATA_FILE);
+        let mut data = std::fs::read(&file).expect("the data file");
+        for (i, byte) in data.iter_mut().take(8192).enumerate() {
+            *byte = (i * 7) as u8;
+        }
+        std::fs::write(&file, data).expect("damage the data file");
+
+        let (core, _, _events) = start_test_core_in(data_dir.clone());
+        let deadline = Instant::now() + CONNECT_TIMEOUT;
+        while core.status().reason != Some(REASON_DATA_DAMAGED) {
+            assert!(
+                Instant::now() < deadline,
+                "the damaged data was not told: {:?}",
+                core.status()
+            );
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert_eq!(core.status().state, CoreState::Down);
+        // No restart comes on its own: the next would fail the same way.
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        assert_eq!(core.status().reason, Some(REASON_DATA_DAMAGED));
+
+        core.reset_data().await.expect("reset_data");
+        wait_ready(&core, false, CONNECT_TIMEOUT).await;
+        let aside = std::fs::read_dir(&data_dir)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("poros.db.damaged-")
+            })
+            .count();
+        assert_eq!(aside, 1, "the damaged file stays beside the new one");
+        assert!(
+            core.reset_data().await.is_err(),
+            "a core with good data keeps it"
+        );
         core.shutdown().await;
         std::fs::remove_dir_all(&data_dir).expect("the stopped core must release its data folder");
     }

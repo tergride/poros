@@ -341,6 +341,11 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	}
 	e.writeMu.Lock()
 	defer e.writeMu.Unlock()
+	if taken, err := e.nameTaken(record.Name, record.ID); err != nil {
+		return Preset{}, err
+	} else if taken {
+		return Preset{}, jsonrpc.Failed(ReasonPresetNameTaken, "there is a preset named %q already", record.Name)
+	}
 	if err := e.db.Update(func(tx *bbolt.Tx) error {
 		if record.ID == "" {
 			record.ID, record.AddedAt = newID(), e.now().UnixMilli()
@@ -428,13 +433,43 @@ func (e *Engine) ExportPreset(id string) (PresetLink, error) {
 	return PresetLink{Link: presetLinkPrefix + base64.RawURLEncoding.EncodeToString(data)}, nil
 }
 
-// ImportPreset makes a new copy from a link.
+// nameTaken tells whether a preset other than id, built-in or the user's, has the name; case does not count.
+func (e *Engine) nameTaken(name, id string) (bool, error) {
+	for _, record := range e.presets {
+		if strings.EqualFold(record.Preset.Name, name) {
+			return true, nil
+		}
+	}
+	copies, err := e.copies()
+	if err != nil {
+		return false, err
+	}
+	for _, c := range copies {
+		if c.ID != id && strings.EqualFold(strings.TrimSpace(c.Name), name) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// ImportPreset makes a new copy from a link; a name that is taken gets a number: "Games 2".
 func (e *Engine) ImportPreset(p PresetLink) (Preset, error) {
 	link, err := decodePresetLink(p.Link)
 	if err != nil {
 		return Preset{}, err
 	}
-	return e.SavePreset(PresetCopy{BasedOn: link.BasedOn, Name: link.Name, Sites: link.Sites, Apps: link.Apps, DNS: link.DNS})
+	name := strings.TrimSpace(link.Name)
+	for n := 2; name != ""; n++ {
+		taken, err := e.nameTaken(name, "")
+		if err != nil {
+			return Preset{}, err
+		}
+		if !taken {
+			break
+		}
+		name = fmt.Sprintf("%s %d", strings.TrimSpace(link.Name), n)
+	}
+	return e.SavePreset(PresetCopy{BasedOn: link.BasedOn, Name: name, Sites: link.Sites, Apps: link.Apps, DNS: link.DNS})
 }
 
 func decodePresetLink(text string) (presetLink, error) {

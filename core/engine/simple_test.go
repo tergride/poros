@@ -66,7 +66,7 @@ func TestPresetCopies(t *testing.T) {
 		t.Fatalf("ExportPreset: %v, %v", link, err)
 	}
 	imported, err := e.ImportPreset(link)
-	if err != nil || imported.ID == saved.ID || imported.Name != "Home" || imported.Sites != 4 {
+	if err != nil || imported.ID == saved.ID || imported.Name != "Home 2" || imported.Sites != 4 {
 		t.Fatalf("ImportPreset: %+v, %v", imported, err)
 	}
 	for _, bad := range []string{"https://example.com", "poros://route/!!!", "poros://route/" + strings.Repeat("A", 8)} {
@@ -170,7 +170,7 @@ func TestPresetFromScratch(t *testing.T) {
 		t.Fatalf("SavePreset: %+v, %v", saved, err)
 	}
 	copyOfAll, _ := e.PresetCopy("all")
-	copyOfAll.Name, copyOfAll.Sites = "Work", draft.Sites
+	copyOfAll.Name, copyOfAll.Sites = "Work too", draft.Sites
 	twin, err := e.SavePreset(copyOfAll)
 	if err != nil {
 		t.Fatal(err)
@@ -180,6 +180,8 @@ func TestPresetFromScratch(t *testing.T) {
 		t.Fatal(err)
 	}
 	same, _, _ := e.preset(twin.ID)
+	// Two presets cannot share a name; the rest is the same.
+	same.Name = own.Name
 	if !reflect.DeepEqual(own, same) {
 		t.Errorf("from scratch %+v, a copy of all %+v", own, same)
 	}

@@ -11,7 +11,6 @@
     "save": "Save",
     "remove": "Remove",
     "copy": "Copy",
-    "copied": "Copied",
     "later": "Later",
     "more": "More"
   },
@@ -40,12 +39,23 @@
     "route": "Route: {preset}",
     "presets": "Presets…",
     "show": "Show window",
-    "exit": "Exit"
+    "exit": "Exit",
+    "blocked": "Internet blocked until Stop",
+    "blockedAlways": "Internet blocked by the kill switch",
+    "coreDown": "The Poros core has stopped",
+    "stop": "Stop"
   },
   "boot": {
     "starting": "Starting the core…",
     "down": "The Poros core has stopped.",
-    "restart": "Restart the core"
+    "restart": "Restart the core",
+    "notAnswering": "The Poros core is not answering. If it stays so, Poros restarts it by itself.",
+    "restarting": "The Poros core is restarting…",
+    "downHint": "Connecting and the settings are unavailable until the core starts.",
+    "damaged": "The data file of Poros is damaged, as a sudden power cut may leave it. Poros can start with clean data: the subscriptions and settings will have to be added again, and the old file stays in the data folder.",
+    "resetData": "Start with clean data",
+    "exit": "Quit Poros",
+    "details": "Details"
   },
   "logs": {
     "title": "Log",
@@ -130,7 +140,8 @@
       "tun": "All of the computer's traffic goes through the server, games and programs included.",
       "system": "Browsers and programs that use the system proxy go through the server.",
       "none": "Without TUN and System only programs set to the proxy {address} go through the server."
-    }
+    },
+    "blockedAlways": "Internet blocked by the kill switch"
   },
   "list": {
     "search": "Find a server",
@@ -157,7 +168,11 @@
     "removeTitle": "Remove the subscription?",
     "removeText": "“{name}” and its servers will be gone from Poros.",
     "updated": "Added: {added}, gone: {removed}, changed: {changed}.",
-    "failed": "The update failed: {reason}"
+    "failed": "Updating “{name}” failed: {reason}",
+    "copied": "The subscription link is copied.",
+    "expired": "expired {date}",
+    "exhausted": "quota used up",
+    "used": "{used} used"
   },
   "ping": {
     "none": "no answer",
@@ -169,8 +184,7 @@
     "link": "Link",
     "name": "Name",
     "namePlaceholder": "Taken from the subscription",
-    "note": "The subscription shows up on the main screen as a group of its own.",
-    "found": "Found: {servers}"
+    "note": "The subscription shows up on the main screen as a group of its own."
   },
   "modes": {
     "title": "How traffic goes through the server",
@@ -275,7 +289,8 @@
       "ipv6": "IPv6",
       "ipv6Hint": "Off, sites open over IPv4 only, and IPv6 connections do not go past the server.",
       "reality": "REALITY on Xray",
-      "realityHint": "VLESS servers with REALITY run on Xray. Off, they run on sing-box."
+      "realityHint": "VLESS servers with REALITY run on Xray. Off, they run on sing-box.",
+      "killSwitchNote": "How the kill switch works: Windows lets only Poros reach the internet, and other programs go out only through its connection. A separate guard process holds the block, so it stays even if the Poros core fails. Stop lifts it in the “On connect” mode, and so does choosing Off."
     },
     "subs": {
       "lead": "How the server list is updated.",
@@ -298,7 +313,8 @@
       "startMinimizedHint": "The window does not open, Poros stays in the tray.",
       "closeToTray": "Hide to the tray on close",
       "closeToTrayHint": "Off, the close button quits Poros.",
-      "urlSchemeOther": "Another copy of Poros opens them now: {program}. Turn on to let this one open them."
+      "urlSchemeOther": "Another copy of Poros opens them now: {program}. Turn on to let this one open them.",
+      "startMinimizedOff": "Works when Poros starts with Windows."
     },
     "look": {
       "lead": "Language and size of the interface.",
@@ -356,7 +372,9 @@
     "dnsStandard": "Standard",
     "dnsCustom": "Custom…",
     "dnsCustomPlaceholder": "https://dns.example/dns-query",
-    "save": "Save and apply"
+    "save": "Save and apply",
+    "copyName": "{name} — copy",
+    "duplicate": "“{value}” is in the list already."
   },
   "presetLists": {
     "open": "Edit as lists",
@@ -388,7 +406,7 @@
     "no_servers": "the subscription has no servers Poros can connect to",
     "invalid_url": "a subscription link starts with http:// or https://",
     "duplicate": "this subscription is already added",
-    "single_server": "This is a link to one server, not a subscription. Servers are added by hand in the advanced mode, which the first release does not have.",
+    "single_server": "This is a link to one server, not a subscription. Poros adds subscriptions only for now.",
     "check_failed": "a part of the check failed",
     "invalid_entry": "this is no site, address, subnet or program",
     "invalid_link": "this is no Poros preset link",
@@ -396,10 +414,16 @@
     "unknown": "something went wrong",
     "update_failed": "the update check did not work",
     "update_unavailable": "this build does not update itself",
-    "update_not_ready": "no update is downloaded, or it changed after the download"
-  },
-  "time": {
-    "never": "never"
+    "update_not_ready": "no update is downloaded, or it changed after the download",
+    "core_down": "the Poros core is unavailable",
+    "core_timeout": "the Poros core did not answer in time",
+    "elevation_cancelled": "administrator rights were not given",
+    "core_start_failed": "the Poros core did not start",
+    "not_found": "this is gone already",
+    "unknown_preset": "there is no such preset",
+    "preset_name_taken": "a preset of this name exists already",
+    "check_off": "the IP and DNS check is off in the settings",
+    "details": "Details: {details}"
   },
   "units": {
     "B": "B",
@@ -408,5 +432,8 @@
     "GB": "GB",
     "TB": "TB",
     "perSecond": "{value}/s"
+  },
+  "links": {
+    "unknown": "Poros does not know this link: {link}"
   }
 }

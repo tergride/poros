@@ -72,7 +72,7 @@ func (e *Engine) requestNetworkCheck() {
 	}
 }
 
-// clearNetworkCheck forgets the results once the user turns the check off.
+// clearNetworkCheck forgets the results: the user turned the check off, or the network went away.
 func (e *Engine) clearNetworkCheck() {
 	e.net.mu.Lock()
 	defer e.net.mu.Unlock()

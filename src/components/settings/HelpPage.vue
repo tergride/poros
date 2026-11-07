@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Switch } from '@/components/ui'
+import { useAttempt } from '@/composables/useAttempt'
 import { useClock } from '@/composables/useClock'
 import { useConnect } from '@/composables/useConnect'
 import { useReason } from '@/composables/useReason'
@@ -27,6 +28,7 @@ const resetting = ref(false)
 const updateCheck = useSetting('updateCheck')
 const now = useClock(60_000)
 const reason = useReason()
+const attempt = useAttempt()
 // Why "Restart and update" did not hand over to the updater; Poros runs on.
 const installFailure = ref('')
 
@@ -93,13 +95,13 @@ async function reset(): Promise<void> {
       <Button @click="ui.logs = true"><ScrollText />{{ t('settings.help.open') }}</Button>
     </OptionRow>
     <OptionRow :title="t('settings.help.reset')" :hint="t('settings.help.resetHint')">
-      <Button :disabled="resetting" @click="reset"><RefreshCw :class="resetting && 'animate-spin'" />{{ t('settings.help.resetButton') }}</Button>
+      <Button :disabled="resetting" @click="attempt(reset)"><RefreshCw :class="resetting && 'animate-spin'" />{{ t('settings.help.resetButton') }}</Button>
     </OptionRow>
     <OptionRow :title="t('settings.help.updates')" :hint="updateHint" data-testid="updates">
       <Button v-if="core.updates.state === UpdateReady" variant="primary" @click="install()">
         <RefreshCw />{{ t('updates.install') }}
       </Button>
-      <Button v-else :disabled="!core.updates.available || busy" @click="updates.check()">
+      <Button v-else :disabled="!core.updates.available || busy" @click="attempt(() => updates.check())">
         <Download />{{ t('settings.help.check') }}
       </Button>
     </OptionRow>

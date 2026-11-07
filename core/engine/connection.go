@@ -103,14 +103,16 @@ func (e *Engine) StopConnection() (ConnectionState, error) {
 	e.conn.mu.Lock()
 	e.conn.serial++
 	serial := e.conn.serial
-	if e.conn.state.State != ConnectionIdle {
+	active := e.conn.state.State != ConnectionIdle
+	if active {
 		state := e.conn.state
 		state.State = ConnectionStopping
 		e.setState(state)
 	}
 	state := e.conn.state
 	e.conn.mu.Unlock()
-	go e.runStop(serial)
+	// A Stop with nothing up changes no address: no need to ask the services again.
+	go e.runStop(serial, active || e.KillSwitchState().On)
 	return state, nil
 }
 
@@ -143,7 +145,7 @@ func (e *Engine) runStart(serial uint64) {
 	}
 }
 
-func (e *Engine) runStop(serial uint64) {
+func (e *Engine) runStop(serial uint64, changesNetwork bool) {
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
 	if !e.isLatest(serial) {
@@ -158,7 +160,9 @@ func (e *Engine) runStop(serial uint64) {
 	defer e.conn.mu.Unlock()
 	if serial == e.conn.serial {
 		e.setState(state)
-		go e.requestNetworkCheck()
+		if changesNetwork {
+			go e.requestNetworkCheck()
+		}
 	}
 }
 
@@ -350,7 +354,9 @@ func (e *Engine) syncSystemProxy() {
 // onDefaultInterface reconnects a connection on Xray when the network changes: its sockets are bound to the old
 // interface. sing-box follows the network on its own.
 func (e *Engine) onDefaultInterface(iface *control.Interface, _ int) {
+	// Without a network the addresses found before are no longer the user's: they go until it comes back.
 	if iface == nil {
+		e.clearNetworkCheck()
 		return
 	}
 	// The monitor waits for its callbacks, and a start may hold the lifecycle for long.
@@ -445,23 +451,13 @@ func newBridge() (config.Bridge, error) {
 
 // resolveHosts looks up the addresses Xray dials, preferring IPv4.
 func resolveHosts(ctx context.Context, hosts []string, ipv4Only bool) (map[string]netip.Addr, error) {
-	network := "ip"
-	if ipv4Only {
-		network = "ip4"
-	}
 	resolved := make(map[string]netip.Addr, len(hosts))
 	for _, host := range hosts {
-		addrs, err := net.DefaultResolver.LookupNetIP(ctx, network, host)
-		if err != nil || len(addrs) == 0 {
-			return nil, fmt.Errorf("cannot resolve %s: %v", host, err)
+		addr, err := lookupPast(ctx, host, ipv4Only)
+		if err != nil {
+			return nil, err
 		}
-		resolved[host] = addrs[0].Unmap()
-		for _, addr := range addrs {
-			if addr.Unmap().Is4() {
-				resolved[host] = addr.Unmap()
-				break
-			}
-		}
+		resolved[host] = addr
 	}
 	return resolved, nil
 }

@@ -9,6 +9,7 @@ mod tray;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 use serde_json::{Value, json};
 use tauri::webview::{PermissionKind, PermissionResponse};
@@ -28,7 +29,8 @@ pub const VERSION: &str = match option_env!("POROS_VERSION") {
 
 /// What the shell keeps besides the core.
 struct Shell {
-    /// The window's close button hides it to the tray; follows the core's settings.
+    /// The window's close button hides it to the tray; follows the core's settings. Until they come it closes
+    /// Poros: a core that never starts gives the tray no menu to quit from.
     close_to_tray: AtomicBool,
     /// `poros://` links from the command line and from later starts, until the interface takes them.
     links: Mutex<Vec<String>>,
@@ -36,6 +38,11 @@ struct Shell {
     integration: Mutex<Option<Integration>>,
     /// The updater started this Poros after an install, and the connection that ran before comes back.
     reconnect: AtomicBool,
+    /// Poros is on its way out: nothing starts any more.
+    exiting: AtomicBool,
+    /// The server that takes the arguments of later starts; it closes first on the way out, so that a start in
+    /// the meantime runs as a Poros of its own instead of handing its links to one that is going away.
+    instance: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
 }
 
 #[tauri::command]
@@ -183,6 +190,62 @@ async fn core_restart(core: tauri::State<'_, Core>) -> Result<(), CoreError> {
     core.restart().await
 }
 
+/// Puts the data file the core cannot read aside and starts a core on clean data; the user asked for it.
+#[tauri::command]
+async fn core_reset_data(core: tauri::State<'_, Core>) -> Result<(), CoreError> {
+    core.reset_data().await
+}
+
+/// How often the shell looks whether the page in the window still runs, and how long it waits for the answer.
+const PAGE_CHECK: Duration = Duration::from_secs(2);
+const PAGE_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Reloads the page of the window when its renderer is gone: WebView2 then shows a page of its own, with no title
+/// bar in a window without decorations, so the user could neither use nor close it. A page that twice in a row does
+/// not answer, or answers without Poros in it, is loaded again. Only a visible window is looked at.
+///
+/// It runs on a thread of its own: asking the window whether it is visible waits for the main thread, and a task of
+/// the async runtime that waited so would hold up the others, the core's among them, while Poros exits.
+fn watch_page(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut silent = 0;
+        loop {
+            std::thread::sleep(PAGE_CHECK);
+            if app.state::<Shell>().exiting.load(Ordering::Relaxed) {
+                return;
+            }
+            let Some(window) = app.get_webview_window("main") else {
+                return;
+            };
+            if !window.is_visible().unwrap_or(false) {
+                silent = 0;
+                continue;
+            }
+            let (tx, rx) = std::sync::mpsc::channel();
+            let tx = Mutex::new(Some(tx));
+            let asked = window.eval_with_callback(
+                "typeof window.__TAURI_INTERNALS__ === 'object'",
+                move |answer| {
+                    if let Some(tx) = tx.lock().unwrap().take() {
+                        let _ = tx.send(answer == "true");
+                    }
+                },
+            );
+            let answer = asked.ok().and_then(|()| rx.recv_timeout(PAGE_TIMEOUT).ok());
+            if answer == Some(true) {
+                silent = 0;
+                continue;
+            }
+            silent += 1;
+            if silent >= 2 && !app.state::<Shell>().exiting.load(Ordering::Relaxed) {
+                eprintln!("poros: the window shows no working Poros page; loading it again");
+                let _ = window.reload();
+                silent = 0;
+            }
+        }
+    });
+}
+
 fn show_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -323,7 +386,8 @@ pub fn run() {
             core_call,
             core_status,
             core_elevate,
-            core_restart
+            core_restart,
+            core_reset_data
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
@@ -343,10 +407,12 @@ pub fn run() {
                 Err(dir) => fatal::data_dir_unwritable(&dir),
             };
             app.manage(Shell {
-                close_to_tray: AtomicBool::new(true),
+                close_to_tray: AtomicBool::new(false),
                 links: Mutex::new(Vec::new()),
                 integration: Mutex::new(None),
                 reconnect: AtomicBool::new(reconnect),
+                exiting: AtomicBool::new(false),
+                instance: Mutex::new(None),
             });
             add_links(app.handle(), &args);
             tray::create(app.handle(), show_window)?;
@@ -375,13 +441,15 @@ pub fn run() {
             #[cfg(windows)]
             let builder = builder.data_directory(data_dir.join("webview"));
             builder.build()?;
+            watch_page(app.handle().clone());
 
             if let Some(incoming) = incoming {
                 let handle = app.handle().clone();
-                incoming.serve(move |args| {
+                let server = incoming.serve(move |args| {
                     add_links(&handle, &args);
                     show_window(&handle);
                 });
+                *app.state::<Shell>().instance.lock().unwrap() = server;
             }
             Ok(())
         })
@@ -390,6 +458,17 @@ pub fn run() {
 
     app.run(|handle, event| {
         if let RunEvent::Exit = event {
+            // Poros is gone for the user at once: the core may take a while to close its connection.
+            if let Some(shell) = handle.try_state::<Shell>() {
+                shell.exiting.store(true, Ordering::Relaxed);
+                if let Some(server) = shell.instance.lock().unwrap().take() {
+                    server.abort();
+                }
+            }
+            if let Some(window) = handle.get_webview_window("main") {
+                let _ = window.hide();
+            }
+            let _ = handle.remove_tray_by_id(tray::ID);
             // Let the core close its data before the process goes.
             let core = handle.state::<Core>().inner().clone();
             tauri::async_runtime::block_on(core.shutdown());

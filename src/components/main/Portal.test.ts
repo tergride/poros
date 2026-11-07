@@ -48,7 +48,8 @@ describe('Portal and the kill switch', () => {
     core.killSwitch = { ...blocked }
     const wrapper = mountPortal()
     expect(wrapper.get('[data-testid="start"]').find('[data-testid="kill-switch-lock"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Не подключено')
+    // Without a connection the internet is off, and the window says so.
+    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Интернет заблокирован Kill switch')
 
     core.connection = { ...idle, state: ConnectionRunning, since: Date.now() }
     await wrapper.vm.$nextTick()

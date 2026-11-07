@@ -10,7 +10,8 @@ const open = defineModel<boolean>('open', { default: false })
 
 <template>
   <DialogRoot v-model:open="open">
-    <DialogPortal>
+    <!-- Inside the app, so that a large text size scales the dialog with it. -->
+    <DialogPortal to="#app">
       <DialogOverlay class="fixed inset-0 z-40 bg-s0/75" />
       <DialogContent
         :aria-describedby="undefined"

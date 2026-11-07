@@ -49,12 +49,20 @@ export const useConnect = defineStore('connect', () => {
   const adminThenConnect = ref(true)
   const tunFailed = ref(false)
   const killSwitchFailed = ref(false)
+  // The modes were chosen in this run; they count for the next launches once a connection came of them, so that a
+  // start that failed does not make the next launch connect on its own.
+  const modesChosen = ref(false)
+  // The kill switch mode before a change that waits for rights: Cancel in the dialog puts it back.
+  const killSwitchBefore = ref<string | null>(null)
 
   watch(
     () => core.connection,
     (state) => {
       if (state.error === ReasonNeedsElevation) tunFailed.value = true
-      if (state.state === ConnectionRunning) tunFailed.value = false
+      if (state.state === ConnectionRunning) {
+        tunFailed.value = false
+        if (modesChosen.value) rememberModesAsked()
+      }
     },
   )
   watch(
@@ -94,7 +102,7 @@ export const useConnect = defineStore('connect', () => {
   async function start(): Promise<void> {
     const settings = core.settings
     if (!settings) return
-    if (!settings.tun && !settings.systemProxy && !modesAsked()) {
+    if (!settings.tun && !settings.systemProxy && !modesChosen.value && !modesAsked()) {
       modesOpen.value = true
       return
     }
@@ -134,7 +142,7 @@ export const useConnect = defineStore('connect', () => {
   }
 
   async function chooseModes(tun: boolean, systemProxy: boolean): Promise<void> {
-    rememberModesAsked()
+    modesChosen.value = true
     modesOpen.value = false
     await core.updateSettings({ tun, systemProxy })
     await start()
@@ -162,6 +170,7 @@ export const useConnect = defineStore('connect', () => {
 
   /** Restarts the core with rights after the UAC prompt and connects if asked to; a refusal leaves the banner. */
   async function elevate(thenConnect: boolean, reason: RightsFor): Promise<void> {
+    killSwitchBefore.value = null
     adminOpen.value = false
     try {
       await core.core().elevate()
@@ -192,12 +201,14 @@ export const useConnect = defineStore('connect', () => {
   }
 
   async function tryWithoutRights(): Promise<void> {
+    killSwitchBefore.value = null
     adminOpen.value = false
     if (adminThenConnect.value) await connect()
   }
 
   /** System works without rights: TUN goes off and the connection starts again with System. */
   async function useSystemInstead(): Promise<void> {
+    killSwitchBefore.value = null
     adminOpen.value = false
     tunFailed.value = false
     await core.updateSettings({ tun: false, systemProxy: true })
@@ -220,9 +231,25 @@ export const useConnect = defineStore('connect', () => {
    * comes up without the connection, so a running one starts again.
    */
   async function setKillSwitch(mode: string): Promise<void> {
+    const before = core.settings?.killSwitch ?? KillSwitchOff
     await core.updateSettings({ killSwitch: mode })
-    if (mode !== KillSwitchOff && !core.status.elevated) askRights('killSwitch', core.running)
+    if (mode !== KillSwitchOff && !core.status.elevated) {
+      killSwitchBefore.value = before
+      askRights('killSwitch', core.running)
+    }
   }
+
+  /**
+   * The rights dialog closed without an answer, by Cancel, Esc or a click beside it: a kill switch mode chosen just
+   * before goes back, since without rights it would only stay as a banner. TUN keeps its switch, as its banner
+   * offers System instead.
+   */
+  watch(adminOpen, (open) => {
+    const before = killSwitchBefore.value
+    if (open || before === null) return
+    killSwitchBefore.value = null
+    void core.updateSettings({ killSwitch: before }).catch(() => undefined)
+  })
 
   /** The System switch: the core applies it to a running connection by itself. */
   async function setSystemProxy(on: boolean): Promise<void> {

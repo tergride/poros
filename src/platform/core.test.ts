@@ -52,6 +52,7 @@ import {
   ReasonInvalidURL,
   ReasonNoServer,
   ReasonNotFound,
+  ReasonPresetNameTaken,
   ReasonSingleServer,
   ReasonUpdateNotReady,
   UpdateChecking,
@@ -92,7 +93,12 @@ describe('the stub core', () => {
     expect(sub.servers).toBe(added)
 
     expect(await reasonOf(core.call(MethodSubscriptionsRemove, { id: 'nope' }))).toBe(ReasonNotFound)
+    // The chosen server goes with its subscription, and a server that is not there cannot be chosen.
+    const settings = await core.call(MethodSettingsGet)
+    expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, server: 'nope' }))).toBe(ReasonNotFound)
+    await core.call(MethodSettingsSet, { ...settings, server: servers[0]!.id })
     await core.call(MethodSubscriptionsRemove, { id: sub.id })
+    expect((await core.call(MethodSettingsGet)).server).toBe('')
     expect(changes).toHaveBeenCalledTimes(2)
     expect(changes).toHaveBeenLastCalledWith([])
     expect(serverChanges).toHaveBeenLastCalledWith({ subscriptionId: sub.id })
@@ -247,7 +253,10 @@ describe('the stub core', () => {
     await core.call(MethodSettingsSet, { ...settings, preset: saved.id })
     const { link } = await core.call(MethodPresetsExport, { id: saved.id })
     const imported = await core.call(MethodPresetsImport, { link })
-    expect(imported).toMatchObject({ name: 'Home', sites: 1, apps: 1 })
+    // As in the engine, a name is taken once: the imported copy gets a number, a second save is refused.
+    expect(imported).toMatchObject({ name: 'Home 2', sites: 1, apps: 1 })
+    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: ' home ' }))).toBe(ReasonPresetNameTaken)
+    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'All traffic' }))).toBe(ReasonPresetNameTaken)
 
     await core.call(MethodPresetsRemove, { id: saved.id })
     expect((await core.call(MethodSettingsGet)).preset).toBe('all')

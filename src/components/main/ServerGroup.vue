@@ -25,6 +25,18 @@ const now = useClock(60_000)
 const bytes = (value: number) => formatBytes(value, locale.value, (unit) => t(`units.${unit}`))
 const used = computed(() => props.subscription.upload + props.subscription.download)
 const percent = computed(() => (props.subscription.total > 0 ? Math.min(100, (used.value / props.subscription.total) * 100) : 0))
+// A subscription that ran out works no more at the provider's: it says so instead of looking like the others.
+const expired = computed(() => props.subscription.expire > 0 && props.subscription.expire <= now.value)
+const exhausted = computed(() => props.subscription.total > 0 && used.value >= props.subscription.total)
+const quotaText = computed(() => {
+  const s = props.subscription
+  if (s.total > 0) return exhausted.value ? t('list.exhausted') : t('list.quota', { used: bytes(used.value), total: bytes(s.total) })
+  return used.value > 0 ? t('list.used', { used: bytes(used.value) }) : t('list.unlimited')
+})
+const untilText = computed(() => {
+  const date = formatDate(props.subscription.expire, locale.value, now.value)
+  return expired.value ? t('list.expired', { date }) : t('list.until', { date })
+})
 const summary = computed(() => {
   const servers = t('servers.count', props.subscription.servers)
   if (!props.subscription.updatedAt) return t('list.groupNever', { servers })
@@ -49,17 +61,25 @@ function latencyText(latency: number): string {
       >
         <ChevronDown v-if="open" class="size-4 flex-none text-t2" /><ChevronRight v-else class="size-4 flex-none text-t2" />
         <span class="min-w-0">
-          <strong class="block truncate font-semibold">{{ subscription.name }}</strong>
-          <small class="block text-xs text-t3">{{ summary }}</small>
+          <strong class="block truncate font-semibold" :title="subscription.name">{{ subscription.name }}</strong>
+          <small class="block truncate text-xs text-t3">{{ summary }}</small>
         </span>
       </button>
-      <div v-if="subscription.total > 0 || subscription.expire > 0" class="grid w-[196px] flex-none gap-1 text-[11.5px] text-t2">
-        <div class="flex justify-between gap-2">
-          <span>{{ subscription.total > 0 ? t('list.quota', { used: bytes(used), total: bytes(subscription.total) }) : t('list.unlimited') }}</span>
-          <span v-if="subscription.expire > 0" class="text-t3">{{ t('list.until', { date: formatDate(subscription.expire, locale) }) }}</span>
+      <!-- A long line, as in English, moves the date below whole instead of breaking it inside. -->
+      <div
+        v-if="subscription.total > 0 || subscription.expire > 0 || used > 0"
+        class="grid w-[196px] flex-none gap-1 text-[11.5px] text-t2"
+        data-testid="quota"
+      >
+        <div class="flex flex-wrap justify-between gap-x-2 whitespace-nowrap">
+          <span :class="exhausted && 'text-warn'">{{ quotaText }}</span>
+          <span v-if="subscription.expire > 0" :class="expired ? 'text-warn' : 'text-t3'">{{ untilText }}</span>
         </div>
         <div v-if="subscription.total > 0" class="h-[5px] overflow-hidden rounded-[3px] bg-s5">
-          <i class="block h-full rounded-[3px] bg-[image:var(--road)]" :style="{ width: `${percent}%` }" />
+          <i
+            :class="['block h-full rounded-[3px]', exhausted || expired ? 'bg-warn' : 'bg-[image:var(--road)]']"
+            :style="{ width: `${percent}%` }"
+          />
         </div>
       </div>
       <Button variant="ghost" size="icon-sm" :aria-label="t('list.update')" :disabled="updating" @click="emit('update')">

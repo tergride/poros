@@ -37,9 +37,10 @@ export function formatAgo(when: number, now: number, locale: string): string {
   return format.format(Math.round(months / 12), 'year')
 }
 
-/** A date without the time: 12 декабря. */
-export function formatDate(when: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(when)
+/** A date without the time: 12 декабря, with the year when it is not this one (12 декабря 2027 г.). */
+export function formatDate(when: number, locale: string, now = Date.now()): string {
+  const year = new Date(when).getFullYear() !== new Date(now).getFullYear() ? 'numeric' : undefined
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year }).format(when)
 }
 
 /** The country of an ISO 3166 code in the interface's language; the code itself when the system has no name. */

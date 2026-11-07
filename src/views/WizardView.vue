@@ -9,6 +9,8 @@ import wordmark from '@/assets/img/wordmark.png'
 import SubscriptionLink from '@/components/main/SubscriptionLink.vue'
 import { Button, Checkbox, RadioGroup, RadioItem } from '@/components/ui'
 import { urlScheme } from '@/platform'
+import type { SubscriptionUpdate } from '@/platform/core-types'
+import { MethodSubscriptionsRemove } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 const core = useCoreStore()
@@ -32,8 +34,17 @@ const presetName = (id: string, name: string) => (te(`presets.name.${id}`) ? t(`
 
 const preset = computed({
   get: () => core.settings?.preset ?? 'all',
-  set: (id: string) => void core.updateSettings({ preset: id }),
+  set: (id: string) => void core.updateSettings({ preset: id }).catch(() => undefined),
 })
+
+// The wizard shows one subscription: a link put in after another one that worked replaces it, so that a mistaken
+// link does not stay behind unseen.
+let earlier = ''
+async function replaceEarlier(update: SubscriptionUpdate): Promise<void> {
+  const id = update.subscription.id
+  if (earlier && earlier !== id) await core.core().call(MethodSubscriptionsRemove, { id: earlier }).catch(() => undefined)
+  earlier = id
+}
 
 async function next(): Promise<void> {
   // A link typed but not yet confirmed counts as given.
@@ -49,7 +60,7 @@ async function finish(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1">
+  <div class="flex min-h-0 min-w-0 flex-1">
     <aside class="relative w-[clamp(360px,40%,560px)] flex-none bg-cover bg-center" :style="{ backgroundImage: `url(${portal})` }">
       <div class="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_55%,color-mix(in_srgb,var(--s0)_92%,transparent)_100%)]" />
       <div class="absolute right-8 bottom-[30px] left-8 z-10">
@@ -87,7 +98,7 @@ async function finish(): Promise<void> {
         <template v-if="step === 1">
           <h1 class="font-disp text-2xl leading-snug font-normal">{{ t('wizard.subscription.title') }}</h1>
           <p class="max-w-[560px] text-t2">{{ t('wizard.subscription.text') }}</p>
-          <SubscriptionLink ref="link" large />
+          <SubscriptionLink ref="link" large @added="replaceEarlier" />
         </template>
 
         <template v-else-if="step === 2 && core.settings">

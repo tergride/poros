@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -81,6 +82,18 @@ type Engine struct {
 const fetchTimeout = 20 * time.Second
 
 // Open opens or creates the data in cfg.DataDir.
+// DataFile holds the settings, subscriptions and presets in the data folder.
+const DataFile = "poros.db"
+
+// ErrDataDamaged is a data file Poros cannot read, as a power cut may leave it: starting again changes nothing, so the
+// shell asks the user whether to start with clean data instead.
+var ErrDataDamaged = errors.New("the data file is damaged")
+
+func damaged(err error) bool {
+	return errors.Is(err, bbolt.ErrInvalid) || errors.Is(err, bbolt.ErrChecksum) ||
+		errors.Is(err, bbolt.ErrVersionMismatch) || strings.Contains(err.Error(), "file size too small")
+}
+
 func Open(cfg Config) (*Engine, error) {
 	notify := cfg.Notify
 	if notify == nil {
@@ -94,9 +107,12 @@ func Open(cfg Config) (*Engine, error) {
 		return nil, err
 	}
 	// A second core on the same folder would wait here; a second of that means another Poros holds the data.
-	db, err := bbolt.Open(filepath.Join(cfg.DataDir, "poros.db"), 0o600, &bbolt.Options{Timeout: time.Second})
+	db, err := bbolt.Open(filepath.Join(cfg.DataDir, DataFile), 0o600, &bbolt.Options{Timeout: time.Second})
 	if err != nil {
-		return nil, fmt.Errorf("open poros.db: %w", err)
+		if damaged(err) {
+			err = fmt.Errorf("%w: %w", ErrDataDamaged, err)
+		}
+		return nil, fmt.Errorf("open %s: %w", DataFile, err)
 	}
 	if err = createBuckets(db); err != nil {
 		db.Close()

@@ -9,10 +9,18 @@ import PresetListsDialog from '@/components/settings/PresetListsDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Banner, Button, Input, Select } from '@/components/ui'
 import { useConnect } from '@/composables/useConnect'
-import { useReason } from '@/composables/useReason'
+import { sentence, useFailure } from '@/composables/useReason'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
-import type { PresetCopy, PresetEntries, PresetEntry } from '@/platform/core-types'
-import { ActionBlock, ActionDirect, ActionProxy, MethodPresetsGet, MethodPresetsSave } from '@/platform/core-types'
+import type { PresetCopy, PresetEntries } from '@/platform/core-types'
+import {
+  ActionBlock,
+  ActionDirect,
+  ActionProxy,
+  MethodPresetsGet,
+  MethodPresetsReadLists,
+  MethodPresetsSave,
+  MethodPresetsWriteLists,
+} from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 // The editor works on its own draft: leaving without saving drops it (note 5), and the next visit starts from what
@@ -22,7 +30,7 @@ const connect = useConnect()
 const restart = useRestartNeeded()
 const route = useRoute()
 const router = useRouter()
-const reason = useReason()
+const reason = useFailure()
 const { t, te } = useI18n()
 
 const draft = ref<PresetCopy | null>(null)
@@ -41,6 +49,8 @@ onMounted(async () => {
     // `new` is a preset from scratch: the core gives its draft for an empty ID.
     const id = route.params.id === 'new' ? '' : String(route.params.id)
     const copy = await core.core().call(MethodPresetsGet, { id })
+    // A copy of a built-in preset is named in the interface's language, and apart from the presets there are.
+    if (!copy.id && copy.basedOn) copy.name = freeName(t('presetEdit.copyName', { name: shownName(copy.basedOn, copy.name) }))
     draft.value = copy
     if ((dnsChoices as readonly string[]).includes(copy.dns)) dnsChoice.value = copy.dns
     else {
@@ -51,6 +61,20 @@ onMounted(async () => {
     failure.value = reason(error)
   }
 })
+
+const shownName = (id: string, name: string) => (te(`presets.name.${id}`) ? t(`presets.name.${id}`) : name)
+
+// The names of the other presets as the user sees them: the built-in ones in the interface's language.
+function namesTaken(): string[] {
+  return core.presets.filter((p) => p.id !== draft.value?.id).map((p) => (p.builtin ? shownName(p.id, p.name) : p.name).trim().toLowerCase())
+}
+
+function freeName(name: string): string {
+  const taken = namesTaken()
+  let free = name
+  for (let n = 2; taken.includes(free.toLowerCase()); n++) free = `${name} ${n}`
+  return free
+}
 
 const baseName = computed(() => {
   const id = draft.value?.basedOn ?? ''
@@ -68,19 +92,43 @@ const dnsOptions = computed(() => [
   { value: 'custom', label: t('presetEdit.dnsCustom') },
 ])
 
-function add(list: PresetEntry[], text: string): boolean {
-  const value = text.trim()
-  if (!value) return false
+/**
+ * Puts an entry into the draft once the core reads it as one: the window of lists writes and reads it the way the
+ * core will, so a wrong entry is told now and not only at saving. A repeated one is not added twice, and a program
+ * named without its extension gets the .exe that Windows gives its process.
+ */
+async function add(kind: 'sites' | 'apps', text: string): Promise<boolean> {
+  const list = draft.value?.[kind]
+  let value = text.trim()
+  if (!list || !value) return false
+  if (kind === 'apps' && !/[\\/]/.test(value) && !/\.[a-z0-9]+$/i.test(value)) value = `${value}.exe`
+  failure.value = ''
+  if (list.some((entry) => entry.value.toLowerCase() === value.toLowerCase())) {
+    failure.value = t('presetEdit.duplicate', { value })
+    return false
+  }
+  try {
+    const entry = { value, action: ActionProxy }
+    const lists = await core.core().call(MethodPresetsWriteLists, kind === 'sites' ? { sites: [entry], apps: [] } : { sites: [], apps: [entry] })
+    const read = await core.core().call(MethodPresetsReadLists, lists)
+    if (read.problems.length > 0 || read[kind].length !== 1) {
+      failure.value = sentence(`«${value}» — ${t('reason.invalid_entry')}`)
+      return false
+    }
+  } catch (error) {
+    failure.value = reason(error)
+    return false
+  }
   list.push({ value, action: ActionProxy })
   return true
 }
 
-function addSite(): void {
-  if (draft.value && add(draft.value.sites, newSite.value)) newSite.value = ''
+async function addSite(): Promise<void> {
+  if (await add('sites', newSite.value)) newSite.value = ''
 }
 
-function addApp(): void {
-  if (draft.value && add(draft.value.apps, newApp.value)) newApp.value = ''
+async function addApp(): Promise<void> {
+  if (await add('apps', newApp.value)) newApp.value = ''
 }
 
 // The lists window replaces the entries of the draft; the preset is saved as before.
@@ -94,8 +142,13 @@ const ruleName = (name: string) => (te(`presets.rule.${name}`) ? t(`presets.rule
 
 async function save(): Promise<void> {
   if (!draft.value) return
-  saving.value = true
   failure.value = ''
+  // The core knows the built-in presets by their English names; the ones the user sees are checked here.
+  if (namesTaken().includes(draft.value.name.trim().toLowerCase())) {
+    failure.value = sentence(t('reason.preset_name_taken'))
+    return
+  }
+  saving.value = true
   try {
     const dns = dnsChoice.value === 'custom' ? customDns.value.trim() : dnsChoice.value
     const saved = await core.core().call(MethodPresetsSave, { ...draft.value, dns })

@@ -43,6 +43,12 @@ impl Arguments<'_> {
     }
 }
 
+/// How a core's process ended: in words, and its exit code when it had one.
+pub struct Exit {
+    pub text: String,
+    pub code: Option<i64>,
+}
+
 /// A running core.
 pub enum Process {
     Child(Box<Child>),
@@ -65,16 +71,25 @@ impl Process {
     }
 
     /// Waits for the exit and says how it went. Safe to cancel and call again.
-    pub async fn wait(&mut self) -> String {
+    pub async fn wait(&mut self) -> Exit {
         match self {
             Process::Child(child) => match child.wait().await {
-                Ok(status) => format!("the core exited with {status}"),
-                Err(err) => format!("the core is gone: {err}"),
+                Ok(status) => Exit {
+                    text: format!("the core exited with {status}"),
+                    code: status.code().map(i64::from),
+                },
+                Err(err) => Exit {
+                    text: format!("the core is gone: {err}"),
+                    code: None,
+                },
             },
             #[cfg(windows)]
             Process::Elevated(process) => {
                 let code = process.wait().await;
-                format!("the core exited with code {code}")
+                Exit {
+                    text: format!("the core exited with code {code}"),
+                    code: Some(i64::from(code)),
+                }
             }
         }
     }

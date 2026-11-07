@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ArrowLeft, Globe, Info, Layers, Link, Palette, Power, RefreshCw } from '@lucide/vue'
+import { ArrowLeft, Globe, Info, Layers, Link, Palette, Power, RefreshCw, X } from '@lucide/vue'
 import { type Component, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
+import CoreBanner from '@/components/main/CoreBanner.vue'
 import ConnPage from '@/components/settings/ConnPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
 import LookPage from '@/components/settings/LookPage.vue'
@@ -13,8 +14,10 @@ import SubsPage from '@/components/settings/SubsPage.vue'
 import { Banner, Button } from '@/components/ui'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import { useCoreStore } from '@/stores/core'
+import { useUiStore } from '@/stores/ui'
 
 const core = useCoreStore()
+const ui = useUiStore()
 const restart = useRestartNeeded()
 const route = useRoute()
 const { t } = useI18n()
@@ -31,7 +34,7 @@ const current = computed(() => pages.find((p) => p.id === route.params.page) ?? 
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1">
+  <div class="flex min-h-0 min-w-0 flex-1">
     <nav class="flex w-[232px] flex-none flex-col gap-0.5 overflow-auto border-r border-line bg-s0 p-3">
       <RouterLink to="/main" class="flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] text-t2 hover:bg-s3 hover:text-t1">
         <ArrowLeft class="size-4" />{{ t('settings.back') }}
@@ -50,6 +53,13 @@ const current = computed(() => pages.find((p) => p.id === route.params.page) ?? 
       </RouterLink>
     </nav>
     <div class="min-w-0 flex-1 overflow-auto px-7 pt-[22px] pb-7">
+      <div class="mb-3 empty:hidden"><CoreBanner /></div>
+      <Banner v-if="ui.notice" :tone="ui.notice.tone" class="mb-3" data-testid="notice">
+        {{ ui.notice.text }}
+        <template #actions>
+          <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="ui.notice = null"><X /></Button>
+        </template>
+      </Banner>
       <Banner v-if="restart.needed" tone="info" class="mb-3" data-testid="restart-banner">
         {{ t('restartBanner.text') }}
         <template #actions>

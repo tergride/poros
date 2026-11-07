@@ -37,6 +37,9 @@ const (
 	// installErrorFile is what updater.exe leaves next to the archive when an install failed.
 	installErrorFile = "install-error.txt"
 	updaterName      = "updater.exe"
+	// readyFile keeps the release whose archive was downloaded and checked, so that a core started again offers it
+	// at once instead of after its first check.
+	readyFile = "ready.json"
 )
 
 var (
@@ -122,6 +125,37 @@ func (e *Engine) openUpdates(cfg Config) {
 	e.upd.feedURL = cmp.Or(cfg.UpdateFeed, releasesFeed)
 	e.upd.ctx, e.upd.cancel = context.WithCancel(context.Background())
 	e.readInstallError()
+	e.readReady()
+}
+
+// readReady takes back a release downloaded before this start, while its archive is whole and still newer. One
+// that failed to install waits for the next check, as readInstallError says.
+func (e *Engine) readReady() {
+	path := filepath.Join(e.updateDir(), readyFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	feed, err := parseFeed(data)
+	if err != nil || e.upd.state.InstallError != "" || !e.upd.state.Available ||
+		!newerVersion(feed.Version, e.upd.state.Current) ||
+		archiveIntact(filepath.Join(e.updateDir(), feed.File), feed) != nil {
+		_ = os.Remove(path)
+		return
+	}
+	e.upd.ready = feed
+	e.upd.state.State, e.upd.state.Version = UpdateReady, feed.Version
+}
+
+// writeReady remembers the release that is ready to install; without the file only the next check finds it again.
+func (e *Engine) writeReady(feed releaseFeed) {
+	data, err := json.Marshal(feed)
+	if err == nil {
+		err = os.WriteFile(filepath.Join(e.updateDir(), readyFile), data, 0o600)
+	}
+	if err != nil {
+		log.Printf("update: remember the release: %v", err)
+	}
 }
 
 func (e *Engine) updateDir() string {
@@ -232,6 +266,7 @@ func (e *Engine) runUpdateCheck(ctx context.Context) {
 	})
 	if newer && err == nil {
 		e.upd.ready = *feed
+		e.writeReady(*feed)
 	}
 }
 
@@ -380,9 +415,13 @@ func (e *Engine) InstallUpdate() (UpdateInstall, error) {
 	path := filepath.Join(e.updateDir(), e.upd.ready.File)
 	if err := archiveIntact(path, e.upd.ready); err != nil {
 		_ = os.Remove(path)
+		_ = os.Remove(filepath.Join(e.updateDir(), readyFile))
 		e.setUpdates(func(s *UpdateState) {
 			s.State, s.Version, s.Error, s.ErrorText = UpdateIdle, "", ReasonUpdateFailed, err.Error()
 		})
+		// The release is still there to download: the damaged archive comes again at once, not hours later.
+		// The check takes upd.mu, which this call holds until it returns.
+		go e.startUpdateCheck()
 		return UpdateInstall{}, jsonrpc.Failed(ReasonUpdateNotReady, "%v", err)
 	}
 	return UpdateInstall{Archive: path}, nil

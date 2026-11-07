@@ -1,21 +1,24 @@
 <script setup lang="ts">
-import { ClipboardPaste, Copy, Lock, MoreHorizontal, Pencil, Plus, Trash2, X } from '@lucide/vue'
+import { ClipboardPaste, Copy, Lock, MoreHorizontal, Pencil, Plus, Trash2 } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import SettingsCard from '@/components/settings/SettingsCard.vue'
-import { Banner, Button, Dialog, Menu, MenuItem, MenuSeparator, RadioGroup, RadioItem } from '@/components/ui'
-import { useReason } from '@/composables/useReason'
+import { Button, Dialog, Menu, MenuItem, MenuSeparator, RadioGroup, RadioItem } from '@/components/ui'
+import { useAttempt } from '@/composables/useAttempt'
+import { useFailure } from '@/composables/useReason'
 import type { Preset } from '@/platform/core-types'
 import { MethodPresetsExport, MethodPresetsImport, MethodPresetsRemove } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
+import { useUiStore } from '@/stores/ui'
 
 const core = useCoreStore()
+const ui = useUiStore()
 const router = useRouter()
-const reason = useReason()
+const failure = useFailure()
+const attempt = useAttempt()
 const { t, te } = useI18n()
-const notice = ref<{ tone: 'info' | 'warn'; text: string } | null>(null)
 const removing = ref<Preset | null>(null)
 
 const builtins = computed(() => core.presets.filter((p) => p.builtin))
@@ -34,41 +37,38 @@ const aboutMine = (preset: Preset) => {
 
 const selected = computed({
   get: () => core.settings?.preset ?? '',
-  set: (id: string) => void core.updateSettings({ preset: id }),
+  set: (id: string) => void attempt(() => core.updateSettings({ preset: id })),
 })
 
-async function exportLink(preset: Preset): Promise<void> {
-  const { link } = await core.core().call(MethodPresetsExport, { id: preset.id })
-  await navigator.clipboard.writeText(link)
-  notice.value = { tone: 'info', text: t('settings.presets.exported') }
+function exportLink(preset: Preset): Promise<void> {
+  return attempt(async () => {
+    const { link } = await core.core().call(MethodPresetsExport, { id: preset.id })
+    await navigator.clipboard.writeText(link)
+    ui.notice = { tone: 'info', text: t('settings.presets.exported') }
+  })
 }
 
 async function importLink(): Promise<void> {
   try {
     const link = (await navigator.clipboard.readText()).trim()
     const preset = await core.core().call(MethodPresetsImport, { link })
-    notice.value = { tone: 'info', text: t('settings.presets.imported', { name: preset.name }) }
+    ui.notice = { tone: 'info', text: t('settings.presets.imported', { name: preset.name }) }
   } catch (error) {
-    notice.value = { tone: 'warn', text: reason(error) }
+    ui.notice = { tone: 'warn', text: failure(error) }
   }
 }
 
-async function remove(): Promise<void> {
-  if (!removing.value) return
-  await core.core().call(MethodPresetsRemove, { id: removing.value.id })
+function remove(): Promise<void> {
+  const preset = removing.value
   removing.value = null
+  if (!preset) return Promise.resolve()
+  return attempt(() => core.core().call(MethodPresetsRemove, { id: preset.id }))
 }
 </script>
 
 <template>
   <h2 class="mb-1 font-disp text-[19px] font-normal">{{ t('settings.nav.presets') }}</h2>
   <p class="mb-4 max-w-[640px] text-t2">{{ t('settings.presets.lead') }}</p>
-  <Banner v-if="notice" :tone="notice.tone" class="mb-3">
-    {{ notice.text }}
-    <template #actions>
-      <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="notice = null"><X /></Button>
-    </template>
-  </Banner>
   <RadioGroup v-model="selected">
     <SettingsCard :title="t('settings.presets.builtin')">
       <div

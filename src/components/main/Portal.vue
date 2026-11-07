@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import portalArt from '@/assets/img/portal.jpg'
 import { useClock } from '@/composables/useClock'
 import { Button, Switch } from '@/components/ui'
+import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { formatBytes, formatDuration, latencyTone, serverTitle } from '@/lib/format'
 import { ConnectionRunning, ConnectionStarting, ConnectionStopping, KillSwitchConnected } from '@/platform/core-types'
@@ -15,6 +16,7 @@ defineEmits<{ ip: [] }>()
 
 const core = useCoreStore()
 const connect = useConnect()
+const attempt = useAttempt()
 const { t, te, locale } = useI18n()
 const now = useClock(1000)
 
@@ -29,17 +31,23 @@ const held = computed(
   () => blocked.value && !on.value && !busy.value && core.settings?.killSwitch === KillSwitchConnected,
 )
 
+// The kill switch in Always blocks without a connection too: the internet is off, not merely disconnected.
+const blockedIdle = computed(() => blocked.value && !on.value && !busy.value && !held.value)
+
 const stateText = computed(() => {
   if (on.value) return t('portal.on', { time: formatDuration(now.value - core.connection.since) })
   if (held.value) return t('portal.blocked')
   if (state.value === ConnectionStarting) return t('portal.starting')
   if (state.value === ConnectionStopping) return t('portal.stopping')
+  if (blockedIdle.value) return t('portal.blockedAlways')
   return t('portal.off')
 })
 
-// The address the services see: through the VPN while connected, the user's own otherwise.
+// The address the services see: through the VPN while connected, the user's own otherwise. Behind the block the
+// services cannot be reached, so no address is waited for.
 const address = computed(() => (on.value ? core.network.proxy : core.network.direct))
 const ipText = computed(() => {
+  if (blocked.value && !on.value) return ''
   if (core.network.checking && !address.value.ip) return t('portal.ipChecking')
   if (!address.value.ip) return ''
   return t('portal.ip', { ip: address.value.ip, country: address.value.countryCode || '—' })
@@ -68,11 +76,15 @@ const presetName = computed(() => {
   return preset.builtin && te(`presets.name.${preset.id}`) ? t(`presets.name.${preset.id}`) : preset.name
 })
 
-const tun = computed({ get: () => core.settings?.tun ?? false, set: (value: boolean) => void connect.setTun(value) })
+const tun = computed({
+  get: () => core.settings?.tun ?? false,
+  set: (value: boolean) => void attempt(() => connect.setTun(value)),
+})
 const system = computed({
   get: () => core.settings?.systemProxy ?? false,
-  set: (value: boolean) => void connect.setSystemProxy(value),
+  set: (value: boolean) => void attempt(() => connect.setSystemProxy(value)),
 })
+const serverName = computed(() => (core.server ? serverTitle(core.server.name, core.server.country) : t('portal.noServer')))
 </script>
 
 <template>
@@ -92,7 +104,7 @@ const system = computed({
     </div>
 
     <div
-      :class="['relative flex items-center gap-2 text-[13px]', on ? 'text-ok' : held ? 'text-warn' : 'text-t2']"
+      :class="['relative flex items-center gap-2 text-[13px]', on ? 'text-ok' : held || blockedIdle ? 'text-warn' : 'text-t2']"
       data-testid="portal-state"
     >
       <span
@@ -100,7 +112,7 @@ const system = computed({
           'size-2 rounded-full',
           on
             ? 'bg-ok shadow-[0_0_0_4px_color-mix(in_srgb,var(--ok)_16%,transparent)]'
-            : held
+            : held || blockedIdle
               ? 'bg-warn'
               : busy
                 ? 'bg-blue'
@@ -111,8 +123,9 @@ const system = computed({
     </div>
 
     <div class="relative grid gap-1">
-      <h1 class="font-disp text-[19px] leading-snug font-normal" data-testid="portal-server">
-        {{ core.server ? serverTitle(core.server.name, core.server.country) : t('portal.noServer') }}
+      <!-- Providers pack notes into names; three lines keep the buttons in place, the whole name is in the hint. -->
+      <h1 class="line-clamp-3 font-disp text-[19px] leading-snug font-normal" :title="serverName" data-testid="portal-server">
+        {{ serverName }}
       </h1>
       <span class="text-xs text-t3">
         <template v-if="empty">{{ t('portal.addFirst') }}</template>
@@ -151,7 +164,14 @@ const system = computed({
     </div>
 
     <div class="relative flex gap-2.5" :title="blocked ? t('portal.lockTitle') : undefined">
-      <Button v-if="on || held" size="start" class="flex-1" data-testid="stop" @click="connect.stop()">
+      <Button
+        v-if="on || held"
+        size="start"
+        class="flex-1"
+        :disabled="!core.ready"
+        data-testid="stop"
+        @click="attempt(() => connect.stop())"
+      >
         <Square class="size-4 fill-current" />{{ t('portal.stop') }}
         <Lock v-if="blocked" class="size-3.5 opacity-75" data-testid="kill-switch-lock" />
       </Button>
@@ -160,9 +180,9 @@ const system = computed({
         variant="primary"
         size="start"
         class="flex-1"
-        :disabled="!core.server || busy"
+        :disabled="!core.server || busy || !core.ready"
         data-testid="start"
-        @click="connect.start()"
+        @click="attempt(() => connect.start())"
       >
         <Play class="size-4 fill-current" />{{ busy ? t('portal.connecting') : t('portal.start') }}
         <Lock v-if="blocked" class="size-3.5 opacity-75" data-testid="kill-switch-lock" />
@@ -176,7 +196,7 @@ const system = computed({
           tun ? 'border-line2 bg-s3' : 'border-line bg-s2',
         ]"
       >
-        <Switch v-model="tun" data-testid="tun" />
+        <Switch v-model="tun" :disabled="!core.ready" data-testid="tun" />
         <b class="flex items-center gap-1.5 text-[13px] font-semibold">
           TUN<ShieldAlert v-if="!core.status.elevated" class="size-3.5 text-warn" />
         </b>
@@ -187,7 +207,7 @@ const system = computed({
           system ? 'border-line2 bg-s3' : 'border-line bg-s2',
         ]"
       >
-        <Switch v-model="system" data-testid="system" />
+        <Switch v-model="system" :disabled="!core.ready" data-testid="system" />
         <b class="text-[13px] font-semibold">System</b>
       </label>
     </div>
