@@ -59,7 +59,9 @@ func (e *Engine) Servers(query ServersQuery) ([]Server, error) {
 				return err
 			}
 			for _, r := range list {
-				servers = append(servers, r.view(sub.ID))
+				view := r.view(sub.ID)
+				view.Latency = e.latencyOf(r.ID)
+				servers = append(servers, view)
 			}
 		}
 		return nil

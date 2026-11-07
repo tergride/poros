@@ -12,13 +12,15 @@ var (
 	bucketSubscriptions = []byte("subscriptions")
 	// bucketServers holds the servers of each subscription under its ID, in the order the provider gave them.
 	bucketServers = []byte("servers")
+	// bucketPresets holds the user's copies of the built-in presets under their IDs.
+	bucketPresets = []byte("presets")
 
 	keySettings = []byte("settings")
 )
 
 func createBuckets(db *bbolt.DB) error {
 	return db.Update(func(tx *bbolt.Tx) error {
-		for _, name := range [][]byte{bucketSettings, bucketSubscriptions, bucketServers} {
+		for _, name := range [][]byte{bucketSettings, bucketSubscriptions, bucketServers, bucketPresets} {
 			if _, err := tx.CreateBucketIfNotExists(name); err != nil {
 				return fmt.Errorf("create bucket %s: %w", name, err)
 			}

@@ -1,10 +1,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
-import { type CoreClient, createStubCore, createTauriCore } from './core'
+import { type CoreClient, createTauriCore } from './core'
+import { createStubCore } from './stubCore'
 
 export type { CoreClient, CoreError, CoreEvent, CoreMethod, CoreStatus } from './core'
-export { isCoreError } from './core'
+export { CodeElevationCancelled, CodeStartFailed, isCoreError } from './core'
 
 export interface AppInfo {
   version: string

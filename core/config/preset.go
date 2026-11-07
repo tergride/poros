@@ -36,7 +36,10 @@ type Preset struct {
 	// Xray connect as usual.
 	Hardened        bool   `json:"hardened,omitempty"`
 	DefaultOutbound string `json:"default_outbound"`
-	Rules           []Rule `json:"rules"`
+	// DNS is the remote DNS server, reached through the server: https://host[:port][/path], tls://host[:port] or
+	// a plain address over UDP. Empty is Google's DoH.
+	DNS   string `json:"dns,omitempty"`
+	Rules []Rule `json:"rules"`
 }
 
 // Rule matches a connection by any of its conditions, the way a sing-box rule does: a destination matches one
@@ -92,6 +95,11 @@ func (p Preset) Validate() error {
 	for i, rule := range p.Rules {
 		if err := rule.validate(); err != nil {
 			return fmt.Errorf("rule %d %q: %w", i+1, rule.Name, err)
+		}
+	}
+	if p.DNS != "" {
+		if _, err := remoteDNS(p.DNS); err != nil {
+			return err
 		}
 	}
 	return nil

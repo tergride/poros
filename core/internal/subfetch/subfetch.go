@@ -55,11 +55,14 @@ var (
 	ErrEmpty    = errors.New("the subscription is empty")
 )
 
-// Fetch downloads rawURL through client.
-func Fetch(ctx context.Context, client *http.Client, rawURL, userAgent string) (Result, error) {
+// Fetch downloads rawURL through client, with the extra headers the user agreed to send.
+func Fetch(ctx context.Context, client *http.Client, rawURL, userAgent string, extra http.Header) (Result, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return Result{}, err
+	}
+	for name, values := range extra {
+		req.Header[name] = values
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "*/*")

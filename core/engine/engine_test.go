@@ -86,7 +86,10 @@ func TestSettingsRejectUnknownValues(t *testing.T) {
 
 func TestBuiltinPresets(t *testing.T) {
 	e, _ := openTest(t, t.TempDir())
-	presets := e.Presets()
+	presets, err := e.Presets()
+	if err != nil {
+		t.Fatal(err)
+	}
 	ids := make([]string, len(presets))
 	for i, p := range presets {
 		ids[i] = p.ID

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createStubCore, isCoreError } from './core'
+import { isCoreError } from './core'
+import { createStubCore } from './stubCore'
 import {
   ConnectionIdle,
   ConnectionRunning,
@@ -8,11 +9,19 @@ import {
   EventConnectionChanged,
   EventNetworkChanged,
   EventServersChanged,
+  EventServersTested,
   EventSubscriptionsChanged,
   MethodConnectionStart,
   MethodConnectionStop,
   MethodNetworkCheck,
+  MethodPresetsExport,
+  MethodPresetsGet,
+  MethodPresetsImport,
+  MethodPresetsList,
+  MethodPresetsRemove,
+  MethodPresetsSave,
   MethodServersList,
+  MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsAdd,
@@ -20,6 +29,8 @@ import {
   MethodSubscriptionsRemove,
   ReasonCheckOff,
   ReasonDuplicate,
+  ReasonInvalidEntry,
+  ReasonNeedsElevation,
   ReasonInvalidURL,
   ReasonNoServer,
   ReasonNotFound,
@@ -94,6 +105,13 @@ describe('the stub core', () => {
     await core.call(MethodSettingsSet, { ...settings, server: server!.id, tun: true })
     await core.call(MethodConnectionStart)
     await settle()
+    // TUN needs a core with administrator rights.
+    expect(states).toHaveBeenLastCalledWith(expect.objectContaining({ state: ConnectionIdle, error: ReasonNeedsElevation }))
+    await core.elevate()
+    await settle()
+    expect(await core.status()).toEqual({ state: 'ready', elevated: true })
+    await core.call(MethodConnectionStart)
+    await settle()
     expect(states).toHaveBeenLastCalledWith(
       expect.objectContaining({ state: ConnectionRunning, serverId: server!.id, tun: true, error: '' }),
     )
@@ -118,5 +136,43 @@ describe('the stub core', () => {
     expect(checks).toHaveBeenLastCalledWith(
       expect.objectContaining({ checking: false, proxy: expect.objectContaining({ ip: '' }), leak: '' }),
     )
+  })
+
+  it('measures the servers and remembers the delay', async () => {
+    const core = createStubCore()
+    const tested = vi.fn()
+    core.on(EventServersTested, tested)
+    await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
+    await core.call(MethodServersTest, { subscriptionId: '' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(tested).toHaveBeenLastCalledWith(expect.objectContaining({ done: true }))
+    const latencies = (await core.call(MethodServersList, { subscriptionId: '' })).map((s) => s.latency)
+    expect(latencies).toEqual([42, 48, -1])
+  })
+
+  it('keeps preset copies by the rules of the engine', async () => {
+    const core = createStubCore()
+    const draft = await core.call(MethodPresetsGet, { id: 'all' })
+    expect(draft).toMatchObject({ id: '', basedOn: 'all', inherited: [{ action: 'direct' }] })
+    expect(
+      await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'Home', sites: [{ value: 'not a site', action: 'proxy' }] })),
+    ).toBe(ReasonInvalidEntry)
+    const saved = await core.call(MethodPresetsSave, {
+      ...draft,
+      name: 'Home',
+      sites: [{ value: 'example.org', action: 'block' }],
+      apps: [{ value: 'steam.exe', action: 'direct' }],
+    })
+    expect(saved).toMatchObject({ builtin: false, basedOn: 'all', sites: 1, apps: 1 })
+
+    const settings = await core.call(MethodSettingsGet)
+    await core.call(MethodSettingsSet, { ...settings, preset: saved.id })
+    const { link } = await core.call(MethodPresetsExport, { id: saved.id })
+    const imported = await core.call(MethodPresetsImport, { link })
+    expect(imported).toMatchObject({ name: 'Home', sites: 1, apps: 1 })
+
+    await core.call(MethodPresetsRemove, { id: saved.id })
+    expect((await core.call(MethodSettingsGet)).preset).toBe('all')
+    expect((await core.call(MethodPresetsList)).map((p) => p.id)).toEqual(['all', 'hardened', imported.id])
   })
 })

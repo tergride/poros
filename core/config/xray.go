@@ -71,30 +71,57 @@ func downloadLeg(extra json.RawMessage) map[string]any {
 
 // buildXray writes the Xray config of a VLESS server behind the bridge.
 func buildXray(in Input) ([]byte, error) {
-	outbound, err := xrayVLESS(in.Server, in.Interface, in.Resolved)
+	outbound, err := xrayVLESS(in.Server, TagProxy, in.Interface, in.Resolved)
 	if err != nil {
 		return nil, err
 	}
-	config := map[string]any{
-		"log": map[string]any{"loglevel": "warning", "access": "none"},
-		"inbounds": []any{map[string]any{
-			"tag":      "bridge",
+	return xrayConfig([]xrayEntry{{tag: TagProxy, bridge: in.Bridge, outbound: outbound}})
+}
+
+// xrayEntry is one server of an Xray config with the bridge sing-box reaches it through.
+type xrayEntry struct {
+	tag      string
+	bridge   Bridge
+	outbound map[string]any
+}
+
+// xrayConfig puts servers behind their bridges; with more than one, each bridge routes to its own server.
+func xrayConfig(entries []xrayEntry) ([]byte, error) {
+	inbounds := make([]any, len(entries))
+	outbounds := make([]any, len(entries))
+	var rules []any
+	for i, entry := range entries {
+		inboundTag := "bridge"
+		if len(entries) > 1 {
+			inboundTag = "bridge-" + entry.tag
+			rules = append(rules, map[string]any{"type": "field", "inboundTag": []string{inboundTag}, "outboundTag": entry.tag})
+		}
+		inbounds[i] = map[string]any{
+			"tag":      inboundTag,
 			"listen":   "127.0.0.1",
-			"port":     in.Bridge.Port,
+			"port":     entry.bridge.Port,
 			"protocol": "socks",
 			"settings": map[string]any{
 				"auth":     "password",
 				"udp":      true,
 				"ip":       "127.0.0.1",
-				"accounts": []any{map[string]any{"user": in.Bridge.Username, "pass": in.Bridge.Password}},
+				"accounts": []any{map[string]any{"user": entry.bridge.Username, "pass": entry.bridge.Password}},
 			},
-		}},
-		"outbounds": []any{outbound},
+		}
+		outbounds[i] = entry.outbound
+	}
+	config := map[string]any{
+		"log":       map[string]any{"loglevel": "warning", "access": "none"},
+		"inbounds":  inbounds,
+		"outbounds": outbounds,
+	}
+	if rules != nil {
+		config["routing"] = map[string]any{"rules": rules}
 	}
 	return json.Marshal(config)
 }
 
-func xrayVLESS(p profile.Profile, iface string, resolved map[string]netip.Addr) (map[string]any, error) {
+func xrayVLESS(p profile.Profile, tag, iface string, resolved map[string]netip.Addr) (map[string]any, error) {
 	v := p.VLESS
 	host := ace(p.Server)
 	address := resolve(host, resolved)
@@ -110,7 +137,7 @@ func xrayVLESS(p profile.Profile, iface string, resolved map[string]netip.Addr) 
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"tag": TagProxy, "protocol": "vless", "settings": settings, "streamSettings": stream}, nil
+	return map[string]any{"tag": tag, "protocol": "vless", "settings": settings, "streamSettings": stream}, nil
 }
 
 func resolve(host string, resolved map[string]netip.Addr) string {

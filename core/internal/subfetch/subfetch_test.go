@@ -28,7 +28,7 @@ func TestFetchReadsHeaders(t *testing.T) {
 		w.Write([]byte("vless://id@de1.example.com:443#DE\n"))
 	})
 
-	result, err := Fetch(t.Context(), http.DefaultClient, url, "Poros/0.1.0")
+	result, err := Fetch(t.Context(), http.DefaultClient, url, "Poros/0.1.0", nil)
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestBodyMetadataFillsWhatHeadersLeftOut(t *testing.T) {
 		w.Header().Set("Profile-Title", "From the header")
 		w.Write([]byte(body))
 	})
-	result, err := Fetch(t.Context(), http.DefaultClient, url, "Poros")
+	result, err := Fetch(t.Context(), http.DefaultClient, url, "Poros", nil)
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestBodyMetadataInsideBase64(t *testing.T) {
 	// Providers wrap base64 bodies into lines.
 	wrapped := encoded[:10] + "\n" + encoded[10:]
 	url := serve(t, func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(wrapped)) })
-	result, err := Fetch(t.Context(), http.DefaultClient, url, "Poros")
+	result, err := Fetch(t.Context(), http.DefaultClient, url, "Poros", nil)
 	if err != nil || result.Info.Title != "Encoded" {
 		t.Fatalf("title %q, %v", result.Info.Title, err)
 	}
@@ -82,11 +82,11 @@ func TestBodyMetadataInsideBase64(t *testing.T) {
 
 func TestFetchFailures(t *testing.T) {
 	notFound := serve(t, func(w http.ResponseWriter, r *http.Request) { http.Error(w, "gone", http.StatusNotFound) })
-	if _, err := Fetch(t.Context(), http.DefaultClient, notFound, "Poros"); err == nil || !strings.Contains(err.Error(), "404") {
+	if _, err := Fetch(t.Context(), http.DefaultClient, notFound, "Poros", nil); err == nil || !strings.Contains(err.Error(), "404") {
 		t.Fatalf("404: %v", err)
 	}
 	empty := serve(t, func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(" \n ")) })
-	if _, err := Fetch(t.Context(), http.DefaultClient, empty, "Poros"); !errors.Is(err, ErrEmpty) {
+	if _, err := Fetch(t.Context(), http.DefaultClient, empty, "Poros", nil); !errors.Is(err, ErrEmpty) {
 		t.Fatalf("empty: %v", err)
 	}
 	huge := serve(t, func(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +97,7 @@ func TestFetchFailures(t *testing.T) {
 			}
 		}
 	})
-	if _, err := Fetch(t.Context(), http.DefaultClient, huge, "Poros"); !errors.Is(err, ErrTooLarge) {
+	if _, err := Fetch(t.Context(), http.DefaultClient, huge, "Poros", nil); !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("too large: %v", err)
 	}
 }

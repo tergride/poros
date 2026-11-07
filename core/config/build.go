@@ -113,7 +113,7 @@ func Build(in Input) (Configs, error) {
 		}}
 	} else {
 		var err error
-		if proxy, err = singBoxOutbound(in.Server, in.Preset.Hardened); err != nil {
+		if proxy, err = singBoxOutbound(in.Server, TagProxy, in.Preset.Hardened); err != nil {
 			return Configs{}, err
 		}
 	}
@@ -286,16 +286,13 @@ func prefixables(prefixes []netip.Prefix) badoption.Listable[*badoption.Prefixab
 // buildDNS resolves the names of direct traffic with the system's DNS and the rest with DoH through the server, in
 // the order of the rules, so that a name follows the same rule as its connection.
 func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
-	servers := []option.DNSServerOptions{
-		{Type: C.DNSTypeHTTPS, Tag: dnsRemote, Options: &option.RemoteHTTPSDNSServerOptions{
-			RemoteTLSDNSServerOptions: option.RemoteTLSDNSServerOptions{RemoteDNSServerOptions: option.RemoteDNSServerOptions{
-				RawLocalDNSServerOptions: option.RawLocalDNSServerOptions{DialerOptions: option.DialerOptions{Detour: TagProxy}},
-				DNSServerAddressOptions:  option.DNSServerAddressOptions{Server: remoteDNSServer},
-			}},
-			Path: remoteDNSPath,
-		}},
-		{Type: C.DNSTypeLocal, Tag: dnsDirect, Options: &option.LocalDNSServerOptions{}},
+	text := preset.DNS
+	if text == "" {
+		text = "https://" + remoteDNSServer + remoteDNSPath
 	}
+	// Validate has read it already.
+	remote, _ := remoteDNS(text)
+	servers := []option.DNSServerOptions{remote, {Type: C.DNSTypeLocal, Tag: dnsDirect, Options: &option.LocalDNSServerOptions{}}}
 	var rules []option.DNSRule
 	for _, rule := range preset.Rules {
 		if rule.Action != ActionRoute {

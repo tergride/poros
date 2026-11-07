@@ -30,11 +30,19 @@ func freePort(t *testing.T) uint16 {
 }
 
 func openConnectionTest(t *testing.T) (*Engine, chan ConnectionState) {
+	return openConnectionTestWith(t, nil)
+}
+
+// openConnectionTestWith hands the events other than connection.changed to other.
+func openConnectionTestWith(t *testing.T, other Notify) (*Engine, chan ConnectionState) {
 	t.Helper()
 	states := make(chan ConnectionState, 64)
 	e, err := Open(Config{DataDir: t.TempDir(), MixedPort: freePort(t), Notify: func(method string, params any) {
-		if method == EventConnectionChanged {
+		switch {
+		case method == EventConnectionChanged:
 			states <- params.(ConnectionState)
+		case other != nil:
+			other(method, params)
 		}
 	}})
 	if err != nil {

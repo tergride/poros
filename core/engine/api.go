@@ -35,6 +35,25 @@ type Settings struct {
 	// is what each provider advises, or 6 hours.
 	SubscriptionAutoUpdate  bool `json:"subscriptionAutoUpdate"`
 	SubscriptionUpdateHours int  `json:"subscriptionUpdateHours"`
+	// SubscriptionViaProxy downloads subscriptions through the running connection, for providers whose site is
+	// blocked. Without a connection they download directly.
+	SubscriptionViaProxy bool `json:"subscriptionViaProxy"`
+	// SendDeviceInfo sends providers a device ID and the system's version, for those that limit devices.
+	SendDeviceInfo bool `json:"sendDeviceInfo"`
+	// ShowChanges shows what a subscription update by hand added and removed.
+	ShowChanges bool `json:"showChanges"`
+	// AutoConnect connects to the chosen server when Poros starts.
+	AutoConnect bool `json:"autoConnect"`
+	// Autostart, URLScheme, StartMinimized, CloseToTray and KillSwitch are kept for the system part of Poros: start
+	// with Windows, open poros:// links, start in the tray, hide to the tray on close, block traffic without the
+	// connection.
+	Autostart      bool `json:"autostart"`
+	URLScheme      bool `json:"urlScheme"`
+	StartMinimized bool `json:"startMinimized"`
+	CloseToTray    bool `json:"closeToTray"`
+	KillSwitch     bool `json:"killSwitch"`
+	// TextSize is "normal" or "large".
+	TextSize string `json:"textSize"`
 }
 
 // Subscription is a link from a provider and what its last update brought.
@@ -98,6 +117,28 @@ type Server struct {
 	Port     int    `json:"port"`
 	// Country is the ISO 3166 code of a flag in the name, "" without one.
 	Country string `json:"country"`
+	// Latency is the last delay test in milliseconds: 0 before a test, -1 when the server did not answer.
+	Latency int `json:"latency"`
+}
+
+// ServerLatency is a delay test result: Latency in milliseconds, -1 when the server did not answer.
+type ServerLatency struct {
+	ServerID string `json:"serverId"`
+	Latency  int    `json:"latency"`
+}
+
+// ServersTested brings delay test results as they come; Done is the last report of a test.
+type ServersTested struct {
+	Results []ServerLatency `json:"results"`
+	Done    bool            `json:"done"`
+}
+
+// Traffic is the traffic through the server: bytes per second over the last second, and in all since the start.
+type Traffic struct {
+	Upload        int64 `json:"upload"`
+	Download      int64 `json:"download"`
+	TotalUpload   int64 `json:"totalUpload"`
+	TotalDownload int64 `json:"totalDownload"`
 }
 
 // Connection states.
@@ -175,6 +216,54 @@ type Preset struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Builtin bool   `json:"builtin"`
+	// BasedOn is the built-in preset a copy started from; Sites and Apps count what the copy adds.
+	BasedOn string `json:"basedOn"`
+	Sites   int    `json:"sites"`
+	Apps    int    `json:"apps"`
+}
+
+// Where the traffic of a preset entry goes.
+const (
+	ActionProxy  = "proxy"
+	ActionDirect = "direct"
+	ActionBlock  = "block"
+)
+
+// PresetEntry is a site, address or subnet, or a program, of a preset copy and where its traffic goes.
+type PresetEntry struct {
+	// Value is a domain (it takes its subdomains too), an address, a subnet, a program's file name or its full path.
+	Value  string `json:"value"`
+	Action string `json:"action"`
+}
+
+// InheritedRule is a rule a copy keeps from its built-in preset; the user's entries come first.
+type InheritedRule struct {
+	// Name is in English; the interface translates the names it knows.
+	Name   string `json:"name"`
+	Action string `json:"action"`
+}
+
+// PresetCopy is a user's preset as the editor shows it. An empty ID is a new copy.
+type PresetCopy struct {
+	ID      string        `json:"id"`
+	BasedOn string        `json:"basedOn"`
+	Name    string        `json:"name"`
+	Sites   []PresetEntry `json:"sites"`
+	Apps    []PresetEntry `json:"apps"`
+	// DNS is the remote DNS server: "" keeps the preset's, otherwise https://, tls:// or a plain address.
+	DNS       string          `json:"dns"`
+	Inherited []InheritedRule `json:"inherited"`
+}
+
+// PresetLink is a preset as a poros://route/ link.
+type PresetLink struct {
+	Link string `json:"link"`
+}
+
+// RenameSubscription gives a subscription the user's name; an empty one goes back to the provider's title.
+type RenameSubscription struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // AddSubscription asks to add a subscription. An empty name takes the provider's title or the host of the URL.
@@ -217,6 +306,18 @@ const (
 	// MethodNetworkCheck starts a check of the addresses and DNS at once; network.changed brings the result.
 	MethodNetworkCheck = "network.check"
 	MethodNetworkState = "network.state"
+	// MethodServersTest measures the delay of the servers of a subscription, or of all; servers.tested brings the
+	// results.
+	MethodServersTest         = "servers.test"
+	MethodSubscriptionsRename = "subscriptions.rename"
+	// MethodPresetsGet gives a copy for the editor; for a built-in preset, a new copy of it.
+	MethodPresetsGet    = "presets.get"
+	MethodPresetsSave   = "presets.save"
+	MethodPresetsRemove = "presets.remove"
+	MethodPresetsExport = "presets.export"
+	MethodPresetsImport = "presets.import"
+	// MethodLogsGet gives the last lines of the core's log.
+	MethodLogsGet = "logs.get"
 )
 
 // Events the core sends without a request.
@@ -226,6 +327,10 @@ const (
 	EventServersChanged       = "servers.changed"
 	EventConnectionChanged    = "connection.changed"
 	EventNetworkChanged       = "network.changed"
+	EventServersTested        = "servers.tested"
+	// EventConnectionTraffic comes every second while the connection runs.
+	EventConnectionTraffic = "connection.traffic"
+	EventPresetsChanged    = "presets.changed"
 )
 
 // Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
@@ -263,4 +368,8 @@ const (
 	ReasonCheckOff = "check_off"
 	// ReasonCheckFailed is a check of which a part did not work: a service did not answer.
 	ReasonCheckFailed = "check_failed"
+	// ReasonInvalidEntry is a preset entry that is no domain, address, subnet or program.
+	ReasonInvalidEntry = "invalid_entry"
+	// ReasonInvalidLink is a preset link Poros cannot read.
+	ReasonInvalidLink = "invalid_link"
 )

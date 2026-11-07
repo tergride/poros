@@ -333,3 +333,67 @@ func golden(t *testing.T, name string, data []byte) {
 		t.Errorf("%s differs from the golden file; if the change is right, run the test with -update\n%s", name, pretty.Bytes())
 	}
 }
+
+func TestBuildTestMeasuresEveryServer(t *testing.T) {
+	in := TestInput{RealityOnXray: true, Interface: "Ethernet", Resolved: map[string]netip.Addr{}}
+	port := uint16(30000)
+	for name, link := range sampleLinks(t) {
+		port++
+		in.Servers = append(in.Servers, TestServer{
+			Tag: name, Server: mustParse(t, link), Bridge: Bridge{Port: port, Username: "u", Password: "p"},
+		})
+	}
+	broken := mustParse(t, sampleLinks(t)["trojan tcp"])
+	broken.Trojan.Password = ""
+	in.Servers = append(in.Servers, TestServer{Tag: "broken", Server: broken})
+	configs, err := BuildTest(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(configs.Failed) != 1 || configs.Failed["broken"] == nil {
+		t.Errorf("only the broken server fails: %v", configs.Failed)
+	}
+	if got := len(configs.SingBox.Outbounds); got != len(in.Servers) {
+		t.Errorf("an outbound per working server and direct: %d", got)
+	}
+	data, err := configs.SingBoxJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = boxmain.Check(data); err != nil {
+		t.Fatalf("sing-box refuses the test config: %v", err)
+	}
+	if configs.Xray == nil {
+		t.Fatal("the servers on Xray need an Xray config")
+	}
+	if err = xray.CheckXrayConfig(string(configs.Xray)); err != nil {
+		t.Fatalf("Xray refuses the test config: %v", err)
+	}
+	if !strings.Contains(string(configs.Xray), `"inboundTag":["bridge-vless reality vision"]`) {
+		t.Error("each bridge must route to its own server")
+	}
+}
+
+func TestPresetDNS(t *testing.T) {
+	server := mustParse(t, sampleLinks(t)["trojan tcp"])
+	for _, dns := range []string{"https://1.1.1.1/dns-query", "https://dns.quad9.net", "tls://9.9.9.9", "tls://dns.google:853", "8.8.4.4"} {
+		preset := allPreset
+		preset.DNS = dns
+		configs, err := Build(Input{Server: server, Preset: preset, MixedPort: 2090})
+		if err != nil {
+			t.Errorf("%s: %v", dns, err)
+			continue
+		}
+		data, _ := configs.SingBoxJSON()
+		if err = boxmain.Check(data); err != nil {
+			t.Errorf("%s: sing-box refuses it: %v", dns, err)
+		}
+	}
+	for _, dns := range []string{"ftp://1.1.1.1", "dns.google", "https://", "https://user@1.1.1.1/q", "tls://1.1.1.1/path"} {
+		preset := allPreset
+		preset.DNS = dns
+		if _, err := Build(Input{Server: server, Preset: preset, MixedPort: 2090}); err == nil {
+			t.Errorf("%q must be refused", dns)
+		}
+	}
+}

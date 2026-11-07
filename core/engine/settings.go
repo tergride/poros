@@ -17,6 +17,11 @@ func DefaultSettings() Settings {
 		IPv6:                   true,
 		RealityOnXray:          true,
 		SubscriptionAutoUpdate: true,
+		ShowChanges:            true,
+		AutoConnect:            true,
+		URLScheme:              true,
+		CloseToTray:            true,
+		TextSize:               "normal",
 	}
 }
 
@@ -66,8 +71,11 @@ func (e *Engine) validateSettings(settings Settings) error {
 	if !slices.Contains([]string{"", "en", "ru"}, settings.Language) {
 		return jsonrpc.Failed(ReasonInvalidValue, "language must be empty, en or ru, not %q", settings.Language)
 	}
-	if !slices.ContainsFunc(e.presets, func(p presetRecord) bool { return p.ID == settings.Preset }) {
+	if _, found, err := e.preset(settings.Preset); err != nil || !found {
 		return jsonrpc.Failed(ReasonUnknownPreset, "there is no preset %q", settings.Preset)
+	}
+	if !slices.Contains([]string{"normal", "large"}, settings.TextSize) {
+		return jsonrpc.Failed(ReasonInvalidValue, "textSize must be normal or large, not %q", settings.TextSize)
 	}
 	if settings.SubscriptionUpdateHours < 0 || settings.SubscriptionUpdateHours > maxUpdateHours {
 		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionUpdateHours must be from 0 to %d, not %d", maxUpdateHours, settings.SubscriptionUpdateHours)

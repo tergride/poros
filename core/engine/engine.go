@@ -56,8 +56,11 @@ type Engine struct {
 	stop    context.CancelFunc
 	stopped sync.WaitGroup
 
-	conn        connection
-	net         networkCheck
+	conn    connection
+	net     networkCheck
+	latency latencyTest
+	// latencyURL is what a delay test requests through each server; tests point it at a page of their own.
+	latencyURL  string
 	mixedPort   uint16
 	sysProxy    *sysproxy.Proxy
 	foreignUser bool
@@ -116,6 +119,8 @@ func Open(cfg Config) (*Engine, error) {
 		sysProxy:    sysproxy.New(filepath.Join(cfg.DataDir, "system-proxy.json")),
 	}
 	e.conn.state = ConnectionState{State: ConnectionIdle}
+	e.latency.results = map[string]int{}
+	e.latencyURL = latencyURL
 	e.net.state = NetworkState{DNS: []DNSServer{}}
 	// Only now, with the data folder locked: the proxy of another core on the folder is not this one's to clear.
 	if err = e.sysProxy.Recover(); err != nil {
@@ -136,6 +141,7 @@ func (e *Engine) Close() error {
 	e.stop()
 	e.stopped.Wait()
 	e.closeNetworkChecks()
+	e.closeLatencyTests()
 	err := e.closeConnection()
 	return errors.Join(err, e.db.Close())
 }

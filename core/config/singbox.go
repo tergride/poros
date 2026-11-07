@@ -17,8 +17,8 @@ import (
 // is what Xray picks in the same case.
 const realityFingerprint = "chrome"
 
-// singBoxOutbound turns a server into a sing-box outbound tagged proxy. hardened fragments the TLS handshake.
-func singBoxOutbound(p profile.Profile, hardened bool) (option.Outbound, error) {
+// singBoxOutbound turns a server into a sing-box outbound under tag. hardened fragments the TLS handshake.
+func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbound, error) {
 	server := option.ServerOptions{Server: ace(p.Server), ServerPort: uint16(p.ServerPort)}
 	var options any
 	switch p.Type {
@@ -175,7 +175,7 @@ func singBoxOutbound(p profile.Profile, hardened bool) (option.Outbound, error) 
 	default:
 		return option.Outbound{}, fmt.Errorf("unknown server type %q", p.Type)
 	}
-	return option.Outbound{Type: p.Type, Tag: TagProxy, Options: options}, nil
+	return option.Outbound{Type: p.Type, Tag: tag, Options: options}, nil
 }
 
 func singBoxStream(t profile.TLS, transport profile.Transport, hardened bool) (*option.OutboundTLSOptions, *option.V2RayTransportOptions, error) {

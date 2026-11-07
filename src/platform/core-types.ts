@@ -58,6 +58,37 @@ export interface Settings {
    */
   subscriptionAutoUpdate: boolean;
   subscriptionUpdateHours: number /* int */;
+  /**
+   * SubscriptionViaProxy downloads subscriptions through the running connection, for providers whose site is
+   * blocked. Without a connection they download directly.
+   */
+  subscriptionViaProxy: boolean;
+  /**
+   * SendDeviceInfo sends providers a device ID and the system's version, for those that limit devices.
+   */
+  sendDeviceInfo: boolean;
+  /**
+   * ShowChanges shows what a subscription update by hand added and removed.
+   */
+  showChanges: boolean;
+  /**
+   * AutoConnect connects to the chosen server when Poros starts.
+   */
+  autoConnect: boolean;
+  /**
+   * Autostart, URLScheme, StartMinimized, CloseToTray and KillSwitch are kept for the system part of Poros: start
+   * with Windows, open poros:// links, start in the tray, hide to the tray on close, block traffic without the
+   * connection.
+   */
+  autostart: boolean;
+  urlScheme: boolean;
+  startMinimized: boolean;
+  closeToTray: boolean;
+  killSwitch: boolean;
+  /**
+   * TextSize is "normal" or "large".
+   */
+  textSize: string;
 }
 /**
  * Subscription is a link from a provider and what its last update brought.
@@ -147,6 +178,33 @@ export interface Server {
    * Country is the ISO 3166 code of a flag in the name, "" without one.
    */
   country: string;
+  /**
+   * Latency is the last delay test in milliseconds: 0 before a test, -1 when the server did not answer.
+   */
+  latency: number /* int */;
+}
+/**
+ * ServerLatency is a delay test result: Latency in milliseconds, -1 when the server did not answer.
+ */
+export interface ServerLatency {
+  serverId: string;
+  latency: number /* int */;
+}
+/**
+ * ServersTested brings delay test results as they come; Done is the last report of a test.
+ */
+export interface ServersTested {
+  results: ServerLatency[];
+  done: boolean;
+}
+/**
+ * Traffic is the traffic through the server: bytes per second over the last second, and in all since the start.
+ */
+export interface Traffic {
+  upload: number /* int64 */;
+  download: number /* int64 */;
+  totalUpload: number /* int64 */;
+  totalDownload: number /* int64 */;
 }
 /**
  * Connection states.
@@ -263,6 +321,72 @@ export interface Preset {
   id: string;
   name: string;
   builtin: boolean;
+  /**
+   * BasedOn is the built-in preset a copy started from; Sites and Apps count what the copy adds.
+   */
+  basedOn: string;
+  sites: number /* int */;
+  apps: number /* int */;
+}
+/**
+ * Where the traffic of a preset entry goes.
+ */
+export const ActionProxy = "proxy";
+/**
+ * Where the traffic of a preset entry goes.
+ */
+export const ActionDirect = "direct";
+/**
+ * Where the traffic of a preset entry goes.
+ */
+export const ActionBlock = "block";
+/**
+ * PresetEntry is a site, address or subnet, or a program, of a preset copy and where its traffic goes.
+ */
+export interface PresetEntry {
+  /**
+   * Value is a domain (it takes its subdomains too), an address, a subnet, a program's file name or its full path.
+   */
+  value: string;
+  action: string;
+}
+/**
+ * InheritedRule is a rule a copy keeps from its built-in preset; the user's entries come first.
+ */
+export interface InheritedRule {
+  /**
+   * Name is in English; the interface translates the names it knows.
+   */
+  name: string;
+  action: string;
+}
+/**
+ * PresetCopy is a user's preset as the editor shows it. An empty ID is a new copy.
+ */
+export interface PresetCopy {
+  id: string;
+  basedOn: string;
+  name: string;
+  sites: PresetEntry[];
+  apps: PresetEntry[];
+  /**
+   * DNS is the remote DNS server: "" keeps the preset's, otherwise https://, tls:// or a plain address.
+   */
+  dns: string;
+  inherited: InheritedRule[];
+}
+/**
+ * PresetLink is a preset as a poros://route/ link.
+ */
+export interface PresetLink {
+  link: string;
+}
+/**
+ * RenameSubscription gives a subscription the user's name; an empty one goes back to the provider's title.
+ */
+export interface RenameSubscription {
+  id: string;
+  name: string;
 }
 /**
  * AddSubscription asks to add a subscription. An empty name takes the provider's title or the host of the URL.
@@ -347,6 +471,39 @@ export const MethodNetworkCheck = "network.check";
  */
 export const MethodNetworkState = "network.state";
 /**
+ * MethodServersTest measures the delay of the servers of a subscription, or of all; servers.tested brings the
+ * results.
+ */
+export const MethodServersTest = "servers.test";
+/**
+ * Methods the core answers.
+ */
+export const MethodSubscriptionsRename = "subscriptions.rename";
+/**
+ * MethodPresetsGet gives a copy for the editor; for a built-in preset, a new copy of it.
+ */
+export const MethodPresetsGet = "presets.get";
+/**
+ * Methods the core answers.
+ */
+export const MethodPresetsSave = "presets.save";
+/**
+ * Methods the core answers.
+ */
+export const MethodPresetsRemove = "presets.remove";
+/**
+ * Methods the core answers.
+ */
+export const MethodPresetsExport = "presets.export";
+/**
+ * Methods the core answers.
+ */
+export const MethodPresetsImport = "presets.import";
+/**
+ * MethodLogsGet gives the last lines of the core's log.
+ */
+export const MethodLogsGet = "logs.get";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -366,6 +523,18 @@ export const EventConnectionChanged = "connection.changed";
  * Events the core sends without a request.
  */
 export const EventNetworkChanged = "network.changed";
+/**
+ * Events the core sends without a request.
+ */
+export const EventServersTested = "servers.tested";
+/**
+ * EventConnectionTraffic comes every second while the connection runs.
+ */
+export const EventConnectionTraffic = "connection.traffic";
+/**
+ * Events the core sends without a request.
+ */
+export const EventPresetsChanged = "presets.changed";
 /**
  * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
@@ -442,3 +611,11 @@ export const ReasonCheckOff = "check_off";
  * ReasonCheckFailed is a check of which a part did not work: a service did not answer.
  */
 export const ReasonCheckFailed = "check_failed";
+/**
+ * ReasonInvalidEntry is a preset entry that is no domain, address, subnet or program.
+ */
+export const ReasonInvalidEntry = "invalid_entry";
+/**
+ * ReasonInvalidLink is a preset link Poros cannot read.
+ */
+export const ReasonInvalidLink = "invalid_link";

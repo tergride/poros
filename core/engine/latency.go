@@ -1,0 +1,209 @@
+package engine
+
+import (
+	"context"
+	"net/netip"
+	"sync"
+	"time"
+
+	"PorosCore/config"
+	"PorosCore/internal/boxmain"
+	"PorosCore/internal/netmon"
+	"PorosCore/internal/probe"
+	"PorosCore/internal/xray"
+	"PorosCore/profile"
+)
+
+const (
+	// latencyURL answers quickly from everywhere; a server's delay is how long a request through it takes.
+	latencyURL         = "http://cp.cloudflare.com/"
+	latencyTimeout     = 3 * time.Second
+	latencyConcurrency = 10
+	// latencyBudget bounds a whole test of many servers.
+	latencyBudget = 3 * time.Minute
+)
+
+type latencyTest struct {
+	mu      sync.Mutex
+	results map[string]int
+	cancel  context.CancelFunc
+	running sync.WaitGroup
+}
+
+func (e *Engine) latencyOf(id string) int {
+	e.latency.mu.Lock()
+	defer e.latency.mu.Unlock()
+	return e.latency.results[id]
+}
+
+// TestServers measures the servers of a subscription, or of all, in the background; a newer test replaces one
+// that runs. Each result comes with servers.tested.
+func (e *Engine) TestServers(query ServersQuery) (any, error) {
+	type target struct {
+		id     string
+		server profile.Profile
+	}
+	var targets []target
+	subs, err := e.records()
+	if err != nil {
+		return nil, err
+	}
+	for _, sub := range subs {
+		if query.SubscriptionID != "" && sub.ID != query.SubscriptionID {
+			continue
+		}
+		list, err := e.serverRecords(sub.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range list {
+			targets = append(targets, target{r.ID, r.Profile})
+		}
+	}
+	settings, err := e.Settings()
+	if err != nil {
+		return nil, err
+	}
+
+	e.latency.mu.Lock()
+	if e.latency.cancel != nil {
+		e.latency.cancel()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), latencyBudget)
+	e.latency.cancel = cancel
+	e.latency.mu.Unlock()
+
+	e.latency.running.Add(1)
+	go func() {
+		defer e.latency.running.Done()
+		defer cancel()
+		in := config.TestInput{RealityOnXray: settings.RealityOnXray}
+		if iface := netmon.DefaultInterface(); iface != nil {
+			in.Interface = iface.Name
+		}
+		var hosts []string
+		for _, t := range targets {
+			server := config.TestServer{Tag: t.id, Server: t.server}
+			if config.RunsOnXray(t.server, settings.RealityOnXray) {
+				bridge, err := newBridge()
+				if err != nil {
+					continue
+				}
+				server.Bridge = bridge
+				hosts = append(hosts, config.XrayHosts(t.server, settings.RealityOnXray)...)
+			}
+			in.Servers = append(in.Servers, server)
+		}
+		in.Resolved = resolveEach(ctx, hosts, !settings.IPv6)
+		e.runLatencyTest(ctx, in)
+	}()
+	return nil, nil
+}
+
+// resolveEach looks up what it can; a server whose name does not resolve fails its own test.
+func resolveEach(ctx context.Context, hosts []string, ipv4Only bool) map[string]netip.Addr {
+	resolved := map[string]netip.Addr{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, host := range hosts {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			lookupCtx, cancel := context.WithTimeout(ctx, latencyTimeout)
+			defer cancel()
+			if one, err := resolveHosts(lookupCtx, []string{host}, ipv4Only); err == nil {
+				mu.Lock()
+				resolved[host] = one[host]
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	return resolved
+}
+
+func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) {
+	report := func(results []ServerLatency, done bool) {
+		e.latency.mu.Lock()
+		for _, result := range results {
+			e.latency.results[result.ServerID] = result.Latency
+		}
+		e.latency.mu.Unlock()
+		e.notify(EventServersTested, ServersTested{Results: results, Done: done})
+	}
+	configs, err := config.BuildTest(in)
+	if err != nil {
+		report(failedAll(in.Servers), true)
+		return
+	}
+	var failed []ServerLatency
+	var tags []string
+	for _, server := range in.Servers {
+		if configs.Failed[server.Tag] != nil {
+			failed = append(failed, ServerLatency{ServerID: server.Tag, Latency: -1})
+		} else {
+			tags = append(tags, server.Tag)
+		}
+	}
+	if len(failed) > 0 {
+		report(failed, false)
+	}
+	singBox, err := configs.SingBoxJSON()
+	if err != nil || len(tags) == 0 {
+		report(failedAll(nil), true)
+		return
+	}
+	if configs.Xray != nil {
+		instance, err := xray.CreateXrayInstance(string(configs.Xray))
+		if err == nil {
+			err = instance.Start()
+		}
+		if err != nil {
+			report(failedTags(tags), true)
+			return
+		}
+		defer instance.Close()
+	}
+	box, cancelBox, err := boxmain.Create(singBox, nil)
+	if err != nil {
+		report(failedTags(tags), true)
+		return
+	}
+	defer func() {
+		cancelBox()
+		box.Close()
+	}()
+	probe.BatchURLTestTo(ctx, box, tags, e.latencyURL, latencyConcurrency, false, latencyTimeout, func(result *probe.URLTestResult) {
+		latency := -1
+		if result.Error == nil {
+			latency = max(1, int(result.Duration.Milliseconds()))
+		}
+		report([]ServerLatency{{ServerID: result.Tag, Latency: latency}}, false)
+	})
+	report([]ServerLatency{}, true)
+}
+
+func failedTags(tags []string) []ServerLatency {
+	results := make([]ServerLatency, len(tags))
+	for i, tag := range tags {
+		results[i] = ServerLatency{ServerID: tag, Latency: -1}
+	}
+	return results
+}
+
+func failedAll(servers []config.TestServer) []ServerLatency {
+	results := []ServerLatency{}
+	for _, server := range servers {
+		results = append(results, ServerLatency{ServerID: server.Tag, Latency: -1})
+	}
+	return results
+}
+
+func (e *Engine) closeLatencyTests() {
+	e.latency.mu.Lock()
+	if e.latency.cancel != nil {
+		e.latency.cancel()
+	}
+	e.latency.mu.Unlock()
+	e.latency.running.Wait()
+}

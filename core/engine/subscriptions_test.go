@@ -22,6 +22,7 @@ type provider struct {
 	body    string
 	headers map[string]string
 	agents  []string
+	hwids   []string
 	url     string
 }
 
@@ -32,6 +33,7 @@ func newProvider(t *testing.T) *provider {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		p.agents = append(p.agents, r.UserAgent())
+		p.hwids = append(p.hwids, r.Header.Get("X-Hwid"))
 		for name, value := range p.headers {
 			w.Header().Set(name, value)
 		}

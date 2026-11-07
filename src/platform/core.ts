@@ -8,44 +8,49 @@ import type {
   ConnectionState,
   NetworkState,
   Preset,
+  PresetCopy,
+  PresetLink,
+  RenameSubscription,
   Server,
   ServersChanged,
   ServersQuery,
+  ServersTested,
   Settings,
   Subscription,
   SubscriptionUpdate,
+  Traffic,
 } from './core-types'
 import {
-  ConnectionIdle,
-  ConnectionRunning,
-  ConnectionStarting,
-  ConnectionStopping,
   EventConnectionChanged,
+  EventConnectionTraffic,
   EventNetworkChanged,
+  EventPresetsChanged,
   EventServersChanged,
+  EventServersTested,
   EventSettingsChanged,
   EventSubscriptionsChanged,
   MethodAppInfo,
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
+  MethodPresetsExport,
+  MethodPresetsGet,
+  MethodPresetsImport,
   MethodPresetsList,
+  MethodPresetsRemove,
+  MethodPresetsSave,
   MethodServersList,
+  MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsAdd,
   MethodSubscriptionsList,
   MethodSubscriptionsRemove,
+  MethodSubscriptionsRename,
   MethodSubscriptionsUpdate,
-  LeakNone,
-  ReasonCheckOff,
-  ReasonDuplicate,
-  ReasonInvalidURL,
-  ReasonNoServer,
-  ReasonNotFound,
-  ReasonSingleServer,
 } from './core-types'
 
 /** What each method of core/engine/api.go takes and returns. */
@@ -57,20 +62,31 @@ export interface CoreMethods {
   [MethodSubscriptionsAdd]: { params: AddSubscription; result: SubscriptionUpdate }
   [MethodSubscriptionsUpdate]: { params: ByID; result: SubscriptionUpdate }
   [MethodSubscriptionsRemove]: { params: ByID; result: null }
+  [MethodSubscriptionsRename]: { params: RenameSubscription; result: Subscription }
   [MethodServersList]: { params: ServersQuery; result: Server[] }
+  [MethodServersTest]: { params: ServersQuery; result: null }
   [MethodPresetsList]: { params: undefined; result: Preset[] }
+  [MethodPresetsGet]: { params: ByID; result: PresetCopy }
+  [MethodPresetsSave]: { params: PresetCopy; result: Preset }
+  [MethodPresetsRemove]: { params: ByID; result: null }
+  [MethodPresetsExport]: { params: ByID; result: PresetLink }
+  [MethodPresetsImport]: { params: PresetLink; result: Preset }
   [MethodConnectionStart]: { params: undefined; result: ConnectionState }
   [MethodConnectionStop]: { params: undefined; result: ConnectionState }
   [MethodConnectionState]: { params: undefined; result: ConnectionState }
   [MethodNetworkCheck]: { params: undefined; result: NetworkState }
   [MethodNetworkState]: { params: undefined; result: NetworkState }
+  [MethodLogsGet]: { params: undefined; result: string[] }
 }
 
 export interface CoreEvents {
   [EventSettingsChanged]: Settings
   [EventSubscriptionsChanged]: Subscription[]
   [EventServersChanged]: ServersChanged
+  [EventServersTested]: ServersTested
+  [EventPresetsChanged]: Preset[]
   [EventConnectionChanged]: ConnectionState
+  [EventConnectionTraffic]: Traffic
   [EventNetworkChanged]: NetworkState
 }
 
@@ -91,6 +107,10 @@ export interface CoreError {
   data?: { reason?: string }
 }
 
+/** The shell's codes for a replaced core: the user declined the UAC prompt; the core could not start. */
+export const CodeElevationCancelled = -33002
+export const CodeStartFailed = -33003
+
 type ParamsArg<M extends CoreMethod> = CoreMethods[M]['params'] extends undefined ? [] : [CoreMethods[M]['params']]
 
 export interface CoreClient {
@@ -98,6 +118,10 @@ export interface CoreClient {
   on<E extends CoreEvent>(event: E, handler: (params: CoreEvents[E]) => void): () => void
   status(): Promise<CoreStatus>
   onStatus(handler: (status: CoreStatus) => void): () => void
+  /** Replaces the core with one that has administrator rights, after the UAC prompt. */
+  elevate(): Promise<void>
+  /** Replaces the core with one without rights; it also brings back a core that gave up. */
+  restart(): Promise<void>
 }
 
 export function isCoreError(value: unknown): value is CoreError {
@@ -127,231 +151,7 @@ export async function createTauriCore(): Promise<CoreClient> {
       statusHandlers.add(handler)
       return () => statusHandlers.delete(handler)
     },
-  }
-}
-
-const defaultSettings: Settings = {
-  uiMode: 'simple',
-  language: '',
-  onboardingDone: false,
-  tun: false,
-  systemProxy: false,
-  server: '',
-  preset: 'all',
-  checkIp: true,
-  allowLan: false,
-  ipv6: true,
-  realityOnXray: true,
-  subscriptionAutoUpdate: true,
-  subscriptionUpdateHours: 0,
-}
-
-/** The servers every subscription of the stub core holds. */
-const stubServers: Omit<Server, 'id' | 'subscriptionId'>[] = [
-  { name: '🇩🇪 Germany', protocol: 'vless', host: 'de.example.com', port: 443, country: 'DE' },
-  { name: '🇳🇱 Netherlands', protocol: 'vless', host: 'nl.example.com', port: 443, country: 'NL' },
-  { name: '🇫🇮 Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI' },
-]
-
-const builtinPresets: Preset[] = [
-  { id: 'all', name: 'All traffic', builtin: true },
-  { id: 'hardened', name: 'Hardened bypass', builtin: true },
-]
-
-const idle: ConnectionState = {
-  state: ConnectionIdle,
-  serverId: '',
-  tun: false,
-  systemProxy: false,
-  since: 0,
-  error: '',
-  errorText: '',
-}
-
-const noAddress = { ip: '', countryCode: '', city: '', isp: '', asn: 0 }
-
-const noCheck: NetworkState = {
-  checking: false,
-  direct: noAddress,
-  proxy: noAddress,
-  dns: [],
-  leak: '',
-  checkedAt: 0,
-  error: '',
-  errorText: '',
-}
-
-function failed(reason: string, message: string): CoreError {
-  return { code: 1, message, data: { reason } }
-}
-
-/**
- * A core in memory for the interface alone: Vite in a browser, Vitest and Playwright.
- * It follows the rules of the Go engine closely enough for screens and tests, not for real traffic.
- */
-export function createStubCore(): CoreClient {
-  let settings = { ...defaultSettings }
-  let subscriptions: Subscription[] = []
-  let servers: Server[] = []
-  let connection = { ...idle }
-  let network = { ...noCheck }
-  let nextId = 1
-  const handlers = new Map<string, Set<(params: never) => void>>()
-  const emit = <E extends CoreEvent>(event: E, params: CoreEvents[E]) =>
-    handlers.get(event)?.forEach((handler) => handler(params as never))
-  const changed = (subscriptionId: string) => {
-    emit(EventSubscriptionsChanged, [...subscriptions])
-    emit(EventServersChanged, { subscriptionId })
-  }
-  const find = (id: string) => {
-    const sub = subscriptions.find((s) => s.id === id)
-    if (!sub) throw failed(ReasonNotFound, `there is no subscription "${id}"`)
-    return sub
-  }
-  // Like the engine, a start or stop answers at once and settles a moment later; the latest request wins.
-  let serial = 0
-  const setConnection = (next: ConnectionState) => {
-    connection = next
-    emit(EventConnectionChanged, { ...connection })
-  }
-  const settle = (next: () => ConnectionState) => {
-    const mine = ++serial
-    setTimeout(() => mine === serial && setConnection(next()), 0)
-  }
-  const noChanges = (sub: Subscription): SubscriptionUpdate => ({
-    subscription: { ...sub },
-    added: 0,
-    removed: 0,
-    changed: 0,
-    addedNames: [],
-    removedNames: [],
-    skips: [],
-  })
-
-  const methods: { [M in CoreMethod]: (params: CoreMethods[M]['params']) => CoreMethods[M]['result'] } = {
-    [MethodAppInfo]: () => ({ singBox: 'stub', xray: 'stub', dataDir: 'browser', elevated: false }),
-    [MethodSettingsGet]: () => ({ ...settings }),
-    [MethodSettingsSet]: (next) => {
-      settings = { ...next }
-      emit(EventSettingsChanged, { ...settings })
-      return { ...settings }
-    },
-    [MethodSubscriptionsList]: () => [...subscriptions],
-    [MethodSubscriptionsAdd]: ({ url, name }) => {
-      const link = url.trim()
-      let host: string
-      try {
-        const parsed = new URL(link)
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error()
-        host = parsed.hostname
-      } catch {
-        if (/^[a-z][a-z0-9+.-]*:\/\/\S/i.test(link)) {
-          throw failed(ReasonSingleServer, 'this is a link to one server, not a subscription')
-        }
-        throw failed(ReasonInvalidURL, 'a subscription link starts with http:// or https://')
-      }
-      if (subscriptions.some((s) => s.url === link)) throw failed(ReasonDuplicate, 'this subscription is already added')
-      const now = Date.now()
-      const sub: Subscription = {
-        id: String(nextId++),
-        name: name.trim() || host,
-        url: link,
-        addedAt: now,
-        updatedAt: now,
-        servers: stubServers.length,
-        skipped: 0,
-        upload: 0,
-        download: 0,
-        total: 0,
-        expire: 0,
-        webPageUrl: '',
-        supportUrl: '',
-        announce: '',
-        error: '',
-        errorText: '',
-      }
-      const added = stubServers.map((server) => ({ ...server, id: String(nextId++), subscriptionId: sub.id }))
-      subscriptions = [...subscriptions, sub]
-      servers = [...servers, ...added]
-      changed(sub.id)
-      return { ...noChanges(sub), added: added.length, addedNames: added.map((s) => s.name) }
-    },
-    [MethodSubscriptionsUpdate]: ({ id }) => {
-      const sub = { ...find(id), updatedAt: Date.now() }
-      subscriptions = subscriptions.map((s) => (s.id === id ? sub : s))
-      changed(id)
-      return noChanges(sub)
-    },
-    [MethodSubscriptionsRemove]: ({ id }) => {
-      find(id)
-      subscriptions = subscriptions.filter((s) => s.id !== id)
-      servers = servers.filter((s) => s.subscriptionId !== id)
-      changed(id)
-      return null
-    },
-    [MethodServersList]: ({ subscriptionId }) =>
-      servers.filter((s) => subscriptionId === '' || s.subscriptionId === subscriptionId).map((s) => ({ ...s })),
-    [MethodPresetsList]: () => [...builtinPresets],
-    [MethodConnectionStart]: () => {
-      setConnection({ ...idle, state: ConnectionStarting })
-      settle(() =>
-        servers.some((s) => s.id === settings.server)
-          ? {
-              ...idle,
-              state: ConnectionRunning,
-              serverId: settings.server,
-              tun: settings.tun,
-              systemProxy: settings.systemProxy,
-              since: Date.now(),
-            }
-          : { ...idle, error: ReasonNoServer, errorText: 'no server is chosen' },
-      )
-      return { ...connection }
-    },
-    [MethodConnectionStop]: () => {
-      if (connection.state !== ConnectionIdle) setConnection({ ...connection, state: ConnectionStopping })
-      settle(() => ({ ...idle }))
-      return { ...connection }
-    },
-    [MethodConnectionState]: () => ({ ...connection }),
-    [MethodNetworkCheck]: () => {
-      if (!settings.checkIp) throw failed(ReasonCheckOff, 'the IP and DNS check is turned off')
-      network = { ...network, checking: true }
-      emit(EventNetworkChanged, { ...network })
-      const connected = connection.state === ConnectionRunning
-      setTimeout(() => {
-        // Documentation addresses: the stub asks no outside service.
-        network = {
-          ...noCheck,
-          direct: { ip: '203.0.113.5', countryCode: 'RU', city: 'Moscow', isp: 'Home Telecom', asn: 64500 },
-          proxy: connected
-            ? { ip: '198.51.100.24', countryCode: 'DE', city: 'Frankfurt am Main', isp: 'Example Hosting', asn: 64501 }
-            : noAddress,
-          dns: connected
-            ? [{ ip: '192.0.2.53', countryCode: 'DE', city: '', isp: 'Example DNS', asn: 64510, home: false }]
-            : [],
-          leak: connected ? LeakNone : '',
-          checkedAt: Date.now(),
-        }
-        emit(EventNetworkChanged, { ...network })
-      }, 0)
-      return { ...network }
-    },
-    [MethodNetworkState]: () => ({ ...network }),
-  }
-
-  return {
-    async call(method, ...params) {
-      const run = methods[method] as (params: unknown) => CoreMethods[typeof method]['result']
-      return run(params[0])
-    },
-    on(event, handler) {
-      const set = handlers.get(event) ?? new Set()
-      set.add(handler as (params: never) => void)
-      handlers.set(event, set)
-      return () => set.delete(handler as (params: never) => void)
-    },
-    status: async () => ({ state: 'ready', elevated: false }),
-    onStatus: () => () => {},
+    elevate: () => invoke('core_elevate'),
+    restart: () => invoke('core_restart'),
   }
 }

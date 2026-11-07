@@ -127,6 +127,30 @@ func (e *Engine) announce(id string) {
 	}
 }
 
+// RenameSubscription gives a subscription the user's name; an empty one goes back to the provider's title.
+func (e *Engine) RenameSubscription(req RenameSubscription) (Subscription, error) {
+	e.writeMu.Lock()
+	var rec subscriptionRecord
+	var found bool
+	err := e.db.Update(func(tx *bbolt.Tx) error {
+		var err error
+		if found, err = getJSON(tx, bucketSubscriptions, []byte(req.ID), &rec); err != nil || !found {
+			return err
+		}
+		rec.Name = strings.TrimSpace(req.Name)
+		return putJSON(tx, bucketSubscriptions, []byte(req.ID), rec)
+	})
+	e.writeMu.Unlock()
+	if err != nil {
+		return Subscription{}, err
+	}
+	if !found {
+		return Subscription{}, jsonrpc.Failed(ReasonNotFound, "there is no subscription %q", req.ID)
+	}
+	e.announce("")
+	return rec.view(), nil
+}
+
 // AddSubscription downloads the subscription and stores it with its servers; one that does not download, or holds
 // no server Poros can run, is not added.
 func (e *Engine) AddSubscription(ctx context.Context, req AddSubscription) (SubscriptionUpdate, error) {
@@ -181,7 +205,9 @@ func (e *Engine) hasURL(link string) bool {
 
 // download fetches and reads a subscription. Its errors leave out the URL, which carries the user's token.
 func (e *Engine) download(ctx context.Context, link string) (profile.Document, subfetch.Info, *updateFailure) {
-	result, err := subfetch.Fetch(ctx, e.client, link, e.userAgent)
+	client, done := e.fetchClient()
+	defer done()
+	result, err := subfetch.Fetch(ctx, client, link, e.userAgent, e.deviceHeaders())
 	if err != nil {
 		if errors.Is(err, subfetch.ErrEmpty) {
 			return profile.Document{}, subfetch.Info{}, &updateFailure{ReasonNoServers, err.Error()}

@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/bbolt"
@@ -45,6 +46,8 @@ type connection struct {
 	// lifecycle runs one start or stop at a time and guards running.
 	lifecycle sync.Mutex
 	running   *runningConnection
+	// box is the running sing-box, for downloads through the connection that must not wait for a start.
+	box atomic.Pointer[boxbox.Box]
 }
 
 type runningConnection struct {
@@ -55,6 +58,8 @@ type runningConnection struct {
 	iface       string
 	tun         bool
 	systemProxy bool
+	// stopTraffic ends the speed reports.
+	stopTraffic context.CancelFunc
 }
 
 // connError is a failed start: a reason for the interface and the details.
@@ -176,11 +181,12 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 	if !found {
 		return ConnectionState{}, failure(ReasonNoServer, "the chosen server is no longer in its subscription")
 	}
-	var preset config.Preset
-	for _, record := range e.presets {
-		if record.ID == settings.Preset {
-			preset = record.Preset
-		}
+	preset, found, err := e.preset(settings.Preset)
+	if err != nil {
+		return ConnectionState{}, err
+	}
+	if !found {
+		return ConnectionState{}, failure(ReasonStartFailed, "the preset %q is gone", settings.Preset)
 	}
 	if settings.Tun && !elevated() {
 		return ConnectionState{}, failure(ReasonNeedsElevation, "TUN needs administrator rights")
@@ -245,13 +251,20 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 			return ConnectionState{}, failure(ReasonStartFailed, "Xray: %v", err)
 		}
 	}
-	if running.box, running.cancel, err = boxmain.Create(singBox, nil); err != nil {
+	counter := &trafficCounter{}
+	// The counter joins before the box starts, so that it sees the first connection too.
+	trackTraffic := func(box *boxbox.Box) { box.Router().AppendTracker(counter) }
+	if running.box, running.cancel, err = boxmain.Create(singBox, trackTraffic); err != nil {
 		if running.xray != nil {
 			running.xray.Close()
 		}
 		return ConnectionState{}, failure(ReasonStartFailed, "sing-box: %v", err)
 	}
 	e.conn.running = running
+	e.conn.box.Store(running.box)
+	trafficCtx, stopTraffic := context.WithCancel(context.Background())
+	running.stopTraffic = stopTraffic
+	go e.reportTraffic(trafficCtx, counter)
 
 	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Since: e.now().UnixMilli()}
 	if settings.SystemProxy {
@@ -273,6 +286,8 @@ func (e *Engine) stopRunning() error {
 		return nil
 	}
 	e.conn.running = nil
+	e.conn.box.Store(nil)
+	running.stopTraffic()
 	var errs []error
 	if running.systemProxy {
 		errs = append(errs, e.sysProxy.Clear())
