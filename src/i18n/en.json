@@ -269,7 +269,8 @@
       "startMinimized": "Start minimized",
       "startMinimizedHint": "The window does not open, Poros stays in the tray.",
       "closeToTray": "Hide to the tray on close",
-      "closeToTrayHint": "Off, the close button quits Poros."
+      "closeToTrayHint": "Off, the close button quits Poros.",
+      "urlSchemeOther": "Another copy of Poros opens them now: {program}. Turn on to let this one open them."
     },
     "look": {
       "lead": "Language and size of the interface.",

@@ -1,15 +1,35 @@
 //! What Poros writes into the system for the user: starting with Windows and opening `poros://` links. Both point
 //! at this copy of the portable Poros. Turning one off removes only an entry that points here, so another copy
 //! keeps its own.
+//!
+//! Autostart follows the core's settings. `poros://` has no setting: the interface shows what Windows holds and
+//! changes it when the user asks, and nothing is written at launch.
 
 use std::path::Path;
+
+use serde::Serialize;
 
 /// The settings of the core that the shell applies.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Integration {
     pub autostart: bool,
     pub start_minimized: bool,
-    pub url_scheme: bool,
+}
+
+/// Who opens `poros://` links now.
+#[derive(Serialize, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum SchemeOwner {
+    This,
+    Other,
+    None,
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct UrlScheme {
+    pub owner: SchemeOwner,
+    /// The program of another copy, "" otherwise.
+    pub program: String,
 }
 
 /// The command line Windows runs at sign-in.
@@ -29,12 +49,47 @@ pub fn points_at(command: &str, exe: &Path) -> bool {
     command.to_lowercase().starts_with(&quoted)
 }
 
+/// Reads the registered command of `poros://`.
+pub fn scheme_owner(command: Option<&str>, exe: &Path) -> UrlScheme {
+    match command {
+        None => UrlScheme {
+            owner: SchemeOwner::None,
+            program: String::new(),
+        },
+        Some(command) if points_at(command, exe) => UrlScheme {
+            owner: SchemeOwner::This,
+            program: String::new(),
+        },
+        Some(command) => {
+            let program = match command.strip_prefix('"') {
+                Some(rest) => rest.split('"').next().unwrap_or_default(),
+                None => command.split_whitespace().next().unwrap_or_default(),
+            };
+            UrlScheme {
+                owner: SchemeOwner::Other,
+                program: program.to_owned(),
+            }
+        }
+    }
+}
+
 #[cfg(windows)]
-pub use windows::apply;
+pub use windows::{apply, set_url_scheme, url_scheme};
 
 #[cfg(not(windows))]
 pub fn apply(_exe: &Path, _integration: Integration) -> std::io::Result<()> {
     Ok(())
+}
+
+/// Linux and Android register links their own way, later.
+#[cfg(not(windows))]
+pub fn url_scheme(exe: &Path) -> std::io::Result<UrlScheme> {
+    Ok(scheme_owner(None, exe))
+}
+
+#[cfg(not(windows))]
+pub fn set_url_scheme(exe: &Path, _on: bool) -> std::io::Result<UrlScheme> {
+    url_scheme(exe)
 }
 
 #[cfg(windows)]
@@ -48,7 +103,10 @@ mod windows {
         RegSetKeyValueW,
     };
 
-    use super::{Integration, autostart_command, points_at, url_command};
+    use super::{
+        Integration, SchemeOwner, UrlScheme, autostart_command, points_at, scheme_owner,
+        url_command,
+    };
 
     const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
     const RUN_VALUE: &str = "Poros";
@@ -57,12 +115,6 @@ mod windows {
     const SCHEME_ICON: &str = r"Software\Classes\poros\DefaultIcon";
 
     pub fn apply(exe: &Path, integration: Integration) -> io::Result<()> {
-        let autostart = set_autostart(exe, integration);
-        set_url_scheme(exe, integration.url_scheme)?;
-        autostart
-    }
-
-    fn set_autostart(exe: &Path, integration: Integration) -> io::Result<()> {
         let current = read(RUN, Some(RUN_VALUE))?;
         if integration.autostart {
             let command = autostart_command(exe, integration.start_minimized);
@@ -82,21 +134,23 @@ mod windows {
         Ok(())
     }
 
-    fn set_url_scheme(exe: &Path, on: bool) -> io::Result<()> {
-        let current = read(SCHEME_COMMAND, None)?;
-        if on {
-            let command = url_command(exe);
-            if current.as_deref() != Some(command.as_str()) {
-                write(SCHEME, None, "URL:Poros")?;
-                write(SCHEME, Some("URL Protocol"), "")?;
-                write(SCHEME_ICON, None, &format!("\"{}\",0", exe.display()))?;
-                write(SCHEME_COMMAND, None, &command)?;
-            }
-        } else if current.is_some_and(|command| points_at(&command, exe)) {
+    pub fn url_scheme(exe: &Path) -> io::Result<UrlScheme> {
+        Ok(scheme_owner(read(SCHEME_COMMAND, None)?.as_deref(), exe))
+    }
+
+    /// Takes the links for this copy, or gives them up when this copy has them.
+    pub fn set_url_scheme(exe: &Path, on: bool) -> io::Result<UrlScheme> {
+        let current = url_scheme(exe)?;
+        if on && current.owner != SchemeOwner::This {
+            write(SCHEME, None, "URL:Poros")?;
+            write(SCHEME, Some("URL Protocol"), "")?;
+            write(SCHEME_ICON, None, &format!("\"{}\",0", exe.display()))?;
+            write(SCHEME_COMMAND, None, &url_command(exe))?;
+        } else if !on && current.owner == SchemeOwner::This {
             // SAFETY: a null-terminated key name under the user's hive.
             check(unsafe { RegDeleteTreeW(HKEY_CURRENT_USER, wide(SCHEME).as_ptr()) })?;
         }
-        Ok(())
+        url_scheme(exe)
     }
 
     fn wide(text: &str) -> Vec<u16> {
@@ -171,17 +225,17 @@ mod windows {
             }
             let exe = PathBuf::from(r"C:\poros-test\Poros.exe");
             let other = PathBuf::from(r"C:\other\Poros.exe");
-            let all = Integration {
+            let autostart = Integration {
                 autostart: true,
                 start_minimized: true,
-                url_scheme: true,
             };
 
-            apply(&exe, all).unwrap();
+            apply(&exe, autostart).unwrap();
             assert_eq!(
                 read(RUN, Some(RUN_VALUE)).unwrap().as_deref(),
                 Some(r#""C:\poros-test\Poros.exe" --autostart --minimized"#)
             );
+            assert_eq!(set_url_scheme(&exe, true).unwrap().owner, SchemeOwner::This);
             assert_eq!(
                 read(SCHEME_COMMAND, None).unwrap().as_deref(),
                 Some(r#""C:\poros-test\Poros.exe" "%1""#)
@@ -196,13 +250,20 @@ mod windows {
                 read(RUN, Some(RUN_VALUE)).unwrap().is_some(),
                 "another copy removed this one's autostart"
             );
-            assert!(
-                read(SCHEME_COMMAND, None).unwrap().is_some(),
+            let seen = set_url_scheme(&other, false).unwrap();
+            assert_eq!(
+                seen.owner,
+                SchemeOwner::Other,
                 "another copy removed this one's links"
             );
+            assert_eq!(seen.program, r"C:\poros-test\Poros.exe");
 
             apply(&exe, Integration::default()).unwrap();
             assert_eq!(read(RUN, Some(RUN_VALUE)).unwrap(), None);
+            assert_eq!(
+                set_url_scheme(&exe, false).unwrap().owner,
+                SchemeOwner::None
+            );
             assert_eq!(read(SCHEME_COMMAND, None).unwrap(), None);
         }
     }
@@ -227,5 +288,24 @@ mod tests {
             &url_command(&PathBuf::from(r"D:\Apps\Poros2\Poros.exe")),
             &exe
         ));
+    }
+
+    #[test]
+    fn tells_who_opens_the_links() {
+        let exe = PathBuf::from(r"D:\Apps\Poros\Poros.exe");
+        assert_eq!(scheme_owner(None, &exe).owner, SchemeOwner::None);
+        assert_eq!(
+            scheme_owner(Some(&url_command(&exe)), &exe).owner,
+            SchemeOwner::This
+        );
+        let other = scheme_owner(Some(r#""E:\Poros\Poros.exe" "%1""#), &exe);
+        assert_eq!(
+            (other.owner, other.program.as_str()),
+            (SchemeOwner::Other, r"E:\Poros\Poros.exe")
+        );
+        assert_eq!(
+            scheme_owner(Some(r"C:\Tools\viewer.exe %1"), &exe).program,
+            r"C:\Tools\viewer.exe"
+        );
     }
 }

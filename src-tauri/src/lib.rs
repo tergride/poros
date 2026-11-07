@@ -16,7 +16,7 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuil
 
 use crate::core_process::{Core, CoreConfig, CoreError, CoreState, CoreStatus, Sink};
 use crate::instance::Claim;
-use crate::system::Integration;
+use crate::system::{Integration, UrlScheme};
 
 /// What the shell keeps besides the core.
 struct Shell {
@@ -59,6 +59,20 @@ fn app_hide(app: AppHandle) {
 #[tauri::command]
 fn app_exit(app: AppHandle) {
     app.exit(0);
+}
+
+/// Who opens `poros://` links now: this copy, another one or nobody.
+#[tauri::command]
+fn url_scheme_get() -> Result<UrlScheme, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    system::url_scheme(&exe).map_err(|e| e.to_string())
+}
+
+/// Takes `poros://` links for this copy or gives them up; the answer is what Windows holds afterwards.
+#[tauri::command]
+fn url_scheme_set(on: bool) -> Result<UrlScheme, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    system::set_url_scheme(&exe, on).map_err(|e| e.to_string())
 }
 
 /// The links that came since the last call; `app-links` tells the interface that there are new ones.
@@ -126,7 +140,7 @@ fn add_links(app: &AppHandle, args: &[String]) {
     let _ = app.emit("app-links", ());
 }
 
-/// The settings the shell acts on: the close button, and autostart and `poros://` once the first setup is done.
+/// The settings the shell acts on: the close button, and autostart once the first setup is done.
 fn apply_settings(app: &AppHandle, settings: &Value) {
     let Some(shell) = app.try_state::<Shell>() else {
         return;
@@ -141,7 +155,6 @@ fn apply_settings(app: &AppHandle, settings: &Value) {
     let integration = Integration {
         autostart: flag("autostart"),
         start_minimized: flag("startMinimized"),
-        url_scheme: flag("urlScheme"),
     };
     let mut applied = shell.integration.lock().unwrap();
     if applied.as_ref() == Some(&integration) {
@@ -152,7 +165,7 @@ fn apply_settings(app: &AppHandle, settings: &Value) {
     };
     match system::apply(&exe, integration) {
         Ok(()) => *applied = Some(integration),
-        Err(error) => eprintln!("poros: autostart and links: {error}"),
+        Err(error) => eprintln!("poros: autostart: {error}"),
     }
 }
 
@@ -237,6 +250,8 @@ pub fn run() {
             app_hide,
             app_exit,
             take_links,
+            url_scheme_get,
+            url_scheme_set,
             core_call,
             core_status,
             core_elevate,

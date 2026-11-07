@@ -44,11 +44,10 @@ type Settings struct {
 	ShowChanges bool `json:"showChanges"`
 	// AutoConnect connects to the chosen server when Poros starts.
 	AutoConnect bool `json:"autoConnect"`
-	// Autostart, URLScheme, StartMinimized, CloseToTray and KillSwitch are kept for the system part of Poros: start
-	// with Windows, open poros:// links, start in the tray, hide to the tray on close, block traffic without the
-	// connection.
+	// Autostart, StartMinimized, CloseToTray and KillSwitch are kept for the system part of Poros: start with
+	// Windows, start in the tray, hide to the tray on close, block traffic without the connection. poros:// links
+	// have no setting: the shell reads and changes what Windows holds.
 	Autostart      bool `json:"autostart"`
-	URLScheme      bool `json:"urlScheme"`
 	StartMinimized bool `json:"startMinimized"`
 	CloseToTray    bool `json:"closeToTray"`
 	KillSwitch     bool `json:"killSwitch"`

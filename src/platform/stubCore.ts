@@ -86,7 +86,6 @@ const defaultSettings: Settings = {
   showChanges: true,
   autoConnect: true,
   autostart: false,
-  urlScheme: true,
   startMinimized: false,
   closeToTray: true,
   killSwitch: false,

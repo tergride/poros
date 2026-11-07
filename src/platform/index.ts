@@ -39,6 +39,25 @@ export const windowControls = {
   close: (): Promise<void> => (inTauri ? getCurrentWindow().close() : Promise.resolve()),
 }
 
+/** Who opens `poros://` links: this copy, another copy (its program) or nobody. */
+export interface UrlScheme {
+  owner: 'this' | 'other' | 'none'
+  program: string
+}
+
+// Outside Tauri the links live in memory, like the stub core's data.
+let stubScheme: UrlScheme = { owner: 'none', program: '' }
+
+/** What Windows holds for `poros://`; Poros writes it only when the user asks, never at launch. */
+export const urlScheme = {
+  get: (): Promise<UrlScheme> => (inTauri ? invoke<UrlScheme>('url_scheme_get') : Promise.resolve({ ...stubScheme })),
+  set: (on: boolean): Promise<UrlScheme> => {
+    if (inTauri) return invoke<UrlScheme>('url_scheme_set', { on })
+    stubScheme = { owner: on ? 'this' : 'none', program: '' }
+    return Promise.resolve({ ...stubScheme })
+  },
+}
+
 /** The program as a whole: show or hide its window, quit. */
 export const appControls = {
   show: (): Promise<void> => (inTauri ? invoke('app_show') : Promise.resolve()),

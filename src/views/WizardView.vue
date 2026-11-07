@@ -8,6 +8,7 @@ import portal from '@/assets/img/portal.jpg'
 import wordmark from '@/assets/img/wordmark.png'
 import SubscriptionLink from '@/components/main/SubscriptionLink.vue'
 import { Button, Checkbox, RadioGroup, RadioItem } from '@/components/ui'
+import { urlScheme } from '@/platform'
 import { useCoreStore } from '@/stores/core'
 
 const core = useCoreStore()
@@ -22,8 +23,9 @@ const link = ref<InstanceType<typeof SubscriptionLink> | null>(null)
 const startOptions = [
   { key: 'autostart', label: 'wizard.start.autostart', hint: 'wizard.start.autostartHint' },
   { key: 'autoConnect', label: 'wizard.start.autoConnect', hint: 'wizard.start.autoConnectHint' },
-  { key: 'urlScheme', label: 'wizard.start.urlScheme', hint: 'wizard.start.urlSchemeHint' },
 ] as const
+// poros:// has no setting: the wizard takes the links for this copy once, when it finishes.
+const takeLinks = ref(true)
 
 const builtins = computed(() => core.presets.filter((p) => p.builtin))
 const presetName = (id: string, name: string) => (te(`presets.name.${id}`) ? t(`presets.name.${id}`) : name)
@@ -40,6 +42,7 @@ async function next(): Promise<void> {
 }
 
 async function finish(): Promise<void> {
+  if (takeLinks.value) await urlScheme.set(true).catch(() => undefined)
   await core.updateSettings({ onboardingDone: true })
   await router.push('/main')
 }
@@ -102,6 +105,13 @@ async function finish(): Promise<void> {
               <span>
                 <strong class="mb-0.5 block font-medium">{{ t(option.label) }}</strong>
                 <span class="text-xs text-t3">{{ t(option.hint) }}</span>
+              </span>
+            </label>
+            <label class="flex cursor-pointer gap-3.5 rounded-xl border border-line bg-s2 px-4 py-[15px] hover:border-line2">
+              <Checkbox v-model="takeLinks" data-testid="wizard-links" />
+              <span>
+                <strong class="mb-0.5 block font-medium">{{ t('wizard.start.urlScheme') }}</strong>
+                <span class="text-xs text-t3">{{ t('wizard.start.urlSchemeHint') }}</span>
               </span>
             </label>
           </div>

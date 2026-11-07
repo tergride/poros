@@ -19,7 +19,6 @@ func DefaultSettings() Settings {
 		SubscriptionAutoUpdate: true,
 		ShowChanges:            true,
 		AutoConnect:            true,
-		URLScheme:              true,
 		CloseToTray:            true,
 		TextSize:               "normal",
 	}

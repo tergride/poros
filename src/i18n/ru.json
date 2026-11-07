@@ -269,7 +269,8 @@
       "startMinimized": "Запускать свёрнутым",
       "startMinimizedHint": "Окно не откроется, Poros останется в трее.",
       "closeToTray": "Сворачивать в трей при закрытии",
-      "closeToTrayHint": "Если выключить, крестик завершит Poros."
+      "closeToTrayHint": "Если выключить, крестик завершит Poros.",
+      "urlSchemeOther": "Сейчас их открывает другая копия Poros: {program}. Включите, чтобы открывала эта."
     },
     "look": {
       "lead": "Язык и размер интерфейса.",

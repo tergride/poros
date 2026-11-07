@@ -125,6 +125,13 @@ test('a preset copy is made, saved and chosen', async ({ page }) => {
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
     await shot(page, `settings-${link}`)
   }
+
+  // The wizard took the poros:// links; the switch shows that and gives them up at once.
+  await page.getByRole('link', { name: 'Запуск', exact: true }).click()
+  const links = page.getByTestId('url-scheme')
+  await expect(links).toHaveAttribute('data-state', 'checked')
+  await links.click()
+  await expect(links).toHaveAttribute('data-state', 'unchecked')
 })
 
 test('poros:// links open a dialog and add only after a yes', async ({ page }) => {

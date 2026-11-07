@@ -76,12 +76,11 @@ export interface Settings {
    */
   autoConnect: boolean;
   /**
-   * Autostart, URLScheme, StartMinimized, CloseToTray and KillSwitch are kept for the system part of Poros: start
-   * with Windows, open poros:// links, start in the tray, hide to the tray on close, block traffic without the
-   * connection.
+   * Autostart, StartMinimized, CloseToTray and KillSwitch are kept for the system part of Poros: start with
+   * Windows, start in the tray, hide to the tray on close, block traffic without the connection. poros:// links
+   * have no setting: the shell reads and changes what Windows holds.
    */
   autostart: boolean;
-  urlScheme: boolean;
   startMinimized: boolean;
   closeToTray: boolean;
   killSwitch: boolean;
