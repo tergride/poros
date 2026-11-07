@@ -76,6 +76,18 @@ test('the first Start asks what to turn on, and TUN asks for rights', async ({ p
   await expect(page.getByTestId('portal-state')).toHaveText('Не подключено')
 })
 
+test('the first Start can connect without TUN and System', async ({ page }) => {
+  await throughWizard(page)
+  await page.getByTestId('start').click()
+  await page.getByTestId('modes-none').click()
+  await expect(page.getByTestId('portal-state')).toContainText('Подключено')
+  await expect(page.getByTestId('portal')).toContainText('настроенные на прокси 127.0.0.1:2090')
+  await page.getByTestId('stop').click()
+  await page.getByTestId('start').click()
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page.getByTestId('portal-state')).toContainText('Подключено')
+})
+
 test('a preset copy is made, saved and chosen', async ({ page }) => {
   await throughWizard(page)
   await page.getByRole('link', { name: /Пресет:/ }).click()

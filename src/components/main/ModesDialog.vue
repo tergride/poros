@@ -48,6 +48,7 @@ watch(
     </div>
     <template #footer>
       <Button variant="ghost" class="sp" @click="connect.modesOpen = false">{{ t('common.cancel') }}</Button>
+      <Button variant="ghost" data-testid="modes-none" @click="connect.chooseModes(false, false)">{{ t('modes.none') }}</Button>
       <Button variant="primary" data-testid="modes-connect" @click="connect.chooseModes(tun, system)">
         <Play class="size-4 fill-current" />{{ t('modes.connect') }}
       </Button>

@@ -174,7 +174,8 @@
     "tun": "All of the computer's traffic, games and programs without proxy settings included. Needs administrator rights.",
     "system": "Browsers and programs that use the Windows system proxy. No rights needed.",
     "note": "Both can be on. The choice is remembered; the switches are on the main screen under Start.",
-    "connect": "Connect"
+    "connect": "Connect",
+    "none": "Without TUN and System"
   },
   "admin": {
     "title": "TUN needs administrator rights",
