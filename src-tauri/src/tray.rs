@@ -62,10 +62,15 @@ pub fn create<R: Runtime>(
     Ok(())
 }
 
+/// Queues the change on the main thread instead of waiting for it there, as a tray call would: on exit the main
+/// thread waits for the core, and the core's last status comes through here.
 pub fn set_look<R: Runtime>(app: &AppHandle<R>, look: Look) {
-    if let Some(tray) = app.tray_by_id(ID) {
-        let _ = tray.set_icon(Some(look.image()));
-    }
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if let Some(tray) = handle.tray_by_id(ID) {
+            let _ = tray.set_icon(Some(look.image()));
+        }
+    });
 }
 
 #[cfg(test)]

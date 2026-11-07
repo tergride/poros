@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::{Value, json};
+use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 use crate::core_process::{
@@ -364,7 +365,12 @@ pub fn run() {
                 .min_inner_size(900.0, 600.0)
                 .center()
                 .decorations(false)
-                .visible(!minimized);
+                .visible(!minimized)
+                // The paste buttons read the clipboard; WebView2 would first ask, as a browser does on a site.
+                .on_permission_request(|_, kind| match kind {
+                    PermissionKind::ClipboardRead => PermissionResponse::Allow,
+                    _ => PermissionResponse::Default,
+                });
             // The portable build keeps the WebView2 profile in its own folder instead of %LOCALAPPDATA%.
             #[cfg(windows)]
             let builder = builder.data_directory(data_dir.join("webview"));
