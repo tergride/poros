@@ -11,7 +11,10 @@ import type {
   OutsideLink,
   Preset,
   PresetCopy,
+  PresetEntries,
   PresetLink,
+  PresetLists,
+  PresetListsRead,
   RenameSubscription,
   Server,
   ServersChanged,
@@ -43,8 +46,10 @@ import {
   MethodPresetsGet,
   MethodPresetsImport,
   MethodPresetsList,
+  MethodPresetsReadLists,
   MethodPresetsRemove,
   MethodPresetsSave,
+  MethodPresetsWriteLists,
   MethodServersList,
   MethodServersTest,
   MethodSettingsGet,
@@ -74,6 +79,8 @@ export interface CoreMethods {
   [MethodPresetsRemove]: { params: ByID; result: null }
   [MethodPresetsExport]: { params: ByID; result: PresetLink }
   [MethodPresetsImport]: { params: PresetLink; result: Preset }
+  [MethodPresetsWriteLists]: { params: PresetEntries; result: PresetLists }
+  [MethodPresetsReadLists]: { params: PresetLists; result: PresetListsRead }
   [MethodLinksParse]: { params: OutsideLink; result: LinkInfo }
   [MethodConnectionStart]: { params: undefined; result: ConnectionState }
   [MethodConnectionStop]: { params: undefined; result: ConnectionState }

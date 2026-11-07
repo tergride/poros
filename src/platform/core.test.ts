@@ -21,8 +21,10 @@ import {
   MethodPresetsGet,
   MethodPresetsImport,
   MethodPresetsList,
+  MethodPresetsReadLists,
   MethodPresetsRemove,
   MethodPresetsSave,
+  MethodPresetsWriteLists,
   MethodServersList,
   MethodServersTest,
   MethodSettingsGet,
@@ -34,6 +36,7 @@ import {
   ReasonDuplicate,
   ReasonInvalidEntry,
   ReasonInvalidLink,
+  ReasonInvalidValue,
   ReasonNeedsElevation,
   ReasonInvalidURL,
   ReasonNoServer,
@@ -190,6 +193,49 @@ describe('the stub core', () => {
     await core.call(MethodSettingsSet, { ...settings, preset: saved.id })
     await core.call(MethodPresetsRemove, { id: saved.id })
     expect((await core.call(MethodSettingsGet)).preset).toBe('all')
+  })
+
+  it('reads the lists window as the engine does', async () => {
+    const core = createStubCore()
+    const read = await core.call(MethodPresetsReadLists, {
+      lists: {
+        proxy: 'video.example.com\r\n# work\n\nhttps://Mail.example.org/inbox\nnot a site\nDOMAIN:media.example.net\nvideo.example.com',
+        direct: '192.168.50.0/24\nip:203.0.113.7\nsteam.exe\nC:\\Games\\game.exe\nprocessName:steam\n*.video.example.com',
+        block: '*.ads.example\ngeosite:category-ads\n*.\nSTEAM.EXE',
+      },
+    })
+    expect(read.sites.map((e) => `${e.action} ${e.value}`)).toEqual([
+      'proxy video.example.com',
+      'proxy https://Mail.example.org/inbox',
+      'proxy media.example.net',
+      'direct 192.168.50.0/24',
+      'direct 203.0.113.7',
+      'block *.ads.example',
+    ])
+    expect(read.apps.map((e) => `${e.action} ${e.value}`)).toEqual(['direct steam.exe', 'direct C:\\Games\\game.exe', 'direct steam'])
+    expect(read.problems).toEqual([
+      { action: 'proxy', line: 5, text: 'not a site', reason: ReasonInvalidEntry, other: '' },
+      { action: 'direct', line: 6, text: '*.video.example.com', reason: ReasonDuplicate, other: 'proxy' },
+      { action: 'block', line: 2, text: 'geosite:category-ads', reason: ReasonInvalidEntry, other: '' },
+      { action: 'block', line: 3, text: '*.', reason: ReasonInvalidEntry, other: '' },
+      { action: 'block', line: 4, text: 'STEAM.EXE', reason: ReasonDuplicate, other: 'direct' },
+    ])
+    expect(await reasonOf(core.call(MethodPresetsReadLists, { lists: { warp: '' } }))).toBe(ReasonInvalidValue)
+
+    const entries = {
+      sites: [
+        { value: 'example.org', action: 'block' },
+        { value: 'setup.exe', action: 'proxy' },
+      ],
+      apps: [
+        { value: 'steam', action: 'direct' },
+        { value: 'steam.exe', action: 'direct' },
+      ],
+    }
+    const lists = await core.call(MethodPresetsWriteLists, entries)
+    expect(lists.lists).toEqual({ proxy: 'domain:setup.exe', direct: 'processName:steam\nsteam.exe', block: 'example.org' })
+    const back = await core.call(MethodPresetsReadLists, lists)
+    expect(back).toEqual({ sites: [entries.sites[1], entries.sites[0]], apps: entries.apps, problems: [] })
   })
 
   it('reads poros:// links as the engine does and adds nothing', async () => {

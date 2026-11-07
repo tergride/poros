@@ -3,7 +3,7 @@ import { cn } from 'cn'
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 
-// The dialogs of the mockups: a title row, a body that scrolls, and a footer of buttons.
+// The dialogs of the mockups: a title row, tabs under it if any, a body that scrolls, and a footer of buttons.
 const props = defineProps<{ title: string; class?: HTMLAttributes['class'] }>()
 const open = defineModel<boolean>('open', { default: false })
 </script>
@@ -26,6 +26,7 @@ const open = defineModel<boolean>('open', { default: false })
           <DialogTitle class="text-[17px] font-semibold">{{ title }}</DialogTitle>
           <div class="ml-auto flex items-center gap-2"><slot name="actions" /></div>
         </div>
+        <slot name="tabs" />
         <div class="min-h-0 flex-1 overflow-auto px-5 pt-1 pb-[18px]"><slot /></div>
         <div v-if="$slots.footer" class="flex items-center gap-2 border-t border-line px-5 py-3 [&>.sp]:mr-auto">
           <slot name="footer" />

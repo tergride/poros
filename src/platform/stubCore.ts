@@ -5,7 +5,10 @@ import type {
   NetworkState,
   Preset,
   PresetCopy,
+  PresetEntries,
   PresetEntry,
+  PresetLists,
+  PresetListsRead,
   Server,
   Settings,
   Subscription,
@@ -40,8 +43,10 @@ import {
   MethodLinksParse,
   MethodPresetsImport,
   MethodPresetsList,
+  MethodPresetsReadLists,
   MethodPresetsRemove,
   MethodPresetsSave,
+  MethodPresetsWriteLists,
   MethodServersList,
   MethodServersTest,
   MethodSettingsGet,
@@ -152,12 +157,89 @@ function checkEntries(entries: PresetEntry[], valid: (value: string) => boolean)
   }
 }
 
-const looksLikeSite = (value: string) =>
-  /^(\*\.)?([\p{L}\p{N}_-]+\.)+[\p{L}\p{N}_-]+$/u.test(value.replace(/^\w+:\/\/([^/]+).*$/, '$1')) ||
-  /^[\d.]+(\/\d+)?$/.test(value) ||
-  /^[0-9a-f:]+(\/\d+)?$/i.test(value)
+const isAddress = (value: string) =>
+  /^[\d.]+(\/\d+)?$/.test(value) || /^\[?[0-9a-f]*:[0-9a-f]*:[0-9a-f:.]*\]?(\/\d+)?$/i.test(value)
+
+/** What a site entry matches, null for no site, address or subnet. */
+function siteKey(value: string): string | null {
+  const host = value
+    .trim()
+    .replace(/^\w+:\/\/([^/]+).*$/, '$1')
+    .toLowerCase()
+    .replace(/^\*\./, '')
+    .replace(/^\./, '')
+  return isAddress(host) || /^([\p{L}\p{N}_-]+\.)+[\p{L}\p{N}_-]+$/u.test(host) ? host : null
+}
+
+const looksLikeSite = (value: string) => siteKey(value) !== null
 
 const looksLikeApp = (value: string) => value !== '' && !/[*?"<>|]/.test(value)
+
+/** The prefixes of the lines of the lists window, as in core/engine/presetlists.go; its tabs are `actions`. */
+const sitePrefixes = ['domain', 'full', 'suffix', 'ip']
+const appPrefixes = ['processname', 'processpath']
+const unreadablePrefixes = ['keyword', 'regex', 'regexp', 'ruleset', 'geosite', 'geoip']
+
+function readListLine(text: string): { site: boolean; value: string; key: string } | null {
+  let value = text
+  let site: boolean | undefined
+  const colon = text.indexOf(':')
+  if (colon >= 0) {
+    const prefix = text.slice(0, colon).trim().toLowerCase()
+    if (unreadablePrefixes.includes(prefix)) return null
+    if (sitePrefixes.includes(prefix)) site = true
+    if (appPrefixes.includes(prefix)) site = false
+    if (site !== undefined) value = text.slice(colon + 1).trim()
+  }
+  site ??= value.includes('://') || isAddress(value) || !(/\.exe$/i.test(value) || value.includes('\\') || value.startsWith('/'))
+  if (site) {
+    const key = siteKey(value)
+    return key === null ? null : { site, value, key: `site ${key}` }
+  }
+  return looksLikeApp(value) ? { site, value, key: `app ${value.toLowerCase()}` } : null
+}
+
+function readLists(lists: Record<string, string> | null): PresetListsRead {
+  const read: PresetListsRead = { sites: [], apps: [], problems: [] }
+  for (const action of Object.keys(lists ?? {})) {
+    if (!actions.includes(action)) throw failed(ReasonInvalidValue, `there is no list "${action}"`)
+  }
+  const tabOf = new Map<string, string>()
+  for (const action of actions) {
+    for (const [i, line] of (lists?.[action] ?? '').split('\n').entries()) {
+      const text = line.trim()
+      if (text === '' || text.startsWith('#')) continue
+      const entry = readListLine(text)
+      if (!entry) {
+        read.problems.push({ action, line: i + 1, text, reason: ReasonInvalidEntry, other: '' })
+        continue
+      }
+      const other = tabOf.get(entry.key)
+      if (other === undefined) {
+        tabOf.set(entry.key, action)
+        const list = entry.site ? read.sites : read.apps
+        list.push({ value: entry.value, action })
+      } else if (other !== action) read.problems.push({ action, line: i + 1, text, reason: ReasonDuplicate, other })
+    }
+  }
+  return read
+}
+
+function writeLists({ sites, apps }: PresetEntries): PresetLists {
+  const lines = new Map<string, string[]>()
+  const write = (entries: PresetEntry[], site: boolean, prefix: string) => {
+    for (const entry of entries) {
+      if (!actions.includes(entry.action)) throw failed(ReasonInvalidEntry, `"${entry.value}": unknown action`)
+      let value = entry.value.trim()
+      const bare = readListLine(value)
+      if ((!bare || bare.site !== site || bare.value !== value) && readListLine(prefix + value)) value = prefix + value
+      lines.set(entry.action, [...(lines.get(entry.action) ?? []), value])
+    }
+  }
+  write(sites, true, 'domain:')
+  write(apps, false, 'processName:')
+  return { lists: Object.fromEntries(actions.map((action) => [action, (lines.get(action) ?? []).join('\n')])) }
+}
 
 function encodeLink(copy: PresetCopy): string {
   const data = JSON.stringify({
@@ -448,6 +530,8 @@ export function createStubCore(): CoreClient {
     },
     [MethodPresetsExport]: ({ id }) => ({ link: encodeLink(copyOf(id)) }),
     [MethodPresetsImport]: ({ link }) => saveCopy(decodeLink(link)),
+    [MethodPresetsWriteLists]: (entries) => writeLists(entries),
+    [MethodPresetsReadLists]: ({ lists }) => readLists(lists),
     [MethodLinksParse]: ({ link }) => parseOutsideLink(link),
     [MethodConnectionStart]: () => {
       setConnection({ ...idle, state: ConnectionStarting })

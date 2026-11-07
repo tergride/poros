@@ -134,6 +134,44 @@ test('a preset copy is made, saved and chosen', async ({ page }) => {
   await expect(links).toHaveAttribute('data-state', 'unchecked')
 })
 
+test('the lists of a preset take a pasted list, name bad lines and save with the preset', async ({ page }) => {
+  await throughWizard(page)
+  await page.getByRole('link', { name: /Пресет:/ }).click()
+  await page.getByRole('button', { name: 'Создать копию' }).first().click()
+  await page.getByTestId('preset-name').fill('Дом')
+  await page.getByLabel('Сайт, IP или подсеть').fill('example.org')
+  await page.getByLabel('Сайт, IP или подсеть').press('Enter')
+  await page.getByTestId('preset-lists').click()
+
+  const lists = page.getByRole('dialog', { name: 'Списки пресета «Дом»' })
+  const text = lists.getByTestId('lists-text')
+  await expect(text).toHaveValue('example.org')
+  await expect(lists.getByTestId('lists-tab-proxy')).toHaveText('Через сервер · 1')
+  await text.fill('example.org\nvideo.example.com\n# работа\nnot a site\n*.')
+  await expect(lists.getByTestId('lists-invalid')).toHaveText(
+    'Не распознаны 2 строки: 4 «not a site», 5 «*.». Исправьте или удалите их.',
+  )
+  await expect(lists.getByTestId('lists-apply')).toBeDisabled()
+  await shot(page, 'preset-lists-invalid')
+  await text.fill('example.org\nvideo.example.com\n# работа\nmail.example.net')
+
+  await lists.getByTestId('lists-tab-direct').click()
+  await text.fill('192.168.50.0/24\nsteam.exe\nC:\\Games\\game.exe\nVideo.example.com')
+  await expect(lists.getByTestId('lists-duplicate')).toContainText('4 «Video.example.com» (Через сервер)')
+  await expect(lists.getByTestId('lists-apply')).toBeDisabled()
+  await text.fill('192.168.50.0/24\nsteam.exe\nC:\\Games\\game.exe')
+  await expect(lists.getByTestId('lists-tab-direct')).toHaveText('Напрямую · 3')
+  await expect(lists.getByTestId('lists-tab-proxy')).toHaveText('Через сервер · 3')
+  await expect(lists.getByTestId('lists-apply')).toBeEnabled()
+  await shot(page, 'preset-lists')
+  await lists.getByTestId('lists-apply').click()
+  await expect(lists).toBeHidden()
+  await expect(page.getByTestId('site')).toHaveCount(4)
+
+  await page.getByTestId('preset-save').click()
+  await expect(page.getByText('На основе «Весь трафик»: добавлено: сайтов — 4, приложений — 2')).toBeVisible()
+})
+
 test('poros:// links open a dialog and add only after a yes', async ({ page }) => {
   await throughWizard(page)
   const encode = (text: string) => Buffer.from(text).toString('base64url')

@@ -378,6 +378,45 @@ export interface PresetCopy {
   inherited: InheritedRule[];
 }
 /**
+ * PresetEntries are the sites and programs of a user's preset.
+ */
+export interface PresetEntries {
+  sites: PresetEntry[];
+  apps: PresetEntry[];
+}
+/**
+ * PresetLists are the entries of a preset as the lists window shows them: a text per action (proxy, direct, block)
+ * with a line per site, address, subnet or program.
+ */
+export interface PresetLists {
+  lists: { [key: string]: string};
+}
+/**
+ * PresetListProblem is a line of the lists window that became no entry.
+ */
+export interface PresetListProblem {
+  /**
+   * Action names the tab, Line counts from 1 on it, Text is the line without the spaces around it.
+   */
+  action: string;
+  line: number /* int */;
+  text: string;
+  /**
+   * Reason is invalid_entry for a line that is no site, address, subnet or program, and duplicate for one already
+   * on the tab Other.
+   */
+  reason: string;
+  other: string;
+}
+/**
+ * PresetListsRead is what the lists window holds: the entries of its lines, and the lines that are none.
+ */
+export interface PresetListsRead {
+  sites: PresetEntry[];
+  apps: PresetEntry[];
+  problems: PresetListProblem[];
+}
+/**
  * PresetLink is a preset as a poros://route/ link.
  */
 export interface PresetLink {
@@ -534,6 +573,15 @@ export const MethodPresetsExport = "presets.export";
  * Methods the core answers.
  */
 export const MethodPresetsImport = "presets.import";
+/**
+ * MethodPresetsWriteLists gives the entries of a preset as the text of the lists window, MethodPresetsReadLists
+ * the entries of that text and the lines it could not read; neither saves anything.
+ */
+export const MethodPresetsWriteLists = "presets.writeLists";
+/**
+ * Methods the core answers.
+ */
+export const MethodPresetsReadLists = "presets.readLists";
 /**
  * MethodLinksParse reads a poros:// link without adding anything.
  */

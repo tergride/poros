@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { ArrowLeft, Lock, Plus, X } from '@lucide/vue'
+import { ArrowLeft, Lock, Plus, TextAlignStart, X } from '@lucide/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import OptionRow from '@/components/settings/OptionRow.vue'
+import PresetListsDialog from '@/components/settings/PresetListsDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Banner, Button, Input, Select } from '@/components/ui'
 import { useConnect } from '@/composables/useConnect'
 import { useReason } from '@/composables/useReason'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
-import type { PresetCopy, PresetEntry } from '@/platform/core-types'
+import type { PresetCopy, PresetEntries, PresetEntry } from '@/platform/core-types'
 import { ActionBlock, ActionDirect, ActionProxy, MethodPresetsGet, MethodPresetsSave } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
@@ -29,6 +30,7 @@ const failure = ref('')
 const newSite = ref('')
 const newApp = ref('')
 const saving = ref(false)
+const listsOpen = ref(false)
 
 const dnsChoices = ['', 'https://1.1.1.1/dns-query', 'https://8.8.8.8/dns-query', 'https://9.9.9.9/dns-query'] as const
 const dnsChoice = ref<string>('')
@@ -81,6 +83,13 @@ function addApp(): void {
   if (draft.value && add(draft.value.apps, newApp.value)) newApp.value = ''
 }
 
+// The lists window replaces the entries of the draft; the preset is saved as before.
+function applyLists(entries: PresetEntries): void {
+  if (!draft.value) return
+  draft.value.sites = entries.sites
+  draft.value.apps = entries.apps
+}
+
 const ruleName = (name: string) => (te(`presets.rule.${name}`) ? t(`presets.rule.${name}`) : name)
 
 async function save(): Promise<void> {
@@ -117,6 +126,9 @@ async function save(): Promise<void> {
         >
           {{ t('presetEdit.copyOf', { name: baseName }) }}
         </span>
+        <Button size="sm" class="ml-auto" :disabled="!draft" data-testid="preset-lists" @click="listsOpen = true">
+          <TextAlignStart />{{ t('presetLists.open') }}
+        </Button>
       </div>
       <Banner v-if="failure" class="mb-3" data-testid="preset-failure">{{ failure }}</Banner>
       <template v-if="draft">
@@ -194,5 +206,12 @@ async function save(): Promise<void> {
       <Button variant="ghost" class="mr-auto" @click="router.push('/settings/presets')">{{ t('common.cancel') }}</Button>
       <Button variant="primary" :disabled="!draft || saving" data-testid="preset-save" @click="save">{{ t('presetEdit.save') }}</Button>
     </div>
+    <PresetListsDialog
+      v-if="draft"
+      v-model:open="listsOpen"
+      :name="draft.name"
+      :entries="{ sites: draft.sites, apps: draft.apps }"
+      @apply="applyLists"
+    />
   </div>
 </template>

@@ -320,6 +320,20 @@
     "dnsCustomPlaceholder": "https://dns.example/dns-query",
     "save": "Save and apply"
   },
+  "presetLists": {
+    "open": "Edit as lists",
+    "title": "Lists of “{name}”",
+    "titleUnnamed": "Preset lists",
+    "hint": "One site, IP, subnet or program (steam.exe or a full path) per line. Lines starting with # are skipped. A ready list can be pasted whole.",
+    "locked": "Locked rules are not part of the lists.",
+    "apply": "Apply",
+    "invalid": "{n} line not recognized: {lines}. Fix or remove it. | {n} lines not recognized: {lines}. Fix or remove them.",
+    "duplicate": "Already on other tabs: {lines}. Keep each line on one tab only.",
+    "line": "{line} “{text}”",
+    "lineOn": "{line} “{text}” ({tab})",
+    "more": "{lines} and {n} more",
+    "problems": "Some lines have errors"
+  },
   "reason": {
     "start_failed": "the core could not connect",
     "port_busy": "port 2090 is taken by another program",

@@ -257,6 +257,37 @@ type PresetCopy struct {
 	Inherited []InheritedRule `json:"inherited"`
 }
 
+// PresetEntries are the sites and programs of a user's preset.
+type PresetEntries struct {
+	Sites []PresetEntry `json:"sites"`
+	Apps  []PresetEntry `json:"apps"`
+}
+
+// PresetLists are the entries of a preset as the lists window shows them: a text per action (proxy, direct, block)
+// with a line per site, address, subnet or program.
+type PresetLists struct {
+	Lists map[string]string `json:"lists"`
+}
+
+// PresetListProblem is a line of the lists window that became no entry.
+type PresetListProblem struct {
+	// Action names the tab, Line counts from 1 on it, Text is the line without the spaces around it.
+	Action string `json:"action"`
+	Line   int    `json:"line"`
+	Text   string `json:"text"`
+	// Reason is invalid_entry for a line that is no site, address, subnet or program, and duplicate for one already
+	// on the tab Other.
+	Reason string `json:"reason"`
+	Other  string `json:"other"`
+}
+
+// PresetListsRead is what the lists window holds: the entries of its lines, and the lines that are none.
+type PresetListsRead struct {
+	Sites    []PresetEntry       `json:"sites"`
+	Apps     []PresetEntry       `json:"apps"`
+	Problems []PresetListProblem `json:"problems"`
+}
+
 // PresetLink is a preset as a poros://route/ link.
 type PresetLink struct {
 	Link string `json:"link"`
@@ -341,6 +372,10 @@ const (
 	MethodPresetsRemove = "presets.remove"
 	MethodPresetsExport = "presets.export"
 	MethodPresetsImport = "presets.import"
+	// MethodPresetsWriteLists gives the entries of a preset as the text of the lists window, MethodPresetsReadLists
+	// the entries of that text and the lines it could not read; neither saves anything.
+	MethodPresetsWriteLists = "presets.writeLists"
+	MethodPresetsReadLists  = "presets.readLists"
 	// MethodLinksParse reads a poros:// link without adding anything.
 	MethodLinksParse = "links.parse"
 	// MethodLogsGet gives the last lines of the core's log.
