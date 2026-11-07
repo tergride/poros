@@ -240,9 +240,34 @@ export function createStubCore(): CoreClient {
       }, 1000)
     }
   }
+  // Like the engine: a check after each start and stop while the user keeps it on.
+  const checkNetwork = (): NetworkState => {
+    network = { ...network, checking: true }
+    emit(EventNetworkChanged, { ...network })
+    setTimeout(() => {
+      const connected = connection.state === ConnectionRunning
+      // Documentation addresses: the stub asks no outside service.
+      network = {
+        ...noCheck,
+        direct: { ip: '203.0.113.5', countryCode: 'RU', city: 'Moscow', isp: 'Home Telecom', asn: 64500 },
+        proxy: connected
+          ? { ip: '198.51.100.24', countryCode: 'DE', city: 'Frankfurt am Main', isp: 'Example Hosting', asn: 64501 }
+          : noAddress,
+        dns: connected ? [{ ip: '192.0.2.53', countryCode: 'DE', city: '', isp: 'Example DNS', asn: 64510, home: false }] : [],
+        leak: connected ? LeakNone : '',
+        checkedAt: Date.now(),
+      }
+      emit(EventNetworkChanged, { ...network })
+    }, 0)
+    return { ...network }
+  }
   const settle = (next: () => ConnectionState) => {
     const mine = ++serial
-    setTimeout(() => mine === serial && setConnection(next()), 0)
+    setTimeout(() => {
+      if (mine !== serial) return
+      setConnection(next())
+      if (settings.checkIp) checkNetwork()
+    }, 0)
   }
   const noChanges = (sub: Subscription): SubscriptionUpdate => ({
     subscription: { ...sub },
@@ -400,26 +425,7 @@ export function createStubCore(): CoreClient {
     [MethodConnectionState]: () => ({ ...connection }),
     [MethodNetworkCheck]: () => {
       if (!settings.checkIp) throw failed(ReasonCheckOff, 'the IP and DNS check is turned off')
-      network = { ...network, checking: true }
-      emit(EventNetworkChanged, { ...network })
-      const connected = connection.state === ConnectionRunning
-      setTimeout(() => {
-        // Documentation addresses: the stub asks no outside service.
-        network = {
-          ...noCheck,
-          direct: { ip: '203.0.113.5', countryCode: 'RU', city: 'Moscow', isp: 'Home Telecom', asn: 64500 },
-          proxy: connected
-            ? { ip: '198.51.100.24', countryCode: 'DE', city: 'Frankfurt am Main', isp: 'Example Hosting', asn: 64501 }
-            : noAddress,
-          dns: connected
-            ? [{ ip: '192.0.2.53', countryCode: 'DE', city: '', isp: 'Example DNS', asn: 64510, home: false }]
-            : [],
-          leak: connected ? LeakNone : '',
-          checkedAt: Date.now(),
-        }
-        emit(EventNetworkChanged, { ...network })
-      }, 0)
-      return { ...network }
+      return checkNetwork()
     },
     [MethodNetworkState]: () => ({ ...network }),
     [MethodLogsGet]: () => [...stubLog],

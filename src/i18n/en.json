@@ -1,17 +1,331 @@
 {
+  "common": {
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "skip": "Skip",
+    "cancel": "Cancel",
+    "close": "Close",
+    "add": "Add",
+    "paste": "Paste",
+    "save": "Save",
+    "remove": "Remove",
+    "copy": "Copy",
+    "copied": "Copied",
+    "later": "Later",
+    "more": "More"
+  },
   "window": {
     "minimize": "Minimize",
     "maximize": "Maximize",
-    "close": "Close"
+    "close": "Close",
+    "administrator": "Administrator"
   },
-  "skeleton": {
-    "note": "This is the app skeleton. The screens come in the next stages.",
-    "version": "Version {version}",
-    "core": "Core: sing-box {singBox} · Xray {xray}",
-    "coreState": {
-      "starting": "Core: starting…",
-      "ready": "Core: ready",
-      "down": "Core: stopped"
+  "menu": {
+    "open": "Menu",
+    "addSubscription": "Add subscription…",
+    "wizard": "Quick setup…",
+    "settings": "Settings",
+    "logs": "Log",
+    "exit": "Exit"
+  },
+  "boot": {
+    "starting": "Starting the core…",
+    "down": "The Poros core has stopped.",
+    "restart": "Restart the core"
+  },
+  "logs": {
+    "title": "Log",
+    "copy": "Copy for support",
+    "copied": "Copied",
+    "empty": "The log is empty so far."
+  },
+  "presets": {
+    "name": {
+      "all": "All traffic",
+      "hardened": "Hardened bypass"
+    },
+    "about": {
+      "all": "Everything goes through the server, the local network directly.",
+      "hardened": "Like All traffic, plus TLS fragmentation. Helps when the connection keeps breaking."
+    },
+    "rule": {
+      "Local networks": "Local networks"
+    },
+    "builtin": "built-in",
+    "copyOf": "Based on “{base}”",
+    "added": "added: {sites} sites, {apps} apps"
+  },
+  "action": {
+    "proxy": "Through the server",
+    "direct": "Directly",
+    "block": "Block"
+  },
+  "wizard": {
+    "tagline": "Quick setup takes less than a minute.",
+    "steps": {
+      "subscription": "Subscription",
+      "start": "Start",
+      "routing": "Routing"
+    },
+    "subscription": {
+      "title": "Add a subscription",
+      "text": "Paste the link from your provider, and Poros will load its servers. It usually comes in an email or from a bot after payment.",
+      "label": "Subscription link",
+      "checking": "Loading the subscription…",
+      "found": "Subscription found: {servers}, “{name}”"
+    },
+    "start": {
+      "title": "How to start Poros",
+      "autostart": "Start with Windows",
+      "autostartHint": "Poros opens when you sign in.",
+      "autoConnect": "Connect to the last server",
+      "autoConnectHint": "Right after it starts, Poros connects to the server that worked last time.",
+      "urlScheme": "Open poros:// links",
+      "urlSchemeHint": "A link from a site or a messenger opens straight in Poros.",
+      "note": "Windows keeps autostart and links outside the Poros folder. They can be turned off in the settings."
+    },
+    "routing": {
+      "title": "Which traffic goes through the server",
+      "note": "The preset can be changed at any time on the main screen."
     }
+  },
+  "servers": {
+    "count": "{n} servers | {n} server | {n} servers"
+  },
+  "portal": {
+    "off": "Not connected",
+    "starting": "Connecting…",
+    "stopping": "Disconnecting…",
+    "on": "Connected · {time}",
+    "noServer": "No server chosen",
+    "addFirst": "Add a subscription to begin",
+    "start": "Start",
+    "connecting": "Connecting",
+    "stop": "Stop",
+    "download": "Download",
+    "upload": "Upload",
+    "exit": "Exit",
+    "ip": "IP {ip} · {country}",
+    "ipChecking": "Checking the IP…",
+    "preset": "Preset:",
+    "hint": {
+      "both": "TUN takes all of the computer's traffic through the server, and System also points programs at the proxy directly.",
+      "tun": "All of the computer's traffic goes through the server, games and programs included.",
+      "system": "Browsers and programs that use the system proxy go through the server.",
+      "none": "Without TUN and System only programs set to the proxy {address} go through the server."
+    }
+  },
+  "list": {
+    "search": "Find a server",
+    "test": "Test servers",
+    "testing": "Testing…",
+    "subscription": "Subscription",
+    "addAnother": "Add another subscription",
+    "nothingFound": "No servers found.",
+    "emptyTitle": "No servers yet",
+    "emptyText": "Paste a subscription link, and its servers will show up here.",
+    "runWizard": "Run quick setup",
+    "group": "{servers} · updated {when}",
+    "groupNever": "{servers}",
+    "quota": "{used} of {total}",
+    "until": "until {date}",
+    "unlimited": "no limit",
+    "update": "Update subscription",
+    "actions": "Subscription actions",
+    "copyLink": "Copy link",
+    "rename": "Rename",
+    "removeSubscription": "Remove subscription",
+    "renameTitle": "Rename subscription",
+    "renamePlaceholder": "The provider's name",
+    "removeTitle": "Remove the subscription?",
+    "removeText": "“{name}” and its servers will be gone from Poros.",
+    "updated": "Added: {added}, gone: {removed}, changed: {changed}.",
+    "failed": "The update failed: {reason}"
+  },
+  "ping": {
+    "none": "no answer",
+    "untested": "—",
+    "ms": "{n} ms"
+  },
+  "add": {
+    "title": "Add a subscription",
+    "link": "Link",
+    "name": "Name",
+    "namePlaceholder": "Taken from the subscription",
+    "note": "The subscription shows up on the main screen as a group of its own.",
+    "found": "Found: {servers}"
+  },
+  "modes": {
+    "title": "How traffic goes through the server",
+    "tun": "All of the computer's traffic, games and programs without proxy settings included. Needs administrator rights.",
+    "system": "Browsers and programs that use the Windows system proxy. No rights needed.",
+    "note": "Both can be on. The choice is remembered; the switches are on the main screen under Start.",
+    "connect": "Connect"
+  },
+  "admin": {
+    "title": "TUN needs administrator rights",
+    "text": "TUN creates a network adapter in Windows, which only an administrator may do. The Poros core restarts with rights and connects to the server right away.",
+    "fallback": "System works without rights.",
+    "useSystem": "Use System instead of TUN",
+    "tryWithout": "Try without rights",
+    "restart": "Restart with rights",
+    "failed": "TUN did not start without administrator rights.",
+    "useSystemShort": "Use System"
+  },
+  "ip": {
+    "title": "IP and DNS",
+    "without": "Without VPN",
+    "through": "Through VPN",
+    "connectFirst": "Connect to see the exit address.",
+    "unknown": "The address could not be found.",
+    "dns": "DNS servers that see your queries",
+    "home": "your provider",
+    "noConnection": "DNS leaks are checked through the connection. Press Start, and the check runs by itself.",
+    "noLeak": "No DNS leak.",
+    "noLeakText": "Only DNS servers on the VPN side see your queries.",
+    "leak": "DNS leak.",
+    "leakText": "Some queries go past the server, and your provider sees which sites you open. Turn on TUN or a preset with DNS through the server.",
+    "unknownLeak": "A leak cannot be told: the provider without VPN is unknown.",
+    "note": "To check, Poros resolves a few random names and asks an outside service which DNS servers asked for them.",
+    "checked": "Checked {ago}.",
+    "checking": "Checking…",
+    "recheck": "Check again",
+    "off": "The IP and DNS check is off in the settings."
+  },
+  "restartBanner": {
+    "text": "The settings changed. Apply them to the connection? It breaks for a couple of seconds.",
+    "apply": "Restart the connection"
+  },
+  "settings": {
+    "back": "To the servers",
+    "nav": {
+      "presets": "Presets",
+      "conn": "Connection",
+      "subs": "Subscriptions",
+      "start": "Start",
+      "look": "Appearance",
+      "help": "Help"
+    },
+    "presets": {
+      "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy.",
+      "builtin": "Built-in",
+      "mine": "My presets",
+      "none": "No presets of your own yet.",
+      "makeCopy": "Make a copy",
+      "edit": "Edit",
+      "export": "Copy link",
+      "exported": "The preset link is copied.",
+      "import": "Paste a preset link",
+      "imported": "Preset “{name}” added.",
+      "removeTitle": "Remove the preset?",
+      "removeText": "“{name}” will be gone. If it is chosen, Poros goes back to “{base}”."
+    },
+    "conn": {
+      "lead": "How Poros connects and what it does when the connection breaks. TUN and System are on the main screen.",
+      "killSwitch": "Kill switch",
+      "killSwitchHint": "Block the internet if the connection to the server breaks.",
+      "allowLan": "Let other devices connect",
+      "allowLanHint": "A phone or TV on this network can go out through Poros.",
+      "checkIp": "Check IP and DNS",
+      "checkIpHint": "Before and after connecting, Poros asks an outside service for the IP and DNS servers. Click the IP for details and DNS leaks.",
+      "ipv6": "IPv6",
+      "ipv6Hint": "Off, sites open over IPv4 only, and IPv6 connections do not go past the server.",
+      "reality": "REALITY on Xray",
+      "realityHint": "VLESS servers with REALITY run on Xray. Off, they run on sing-box."
+    },
+    "subs": {
+      "lead": "How the server list is updated.",
+      "autoUpdate": "Update automatically",
+      "interval": "How often",
+      "provider": "As the provider advises",
+      "hourly": "Every hour",
+      "every6": "Every 6 hours",
+      "daily": "Once a day",
+      "viaProxy": "Update through the connection",
+      "viaProxyHint": "Helps when the provider's site cannot be reached directly.",
+      "showChanges": "Show changes",
+      "showChangesHint": "After an update by hand, show which servers came and went.",
+      "deviceInfo": "Send device information",
+      "deviceInfoHint": "Needed by providers that limit the number of devices."
+    },
+    "start": {
+      "lead": "The same as the Start step of quick setup.",
+      "startMinimized": "Start minimized",
+      "startMinimizedHint": "The window does not open, Poros stays in the tray.",
+      "closeToTray": "Hide to the tray on close",
+      "closeToTrayHint": "Off, the close button quits Poros."
+    },
+    "look": {
+      "lead": "Language and size of the interface.",
+      "language": "Language",
+      "system": "As in the system",
+      "textSize": "Text size",
+      "normal": "Normal",
+      "large": "Large"
+    },
+    "help": {
+      "lead": "If something does not work.",
+      "wizard": "Quick setup",
+      "wizardHint": "Go through the first-start steps again.",
+      "run": "Run",
+      "logs": "Log",
+      "logsHint": "Useful when writing to support.",
+      "open": "Open",
+      "reset": "Reset the connection",
+      "resetHint": "Restarts the core if TUN stopped working.",
+      "resetButton": "Reset",
+      "updates": "Updates",
+      "version": "Current version: {version}",
+      "check": "Check"
+    }
+  },
+  "presetEdit": {
+    "back": "Presets",
+    "copyOf": "Copy of “{name}”",
+    "name": "Name",
+    "sites": "Sites and IPs",
+    "sitePlaceholder": "Site, IP or subnet",
+    "apps": "Apps",
+    "appPlaceholder": "File name, such as steam.exe",
+    "action": "Action",
+    "dns": "DNS",
+    "dnsServers": "DNS servers",
+    "dnsPreset": "As in the preset",
+    "dnsCustom": "Custom…",
+    "dnsCustomPlaceholder": "https://dns.example/dns-query",
+    "save": "Save and apply"
+  },
+  "reason": {
+    "start_failed": "the core could not connect",
+    "port_busy": "port 2090 is taken by another program",
+    "tun_busy": "Windows still holds the TUN adapter of an earlier start. Try again; if that does not help, restart Windows",
+    "system_proxy_failed": "the system proxy could not be set",
+    "no_server": "no server is chosen",
+    "server_unsupported": "Poros cannot connect to this server",
+    "needs_elevation": "TUN needs administrator rights",
+    "stop_timeout": "the connection did not close in time; reset it in Help",
+    "fetch_failed": "the subscription did not download",
+    "invalid_subscription": "this does not look like a subscription",
+    "no_servers": "the subscription has no servers Poros can connect to",
+    "invalid_url": "a subscription link starts with http:// or https://",
+    "duplicate": "this subscription is already added",
+    "single_server": "This is a link to one server, not a subscription. Servers are added by hand in the advanced mode, which the first release does not have.",
+    "check_failed": "a part of the check failed",
+    "invalid_entry": "this is no site, address, subnet or program",
+    "invalid_link": "this is no Poros preset link",
+    "invalid_value": "invalid value",
+    "unknown": "something went wrong"
+  },
+  "time": {
+    "never": "never"
+  },
+  "units": {
+    "B": "B",
+    "KB": "KB",
+    "MB": "MB",
+    "GB": "GB",
+    "TB": "TB",
+    "perSecond": "{value}/s"
   }
 }

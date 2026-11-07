@@ -61,8 +61,8 @@
 
 @theme inline {
   --font-ui: 'Onest', 'Poros Flags', 'Segoe UI', system-ui, sans-serif;
-  --font-disp: 'Unbounded', 'Onest', 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
+  --font-disp: 'Unbounded', 'Poros Flags', 'Onest', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Poros Flags', 'Cascadia Mono', Consolas, monospace;
 
   --color-s0: var(--s0);
   --color-s1: var(--s1);
@@ -125,6 +125,11 @@
     line-height: 1.45;
     overflow: hidden;
     user-select: none;
+  }
+
+  /* The Large text size of the settings: the whole window scales, as a browser zoom would. */
+  html.text-large {
+    zoom: 1.125;
   }
 
   :focus-visible {
