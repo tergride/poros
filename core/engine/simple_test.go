@@ -43,15 +43,15 @@ func TestPresetCopies(t *testing.T) {
 	if preset.DNS != draft.DNS || len(preset.Rules) != 8 {
 		t.Fatalf("composed: %+v", preset)
 	}
-	// DNS stays first, the user's entries come before the base's own rules.
-	first, video, ads, lan, local := preset.Rules[0], preset.Rules[1], preset.Rules[2], preset.Rules[3], preset.Rules[7]
+	// DNS stays first, the user's entries come before the base's own rules: domains, addresses, then programs.
+	first, video, ads, lan, local := preset.Rules[0], preset.Rules[1], preset.Rules[2], preset.Rules[4], preset.Rules[7]
 	if first.Action != config.ActionHijackDNS || local.Name != "Local networks" ||
 		!slices.Equal(video.DomainSuffix, []string{"video.example.com"}) || video.Outbound != config.OutboundProxy ||
 		!slices.Equal(ads.DomainSuffix, []string{"ads.example"}) || ads.Action != config.ActionReject ||
 		!slices.Equal(lan.IPCIDR, []string{"192.168.50.0/24"}) {
 		t.Errorf("rules: %+v", preset.Rules)
 	}
-	if !slices.Equal(preset.Rules[5].ProcessName, []string{"steam.exe"}) || !slices.Equal(preset.Rules[6].ProcessPath, []string{`C:\Games\game.exe`}) {
+	if !slices.Equal(preset.Rules[5].ProcessPath, []string{`C:\Games\game.exe`}) || !slices.Equal(preset.Rules[6].ProcessName, []string{"steam.exe"}) {
 		t.Errorf("programs: %+v", preset.Rules[5:7])
 	}
 
@@ -92,6 +92,44 @@ func TestPresetCopies(t *testing.T) {
 	presets, _ := e.Presets()
 	if len(presets) != 3 || presets[2].ID != imported.ID {
 		t.Errorf("presets: %+v", presets)
+	}
+}
+
+// The first rule that matches decides, so a narrower entry goes first whatever the order the user added them in:
+// a block of a subdomain works under a domain through the server, and so does an exception in a subnet.
+func TestNarrowerEntriesFirst(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	draft, _ := e.PresetCopy("all")
+	draft.Name = "Order"
+	draft.Sites = []PresetEntry{
+		{Value: "example.com", Action: ActionProxy},
+		{Value: "10.0.0.0/8", Action: ActionDirect},
+		{Value: "*.ads.example.com", Action: ActionBlock},
+		{Value: "a.example", Action: ActionDirect},
+		{Value: "b.example", Action: ActionProxy},
+		{Value: "10.1.0.0/16", Action: ActionProxy},
+		{Value: "10.1.2.3", Action: ActionBlock},
+	}
+	draft.Apps = []PresetEntry{{Value: "steam.exe", Action: ActionDirect}, {Value: `C:\Games\steam.exe`, Action: ActionProxy}}
+	saved, err := e.SavePreset(draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preset, _, err := e.preset(saved.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order []string
+	for _, rule := range preset.Rules[1:10] {
+		order = append(order, rule.Name)
+	}
+	want := []string{"*.ads.example.com", "example.com", "a.example", "b.example", "10.1.2.3", "10.1.0.0/16", "10.0.0.0/8", `C:\Games\steam.exe`, "steam.exe"}
+	if !slices.Equal(order, want) {
+		t.Errorf("order:\n%q\nwant\n%q", order, want)
+	}
+	// The editor keeps the order the user added them in.
+	if stored, _ := e.PresetCopy(saved.ID); !reflect.DeepEqual(stored.Sites, draft.Sites) {
+		t.Errorf("stored: %+v", stored.Sites)
 	}
 }
 

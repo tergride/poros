@@ -133,8 +133,8 @@ func (e *Engine) preset(id string) (config.Preset, bool, error) {
 	return preset, err == nil, err
 }
 
-// compose puts a copy together: the DNS rules of its base first, then the user's entries, then the rest of the base.
-// The first rule that matches decides, so the user's entries win over the base.
+// compose puts a copy together: the DNS rules of its base first, then the user's entries, narrower ones first, then
+// the rest of the base. The first rule that matches decides, so the user's entries win over the base.
 func (e *Engine) compose(record copyRecord) (config.Preset, error) {
 	base, ok := e.foundation(record.BasedOn)
 	if !ok {
@@ -146,23 +146,50 @@ func (e *Engine) compose(record copyRecord) (config.Preset, error) {
 	for head < len(base.Preset.Rules) && base.Preset.Rules[head].Action == config.ActionHijackDNS {
 		head++
 	}
-	rules := slices.Clone(base.Preset.Rules[:head])
+	var own []config.Rule
 	for _, entry := range record.Sites {
 		rule, err := siteRule(entry)
 		if err != nil {
 			return config.Preset{}, err
 		}
-		rules = append(rules, rule)
+		own = append(own, rule)
 	}
 	for _, entry := range record.Apps {
 		rule, err := appRule(entry)
 		if err != nil {
 			return config.Preset{}, err
 		}
-		rules = append(rules, rule)
+		own = append(own, rule)
 	}
-	preset.Rules = append(rules, base.Preset.Rules[head:]...)
+	slices.SortStableFunc(own, func(a, b config.Rule) int {
+		groupA, widthA := ruleWidth(a)
+		groupB, widthB := ruleWidth(b)
+		return cmp.Or(cmp.Compare(groupA, groupB), cmp.Compare(widthA, widthB))
+	})
+	preset.Rules = slices.Concat(base.Preset.Rules[:head], own, base.Preset.Rules[head:])
 	return preset, preset.Validate()
+}
+
+// ruleWidth orders the user's entries so that the narrower one decides wherever two match: a subdomain before its
+// domain, an address or a smaller subnet before a larger one, a program's path before its name. Domains, addresses
+// and programs keep their groups, and entries alike keep the user's order.
+func ruleWidth(rule config.Rule) (group, width int) {
+	switch {
+	case len(rule.DomainSuffix) > 0:
+		return 0, -strings.Count(rule.DomainSuffix[0], ".")
+	case len(rule.IPCIDR) > 0:
+		if prefix, err := netip.ParsePrefix(rule.IPCIDR[0]); err == nil {
+			return 1, -prefix.Bits()
+		}
+		if addr, err := netip.ParseAddr(rule.IPCIDR[0]); err == nil {
+			return 1, -addr.BitLen()
+		}
+		return 1, 0
+	case len(rule.ProcessPath) > 0:
+		return 2, 0
+	default:
+		return 3, 0
+	}
 }
 
 func entryAction(entry PresetEntry, rule *config.Rule) error {
