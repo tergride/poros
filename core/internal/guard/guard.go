@@ -1,17 +1,21 @@
-// Package guard is the kill switch: a privileged process the GUI spawns with --guard that blocks every
-// packet not sent by Poros or routed into its tun, for exactly as long as the GUI keeps its stdin open.
+// Package guard is the kill switch: a process with administrator rights that blocks every packet not sent by
+// Poros's core or routed into its TUN. An elevated core starts it with --guard for its Poros window, and it lives as
+// long as that window, not the core: the block outlasts a core that fails or is replaced, and any core of the
+// window, with rights or without, finds the guard by the window's process and turns the block off through its pipe.
 package guard
 
 import (
 	"bufio"
-	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/netip"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"strings"
@@ -31,17 +35,17 @@ const (
 	CodeInternal    = "internal"
 )
 
-// Config is the single JSON line the GUI writes to the guard's stdin.
+// Config is the block a guard holds.
 type Config struct {
-	AllowLAN bool     `json:"allow_lan"`
-	TunName  string   `json:"tun_name"`
-	TunCIDRs []string `json:"tun_cidrs"`
+	// AllowLAN lets traffic to the local network pass, except DNS.
+	AllowLAN bool
+	// TunName is the alias of the TUN adapter whose traffic passes; empty passes none.
+	TunName string
 }
 
 type config struct {
-	AllowLAN    bool
-	TunName     string
-	TunPrefixes []netip.Prefix
+	AllowLAN bool
+	TunName  string
 }
 
 // Event is a runtime report from a backend; a Fatal one makes the guard disarm and exit.
@@ -70,7 +74,8 @@ func newError(code string, format string, args ...any) error {
 	return &Error{Code: code, Err: fmt.Errorf(format, args...)}
 }
 
-func errorCode(err error) string {
+// ErrorCode is the code of a guard error, CodeInternal for any other.
+func ErrorCode(err error) string {
 	var guardErr *Error
 	if errors.As(err, &guardErr) {
 		return guardErr.Code
@@ -98,46 +103,105 @@ var (
 
 var interfaceNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]*$`)
 
-func parseConfig(line string) (*config, error) {
-	var raw Config
-	if err := json.Unmarshal([]byte(line), &raw); err != nil {
-		return nil, newError(CodeConfig, "invalid configuration: %v", err)
+func newConfig(c Config) (*config, error) {
+	if len(c.TunName) > 15 || !interfaceNamePattern.MatchString(c.TunName) {
+		return nil, newError(CodeConfig, "invalid tun name %q", c.TunName)
 	}
-	if len(raw.TunName) > 15 || !interfaceNamePattern.MatchString(raw.TunName) {
-		return nil, newError(CodeConfig, "invalid tun name %q", raw.TunName)
-	}
-	cfg := &config{AllowLAN: raw.AllowLAN, TunName: raw.TunName}
-	for _, cidr := range raw.TunCIDRs {
-		if strings.TrimSpace(cidr) == "" {
-			continue
-		}
-		prefix, err := netip.ParsePrefix(strings.TrimSpace(cidr))
-		if err != nil {
-			return nil, newError(CodeConfig, "invalid tun address %q", cidr)
-		}
-		cfg.TunPrefixes = append(cfg.TunPrefixes, prefix)
-	}
-	return cfg, nil
+	return &config{AllowLAN: c.AllowLAN, TunName: c.TunName}, nil
 }
 
-type reporter struct {
-	access sync.Mutex
+// options are the guard's arguments: the window it serves and the log it writes.
+type options struct {
+	hostPID int
+	logPath string
+	config  Config
 }
 
-func (r *reporter) line(fields ...string) {
-	r.access.Lock()
-	defer r.access.Unlock()
-	text := strings.Join(fields, " ")
-	text = strings.NewReplacer("\r", " ", "\n", " ").Replace(text)
-	_, _ = fmt.Fprintln(os.Stdout, text)
+func parseOptions(args []string) (options, error) {
+	var opts options
+	flags := flag.NewFlagSet("guard", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.IntVar(&opts.hostPID, "host-pid", 0, "")
+	flags.StringVar(&opts.logPath, "log", "", "")
+	flags.BoolVar(&opts.config.AllowLAN, "allow-lan", false, "")
+	flags.StringVar(&opts.config.TunName, "tun-name", "", "")
+	if err := flags.Parse(args); err != nil {
+		return opts, newError(CodeConfig, "arguments: %v", err)
+	}
+	if opts.hostPID <= 0 {
+		return opts, newError(CodeConfig, "--host-pid is required")
+	}
+	return opts, nil
 }
 
-// Run never returns. Stdout carries READY, ERROR <code> <message>, WARN <message> and FAIL <code> <message> lines.
-func Run(parentPID int) {
-	log.SetOutput(os.Stderr)
-	out := &reporter{}
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+func (o options) args() []string {
+	args := []string{"--guard", "--host-pid", fmt.Sprint(o.hostPID)}
+	if o.logPath != "" {
+		args = append(args, "--log", o.logPath)
+	}
+	if o.config.AllowLAN {
+		args = append(args, "--allow-lan")
+	}
+	if o.config.TunName != "" {
+		args = append(args, "--tun-name", o.config.TunName)
+	}
+	return args
+}
+
+// Lines of the guard's stdout before the block is on, and of its pipe after: ON greets a core that joins, a core
+// may ask to disarm, and WARN and FAIL report. The guard closes the pipe once the block is off.
+const (
+	lineReady  = "READY"
+	lineError  = "ERROR"
+	lineOn     = "ON"
+	lineWarn   = "WARN"
+	lineFail   = "FAIL"
+	lineDisarm = "disarm"
+)
+
+func clean(text string) string {
+	return strings.NewReplacer("\r", " ", "\n", " ").Replace(text)
+}
+
+// openLog keeps this guard's log and the previous one's.
+func openLog(path string) *os.File {
+	if path == "" {
+		return nil
+	}
+	_ = os.Rename(path, strings.TrimSuffix(path, filepath.Ext(path))+".1"+filepath.Ext(path))
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return nil
+	}
+	return f
+}
+
+// Run never returns. Until the block is on, stdout carries one line: READY, or ERROR <code> <message>. From then on
+// the guard speaks only through its pipe, since the core that started it may be gone.
+func Run(args []string) {
+	stdout := os.Stdout
+	fail := func(err error) {
+		log.Printf("guard: %v", err)
+		fmt.Fprintln(stdout, lineError, ErrorCode(err), clean(err.Error()))
+		os.Exit(1)
+	}
+	opts, err := parseOptions(args)
+	if err != nil {
+		fail(err)
+	}
+	if logFile := openLog(opts.logPath); logFile != nil {
+		log.SetOutput(logFile)
+		redirectStderr(logFile)
+		_ = debug.SetCrashOutput(logFile, debug.CrashOptions{})
+	}
+	cfg, err := newConfig(opts.config)
+	if err != nil {
+		fail(err)
+	}
+	host, err := openHost(opts.hostPID)
+	if err != nil {
+		fail(err)
+	}
 
 	var active backend
 	defer func() {
@@ -145,18 +209,10 @@ func Run(parentPID int) {
 			if active != nil {
 				active.Disarm()
 			}
-			fmt.Fprintf(os.Stderr, "guard panicked: %v\n%s\n", r, debug.Stack())
+			log.Printf("guard panicked: %v\n%s", r, debug.Stack())
 			os.Exit(2)
 		}
 	}()
-
-	reader := bufio.NewReader(os.Stdin)
-	cfg, err := readConfig(reader, 10*time.Second)
-	if err != nil {
-		out.line("ERROR", errorCode(err), err.Error())
-		os.Exit(1)
-	}
-
 	events := make(chan Event, 16)
 	active, err = newBackend()
 	if err == nil {
@@ -166,76 +222,146 @@ func Run(parentPID int) {
 		if active != nil {
 			active.Disarm()
 		}
-		out.line("ERROR", errorCode(err), err.Error())
-		os.Exit(1)
+		fail(err)
 	}
-	out.line("READY")
+	listener, err := listen(PipeName(opts.hostPID), pipeSecurity(host.userSID))
+	if err != nil {
+		active.Disarm()
+		fail(newError(CodeInternal, "open the guard's pipe: %v", err))
+	}
+	log.Printf("guard: on for the Poros window %d", opts.hostPID)
+	fmt.Fprintln(stdout, lineReady)
 
-	done := make(chan string, 4)
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	stop := make(chan string, 1)
 	go func() {
-		_, _ = io.Copy(io.Discard, reader)
-		done <- "stdin closed"
+		select {
+		case <-host.gone:
+			stop <- "the Poros window is gone"
+		case received := <-signals:
+			stop <- received.String()
+		}
 	}()
-	go watchParent(parentPID, done)
+	os.Exit(serve(active, listener, events, stop))
+}
 
+// server answers the cores on the guard's pipe: each may turn the block off, and each hears when it fails.
+type server struct {
+	mu      sync.Mutex
+	clients map[net.Conn]struct{}
+	closed  bool
+	disarm  chan struct{}
+}
+
+// accept greets each core under the lock, so that it hears every report that comes after it joined.
+func (s *server) accept(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		s.mu.Lock()
+		if s.closed {
+			s.mu.Unlock()
+			conn.Close()
+			continue
+		}
+		s.clients[conn] = struct{}{}
+		s.send(conn, lineOn)
+		s.mu.Unlock()
+		go s.read(conn)
+	}
+}
+
+func (s *server) read(conn net.Conn) {
+	defer func() {
+		s.mu.Lock()
+		delete(s.clients, conn)
+		s.mu.Unlock()
+		conn.Close()
+	}()
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		if strings.TrimSpace(scanner.Text()) != lineDisarm {
+			s.mu.Lock()
+			s.send(conn, lineError+" "+CodeConfig+" unknown request")
+			s.mu.Unlock()
+			continue
+		}
+		select {
+		case s.disarm <- struct{}{}:
+		default:
+		}
+	}
+}
+
+func (s *server) send(conn net.Conn, line string) {
+	_ = conn.SetWriteDeadline(time.Now().Add(time.Second))
+	_, _ = io.WriteString(conn, line+"\n")
+}
+
+// closeAll drops every core: the block is off by then, and the pipe goes with the last of them.
+func (s *server) closeAll() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.closed = true
+	for conn := range s.clients {
+		conn.Close()
+	}
+}
+
+func (s *server) broadcast(line string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for conn := range s.clients {
+		s.send(conn, line)
+	}
+}
+
+// serve holds the block until a core turns it off, stop comes or the backend fails, and returns the exit code.
+func serve(active backend, listener net.Listener, events <-chan Event, stop <-chan string) int {
+	s := &server{clients: map[net.Conn]struct{}{}, disarm: make(chan struct{}, 1)}
+	go s.accept(listener)
+	defer func() {
+		// No core joins any more, then the cores hear the guard go. go-winio's Close can hang when a connect races
+		// it; the process exits right after, which closes the pipe for good.
+		closed := make(chan struct{})
+		go func() {
+			listener.Close()
+			close(closed)
+		}()
+		select {
+		case <-closed:
+		case <-time.After(time.Second):
+		}
+		s.closeAll()
+	}()
 	for {
 		select {
-		case reason := <-done:
+		case reason := <-stop:
 			log.Printf("guard: %s, disarming", reason)
 			active.Disarm()
-			os.Exit(0)
-		case received := <-signals:
-			log.Printf("guard: %v, disarming", received)
+			return 0
+		case <-s.disarm:
+			log.Print("guard: a core turned the block off")
 			active.Disarm()
-			os.Exit(0)
+			return 0
 		case event := <-events:
 			if !event.Fatal {
-				out.line("WARN", event.Message)
+				log.Printf("guard: %s", event.Message)
+				s.broadcast(lineWarn + " " + clean(event.Message))
 				continue
 			}
-			out.line("FAIL", event.Code, event.Message)
+			log.Printf("guard: %s: %s, disarming", event.Code, event.Message)
+			s.broadcast(lineFail + " " + event.Code + " " + clean(event.Message))
 			active.Disarm()
-			os.Exit(3)
+			return 3
 		}
 	}
 }
 
-func readConfig(reader *bufio.Reader, timeout time.Duration) (*config, error) {
-	type result struct {
-		line string
-		err  error
-	}
-	received := make(chan result, 1)
-	go func() {
-		line, err := reader.ReadString('\n')
-		received <- result{line, err}
-	}()
-	select {
-	case r := <-received:
-		if r.err != nil && strings.TrimSpace(r.line) == "" {
-			return nil, newError(CodeConfig, "no configuration received: %v", r.err)
-		}
-		return parseConfig(r.line)
-	case <-time.After(timeout):
-		return nil, newError(CodeConfig, "no configuration received within %v", timeout)
-	}
-}
-
-// The GUI may die without its pipe closing, e.g. while a descendant still holds it.
-func watchParent(parentPID int, done chan<- string) {
-	if parentPID <= 1 {
-		return
-	}
-	parent, err := os.FindProcess(parentPID)
-	if err != nil {
-		done <- "parent not found"
-		return
-	}
-	_, _ = parent.Wait()
-	done <- "parent exited"
-}
-
-// goSafe runs fn on its own goroutine; a panic there must disarm through Run, not kill the process with rules installed.
+// goSafe runs fn on its own goroutine; a panic there must disarm through serve, not kill the process with rules installed.
 func goSafe(events chan<- Event, fn func()) {
 	go func() {
 		defer func() {

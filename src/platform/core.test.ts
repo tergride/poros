@@ -7,14 +7,20 @@ import {
   ConnectionRunning,
   ConnectionStarting,
   EventConnectionChanged,
+  EventKillSwitchChanged,
   EventNetworkChanged,
   EventServersChanged,
   EventServersTested,
   EventSubscriptionsChanged,
+  KillSwitchAlways,
+  KillSwitchConnected,
+  KillSwitchOff,
   LinkPreset,
   LinkSubscription,
   MethodConnectionStart,
+  MethodConnectionState,
   MethodConnectionStop,
+  MethodKillSwitchState,
   MethodLinksParse,
   MethodNetworkCheck,
   MethodPresetsExport,
@@ -37,6 +43,7 @@ import {
   ReasonInvalidEntry,
   ReasonInvalidLink,
   ReasonInvalidValue,
+  ReasonKillSwitchNeedsElevation,
   ReasonNeedsElevation,
   ReasonInvalidURL,
   ReasonNoServer,
@@ -94,6 +101,51 @@ describe('the stub core', () => {
     off()
     await core.call(MethodSettingsSet, { ...settings, tun: false })
     expect(handler).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the kill switch block as the engine does', async () => {
+    const core = createStubCore()
+    const blocks = vi.fn()
+    core.on(EventKillSwitchChanged, blocks)
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+    await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
+    const [server] = await core.call(MethodServersList, { subscriptionId: '' })
+    let settings = await core.call(MethodSettingsGet)
+    expect(settings.killSwitch).toBe(KillSwitchOff)
+    expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, killSwitch: 'on' }))).toBe(ReasonInvalidValue)
+
+    // Connected: a Start without rights does not connect, and says why.
+    settings = await core.call(MethodSettingsSet, { ...settings, server: server!.id, systemProxy: true, killSwitch: KillSwitchConnected })
+    await core.call(MethodConnectionStart)
+    await settle()
+    expect((await core.call(MethodConnectionState)).error).toBe(ReasonKillSwitchNeedsElevation)
+    expect(await core.call(MethodKillSwitchState)).toEqual({ on: false, error: ReasonKillSwitchNeedsElevation, errorText: expect.any(String) })
+
+    // With rights the Start blocks; the block outlives the core, and Stop from a core without rights lifts it.
+    await core.elevate()
+    await settle()
+    await core.call(MethodConnectionStart)
+    await settle()
+    expect((await core.call(MethodKillSwitchState)).on).toBe(true)
+    await core.restart()
+    await settle()
+    expect((await core.call(MethodKillSwitchState)).on).toBe(true)
+    await core.call(MethodConnectionStop)
+    await settle()
+    expect(await core.call(MethodKillSwitchState)).toEqual({ on: false, error: '', errorText: '' })
+
+    // Always: on at once with rights, and Stop keeps it.
+    await core.elevate()
+    await settle()
+    await core.call(MethodSettingsSet, { ...settings, killSwitch: KillSwitchAlways })
+    await settle()
+    expect((await core.call(MethodKillSwitchState)).on).toBe(true)
+    await core.call(MethodConnectionStop)
+    await settle()
+    expect((await core.call(MethodKillSwitchState)).on).toBe(true)
+    await core.call(MethodSettingsSet, { ...settings, killSwitch: KillSwitchOff })
+    await settle()
+    expect(blocks).toHaveBeenLastCalledWith({ on: false, error: '', errorText: '' })
   })
 
   it('answers a start at once and settles it the way the engine does', async () => {

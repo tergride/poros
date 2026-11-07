@@ -17,10 +17,12 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/tailscale/go-winio"
+	"golang.org/x/sys/windows"
 
 	"PorosCore/config"
 	"PorosCore/internal/boxmain"
@@ -91,19 +93,45 @@ type shell struct {
 }
 
 func startShell(t *testing.T, program, dataDir string, waitPID int) *shell {
+	return startShellWith(t, shellOptions{program: program, dataDir: dataDir, waitPID: waitPID})
+}
+
+// shellOptions start a core: hostPID stands for the Poros window, the test by default, and token runs the core
+// with fewer rights than the test has.
+type shellOptions struct {
+	program, dataDir string
+	waitPID, hostPID int
+	token            windows.Token
+}
+
+func startShellWith(t *testing.T, o shellOptions) *shell {
 	t.Helper()
 	name := `\\.\pipe\poros-vmtest-` + randomHex(t, 8)
 	token := randomHex(t, 16)
-	listener, err := winio.ListenPipe(name, nil)
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The account itself, not only its administrators: a core without rights connects too.
+	listener, err := winio.ListenPipe(name, &winio.PipeConfig{
+		SecurityDescriptor: "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;" + user.User.Sid.String() + ")",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer listener.Close()
-	args := []string{"--pipe", name, "--token", token, "--data-dir", dataDir, "--host-pid", strconv.Itoa(os.Getpid())}
-	if waitPID != 0 {
-		args = append(args, "--wait-pid", strconv.Itoa(waitPID))
+	hostPID := o.hostPID
+	if hostPID == 0 {
+		hostPID = os.Getpid()
 	}
-	process := exec.Command(program, args...)
+	args := []string{"--pipe", name, "--token", token, "--data-dir", o.dataDir, "--host-pid", strconv.Itoa(hostPID)}
+	if o.waitPID != 0 {
+		args = append(args, "--wait-pid", strconv.Itoa(o.waitPID))
+	}
+	process := exec.Command(o.program, args...)
+	if o.token != 0 {
+		process.SysProcAttr = &syscall.SysProcAttr{Token: syscall.Token(o.token)}
+	}
 	if err = process.Start(); err != nil {
 		t.Fatal(err)
 	}

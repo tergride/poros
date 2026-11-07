@@ -110,12 +110,14 @@
     "off": "Not connected",
     "starting": "Connecting…",
     "stopping": "Disconnecting…",
+    "blocked": "Internet blocked until Stop",
     "on": "Connected · {time}",
     "noServer": "No server chosen",
     "addFirst": "Add a subscription to begin",
     "start": "Start",
     "connecting": "Connecting",
     "stop": "Stop",
+    "lockTitle": "Kill switch on: the internet goes only through Poros",
     "download": "Download",
     "upload": "Upload",
     "exit": "Exit",
@@ -185,7 +187,13 @@
     "tryWithout": "Try without rights",
     "restart": "Restart with rights",
     "failed": "TUN did not start without administrator rights.",
-    "useSystemShort": "Use System"
+    "useSystemShort": "Use System",
+    "killSwitchTitle": "The kill switch needs administrator rights",
+    "killSwitchText": "The kill switch adds rules to the Windows firewall so that traffic leaves only through Poros. Without rights the rules do not apply.",
+    "killSwitchFailed": "The kill switch did not turn on without administrator rights."
+  },
+  "killSwitch": {
+    "broken": "The kill switch is not working, so programs can reach the internet past Poros. The reason is in the log."
   },
   "ip": {
     "title": "IP and DNS",
@@ -239,7 +247,14 @@
     "conn": {
       "lead": "How Poros connects and what it does when the connection breaks. TUN and System are on the main screen.",
       "killSwitch": "Kill switch",
-      "killSwitchHint": "Block the internet if the connection to the server breaks.",
+      "killSwitchHint": {
+        "off": "The internet is not blocked, even if the connection to the server breaks.",
+        "connected": "If the connection to the server breaks, the internet is blocked until you press Stop. Needs administrator rights.",
+        "always": "While Poros runs, the internet goes only through the server. Without a connection there is no internet. Needs administrator rights from the start."
+      },
+      "killSwitchOff": "Off",
+      "killSwitchConnected": "While connected",
+      "killSwitchAlways": "Always",
       "allowLan": "Let other devices connect",
       "allowLanHint": "A phone or TV on this network can go out through Poros.",
       "checkIp": "Check IP and DNS",
@@ -342,6 +357,8 @@
     "no_server": "no server is chosen",
     "server_unsupported": "Poros cannot connect to this server",
     "needs_elevation": "TUN needs administrator rights",
+    "kill_switch_needs_elevation": "the kill switch needs administrator rights",
+    "kill_switch_failed": "the kill switch did not turn on",
     "stop_timeout": "the connection did not close in time; reset it in Help",
     "fetch_failed": "the subscription did not download",
     "invalid_subscription": "this does not look like a subscription",

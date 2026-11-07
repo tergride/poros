@@ -20,6 +20,7 @@ func DefaultSettings() Settings {
 		ShowChanges:            true,
 		AutoConnect:            true,
 		CloseToTray:            true,
+		KillSwitch:             KillSwitchOff,
 		TextSize:               "normal",
 	}
 }
@@ -54,6 +55,9 @@ func (e *Engine) SetSettings(settings Settings) (Settings, error) {
 	}
 	e.notify(EventSettingsChanged, settings)
 	go e.syncSystemProxy()
+	if settings.KillSwitch != previous.KillSwitch {
+		go e.syncKillSwitch(previous.KillSwitch)
+	}
 	switch {
 	case settings.CheckIP && !previous.CheckIP:
 		go e.requestNetworkCheck()
@@ -72,6 +76,9 @@ func (e *Engine) validateSettings(settings Settings) error {
 	}
 	if _, found, err := e.preset(settings.Preset); err != nil || !found {
 		return jsonrpc.Failed(ReasonUnknownPreset, "there is no preset %q", settings.Preset)
+	}
+	if !slices.Contains([]string{KillSwitchOff, KillSwitchConnected, KillSwitchAlways}, settings.KillSwitch) {
+		return jsonrpc.Failed(ReasonInvalidValue, "killSwitch must be off, connected or always, not %q", settings.KillSwitch)
 	}
 	if !slices.Contains([]string{"normal", "large"}, settings.TextSize) {
 		return jsonrpc.Failed(ReasonInvalidValue, "textSize must be normal or large, not %q", settings.TextSize)

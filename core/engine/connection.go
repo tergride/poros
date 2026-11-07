@@ -120,6 +120,7 @@ func (e *Engine) runStart(serial uint64) {
 	if !e.isLatest(serial) {
 		return
 	}
+	wasOn := e.KillSwitchState().On
 	stopErr := e.stopRunning()
 	state, err := e.startRunning()
 	if err == nil && stopErr != nil {
@@ -131,6 +132,7 @@ func (e *Engine) runStart(serial uint64) {
 		if errors.As(err, &failed) {
 			state.Error = failed.reason
 		}
+		e.afterFailedStart(wasOn)
 	}
 	e.conn.mu.Lock()
 	defer e.conn.mu.Unlock()
@@ -151,6 +153,7 @@ func (e *Engine) runStop(serial uint64) {
 	if err := e.stopRunning(); err != nil {
 		state.Error, state.ErrorText = ReasonStopTimeout, err.Error()
 	}
+	e.afterStop()
 	e.conn.mu.Lock()
 	defer e.conn.mu.Unlock()
 	if serial == e.conn.serial {
@@ -200,6 +203,12 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 	}
 	if settings.Tun && !waitTunGone(tunGoneTimeout) {
 		return ConnectionState{}, failure(ReasonTunBusy, "Windows still holds the TUN adapter of an earlier start; try again, or restart Windows if it stays")
+	}
+	// The block comes first: nothing may go out past the connection while it comes up.
+	if settings.KillSwitch != KillSwitchOff {
+		if err = e.armKillSwitch(); err != nil {
+			return ConnectionState{}, err
+		}
 	}
 
 	in := config.Input{

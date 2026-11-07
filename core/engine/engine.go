@@ -36,6 +36,8 @@ type Config struct {
 	// ForeignUser is a core elevated under another account than the shell's: the system proxy it would set is
 	// that account's, so it sets none.
 	ForeignUser bool
+	// Guard holds the block of the kill switch; nil has no kill switch.
+	Guard Guard
 }
 
 type Engine struct {
@@ -57,6 +59,8 @@ type Engine struct {
 	stopped sync.WaitGroup
 
 	conn    connection
+	ks      killSwitch
+	guard   Guard
 	net     networkCheck
 	latency latencyTest
 	// latencyURL is what a delay test requests through each server; tests point it at a page of their own.
@@ -116,6 +120,7 @@ func Open(cfg Config) (*Engine, error) {
 		stop:        func() {},
 		mixedPort:   mixedPort,
 		foreignUser: cfg.ForeignUser,
+		guard:       cfg.Guard,
 		sysProxy:    sysproxy.New(filepath.Join(cfg.DataDir, "system-proxy.json")),
 	}
 	e.conn.state = ConnectionState{State: ConnectionIdle}
@@ -143,6 +148,7 @@ func (e *Engine) Close() error {
 	e.closeNetworkChecks()
 	e.closeLatencyTests()
 	err := e.closeConnection()
+	e.closeKillSwitch()
 	return errors.Join(err, e.db.Close())
 }
 

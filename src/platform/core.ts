@@ -6,6 +6,7 @@ import type {
   AppInfo,
   ByID,
   ConnectionState,
+  KillSwitchState,
   LinkInfo,
   NetworkState,
   OutsideLink,
@@ -28,6 +29,7 @@ import type {
 import {
   EventConnectionChanged,
   EventConnectionTraffic,
+  EventKillSwitchChanged,
   EventNetworkChanged,
   EventPresetsChanged,
   EventServersChanged,
@@ -38,6 +40,7 @@ import {
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodKillSwitchState,
   MethodLinksParse,
   MethodLogsGet,
   MethodNetworkCheck,
@@ -88,6 +91,7 @@ export interface CoreMethods {
   [MethodNetworkCheck]: { params: undefined; result: NetworkState }
   [MethodNetworkState]: { params: undefined; result: NetworkState }
   [MethodLogsGet]: { params: undefined; result: string[] }
+  [MethodKillSwitchState]: { params: undefined; result: KillSwitchState }
 }
 
 export interface CoreEvents {
@@ -99,6 +103,7 @@ export interface CoreEvents {
   [EventConnectionChanged]: ConnectionState
   [EventConnectionTraffic]: Traffic
   [EventNetworkChanged]: NetworkState
+  [EventKillSwitchChanged]: KillSwitchState
 }
 
 export type CoreMethod = keyof CoreMethods

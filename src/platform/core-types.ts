@@ -76,14 +76,17 @@ export interface Settings {
    */
   autoConnect: boolean;
   /**
-   * Autostart, StartMinimized, CloseToTray and KillSwitch are kept for the system part of Poros: start with
-   * Windows, start in the tray, hide to the tray on close, block traffic without the connection. poros:// links
-   * have no setting: the shell reads and changes what Windows holds.
+   * Autostart, StartMinimized and CloseToTray are for the shell: start with Windows, start in the tray, hide to
+   * the tray on close. poros:// links have no setting: the shell reads and changes what Windows holds.
    */
   autostart: boolean;
   startMinimized: boolean;
   closeToTray: boolean;
-  killSwitch: boolean;
+  /**
+   * KillSwitch is off, connected or always. Connected blocks the internet from a Start until the Stop, through
+   * a broken connection and a failed core; always blocks it while Poros runs. Both need administrator rights.
+   */
+  killSwitch: string;
   /**
    * TextSize is "normal" or "large".
    */
@@ -242,6 +245,33 @@ export interface ConnectionState {
   /**
    * Error is the reason the last start failed or a running connection lost a part, such as system_proxy_failed;
    * ErrorText tells more, in English.
+   */
+  error: string;
+  errorText: string;
+}
+/**
+ * Kill switch modes.
+ */
+export const KillSwitchOff = "off";
+/**
+ * Kill switch modes.
+ */
+export const KillSwitchConnected = "connected";
+/**
+ * Kill switch modes.
+ */
+export const KillSwitchAlways = "always";
+/**
+ * KillSwitchState is the block of the kill switch.
+ */
+export interface KillSwitchState {
+  /**
+   * On is the block: only Poros and its TUN reach the network, everything else waits for the connection.
+   */
+  on: boolean;
+  /**
+   * Error is why the block is off although the setting asks for it: kill_switch_needs_elevation, or
+   * kill_switch_failed with ErrorText in English.
    */
   error: string;
   errorText: string;
@@ -591,6 +621,11 @@ export const MethodLinksParse = "links.parse";
  */
 export const MethodLogsGet = "logs.get";
 /**
+ * MethodKillSwitchState gives the block of the kill switch; the setting turns it on and off, and Start and Stop
+ * in the connected mode.
+ */
+export const MethodKillSwitchState = "killSwitch.state";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -622,6 +657,10 @@ export const EventConnectionTraffic = "connection.traffic";
  * Events the core sends without a request.
  */
 export const EventPresetsChanged = "presets.changed";
+/**
+ * Events the core sends without a request.
+ */
+export const EventKillSwitchChanged = "killSwitch.changed";
 /**
  * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
@@ -670,6 +709,14 @@ export const ReasonServerUnsupported = "server_unsupported";
  * ReasonNeedsElevation is TUN in a core without administrator rights.
  */
 export const ReasonNeedsElevation = "needs_elevation";
+/**
+ * ReasonKillSwitchNeedsElevation is the kill switch in a core without administrator rights.
+ */
+export const ReasonKillSwitchNeedsElevation = "kill_switch_needs_elevation";
+/**
+ * ReasonKillSwitchFailed is a block of the kill switch that did not turn on or went away.
+ */
+export const ReasonKillSwitchFailed = "kill_switch_failed";
 /**
  * ReasonPortBusy is the port of the mixed inbound held by another program.
  */

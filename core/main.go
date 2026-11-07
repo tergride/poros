@@ -167,12 +167,14 @@ func runCore() {
 	peer := jsonrpc.NewConn(conn)
 	eng, err := engine.Open(engine.Config{
 		DataDir: opts.dataDir, Version: opts.version, Notify: peer.Notify, ForeignUser: foreignUser,
+		Guard: engine.NewGuard(opts.hostPID, opts.dataDir),
 	})
 	if err != nil {
 		log.Fatalf("open the data folder: %v", err)
 	}
 	eng.StartSchedule()
 	eng.StartNetworkChecks()
+	eng.StartKillSwitch()
 	if opts.hostPID != 0 {
 		// A shell that is killed may leave the channel open for a while; its process is the surer sign.
 		gone := host.Watch(opts.hostPID)
@@ -200,7 +202,7 @@ func runCore() {
 func main() {
 	// Before anything prints: stdout is the guard's protocol channel.
 	if len(os.Args) > 1 && os.Args[1] == "--guard" {
-		guard.Run(os.Getppid())
+		guard.Run(os.Args[2:])
 	}
 
 	defer func() {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, Layers, Play, ShieldAlert, Square } from '@lucide/vue'
+import { ChevronRight, Layers, Lock, Play, ShieldAlert, Square } from '@lucide/vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -8,7 +8,7 @@ import { useClock } from '@/composables/useClock'
 import { Button, Switch } from '@/components/ui'
 import { useConnect } from '@/composables/useConnect'
 import { formatBytes, formatDuration, latencyTone, serverTitle } from '@/lib/format'
-import { ConnectionRunning, ConnectionStarting, ConnectionStopping } from '@/platform/core-types'
+import { ConnectionRunning, ConnectionStarting, ConnectionStopping, KillSwitchConnected } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 defineEmits<{ ip: [] }>()
@@ -23,9 +23,15 @@ const on = computed(() => state.value === ConnectionRunning)
 const busy = computed(() => state.value === ConnectionStarting || state.value === ConnectionStopping)
 const subscription = computed(() => core.subscriptions.find((s) => s.id === core.server?.subscriptionId))
 const empty = computed(() => core.servers.length === 0)
+// The kill switch lets only Poros out; after a lost connection it holds until Stop.
+const blocked = computed(() => core.killSwitch.on)
+const held = computed(
+  () => blocked.value && !on.value && !busy.value && core.settings?.killSwitch === KillSwitchConnected,
+)
 
 const stateText = computed(() => {
   if (on.value) return t('portal.on', { time: formatDuration(now.value - core.connection.since) })
+  if (held.value) return t('portal.blocked')
   if (state.value === ConnectionStarting) return t('portal.starting')
   if (state.value === ConnectionStopping) return t('portal.stopping')
   return t('portal.off')
@@ -85,11 +91,20 @@ const system = computed({
       <div class="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,var(--s0)_98%)]" />
     </div>
 
-    <div :class="['relative flex items-center gap-2 text-[13px]', on ? 'text-ok' : 'text-t2']" data-testid="portal-state">
+    <div
+      :class="['relative flex items-center gap-2 text-[13px]', on ? 'text-ok' : held ? 'text-warn' : 'text-t2']"
+      data-testid="portal-state"
+    >
       <span
         :class="[
           'size-2 rounded-full',
-          on ? 'bg-ok shadow-[0_0_0_4px_color-mix(in_srgb,var(--ok)_16%,transparent)]' : busy ? 'bg-blue' : 'bg-t3',
+          on
+            ? 'bg-ok shadow-[0_0_0_4px_color-mix(in_srgb,var(--ok)_16%,transparent)]'
+            : held
+              ? 'bg-warn'
+              : busy
+                ? 'bg-blue'
+                : 'bg-t3',
         ]"
       />
       {{ stateText }}
@@ -135,9 +150,10 @@ const system = computed({
       </div>
     </div>
 
-    <div class="relative flex gap-2.5">
-      <Button v-if="on" size="start" class="flex-1" data-testid="stop" @click="connect.stop()">
+    <div class="relative flex gap-2.5" :title="blocked ? t('portal.lockTitle') : undefined">
+      <Button v-if="on || held" size="start" class="flex-1" data-testid="stop" @click="connect.stop()">
         <Square class="size-4 fill-current" />{{ t('portal.stop') }}
+        <Lock v-if="blocked" class="size-3.5 opacity-75" data-testid="kill-switch-lock" />
       </Button>
       <Button
         v-else
@@ -149,6 +165,7 @@ const system = computed({
         @click="connect.start()"
       >
         <Play class="size-4 fill-current" />{{ busy ? t('portal.connecting') : t('portal.start') }}
+        <Lock v-if="blocked" class="size-3.5 opacity-75" data-testid="kill-switch-lock" />
       </Button>
     </div>
 

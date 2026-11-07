@@ -10,7 +10,13 @@ import { Banner, Button, Dialog, Input } from '@/components/ui'
 import { useConnect } from '@/composables/useConnect'
 import { useReason } from '@/composables/useReason'
 import type { Subscription } from '@/platform/core-types'
-import { MethodSubscriptionsRemove, MethodSubscriptionsRename, MethodSubscriptionsUpdate } from '@/platform/core-types'
+import {
+  MethodSubscriptionsRemove,
+  MethodSubscriptionsRename,
+  MethodSubscriptionsUpdate,
+  ReasonKillSwitchFailed,
+  ReasonKillSwitchNeedsElevation,
+} from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
@@ -24,6 +30,13 @@ const query = ref('')
 const closed = reactive(new Set<string>())
 const updating = reactive(new Set<string>())
 const notice = ref<{ tone: 'info' | 'warn'; text: string } | null>(null)
+
+// The kill switch has banners of its own; a failed start for its sake is told there, not twice.
+const killSwitchReasons = [ReasonKillSwitchNeedsElevation, ReasonKillSwitchFailed]
+const killSwitchBroken = computed(() => core.killSwitch.error === ReasonKillSwitchFailed)
+const connectionError = computed(
+  () => !!core.connection.error && !connect.tunFailed && !killSwitchReasons.includes(core.connection.error),
+)
 
 const groups = computed(() => {
   const needle = query.value.trim().toLowerCase()
@@ -114,7 +127,20 @@ function toggle(id: string): void {
             <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="connect.tunFailed = false"><X /></Button>
           </template>
         </Banner>
-        <Banner v-if="core.connection.error && !connect.tunFailed" data-testid="connection-error">
+        <Banner v-if="connect.killSwitchFailed && !connect.tunFailed" data-testid="kill-switch-failed">
+          {{ t('admin.killSwitchFailed') }}
+          <template #actions>
+            <Button size="sm" @click="connect.elevateForKillSwitch()">{{ t('admin.restart') }}</Button>
+            <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="connect.killSwitchFailed = false"><X /></Button>
+          </template>
+        </Banner>
+        <Banner v-if="killSwitchBroken" data-testid="kill-switch-broken">
+          {{ t('killSwitch.broken') }}
+          <template #actions>
+            <Button size="sm" @click="ui.logs = true">{{ t('menu.logs') }}</Button>
+          </template>
+        </Banner>
+        <Banner v-if="connectionError" data-testid="connection-error">
           {{ reason({ code: 1, message: core.connection.errorText, data: { reason: core.connection.error } }) }}
         </Banner>
         <Banner v-if="notice" :tone="notice.tone">

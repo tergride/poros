@@ -42,6 +42,7 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodConnectionState:     noParams(func() (ConnectionState, error) { return e.ConnectionState(), nil }),
 		MethodNetworkCheck:        noParams(e.CheckNetwork),
 		MethodNetworkState:        noParams(func() (NetworkState, error) { return e.NetworkState(), nil }),
+		MethodKillSwitchState:     noParams(func() (KillSwitchState, error) { return e.KillSwitchState(), nil }),
 	}
 }
 

@@ -6,8 +6,9 @@ import { ConnectionRunning } from '@/platform/core-types'
 import { useConnect } from '@/composables/useConnect'
 import { useCoreStore } from '@/stores/core'
 
-// The settings a running connection was built with; System applies on the fly and the server restarts by itself.
-const builtWith = (s: Settings) => JSON.stringify([s.tun, s.preset, s.allowLan, s.ipv6, s.realityOnXray, s.killSwitch])
+// The settings a running connection was built with; System and the kill switch apply on the fly, and the server
+// restarts by itself.
+const builtWith = (s: Settings) => JSON.stringify([s.tun, s.preset, s.allowLan, s.ipv6, s.realityOnXray])
 
 /**
  * Note 6: after a setting of the running connection changes, the window offers to apply it. Nothing restarts on its

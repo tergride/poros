@@ -2,6 +2,7 @@ import type {
   LinkInfo,
   ConnectionState,
   InheritedRule,
+  KillSwitchState,
   NetworkState,
   Preset,
   PresetCopy,
@@ -24,6 +25,7 @@ import {
   ConnectionStopping,
   EventConnectionChanged,
   EventConnectionTraffic,
+  EventKillSwitchChanged,
   EventNetworkChanged,
   EventPresetsChanged,
   EventServersChanged,
@@ -35,6 +37,7 @@ import {
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodKillSwitchState,
   MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
@@ -64,6 +67,10 @@ import {
   ReasonInvalidLink,
   ReasonInvalidURL,
   ReasonInvalidValue,
+  KillSwitchAlways,
+  KillSwitchConnected,
+  KillSwitchOff,
+  ReasonKillSwitchNeedsElevation,
   ReasonNeedsElevation,
   ReasonNoServer,
   ReasonNotFound,
@@ -93,7 +100,7 @@ const defaultSettings: Settings = {
   autostart: false,
   startMinimized: false,
   closeToTray: true,
-  killSwitch: false,
+  killSwitch: KillSwitchOff,
   textSize: 'normal',
 }
 
@@ -124,6 +131,8 @@ const idle: ConnectionState = {
 }
 
 const noAddress = { ip: '', countryCode: '', city: '', isp: '', asn: 0 }
+
+const noBlock: KillSwitchState = { on: false, error: '', errorText: '' }
 
 const noCheck: NetworkState = {
   checking: false,
@@ -333,6 +342,8 @@ export function createStubCore(): CoreClient {
   let copies: PresetCopy[] = []
   let connection = { ...idle }
   let network = { ...noCheck }
+  // The block outlives a core, as the guard process does: a new core of the stub keeps it.
+  let block = { ...noBlock }
   let status: CoreStatus = { state: 'ready', elevated: false }
   let traffic: ReturnType<typeof setInterval> | undefined
   let nextId = 1
@@ -393,6 +404,35 @@ export function createStubCore(): CoreClient {
     }, 0)
     return { ...network }
   }
+  const setBlock = (next: KillSwitchState) => {
+    if (next.on === block.on && next.error === block.error && next.errorText === block.errorText) return
+    block = { ...next }
+    emit(EventKillSwitchChanged, { ...block })
+  }
+  // The rules of core/engine/killswitch.go: the block needs rights to come on, and any core turns it off.
+  const arm = (): boolean => {
+    if (block.on) return true
+    if (!status.elevated) {
+      setBlock({ on: false, error: ReasonKillSwitchNeedsElevation, errorText: 'the kill switch needs administrator rights' })
+      return false
+    }
+    setBlock({ on: true, error: '', errorText: '' })
+    return true
+  }
+  const disarm = () => setBlock({ ...noBlock })
+  const syncBlock = (previous: string) => {
+    if (settings.killSwitch === KillSwitchOff) disarm()
+    else if (settings.killSwitch === KillSwitchAlways) arm()
+    else if (connection.state === ConnectionRunning) arm()
+    else if (previous === KillSwitchAlways) disarm()
+  }
+  // A new core joins the block the previous one left, or turns it on in the always mode.
+  const startBlock = () => {
+    if (block.on && settings.killSwitch === KillSwitchOff) disarm()
+    else if (block.on) setBlock({ on: true, error: '', errorText: '' })
+    else if (settings.killSwitch === KillSwitchAlways) arm()
+    else disarm()
+  }
   const settle = (next: () => ConnectionState) => {
     const mine = ++serial
     setTimeout(() => {
@@ -437,8 +477,13 @@ export function createStubCore(): CoreClient {
     [MethodSettingsGet]: () => ({ ...settings }),
     [MethodSettingsSet]: (next) => {
       if (!presetList().some((p) => p.id === next.preset)) throw failed(ReasonUnknownPreset, `there is no preset "${next.preset}"`)
+      if (![KillSwitchOff, KillSwitchConnected, KillSwitchAlways].includes(next.killSwitch)) {
+        throw failed(ReasonInvalidValue, `killSwitch must be off, connected or always, not "${next.killSwitch}"`)
+      }
+      const previous = settings.killSwitch
       settings = { ...next }
       emit(EventSettingsChanged, { ...settings })
+      if (settings.killSwitch !== previous) setTimeout(() => syncBlock(previous), 0)
       return { ...settings }
     },
     [MethodSubscriptionsList]: () => [...subscriptions],
@@ -542,6 +587,9 @@ export function createStubCore(): CoreClient {
         if (settings.tun && !status.elevated) {
           return { ...idle, error: ReasonNeedsElevation, errorText: 'TUN needs administrator rights' }
         }
+        if (settings.killSwitch !== KillSwitchOff && !arm()) {
+          return { ...idle, error: ReasonKillSwitchNeedsElevation, errorText: 'the kill switch needs administrator rights' }
+        }
         return {
           ...idle,
           state: ConnectionRunning,
@@ -555,7 +603,10 @@ export function createStubCore(): CoreClient {
     },
     [MethodConnectionStop]: () => {
       if (connection.state !== ConnectionIdle) setConnection({ ...connection, state: ConnectionStopping })
-      settle(() => ({ ...idle }))
+      settle(() => {
+        if (settings.killSwitch !== KillSwitchAlways) disarm()
+        return { ...idle }
+      })
       return { ...connection }
     },
     [MethodConnectionState]: () => ({ ...connection }),
@@ -565,6 +616,7 @@ export function createStubCore(): CoreClient {
     },
     [MethodNetworkState]: () => ({ ...network }),
     [MethodLogsGet]: () => [...stubLog],
+    [MethodKillSwitchState]: () => ({ ...block }),
   }
 
   return {
@@ -587,12 +639,20 @@ export function createStubCore(): CoreClient {
     async elevate() {
       setStatus({ state: 'starting', elevated: true })
       setConnection({ ...idle })
-      setTimeout(() => setStatus({ state: 'ready', elevated: true }), 0)
+      // As in the core, the block is settled before the new core answers.
+      setTimeout(() => {
+        startBlock()
+        setStatus({ state: 'ready', elevated: true })
+      }, 0)
     },
     async restart() {
       setStatus({ state: 'starting', elevated: false })
       setConnection({ ...idle })
-      setTimeout(() => setStatus({ state: 'ready', elevated: false }), 0)
+      // As in the core, the block is settled before the new core answers.
+      setTimeout(() => {
+        startBlock()
+        setStatus({ state: 'ready', elevated: false })
+      }, 0)
     },
   }
 }
