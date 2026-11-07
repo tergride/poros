@@ -1,4 +1,5 @@
 import type {
+  LinkInfo,
   ConnectionState,
   InheritedRule,
   NetworkState,
@@ -36,6 +37,7 @@ import {
   MethodNetworkState,
   MethodPresetsExport,
   MethodPresetsGet,
+  MethodLinksParse,
   MethodPresetsImport,
   MethodPresetsList,
   MethodPresetsRemove,
@@ -52,6 +54,8 @@ import {
   ReasonCheckOff,
   ReasonDuplicate,
   ReasonInvalidEntry,
+  LinkPreset,
+  LinkSubscription,
   ReasonInvalidLink,
   ReasonInvalidURL,
   ReasonInvalidValue,
@@ -188,6 +192,49 @@ function decodeLink(link: string): PresetCopy {
   } catch {
     throw failed(ReasonInvalidLink, 'the link holds no Poros preset')
   }
+}
+
+function decodeBase64(data: string): string {
+  const bytes = Uint8Array.from(atob(data.replaceAll('-', '+').replaceAll('_', '/')), (c) => c.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
+}
+
+/** The rules of core/engine/links.go: nothing is added, the link is only read. */
+function parseOutsideLink(link: string): LinkInfo {
+  const match = /^(poros|throne):\/\/([^/]*)\/?(.*)$/i.exec(link.trim())
+  if (!match) throw failed(ReasonInvalidLink, 'not a poros:// link')
+  const [, scheme = '', command = '', data = ''] = match
+  switch (command.toLowerCase()) {
+    case 'addsub': {
+      let text: string
+      try {
+        text = decodeBase64(data.trim()).trim()
+      } catch {
+        throw failed(ReasonInvalidLink, 'the subscription link is damaged')
+      }
+      const cut = text.indexOf('#')
+      const url = cut < 0 ? text : text.slice(0, cut)
+      let name = cut < 0 ? '' : text.slice(cut + 1)
+      try {
+        name = decodeURIComponent(name)
+      } catch {
+        // A name that is not escaped stays as it is.
+      }
+      if (!/^https?:\/\/[^/\s]/i.test(url)) {
+        if (/^[a-z][a-z0-9+.-]*:\/\/\S/i.test(url)) {
+          throw failed(ReasonSingleServer, 'this is a link to one server, not a subscription')
+        }
+        throw failed(ReasonInvalidURL, 'a subscription link starts with http:// or https://')
+      }
+      return { kind: LinkSubscription, url, name: name.trim() }
+    }
+    case 'add':
+      throw failed(ReasonSingleServer, 'this is a link to one server, not a subscription')
+    case 'route':
+      if (scheme.toLowerCase() !== 'poros') throw failed(ReasonInvalidLink, 'Throne routing profiles are not Poros presets')
+      return { kind: LinkPreset, url: '', name: '', preset: decodeLink(presetLinkPrefix + data) }
+  }
+  throw failed(ReasonInvalidLink, 'unknown poros:// link')
 }
 
 /**
@@ -397,6 +444,7 @@ export function createStubCore(): CoreClient {
     },
     [MethodPresetsExport]: ({ id }) => ({ link: encodeLink(copyOf(id)) }),
     [MethodPresetsImport]: ({ link }) => saveCopy(decodeLink(link)),
+    [MethodLinksParse]: ({ link }) => parseOutsideLink(link),
     [MethodConnectionStart]: () => {
       setConnection({ ...idle, state: ConnectionStarting })
       settle(() => {

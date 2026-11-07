@@ -11,8 +11,11 @@ import {
   EventServersChanged,
   EventServersTested,
   EventSubscriptionsChanged,
+  LinkPreset,
+  LinkSubscription,
   MethodConnectionStart,
   MethodConnectionStop,
+  MethodLinksParse,
   MethodNetworkCheck,
   MethodPresetsExport,
   MethodPresetsGet,
@@ -30,6 +33,7 @@ import {
   ReasonCheckOff,
   ReasonDuplicate,
   ReasonInvalidEntry,
+  ReasonInvalidLink,
   ReasonNeedsElevation,
   ReasonInvalidURL,
   ReasonNoServer,
@@ -174,5 +178,26 @@ describe('the stub core', () => {
     await core.call(MethodPresetsRemove, { id: saved.id })
     expect((await core.call(MethodSettingsGet)).preset).toBe('all')
     expect((await core.call(MethodPresetsList)).map((p) => p.id)).toEqual(['all', 'hardened', imported.id])
+  })
+
+  it('reads poros:// links as the engine does and adds nothing', async () => {
+    const core = createStubCore()
+    const encode = (text: string) => btoa(text).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
+    expect(await core.call(MethodLinksParse, { link: `poros://AddSub/${encode('https://sub.example.com/u/8f3a#My%20VPN')}` })).toEqual({
+      kind: LinkSubscription,
+      url: 'https://sub.example.com/u/8f3a',
+      name: 'My VPN',
+    })
+
+    const draft = await core.call(MethodPresetsGet, { id: 'all' })
+    const saved = await core.call(MethodPresetsSave, { ...draft, name: 'Home', dns: 'tls://1.1.1.1' })
+    const { link } = await core.call(MethodPresetsExport, { id: saved.id })
+    const info = await core.call(MethodLinksParse, { link })
+    expect(info).toMatchObject({ kind: LinkPreset, preset: { name: 'Home', basedOn: 'all', dns: 'tls://1.1.1.1' } })
+    expect(await core.call(MethodPresetsList)).toHaveLength(3)
+
+    expect(await reasonOf(core.call(MethodLinksParse, { link: `poros://add/${encode('{}')}` }))).toBe(ReasonSingleServer)
+    expect(await reasonOf(core.call(MethodLinksParse, { link: `throne://route/${encode('{}')}` }))).toBe(ReasonInvalidLink)
+    expect(await reasonOf(core.call(MethodLinksParse, { link: 'https://sub.example.com/u/8f3a' }))).toBe(ReasonInvalidLink)
   })
 })

@@ -80,11 +80,11 @@ func newCounter(t *testing.T, target string) *counter {
 
 // shell stands in for Poros.exe: it creates the channel, starts the core and speaks JSON-RPC with it.
 type shell struct {
-	t       *testing.T
-	process *exec.Cmd
-	conn    net.Conn
-	mu      sync.Mutex
-	nextID  int
+	t        *testing.T
+	process  *exec.Cmd
+	conn     net.Conn
+	mu       sync.Mutex
+	nextID   int
 	replies  map[int]chan json.RawMessage
 	states   chan map[string]any
 	networks chan map[string]any

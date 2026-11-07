@@ -384,18 +384,26 @@ func (e *Engine) ExportPreset(id string) (PresetLink, error) {
 
 // ImportPreset makes a new copy from a link.
 func (e *Engine) ImportPreset(p PresetLink) (Preset, error) {
-	text := strings.TrimSpace(p.Link)
+	link, err := decodePresetLink(p.Link)
+	if err != nil {
+		return Preset{}, err
+	}
+	return e.SavePreset(PresetCopy{BasedOn: link.BasedOn, Name: link.Name, Sites: link.Sites, Apps: link.Apps, DNS: link.DNS})
+}
+
+func decodePresetLink(text string) (presetLink, error) {
+	text = strings.TrimSpace(text)
 	if !strings.HasPrefix(strings.ToLower(text), presetLinkPrefix) {
-		return Preset{}, jsonrpc.Failed(ReasonInvalidLink, "a preset link starts with %s", presetLinkPrefix)
+		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "a preset link starts with %s", presetLinkPrefix)
 	}
 	encoded := strings.TrimRight(text[len(presetLinkPrefix):], "=")
 	data, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
-		return Preset{}, jsonrpc.Failed(ReasonInvalidLink, "the preset link is damaged")
+		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "the preset link is damaged")
 	}
 	var link presetLink
 	if err = json.Unmarshal(data, &link); err != nil || link.Kind != presetLinkKind || link.Version != 1 {
-		return Preset{}, jsonrpc.Failed(ReasonInvalidLink, "the link holds no Poros preset")
+		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "the link holds no Poros preset")
 	}
-	return e.SavePreset(PresetCopy{BasedOn: link.BasedOn, Name: link.Name, Sites: link.Sites, Apps: link.Apps, DNS: link.DNS})
+	return link, nil
 }

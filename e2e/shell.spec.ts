@@ -104,6 +104,41 @@ test('a preset copy is made, saved and chosen', async ({ page }) => {
   }
 })
 
+test('poros:// links open a dialog and add only after a yes', async ({ page }) => {
+  await throughWizard(page)
+  const encode = (text: string) => Buffer.from(text).toString('base64url')
+  const send = (link: string) =>
+    page.evaluate((detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })), [link])
+
+  await send(`poros://addsub/${encode('https://vpn.example.org/s/71bd#Work')}`)
+  const add = page.getByRole('dialog', { name: 'Добавить подписку' })
+  await expect(add.getByLabel('Ссылка подписки')).toHaveValue('https://vpn.example.org/s/71bd')
+  await expect(add.getByPlaceholder('Возьмём из подписки')).toHaveValue('Work')
+  await shot(page, 'link-subscription')
+  await add.getByTestId('add-subscription').click()
+  await expect(add).toBeHidden()
+  await expect(page.getByTestId('server-group')).toHaveCount(2)
+
+  const preset = encode(
+    JSON.stringify({ kind: 'poros-preset', v: 1, based_on: 'all', name: 'Дом', sites: [{ value: 'example.org', action: 'block' }], dns: 'tls://1.1.1.1' }),
+  )
+  await send(`poros://route/${preset}`)
+  const ask = page.getByRole('dialog', { name: 'Добавить пресет из ссылки?' })
+  await expect(ask).toContainText('Пресет «Дом» появится в «Моих пресетах»')
+  await expect(ask.getByTestId('link-preset-summary')).toHaveText(
+    'На основе «Весь трафик»: добавлено: сайтов — 1, приложений — 0. Свой DNS.',
+  )
+  await shot(page, 'link-preset')
+  await ask.getByTestId('link-preset-add').click()
+  await expect(ask).toBeHidden()
+
+  await send(`poros://add/${encode('{}')}`)
+  await expect(add.getByTestId('link-failure')).toContainText('Это ссылка на один сервер')
+  await page.keyboard.press('Escape')
+  await page.getByRole('link', { name: /Пресет:/ }).click()
+  await expect(page.getByText('Дом', { exact: true })).toBeVisible()
+})
+
 test('settings of a running connection offer a restart', async ({ page }) => {
   await throughWizard(page)
   await page.getByTestId('system').click()

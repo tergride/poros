@@ -192,6 +192,10 @@ func checkSubscriptionURL(link string) error {
 		}
 		return nil
 	}
+	lower := strings.ToLower(link)
+	if strings.HasPrefix(lower, "poros://add/") || strings.HasPrefix(lower, "throne://add/") {
+		return jsonrpc.Failed(ReasonSingleServer, "this is a link to one server, not a subscription")
+	}
 	if _, err := profile.ParseLink(link); !errors.Is(err, profile.ErrNotLink) {
 		return jsonrpc.Failed(ReasonSingleServer, "this is a link to one server, not a subscription")
 	}

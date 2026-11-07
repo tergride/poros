@@ -6,7 +6,9 @@ import type {
   AppInfo,
   ByID,
   ConnectionState,
+  LinkInfo,
   NetworkState,
+  OutsideLink,
   Preset,
   PresetCopy,
   PresetLink,
@@ -33,6 +35,7 @@ import {
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodLinksParse,
   MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
@@ -71,6 +74,7 @@ export interface CoreMethods {
   [MethodPresetsRemove]: { params: ByID; result: null }
   [MethodPresetsExport]: { params: ByID; result: PresetLink }
   [MethodPresetsImport]: { params: PresetLink; result: Preset }
+  [MethodLinksParse]: { params: OutsideLink; result: LinkInfo }
   [MethodConnectionStart]: { params: undefined; result: ConnectionState }
   [MethodConnectionStop]: { params: undefined; result: ConnectionState }
   [MethodConnectionState]: { params: undefined; result: ConnectionState }

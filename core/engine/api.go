@@ -260,6 +260,28 @@ type PresetLink struct {
 	Link string `json:"link"`
 }
 
+// OutsideLink is a link that came from outside Poros, such as a browser.
+type OutsideLink struct {
+	Link string `json:"link"`
+}
+
+// LinkInfo is what a poros:// link from outside asks to add; nothing is added until the user agrees.
+type LinkInfo struct {
+	// Kind is subscription or preset.
+	Kind string `json:"kind"`
+	// URL and Name are the subscription a subscription link adds; Name may be empty.
+	URL  string `json:"url"`
+	Name string `json:"name"`
+	// Preset is the copy a preset link adds.
+	Preset *PresetCopy `json:"preset,omitempty"`
+}
+
+// Kinds of LinkInfo.
+const (
+	LinkSubscription = "subscription"
+	LinkPreset       = "preset"
+)
+
 // RenameSubscription gives a subscription the user's name; an empty one goes back to the provider's title.
 type RenameSubscription struct {
 	ID   string `json:"id"`
@@ -316,6 +338,8 @@ const (
 	MethodPresetsRemove = "presets.remove"
 	MethodPresetsExport = "presets.export"
 	MethodPresetsImport = "presets.import"
+	// MethodLinksParse reads a poros:// link without adding anything.
+	MethodLinksParse = "links.parse"
 	// MethodLogsGet gives the last lines of the core's log.
 	MethodLogsGet = "logs.get"
 )
@@ -370,6 +394,6 @@ const (
 	ReasonCheckFailed = "check_failed"
 	// ReasonInvalidEntry is a preset entry that is no domain, address, subnet or program.
 	ReasonInvalidEntry = "invalid_entry"
-	// ReasonInvalidLink is a preset link Poros cannot read.
+	// ReasonInvalidLink is a preset or poros:// link Poros cannot read.
 	ReasonInvalidLink = "invalid_link"
 )

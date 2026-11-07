@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Menu as MenuIcon, Minus, Plus, ScrollText, Settings, ShieldCheck, Square, X, Zap } from '@lucide/vue'
+import { EyeOff, Menu as MenuIcon, Minus, Plus, ScrollText, Settings, ShieldCheck, Square, X, Zap } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import mark from '@/assets/img/mark.png'
 import wordmark from '@/assets/img/wordmark.png'
 import { Button, Menu, MenuItem, MenuSeparator } from '@/components/ui'
-import { windowControls } from '@/platform'
+import { appControls, windowControls } from '@/platform'
 
 // The wizard has no menu: it leads through its own steps.
 defineProps<{ menu?: boolean; elevated?: boolean }>()
@@ -35,7 +35,8 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
       <MenuItem @select="router.push('/settings/presets')"><Settings />{{ t('menu.settings') }}</MenuItem>
       <MenuItem @select="emit('logs')"><ScrollText />{{ t('menu.logs') }}</MenuItem>
       <MenuSeparator />
-      <MenuItem @select="windowControls.close()"><X />{{ t('menu.exit') }}</MenuItem>
+      <MenuItem @select="appControls.hide()"><EyeOff />{{ t('menu.hide') }}</MenuItem>
+      <MenuItem @select="appControls.exit()"><X />{{ t('menu.exit') }}</MenuItem>
     </Menu>
     <div data-tauri-drag-region class="ml-auto flex h-full items-center gap-1">
       <span

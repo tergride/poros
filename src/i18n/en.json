@@ -27,6 +27,18 @@
     "wizard": "Quick setup…",
     "settings": "Settings",
     "logs": "Log",
+    "hide": "Hide to tray",
+    "exit": "Exit"
+  },
+  "tray": {
+    "connected": "Connected · {server}",
+    "connecting": "Connecting…",
+    "disconnected": "Not connected",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "route": "Route: {preset}",
+    "presets": "Presets…",
+    "show": "Show window",
     "exit": "Exit"
   },
   "boot": {
@@ -279,6 +291,12 @@
       "version": "Current version: {version}",
       "check": "Check"
     }
+  },
+  "linkPreset": {
+    "title": "Add the preset from the link?",
+    "text": "The preset “{name}” goes to “My presets”. The preset in use does not change.",
+    "dns": "Its own DNS.",
+    "add": "Add"
   },
   "presetEdit": {
     "back": "Presets",

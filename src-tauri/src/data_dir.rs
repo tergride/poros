@@ -5,11 +5,19 @@ use tauri::AppHandle;
 
 /// Windows builds are portable: the data lives in `config` next to the program.
 #[cfg(windows)]
+pub fn portable() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    Some(exe.parent()?.join("config"))
+}
+
+#[cfg(not(windows))]
+pub fn portable() -> Option<PathBuf> {
+    None
+}
+
+#[cfg(windows)]
 pub fn resolve(_app: &AppHandle) -> Result<PathBuf, PathBuf> {
-    let exe = std::env::current_exe().map_err(|_| PathBuf::from("config"))?;
-    let dir = exe
-        .parent()
-        .map_or_else(|| PathBuf::from("config"), |p| p.join("config"));
+    let dir = portable().unwrap_or_else(|| PathBuf::from("config"));
     ensure_writable(&dir).map(|()| dir.clone()).map_err(|_| dir)
 }
 

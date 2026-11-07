@@ -4,8 +4,12 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import AddSubscriptionDialog from '@/components/main/AddSubscriptionDialog.vue'
+import LinkPresetDialog from '@/components/main/LinkPresetDialog.vue'
 import LogsDialog from '@/components/shell/LogsDialog.vue'
 import TitleBar from '@/components/shell/TitleBar.vue'
+import { useConnect } from '@/composables/useConnect'
+import { useLinks } from '@/composables/useLinks'
+import { useTray } from '@/composables/useTray'
 import { resolveLocale } from '@/i18n/locale'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
@@ -17,6 +21,19 @@ const router = useRouter()
 const { locale } = useI18n()
 
 onMounted(() => void core.start())
+useTray()
+useLinks()
+
+// Once per launch: a core restarted later for rights must not connect on its own.
+const connect = useConnect()
+const stopAutoStart = watch(
+  () => core.loaded,
+  (loaded) => {
+    if (!loaded) return
+    stopAutoStart()
+    void connect.autoStart()
+  },
+)
 
 // The language of the settings, or the system's while none is chosen.
 watch(
@@ -50,5 +67,6 @@ async function addSubscription(): Promise<void> {
     </div>
     <LogsDialog v-model:open="ui.logs" />
     <AddSubscriptionDialog v-model:open="ui.addSubscription" />
+    <LinkPresetDialog />
   </div>
 </template>

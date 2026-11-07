@@ -2,17 +2,31 @@ mod core_launch;
 mod core_process;
 mod data_dir;
 mod fatal;
+mod instance;
+mod system;
+mod tray;
 
 use std::path::PathBuf;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::Serialize;
 use serde_json::{Value, json};
-use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
-use crate::core_process::{Core, CoreConfig, CoreError, CoreStatus, Sink};
+use crate::core_process::{Core, CoreConfig, CoreError, CoreState, CoreStatus, Sink};
+use crate::instance::Claim;
+use crate::system::Integration;
 
-struct AppState {
+/// What the shell keeps besides the core.
+struct Shell {
     data_dir: PathBuf,
+    /// The window's close button hides it to the tray; follows the core's settings.
+    close_to_tray: AtomicBool,
+    /// `poros://` links from the command line and from later starts, until the interface takes them.
+    links: Mutex<Vec<String>>,
+    /// What was last written into the system, to write only changes.
+    integration: Mutex<Option<Integration>>,
 }
 
 #[derive(Serialize)]
@@ -23,11 +37,34 @@ struct AppInfo {
 }
 
 #[tauri::command]
-fn app_info(state: tauri::State<'_, AppState>) -> AppInfo {
+fn app_info(shell: tauri::State<'_, Shell>) -> AppInfo {
     AppInfo {
         version: env!("CARGO_PKG_VERSION"),
-        data_dir: state.data_dir.display().to_string(),
+        data_dir: shell.data_dir.display().to_string(),
     }
+}
+
+#[tauri::command]
+fn app_show(app: AppHandle) {
+    show_window(&app);
+}
+
+#[tauri::command]
+fn app_hide(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+}
+
+#[tauri::command]
+fn app_exit(app: AppHandle) {
+    app.exit(0);
+}
+
+/// The links that came since the last call; `app-links` tells the interface that there are new ones.
+#[tauri::command]
+fn take_links(shell: tauri::State<'_, Shell>) -> Vec<String> {
+    std::mem::take(&mut *shell.links.lock().unwrap())
 }
 
 #[tauri::command]
@@ -66,17 +103,90 @@ async fn core_restart(core: tauri::State<'_, Core>) -> Result<(), CoreError> {
     core.restart().await
 }
 
-/// Core events and state changes go to the interface as `core-event` and `core-status`.
+fn show_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+fn add_links(app: &AppHandle, args: &[String]) {
+    let links: Vec<String> = args
+        .iter()
+        .filter(|arg| arg.contains("://"))
+        .cloned()
+        .collect();
+    if links.is_empty() {
+        return;
+    }
+    if let Some(shell) = app.try_state::<Shell>() {
+        shell.links.lock().unwrap().extend(links);
+    }
+    let _ = app.emit("app-links", ());
+}
+
+/// The settings the shell acts on: the close button, and autostart and `poros://` once the first setup is done.
+fn apply_settings(app: &AppHandle, settings: &Value) {
+    let Some(shell) = app.try_state::<Shell>() else {
+        return;
+    };
+    let flag = |name: &str| settings.get(name).and_then(Value::as_bool).unwrap_or(false);
+    shell
+        .close_to_tray
+        .store(flag("closeToTray"), Ordering::Relaxed);
+    if !flag("onboardingDone") {
+        return;
+    }
+    let integration = Integration {
+        autostart: flag("autostart"),
+        start_minimized: flag("startMinimized"),
+        url_scheme: flag("urlScheme"),
+    };
+    let mut applied = shell.integration.lock().unwrap();
+    if applied.as_ref() == Some(&integration) {
+        return;
+    }
+    let Ok(exe) = std::env::current_exe() else {
+        return;
+    };
+    match system::apply(&exe, integration) {
+        Ok(()) => *applied = Some(integration),
+        Err(error) => eprintln!("poros: autostart and links: {error}"),
+    }
+}
+
+/// Core events and state changes go to the interface as `core-event` and `core-status`; the shell takes what it
+/// needs from them on the way.
 struct WindowSink(AppHandle);
 
 impl Sink for WindowSink {
     fn event(&self, method: &str, params: Value) {
+        match method {
+            "settings.changed" => apply_settings(&self.0, &params),
+            "connection.changed" => tray::set_look(&self.0, tray::Look::of(&params)),
+            _ => {}
+        }
         let _ = self
             .0
             .emit("core-event", json!({ "method": method, "params": params }));
     }
 
     fn status(&self, status: &CoreStatus) {
+        if status.state == CoreState::Ready {
+            let app = self.0.clone();
+            tauri::async_runtime::spawn(async move {
+                let core = app.state::<Core>().inner().clone();
+                if let Ok(settings) = core.call("settings.get", Value::Null).await {
+                    apply_settings(&app, &settings);
+                }
+                if let Ok(connection) = core.call("connection.state", Value::Null).await {
+                    tray::set_look(&app, tray::Look::of(&connection));
+                }
+            });
+        } else {
+            tray::set_look(&self.0, tray::Look::Off);
+        }
         let _ = self.0.emit("core-status", status);
     }
 }
@@ -105,19 +215,58 @@ pub fn run() {
         return;
     }
 
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    // A second start for the same data hands its links to the running Poros, which shows its window.
+    let incoming = match data_dir::portable() {
+        Some(dir) => match tauri::async_runtime::block_on(async { instance::claim(&dir, &args) }) {
+            Ok(Claim::Primary(incoming)) => Some(incoming),
+            Ok(Claim::Handed) => return,
+            Err(error) => {
+                eprintln!("poros: one copy per folder: {error}");
+                None
+            }
+        },
+        None => None,
+    };
+    let minimized = args.iter().any(|arg| arg == "--minimized");
+
     let app = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             app_info,
+            app_show,
+            app_hide,
+            app_exit,
+            take_links,
             core_call,
             core_status,
             core_elevate,
             core_restart
         ])
-        .setup(|app| {
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                let to_tray = window
+                    .app_handle()
+                    .try_state::<Shell>()
+                    .is_some_and(|shell| shell.close_to_tray.load(Ordering::Relaxed));
+                if to_tray {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
+        .setup(move |app| {
             let data_dir = match data_dir::resolve(app.handle()) {
                 Ok(dir) => dir,
                 Err(dir) => fatal::data_dir_unwritable(&dir),
             };
+            app.manage(Shell {
+                data_dir: data_dir.clone(),
+                close_to_tray: AtomicBool::new(true),
+                links: Mutex::new(Vec::new()),
+                integration: Mutex::new(None),
+            });
+            add_links(app.handle(), &args);
+            tray::create(app.handle(), show_window)?;
             let core = Core::start(
                 CoreConfig {
                     program: core_program(),
@@ -132,12 +281,20 @@ pub fn run() {
                 .inner_size(1180.0, 760.0)
                 .min_inner_size(900.0, 600.0)
                 .center()
-                .decorations(false);
+                .decorations(false)
+                .visible(!minimized);
             // The portable build keeps the WebView2 profile in its own folder instead of %LOCALAPPDATA%.
             #[cfg(windows)]
             let builder = builder.data_directory(data_dir.join("webview"));
             builder.build()?;
-            app.manage(AppState { data_dir });
+
+            if let Some(incoming) = incoming {
+                let handle = app.handle().clone();
+                incoming.serve(move |args| {
+                    add_links(&handle, &args);
+                    show_window(&handle);
+                });
+            }
             Ok(())
         })
         .build(tauri::generate_context!())

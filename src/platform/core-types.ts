@@ -382,6 +382,38 @@ export interface PresetLink {
   link: string;
 }
 /**
+ * OutsideLink is a link that came from outside Poros, such as a browser.
+ */
+export interface OutsideLink {
+  link: string;
+}
+/**
+ * LinkInfo is what a poros:// link from outside asks to add; nothing is added until the user agrees.
+ */
+export interface LinkInfo {
+  /**
+   * Kind is subscription or preset.
+   */
+  kind: string;
+  /**
+   * URL and Name are the subscription a subscription link adds; Name may be empty.
+   */
+  url: string;
+  name: string;
+  /**
+   * Preset is the copy a preset link adds.
+   */
+  preset?: PresetCopy;
+}
+/**
+ * Kinds of LinkInfo.
+ */
+export const LinkSubscription = "subscription";
+/**
+ * Kinds of LinkInfo.
+ */
+export const LinkPreset = "preset";
+/**
  * RenameSubscription gives a subscription the user's name; an empty one goes back to the provider's title.
  */
 export interface RenameSubscription {
@@ -500,6 +532,10 @@ export const MethodPresetsExport = "presets.export";
  */
 export const MethodPresetsImport = "presets.import";
 /**
+ * MethodLinksParse reads a poros:// link without adding anything.
+ */
+export const MethodLinksParse = "links.parse";
+/**
  * MethodLogsGet gives the last lines of the core's log.
  */
 export const MethodLogsGet = "logs.get";
@@ -616,6 +652,6 @@ export const ReasonCheckFailed = "check_failed";
  */
 export const ReasonInvalidEntry = "invalid_entry";
 /**
- * ReasonInvalidLink is a preset link Poros cannot read.
+ * ReasonInvalidLink is a preset or poros:// link Poros cannot read.
  */
 export const ReasonInvalidLink = "invalid_link";

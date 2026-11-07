@@ -2,7 +2,13 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 import { CodeElevationCancelled, isCoreError } from '@/platform'
-import { ConnectionRunning, MethodConnectionStart, MethodConnectionStop, ReasonNeedsElevation } from '@/platform/core-types'
+import {
+  ConnectionIdle,
+  ConnectionRunning,
+  MethodConnectionStart,
+  MethodConnectionStop,
+  ReasonNeedsElevation,
+} from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 const modesAskedKey = 'poros.modesAsked'
@@ -56,6 +62,22 @@ export const useConnect = defineStore('connect', () => {
     }
     if (settings.tun && !core.status.elevated) {
       adminOpen.value = true
+      return
+    }
+    await connect()
+  }
+
+  /**
+   * Connects at launch when the settings ask for it. TUN was the user's choice, so the UAC prompt comes right away
+   * instead of the question; a refusal leaves the banner.
+   */
+  async function autoStart(): Promise<void> {
+    const settings = core.settings
+    if (!settings?.autoConnect || !settings.onboardingDone || !settings.server) return
+    if (core.connection.state !== ConnectionIdle) return
+    if (!settings.tun && !settings.systemProxy && !modesAsked()) return
+    if (settings.tun && !core.status.elevated) {
+      await elevateAndConnect()
       return
     }
     await connect()
@@ -147,6 +169,7 @@ export const useConnect = defineStore('connect', () => {
     adminOpen,
     tunFailed,
     start,
+    autoStart,
     stop,
     chooseModes,
     elevateAndConnect,

@@ -1,22 +1,29 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import SubscriptionLink from '@/components/main/SubscriptionLink.vue'
 import { Button, Dialog, Input } from '@/components/ui'
+import { useUiStore } from '@/stores/ui'
 
 const open = defineModel<boolean>('open', { default: false })
+const ui = useUiStore()
 const { t } = useI18n()
 const name = ref('')
 const link = ref<InstanceType<typeof SubscriptionLink> | null>(null)
 // A new SubscriptionLink each time the dialog opens, so nothing of the last link stays.
 const generation = ref(0)
 
-watch(open, (shown) => {
-  if (shown) {
-    name.value = ''
-    generation.value++
-  }
+watch(open, async (shown) => {
+  if (!shown) return
+  const prefill = ui.addPrefill
+  ui.addPrefill = null
+  name.value = prefill?.name ?? ''
+  generation.value++
+  if (!prefill) return
+  await nextTick()
+  link.value?.fill(prefill.url)
+  if (prefill.check) await link.value?.add()
 })
 
 async function add(): Promise<void> {

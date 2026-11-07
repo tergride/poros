@@ -53,7 +53,12 @@ async function paste(): Promise<void> {
   if (!props.manual) await add()
 }
 
-defineExpose({ add, busy, added })
+/** Puts a link in from outside, such as a poros:// link. */
+function fill(text: string): void {
+  link.value = text
+}
+
+defineExpose({ add, fill, busy, added })
 </script>
 
 <template>
