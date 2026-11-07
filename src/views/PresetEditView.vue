@@ -36,7 +36,9 @@ const customDns = ref('')
 
 onMounted(async () => {
   try {
-    const copy = await core.core().call(MethodPresetsGet, { id: String(route.params.id) })
+    // `new` is a preset from scratch: the core gives its draft for an empty ID.
+    const id = route.params.id === 'new' ? '' : String(route.params.id)
+    const copy = await core.core().call(MethodPresetsGet, { id })
     draft.value = copy
     if ((dnsChoices as readonly string[]).includes(copy.dns)) dnsChoice.value = copy.dns
     else {
@@ -57,7 +59,7 @@ const actions = computed(() =>
   [ActionProxy, ActionDirect, ActionBlock].map((value) => ({ value: value as string, label: t(`action.${value}`) })),
 )
 const dnsOptions = computed(() => [
-  { value: '', label: t('presetEdit.dnsPreset') },
+  { value: '', label: t(draft.value?.basedOn ? 'presetEdit.dnsPreset' : 'presetEdit.dnsStandard') },
   { value: dnsChoices[1], label: 'Cloudflare' },
   { value: dnsChoices[2], label: 'Google' },
   { value: dnsChoices[3], label: 'Quad9' },
@@ -108,7 +110,11 @@ async function save(): Promise<void> {
     <div class="min-h-0 flex-1 overflow-auto px-7 pt-[22px] pb-7">
       <div class="mb-3 flex items-center gap-2">
         <Button variant="ghost" size="sm" @click="router.push('/settings/presets')"><ArrowLeft />{{ t('presetEdit.back') }}</Button>
-        <span v-if="draft" class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] text-t2">
+        <span
+          v-if="draft?.basedOn"
+          class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] text-t2"
+          data-testid="preset-base"
+        >
           {{ t('presetEdit.copyOf', { name: baseName }) }}
         </span>
       </div>
@@ -116,7 +122,7 @@ async function save(): Promise<void> {
       <template v-if="draft">
         <label class="mb-3.5 flex max-w-[420px] flex-col gap-[5px]">
           <span class="text-[12.5px] text-t2">{{ t('presetEdit.name') }}</span>
-          <Input v-model="draft.name" data-testid="preset-name" />
+          <Input v-model="draft.name" :placeholder="t('presetEdit.namePlaceholder')" data-testid="preset-name" />
         </label>
         <div class="grid grid-cols-2 items-start gap-3">
           <SettingsCard :title="t('presetEdit.sites')">

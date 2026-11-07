@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ClipboardPaste, Copy, Lock, MoreHorizontal, Pencil, Trash2, X } from '@lucide/vue'
+import { ClipboardPaste, Copy, Lock, MoreHorizontal, Pencil, Plus, Trash2, X } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -23,7 +23,14 @@ const mine = computed(() => core.presets.filter((p) => !p.builtin))
 
 const nameOf = (preset: Preset | undefined) =>
   !preset ? '' : preset.builtin && te(`presets.name.${preset.id}`) ? t(`presets.name.${preset.id}`) : preset.name
-const baseOf = (preset: Preset) => nameOf(core.presets.find((p) => p.id === preset.basedOn))
+// A preset made from scratch has no base; removing it while chosen goes back to the standard one, all traffic.
+const baseOf = (preset: Preset) => nameOf(core.presets.find((p) => p.id === (preset.basedOn || 'all')))
+const aboutMine = (preset: Preset) => {
+  const added = { sites: preset.sites, apps: preset.apps }
+  return preset.basedOn
+    ? `${t('presets.copyOf', { base: baseOf(preset) })}: ${t('presets.added', added)}`
+    : t('presets.addedAlone', added)
+}
 
 const selected = computed({
   get: () => core.settings?.preset ?? '',
@@ -94,9 +101,7 @@ async function remove(): Promise<void> {
         <RadioItem :value="preset.id" :aria-label="preset.name" />
         <div>
           <strong class="font-medium">{{ preset.name }}</strong>
-          <span class="block text-xs text-t3">
-            {{ t('presets.copyOf', { base: baseOf(preset) }) }}: {{ t('presets.added', { sites: preset.sites, apps: preset.apps }) }}
-          </span>
+          <span class="block text-xs text-t3">{{ aboutMine(preset) }}</span>
         </div>
         <div class="flex gap-1.5">
           <Button size="sm" @click="router.push(`/preset/${preset.id}`)"><Pencil />{{ t('settings.presets.edit') }}</Button>
@@ -112,7 +117,10 @@ async function remove(): Promise<void> {
       </div>
     </SettingsCard>
   </RadioGroup>
-  <Button @click="importLink"><ClipboardPaste />{{ t('settings.presets.import') }}</Button>
+  <div class="flex gap-2">
+    <Button data-testid="preset-create" @click="router.push('/preset/new')"><Plus />{{ t('settings.presets.create') }}</Button>
+    <Button @click="importLink"><ClipboardPaste />{{ t('settings.presets.import') }}</Button>
+  </div>
 
   <Dialog :open="removing !== null" :title="t('settings.presets.removeTitle')" @update:open="(o) => !o && (removing = null)">
     <p class="text-t2">

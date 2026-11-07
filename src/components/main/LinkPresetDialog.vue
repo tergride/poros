@@ -30,8 +30,9 @@ const preset = computed(() => ui.linkPreset?.preset)
 const summary = computed(() => {
   const p = preset.value
   if (!p) return ''
+  const added = { sites: p.sites.length, apps: p.apps.length }
   const base = te(`presets.name.${p.basedOn}`) ? t(`presets.name.${p.basedOn}`) : p.basedOn
-  const parts = [`${t('presets.copyOf', { base })}: ${t('presets.added', { sites: p.sites.length, apps: p.apps.length })}.`]
+  const parts = [p.basedOn ? `${t('presets.copyOf', { base })}: ${t('presets.added', added)}.` : `${t('presets.addedAlone', added)}.`]
   if (p.dns) parts.push(t('linkPreset.dns'))
   return parts.join(' ')
 })

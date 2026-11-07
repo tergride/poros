@@ -105,6 +105,10 @@ const builtins: (Preset & { inherited: InheritedRule[] })[] = [
   { id: 'hardened', name: 'Hardened bypass', builtin: true, basedOn: '', sites: 0, apps: 0, inherited: [{ name: 'Local networks', action: ActionDirect }] },
 ]
 
+/** The standard rules of a preset made from scratch, as in core/engine/presets.go. */
+const standardPreset = 'all'
+const foundation = (basedOn: string) => builtins.find((b) => b.id === (basedOn || standardPreset))
+
 const idle: ConnectionState = {
   state: ConnectionIdle,
   serverId: '',
@@ -328,7 +332,7 @@ export function createStubCore(): CoreClient {
   const saveCopy = (draft: PresetCopy): Preset => {
     const name = draft.name.trim()
     if (!name) throw failed(ReasonInvalidValue, 'the preset needs a name')
-    const base = builtins.find((b) => b.id === draft.basedOn)
+    const base = foundation(draft.basedOn)
     if (!base) throw failed(ReasonUnknownPreset, `there is no built-in preset "${draft.basedOn}"`)
     checkEntries(draft.sites, looksLikeSite)
     checkEntries(draft.apps, looksLikeApp)
@@ -339,6 +343,7 @@ export function createStubCore(): CoreClient {
     return presetList().find((p) => p.id === copy.id)!
   }
   const copyOf = (id: string): PresetCopy => {
+    if (!id) return { id: '', basedOn: '', name: '', sites: [], apps: [], dns: '', inherited: foundation('')!.inherited }
     const base = builtins.find((b) => b.id === id)
     if (base) return { id: '', basedOn: id, name: base.name, sites: [], apps: [], dns: '', inherited: base.inherited }
     const copy = copies.find((c) => c.id === id)
@@ -437,7 +442,7 @@ export function createStubCore(): CoreClient {
       copies = copies.filter((c) => c.id !== id)
       emit(EventPresetsChanged, presetList())
       if (settings.preset === id) {
-        settings = { ...settings, preset: copy.basedOn }
+        settings = { ...settings, preset: copy.basedOn || standardPreset }
         emit(EventSettingsChanged, { ...settings })
       }
       return null

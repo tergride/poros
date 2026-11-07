@@ -322,7 +322,8 @@ export interface Preset {
   name: string;
   builtin: boolean;
   /**
-   * BasedOn is the built-in preset a copy started from; Sites and Apps count what the copy adds.
+   * BasedOn is the built-in preset a copy started from, "" for a preset made from scratch, which runs on the
+   * standard rules: all traffic through the server. Sites and Apps count what the user's preset adds.
    */
   basedOn: string;
   sites: number /* int */;
@@ -351,7 +352,8 @@ export interface PresetEntry {
   action: string;
 }
 /**
- * InheritedRule is a rule a copy keeps from its built-in preset; the user's entries come first.
+ * InheritedRule is a rule a user's preset keeps from its built-in preset or the standard rules; the user's entries
+ * come first.
  */
 export interface InheritedRule {
   /**
@@ -361,7 +363,8 @@ export interface InheritedRule {
   action: string;
 }
 /**
- * PresetCopy is a user's preset as the editor shows it. An empty ID is a new copy.
+ * PresetCopy is a user's preset as the editor shows it. An empty ID is a new preset, an empty BasedOn one made from
+ * scratch.
  */
 export interface PresetCopy {
   id: string;
@@ -512,7 +515,8 @@ export const MethodServersTest = "servers.test";
  */
 export const MethodSubscriptionsRename = "subscriptions.rename";
 /**
- * MethodPresetsGet gives a copy for the editor; for a built-in preset, a new copy of it.
+ * MethodPresetsGet gives a user's preset for the editor; for a built-in preset, a new copy of it, and for "" a
+ * new preset from scratch.
  */
 export const MethodPresetsGet = "presets.get";
 /**

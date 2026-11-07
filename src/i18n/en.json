@@ -66,7 +66,8 @@
     },
     "builtin": "built-in",
     "copyOf": "Based on “{base}”",
-    "added": "added: {sites} sites, {apps} apps"
+    "added": "added: {sites} sites, {apps} apps",
+    "addedAlone": "Own preset: {sites} sites, {apps} apps"
   },
   "action": {
     "proxy": "Through the server",
@@ -220,7 +221,7 @@
       "help": "Help"
     },
     "presets": {
-      "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy.",
+      "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy or a new preset.",
       "builtin": "Built-in",
       "mine": "My presets",
       "none": "No presets of your own yet.",
@@ -229,6 +230,7 @@
       "export": "Copy link",
       "exported": "The preset link is copied.",
       "import": "Paste a preset link",
+      "create": "Create a preset",
       "imported": "Preset “{name}” added.",
       "removeTitle": "Remove the preset?",
       "removeText": "“{name}” will be gone. If it is chosen, Poros goes back to “{base}”."
@@ -302,6 +304,7 @@
     "back": "Presets",
     "copyOf": "Copy of “{name}”",
     "name": "Name",
+    "namePlaceholder": "For example, Work",
     "sites": "Sites and IPs",
     "sitePlaceholder": "Site, IP or subnet",
     "apps": "Apps",
@@ -310,6 +313,7 @@
     "dns": "DNS",
     "dnsServers": "DNS servers",
     "dnsPreset": "As in the preset",
+    "dnsStandard": "Standard",
     "dnsCustom": "Custom…",
     "dnsCustomPlaceholder": "https://dns.example/dns-query",
     "save": "Save and apply"

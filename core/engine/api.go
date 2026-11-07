@@ -216,7 +216,8 @@ type Preset struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Builtin bool   `json:"builtin"`
-	// BasedOn is the built-in preset a copy started from; Sites and Apps count what the copy adds.
+	// BasedOn is the built-in preset a copy started from, "" for a preset made from scratch, which runs on the
+	// standard rules: all traffic through the server. Sites and Apps count what the user's preset adds.
 	BasedOn string `json:"basedOn"`
 	Sites   int    `json:"sites"`
 	Apps    int    `json:"apps"`
@@ -236,14 +237,16 @@ type PresetEntry struct {
 	Action string `json:"action"`
 }
 
-// InheritedRule is a rule a copy keeps from its built-in preset; the user's entries come first.
+// InheritedRule is a rule a user's preset keeps from its built-in preset or the standard rules; the user's entries
+// come first.
 type InheritedRule struct {
 	// Name is in English; the interface translates the names it knows.
 	Name   string `json:"name"`
 	Action string `json:"action"`
 }
 
-// PresetCopy is a user's preset as the editor shows it. An empty ID is a new copy.
+// PresetCopy is a user's preset as the editor shows it. An empty ID is a new preset, an empty BasedOn one made from
+// scratch.
 type PresetCopy struct {
 	ID      string        `json:"id"`
 	BasedOn string        `json:"basedOn"`
@@ -332,7 +335,8 @@ const (
 	// results.
 	MethodServersTest         = "servers.test"
 	MethodSubscriptionsRename = "subscriptions.rename"
-	// MethodPresetsGet gives a copy for the editor; for a built-in preset, a new copy of it.
+	// MethodPresetsGet gives a user's preset for the editor; for a built-in preset, a new copy of it, and for "" a
+	// new preset from scratch.
 	MethodPresetsGet    = "presets.get"
 	MethodPresetsSave   = "presets.save"
 	MethodPresetsRemove = "presets.remove"

@@ -91,6 +91,17 @@ test('a preset copy is made, saved and chosen', async ({ page }) => {
   await expect(page.getByText('Дом', { exact: true })).toBeVisible()
   await expect(page.getByRole('radio', { name: 'Дом' })).toBeChecked()
 
+  await page.getByTestId('preset-create').click()
+  await expect(page.getByTestId('preset-name')).toHaveValue('')
+  await expect(page.getByTestId('preset-base')).toHaveCount(0)
+  await page.getByTestId('preset-name').fill('Работа')
+  await page.getByLabel('Сайт, IP или подсеть').fill('example.com')
+  await page.getByLabel('Сайт, IP или подсеть').press('Enter')
+  await shot(page, 'preset-new')
+  await page.getByTestId('preset-save').click()
+  await expect(page.getByText('Свой пресет: сайтов — 1, приложений — 0')).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'Работа' })).toBeChecked()
+
   for (const [link, heading] of [
     ['Подключение', 'Подключение'],
     ['Подписки', 'Подписки'],

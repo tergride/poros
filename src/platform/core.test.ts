@@ -180,6 +180,18 @@ describe('the stub core', () => {
     expect((await core.call(MethodPresetsList)).map((p) => p.id)).toEqual(['all', 'hardened', imported.id])
   })
 
+  it('makes a preset from scratch that has no base and falls back to the standard one', async () => {
+    const core = createStubCore()
+    const draft = await core.call(MethodPresetsGet, { id: '' })
+    expect(draft).toMatchObject({ basedOn: '', name: '', inherited: [{ action: 'direct' }] })
+    const saved = await core.call(MethodPresetsSave, { ...draft, name: 'Work' })
+    expect(saved).toMatchObject({ builtin: false, basedOn: '' })
+    const settings = await core.call(MethodSettingsGet)
+    await core.call(MethodSettingsSet, { ...settings, preset: saved.id })
+    await core.call(MethodPresetsRemove, { id: saved.id })
+    expect((await core.call(MethodSettingsGet)).preset).toBe('all')
+  })
+
   it('reads poros:// links as the engine does and adds nothing', async () => {
     const core = createStubCore()
     const encode = (text: string) => btoa(text).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')

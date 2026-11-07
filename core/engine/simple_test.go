@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -91,6 +92,77 @@ func TestPresetCopies(t *testing.T) {
 	presets, _ := e.Presets()
 	if len(presets) != 3 || presets[2].ID != imported.ID {
 		t.Errorf("presets: %+v", presets)
+	}
+}
+
+// Built-in presets never change: the editor saves a new preset instead, and their IDs are neither saved over nor
+// removed.
+func TestBuiltinPresetsStay(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	before, _, _ := e.preset("all")
+	draft, _ := e.PresetCopy("all")
+	draft.ID, draft.Name = "all", "Changed"
+	draft.Sites = []PresetEntry{{Value: "example.org", Action: ActionBlock}}
+	if _, err := e.SavePreset(draft); reason(err) != ReasonNotFound {
+		t.Errorf("saving over a built-in preset: %v", err)
+	}
+	if err := e.RemovePreset("hardened"); reason(err) != ReasonNotFound {
+		t.Errorf("removing a built-in preset: %v", err)
+	}
+	if after, _, _ := e.preset("all"); !reflect.DeepEqual(before, after) {
+		t.Errorf("the built-in preset changed: %+v", after)
+	}
+	if presets, _ := e.Presets(); len(presets) != 2 {
+		t.Errorf("presets: %+v", presets)
+	}
+}
+
+// A preset made from scratch has no base: it shows none, and runs on the standard rules of all traffic through the
+// server, exactly as a copy of "all" with the same entries would.
+func TestPresetFromScratch(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	draft, err := e.PresetCopy("")
+	if err != nil || draft.BasedOn != "" || draft.Name != "" || len(draft.Inherited) != 1 {
+		t.Fatalf("a new preset: %+v, %v", draft, err)
+	}
+	draft.Name = "Work"
+	draft.Sites = []PresetEntry{{Value: "example.org", Action: ActionDirect}}
+	saved, err := e.SavePreset(draft)
+	if err != nil || saved.BasedOn != "" || saved.Sites != 1 {
+		t.Fatalf("SavePreset: %+v, %v", saved, err)
+	}
+	copyOfAll, _ := e.PresetCopy("all")
+	copyOfAll.Name, copyOfAll.Sites = "Work", draft.Sites
+	twin, err := e.SavePreset(copyOfAll)
+	if err != nil {
+		t.Fatal(err)
+	}
+	own, _, err := e.preset(saved.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	same, _, _ := e.preset(twin.ID)
+	if !reflect.DeepEqual(own, same) {
+		t.Errorf("from scratch %+v, a copy of all %+v", own, same)
+	}
+	if edited, err := e.PresetCopy(saved.ID); err != nil || edited.BasedOn != "" || len(edited.Inherited) != 1 {
+		t.Errorf("the editor: %+v, %v", edited, err)
+	}
+
+	link, _ := e.ExportPreset(saved.ID)
+	if imported, err := e.ImportPreset(link); err != nil || imported.BasedOn != "" {
+		t.Errorf("a link keeps no base: %+v, %v", imported, err)
+	}
+	settings := DefaultSettings()
+	settings.Preset = saved.ID
+	if _, err = e.SetSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	if err = e.RemovePreset(saved.ID); err != nil {
+		t.Fatal(err)
+	}
+	if settings, _ = e.Settings(); settings.Preset != "all" {
+		t.Errorf("after the removal the preset is %q, want the standard one", settings.Preset)
 	}
 }
 

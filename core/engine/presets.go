@@ -46,7 +46,12 @@ func builtinPresets() ([]presetRecord, error) {
 	return presets, nil
 }
 
-// copyRecord is a user's copy of a built-in preset, as stored: the entries the user added, in order.
+// standardPreset gives the rules of a preset made from scratch, which has no base: all traffic through the server
+// and local networks direct.
+const standardPreset = "all"
+
+// copyRecord is a user's preset as stored: the entries the user added, in order. BasedOn is the built-in preset it
+// is a copy of, "" for one made from scratch.
 type copyRecord struct {
 	ID      string        `json:"id"`
 	BasedOn string        `json:"basedOn"`
@@ -59,6 +64,14 @@ type copyRecord struct {
 
 func (r copyRecord) view() Preset {
 	return Preset{ID: r.ID, Name: r.Name, BasedOn: r.BasedOn, Sites: len(r.Sites), Apps: len(r.Apps)}
+}
+
+// foundation is the built-in preset whose rules a user's preset adds to.
+func (e *Engine) foundation(basedOn string) (presetRecord, bool) {
+	if basedOn == "" {
+		basedOn = standardPreset
+	}
+	return e.builtin(basedOn)
 }
 
 func (e *Engine) builtin(id string) (presetRecord, bool) {
@@ -123,7 +136,7 @@ func (e *Engine) preset(id string) (config.Preset, bool, error) {
 // compose puts a copy together: the DNS rules of its base first, then the user's entries, then the rest of the base.
 // The first rule that matches decides, so the user's entries win over the base.
 func (e *Engine) compose(record copyRecord) (config.Preset, error) {
-	base, ok := e.builtin(record.BasedOn)
+	base, ok := e.foundation(record.BasedOn)
 	if !ok {
 		return config.Preset{}, fmt.Errorf("the copy is based on %q, which is no built-in preset", record.BasedOn)
 	}
@@ -241,8 +254,13 @@ func inherited(base config.Preset) []InheritedRule {
 	return rules
 }
 
-// PresetCopy gives a copy for the editor; a built-in ID gives a new copy of that preset.
+// PresetCopy gives a user's preset for the editor; a built-in ID gives a new copy of that preset, and "" a new
+// preset from scratch.
 func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
+	if id == "" {
+		base, _ := e.foundation("")
+		return PresetCopy{Sites: []PresetEntry{}, Apps: []PresetEntry{}, Inherited: inherited(base.Preset)}, nil
+	}
 	if base, ok := e.builtin(id); ok {
 		return PresetCopy{BasedOn: id, Name: base.Preset.Name, Sites: []PresetEntry{}, Apps: []PresetEntry{}, Inherited: inherited(base.Preset)}, nil
 	}
@@ -258,7 +276,7 @@ func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
 	if !found {
 		return PresetCopy{}, jsonrpc.Failed(ReasonNotFound, "there is no preset %q", id)
 	}
-	base, ok := e.builtin(record.BasedOn)
+	base, ok := e.foundation(record.BasedOn)
 	if !ok {
 		return PresetCopy{}, jsonrpc.Failed(ReasonUnknownPreset, "the copy is based on %q, which is no built-in preset", record.BasedOn)
 	}
@@ -275,7 +293,7 @@ func nonNil(entries []PresetEntry) []PresetEntry {
 	return entries
 }
 
-// SavePreset stores a copy, a new one when it has no ID.
+// SavePreset stores a user's preset, a new one when it has no ID.
 func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	record := copyRecord{
 		ID: c.ID, BasedOn: c.BasedOn, Name: strings.TrimSpace(c.Name),
@@ -284,7 +302,7 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	if record.Name == "" {
 		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "the preset needs a name")
 	}
-	if _, ok := e.builtin(record.BasedOn); !ok {
+	if _, ok := e.foundation(record.BasedOn); !ok {
 		return Preset{}, jsonrpc.Failed(ReasonUnknownPreset, "there is no built-in preset %q", record.BasedOn)
 	}
 	if _, err := e.compose(record); err != nil {
@@ -318,7 +336,8 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	return record.view(), nil
 }
 
-// RemovePreset deletes a copy; a connection that used it goes back to the copy's base.
+// RemovePreset deletes a user's preset; a connection that used it goes back to its base, or to the standard
+// preset.
 func (e *Engine) RemovePreset(id string) error {
 	e.writeMu.Lock()
 	var record copyRecord
@@ -339,7 +358,7 @@ func (e *Engine) RemovePreset(id string) error {
 	}
 	e.announcePresets()
 	if settings, err := e.Settings(); err == nil && settings.Preset == id {
-		settings.Preset = record.BasedOn
+		settings.Preset = cmp.Or(record.BasedOn, standardPreset)
 		_, err = e.SetSettings(settings)
 		return err
 	}
