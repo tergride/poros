@@ -84,15 +84,16 @@ func writeHeapProfile() (string, error) {
 }
 
 // options are what the shell passes: its channel and the token it will greet the core with, the data folder, the
-// app's version, its own process, and the core this one replaces. An elevated core gets no environment from its
-// shell, so all of it comes as arguments.
+// app's version, its own process, the core this one replaces, and another release feed for tests. An elevated
+// core gets no environment from its shell, so all of it comes as arguments.
 type options struct {
-	pipe    string
-	token   string
-	dataDir string
-	version string
-	hostPID int
-	waitPID int
+	pipe       string
+	token      string
+	dataDir    string
+	version    string
+	hostPID    int
+	waitPID    int
+	updateFeed string
 }
 
 func parseOptions(args []string) (options, error) {
@@ -105,6 +106,7 @@ func parseOptions(args []string) (options, error) {
 	flags.StringVar(&opts.version, "version", "", "")
 	flags.IntVar(&opts.hostPID, "host-pid", 0, "")
 	flags.IntVar(&opts.waitPID, "wait-pid", 0, "")
+	flags.StringVar(&opts.updateFeed, "update-feed", "", "")
 	if err := flags.Parse(args); err != nil {
 		return opts, err
 	}
@@ -167,7 +169,7 @@ func runCore() {
 	peer := jsonrpc.NewConn(conn)
 	eng, err := engine.Open(engine.Config{
 		DataDir: opts.dataDir, Version: opts.version, Notify: peer.Notify, ForeignUser: foreignUser,
-		Guard: engine.NewGuard(opts.hostPID, opts.dataDir),
+		Guard: engine.NewGuard(opts.hostPID, opts.dataDir), UpdateFeed: opts.updateFeed,
 	})
 	if err != nil {
 		log.Fatalf("open the data folder: %v", err)

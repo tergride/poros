@@ -6,7 +6,7 @@ use std::path::Path;
 use tokio::process::{Child, Command};
 
 /// The arguments of the core: its channel, the token the shell greets it with, the data folder, the app's version,
-/// the shell's process, and the core it replaces, which it waits for.
+/// the shell's process, the core it replaces, which it waits for, and a test's release feed.
 pub struct Arguments<'a> {
     pub channel: &'a str,
     pub token: &'a str,
@@ -23,14 +23,21 @@ impl Arguments<'_> {
             self.token.to_string(),
             "--data-dir".to_string(),
             self.data_dir.display().to_string(),
-            "--version".to_string(),
-            env!("CARGO_PKG_VERSION").to_string(),
             "--host-pid".to_string(),
             std::process::id().to_string(),
         ];
+        if !crate::VERSION.is_empty() {
+            args.push("--version".to_string());
+            args.push(crate::VERSION.to_string());
+        }
         if let Some(pid) = self.wait_pid {
             args.push("--wait-pid".to_string());
             args.push(pid.to_string());
+        }
+        // A test points the update check at its own release feed.
+        if let Some(feed) = std::env::var_os("POROS_UPDATE_FEED") {
+            args.push("--update-feed".to_string());
+            args.push(feed.to_string_lossy().into_owned());
         }
         args
     }

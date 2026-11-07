@@ -11,6 +11,7 @@ import type {
   Settings,
   Subscription,
   Traffic,
+  UpdateState,
 } from '@/platform/core-types'
 import {
   ConnectionIdle,
@@ -24,6 +25,7 @@ import {
   EventServersTested,
   EventSettingsChanged,
   EventSubscriptionsChanged,
+  EventUpdatesChanged,
   MethodConnectionState,
   MethodKillSwitchState,
   MethodNetworkState,
@@ -33,6 +35,8 @@ import {
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsList,
+  MethodUpdatesState,
+  UpdateIdle,
 } from '@/platform/core-types'
 
 const idle: ConnectionState = {
@@ -48,6 +52,18 @@ const idle: ConnectionState = {
 const noAddress = { ip: '', countryCode: '', city: '', isp: '', asn: 0 }
 
 const noBlock: KillSwitchState = { on: false, error: '', errorText: '' }
+
+const noUpdates: UpdateState = {
+  available: false,
+  current: '',
+  state: UpdateIdle,
+  version: '',
+  checkedAt: 0,
+  error: '',
+  errorText: '',
+  installError: '',
+  installVersion: '',
+}
 
 const noCheck: NetworkState = {
   checking: false,
@@ -74,6 +90,7 @@ export const useCoreStore = defineStore('core', () => {
   const connection = ref<ConnectionState>({ ...idle })
   const network = ref<NetworkState>({ ...noCheck })
   const killSwitch = ref<KillSwitchState>({ ...noBlock })
+  const updates = ref<UpdateState>({ ...noUpdates })
   const traffic = ref<Traffic | null>(null)
   const testing = ref(false)
   const loaded = ref(false)
@@ -94,7 +111,7 @@ export const useCoreStore = defineStore('core', () => {
   // Reads everything again: at the start and whenever a new core takes over.
   async function load(): Promise<void> {
     const c = core()
-    const [s, subs, list, presetList, conn, net, block] = await Promise.all([
+    const [s, subs, list, presetList, conn, net, block, upd] = await Promise.all([
       c.call(MethodSettingsGet),
       c.call(MethodSubscriptionsList),
       c.call(MethodServersList, { subscriptionId: '' }),
@@ -102,6 +119,7 @@ export const useCoreStore = defineStore('core', () => {
       c.call(MethodConnectionState),
       c.call(MethodNetworkState),
       c.call(MethodKillSwitchState),
+      c.call(MethodUpdatesState),
     ])
     settings.value = s
     subscriptions.value = subs
@@ -110,6 +128,7 @@ export const useCoreStore = defineStore('core', () => {
     connection.value = conn
     network.value = net
     killSwitch.value = block
+    updates.value = upd
     loaded.value = true
   }
 
@@ -131,6 +150,7 @@ export const useCoreStore = defineStore('core', () => {
       c.on(EventConnectionTraffic, (next) => (traffic.value = next))
       c.on(EventNetworkChanged, (next) => (network.value = next))
       c.on(EventKillSwitchChanged, (next) => (killSwitch.value = next))
+      c.on(EventUpdatesChanged, (next) => (updates.value = next))
       c.on(EventServersTested, (report) => {
         const results = new Map(report.results.map((r) => [r.serverId, r.latency]))
         servers.value = servers.value.map((s) => (results.has(s.id) ? { ...s, latency: results.get(s.id)! } : s))
@@ -174,6 +194,7 @@ export const useCoreStore = defineStore('core', () => {
     connection,
     network,
     killSwitch,
+    updates,
     traffic,
     testing,
     loaded,

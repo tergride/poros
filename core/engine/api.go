@@ -54,6 +54,9 @@ type Settings struct {
 	KillSwitch string `json:"killSwitch"`
 	// TextSize is "normal" or "large".
 	TextSize string `json:"textSize"`
+	// UpdateCheck looks for a new Poros at launch and every 4 hours and downloads it; it installs only when the
+	// user asks.
+	UpdateCheck bool `json:"updateCheck"`
 }
 
 // Subscription is a link from a provider and what its last update brought.
@@ -180,6 +183,47 @@ type KillSwitchState struct {
 	// kill_switch_failed with ErrorText in English.
 	Error     string `json:"error"`
 	ErrorText string `json:"errorText"`
+}
+
+// Update states.
+const (
+	UpdateIdle        = "idle"
+	UpdateChecking    = "checking"
+	UpdateDownloading = "downloading"
+	UpdateReady       = "ready"
+)
+
+// Reasons of an install that failed, as the updater gives them.
+const (
+	// InstallBusy is a file of Poros that could not be replaced, most likely held by another program.
+	InstallBusy = "busy"
+	// InstallDamaged is an archive that is no release the updater installs.
+	InstallDamaged = "damaged"
+	InstallFailed  = "failed"
+)
+
+// UpdateState is what Poros knows of its own updates.
+type UpdateState struct {
+	// Available is a build that updates itself: one with a version and updater.exe next to it.
+	Available bool   `json:"available"`
+	Current   string `json:"current"`
+	// State is idle, checking, downloading or ready; Version is the release downloading or ready to install.
+	State   string `json:"state"`
+	Version string `json:"version"`
+	// CheckedAt is the last check that worked, Unix milliseconds, 0 before one.
+	CheckedAt int64 `json:"checkedAt"`
+	// Error is update_failed when the last check or download did not work; ErrorText tells why, in English.
+	Error     string `json:"error"`
+	ErrorText string `json:"errorText"`
+	// InstallError is why the install of InstallVersion failed before this start: busy, damaged or failed. The
+	// updater put the old files back, and Poros runs as before.
+	InstallError   string `json:"installError"`
+	InstallVersion string `json:"installVersion"`
+}
+
+// UpdateInstall is the downloaded release, checked once more, for the updater.
+type UpdateInstall struct {
+	Archive string `json:"archive"`
 }
 
 // IPInfo is what an outside service knows about an address.
@@ -401,6 +445,12 @@ const (
 	// MethodKillSwitchState gives the block of the kill switch; the setting turns it on and off, and Start and Stop
 	// in the connected mode.
 	MethodKillSwitchState = "killSwitch.state"
+	// MethodUpdatesCheck looks for a new release and downloads it in the background; it answers at once, and
+	// updates.changed tells how it went.
+	MethodUpdatesCheck = "updates.check"
+	MethodUpdatesState = "updates.state"
+	// MethodUpdatesInstall gives the shell the downloaded release for the updater, after checking it again.
+	MethodUpdatesInstall = "updates.install"
 )
 
 // Events the core sends without a request.
@@ -415,6 +465,7 @@ const (
 	EventConnectionTraffic = "connection.traffic"
 	EventPresetsChanged    = "presets.changed"
 	EventKillSwitchChanged = "killSwitch.changed"
+	EventUpdatesChanged    = "updates.changed"
 )
 
 // Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
@@ -460,4 +511,10 @@ const (
 	ReasonInvalidEntry = "invalid_entry"
 	// ReasonInvalidLink is a preset or poros:// link Poros cannot read.
 	ReasonInvalidLink = "invalid_link"
+	// ReasonUpdateFailed is a check or download of an update that did not work.
+	ReasonUpdateFailed = "update_failed"
+	// ReasonUpdateUnavailable is a build that does not update itself: it has no version or no updater.exe.
+	ReasonUpdateUnavailable = "update_unavailable"
+	// ReasonUpdateNotReady is an install asked for before a release was downloaded, or after its archive changed.
+	ReasonUpdateNotReady = "update_not_ready"
 )

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Gauge, LoaderCircle, Plus, Search, X, Zap } from '@lucide/vue'
+import { Download, Gauge, LoaderCircle, Plus, RefreshCw, Search, X, Zap } from '@lucide/vue'
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -9,6 +9,7 @@ import SubscriptionLink from '@/components/main/SubscriptionLink.vue'
 import { Banner, Button, Dialog, Input } from '@/components/ui'
 import { useConnect } from '@/composables/useConnect'
 import { useReason } from '@/composables/useReason'
+import { useUpdates } from '@/composables/useUpdates'
 import type { Subscription } from '@/platform/core-types'
 import {
   MethodSubscriptionsRemove,
@@ -23,6 +24,7 @@ import { useUiStore } from '@/stores/ui'
 const core = useCoreStore()
 const ui = useUiStore()
 const connect = useConnect()
+const updates = useUpdates()
 const reason = useReason()
 const { t } = useI18n()
 
@@ -30,6 +32,25 @@ const query = ref('')
 const closed = reactive(new Set<string>())
 const updating = reactive(new Set<string>())
 const notice = ref<{ tone: 'info' | 'warn'; text: string } | null>(null)
+
+// The offer tells what the restart takes away for a moment and what comes back by itself.
+const updateText = computed(() =>
+  [
+    t('updates.ready', { version: core.updates.version }),
+    core.killSwitch.on ? t('updates.killSwitch') : '',
+    core.running ? t('updates.reconnect') : '',
+  ]
+    .filter(Boolean)
+    .join(' '),
+)
+
+async function installUpdate(): Promise<void> {
+  try {
+    await updates.install()
+  } catch (error) {
+    notice.value = { tone: 'warn', text: t('updates.installFailed', { reason: reason(error) }) }
+  }
+}
 
 // The kill switch has banners of its own; a failed start for its sake is told there, not twice.
 const killSwitchReasons = [ReasonKillSwitchNeedsElevation, ReasonKillSwitchFailed]
@@ -142,6 +163,20 @@ function toggle(id: string): void {
         </Banner>
         <Banner v-if="connectionError" data-testid="connection-error">
           {{ reason({ code: 1, message: core.connection.errorText, data: { reason: core.connection.error } }) }}
+        </Banner>
+        <Banner v-if="updates.offer" tone="info" data-testid="update-ready">
+          <template #icon><Download class="size-4 flex-none text-blue" /></template>
+          {{ updateText }}
+          <template #actions>
+            <Button size="sm" variant="primary" @click="installUpdate()"><RefreshCw />{{ t('updates.install') }}</Button>
+            <Button size="sm" variant="ghost" @click="updates.putOff()">{{ t('common.later') }}</Button>
+          </template>
+        </Banner>
+        <Banner v-if="updates.failure" data-testid="update-failed">
+          {{ t(`updates.failed.${core.updates.installError}`, { version: core.updates.installVersion || '?' }) }}
+          <template #actions>
+            <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="updates.failureClosed = true"><X /></Button>
+          </template>
         </Banner>
         <Banner v-if="notice" :tone="notice.tone">
           {{ notice.text }}

@@ -25,6 +25,8 @@ import type {
   Subscription,
   SubscriptionUpdate,
   Traffic,
+  UpdateInstall,
+  UpdateState,
 } from './core-types'
 import {
   EventConnectionChanged,
@@ -36,6 +38,7 @@ import {
   EventServersTested,
   EventSettingsChanged,
   EventSubscriptionsChanged,
+  EventUpdatesChanged,
   MethodAppInfo,
   MethodConnectionStart,
   MethodConnectionState,
@@ -62,6 +65,9 @@ import {
   MethodSubscriptionsRemove,
   MethodSubscriptionsRename,
   MethodSubscriptionsUpdate,
+  MethodUpdatesCheck,
+  MethodUpdatesInstall,
+  MethodUpdatesState,
 } from './core-types'
 
 /** What each method of core/engine/api.go takes and returns. */
@@ -92,6 +98,9 @@ export interface CoreMethods {
   [MethodNetworkState]: { params: undefined; result: NetworkState }
   [MethodLogsGet]: { params: undefined; result: string[] }
   [MethodKillSwitchState]: { params: undefined; result: KillSwitchState }
+  [MethodUpdatesState]: { params: undefined; result: UpdateState }
+  [MethodUpdatesCheck]: { params: undefined; result: UpdateState }
+  [MethodUpdatesInstall]: { params: undefined; result: UpdateInstall }
 }
 
 export interface CoreEvents {
@@ -104,6 +113,7 @@ export interface CoreEvents {
   [EventConnectionTraffic]: Traffic
   [EventNetworkChanged]: NetworkState
   [EventKillSwitchChanged]: KillSwitchState
+  [EventUpdatesChanged]: UpdateState
 }
 
 export type CoreMethod = keyof CoreMethods

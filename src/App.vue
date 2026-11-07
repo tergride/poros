@@ -10,6 +10,7 @@ import TitleBar from '@/components/shell/TitleBar.vue'
 import { useConnect } from '@/composables/useConnect'
 import { useLinks } from '@/composables/useLinks'
 import { useTray } from '@/composables/useTray'
+import { useUpdates } from '@/composables/useUpdates'
 import { resolveLocale } from '@/i18n/locale'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
@@ -53,6 +54,13 @@ watch(
 
 const withMenu = computed(() => route.path.startsWith('/main') || route.path.startsWith('/settings') || route.path.startsWith('/preset'))
 
+// The menu's check: on the help page, where its result shows.
+const updates = useUpdates()
+async function checkUpdates(): Promise<void> {
+  await router.push('/settings/help')
+  if (core.updates.available) await updates.check()
+}
+
 async function addSubscription(): Promise<void> {
   if (!route.path.startsWith('/main')) await router.push('/main')
   ui.addSubscription = true
@@ -61,7 +69,13 @@ async function addSubscription(): Promise<void> {
 
 <template>
   <div class="flex h-full flex-col">
-    <TitleBar :menu="withMenu" :elevated="core.status.elevated" @add-subscription="addSubscription" @logs="ui.logs = true" />
+    <TitleBar
+      :menu="withMenu"
+      :elevated="core.status.elevated"
+      @add-subscription="addSubscription"
+      @logs="ui.logs = true"
+      @check-updates="checkUpdates"
+    />
     <div class="flex min-h-0 flex-1">
       <RouterView />
     </div>

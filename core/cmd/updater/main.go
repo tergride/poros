@@ -19,12 +19,38 @@ import (
 const (
 	program   = "Poros.exe"
 	stageName = "update-stage"
-	// Poros reads this next to the archive on its next start and tells the user.
+	// Poros reads this next to the archive on its next start and tells the user: a reason on the first line, the
+	// details after it.
 	errorFile = "install-error.txt"
 	exitWait  = 30 * time.Second
 	// PorosCore.exe outlives Poros for a moment, and a virus scanner holds a new file for a while.
 	lockWait = 30 * time.Second
 )
+
+// Reasons of a failed install.
+const (
+	// reasonDamaged is an archive that is no release this updater installs.
+	reasonDamaged = "damaged"
+	// reasonBusy is a file of Poros that could not be replaced, most likely held by another program.
+	reasonBusy   = "busy"
+	reasonFailed = "failed"
+)
+
+type installError struct {
+	reason string
+	err    error
+}
+
+func (e *installError) Error() string { return e.err.Error() }
+func (e *installError) Unwrap() error { return e.err }
+
+func reasonOf(err error) string {
+	var failed *installError
+	if errors.As(err, &failed) {
+		return failed.reason
+	}
+	return reasonFailed
+}
 
 func main() {
 	pid := flag.Int("pid", 0, "the Poros process to wait for")
@@ -38,7 +64,8 @@ func main() {
 	waitForExit(*pid)
 	// A failed install still starts Poros: the old files are back in place, and the user must not be left without it.
 	if err := install(*archive, *dir); err != nil {
-		_ = os.WriteFile(filepath.Join(filepath.Dir(*archive), errorFile), []byte(err.Error()), 0o644)
+		report := reasonOf(err) + "\n" + err.Error()
+		_ = os.WriteFile(filepath.Join(filepath.Dir(*archive), errorFile), []byte(report), 0o644)
 	} else {
 		_ = os.Remove(*archive)
 	}
@@ -74,9 +101,12 @@ func install(archive, dir string) error {
 	defer os.RemoveAll(stage)
 	names, err := unpack(archive, stage)
 	if err != nil {
-		return err
+		return &installError{reasonDamaged, err}
 	}
-	return replace(dir, stage, names, lockWait)
+	if err = replace(dir, stage, names, lockWait); err != nil {
+		return &installError{reasonBusy, err}
+	}
+	return nil
 }
 
 // unpack checks the whole archive before it writes anything.

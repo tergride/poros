@@ -38,6 +38,10 @@ type Config struct {
 	ForeignUser bool
 	// Guard holds the block of the kill switch; nil has no kill switch.
 	Guard Guard
+	// UpdateFeed is latest.json of the releases, "" for those of tergride/poros; ProgramDir is the folder with
+	// updater.exe, "" for the folder of this program.
+	UpdateFeed string
+	ProgramDir string
 }
 
 type Engine struct {
@@ -59,6 +63,7 @@ type Engine struct {
 	stopped sync.WaitGroup
 
 	conn    connection
+	upd     updates
 	ks      killSwitch
 	guard   Guard
 	net     networkCheck
@@ -124,6 +129,7 @@ func Open(cfg Config) (*Engine, error) {
 		sysProxy:    sysproxy.New(filepath.Join(cfg.DataDir, "system-proxy.json")),
 	}
 	e.conn.state = ConnectionState{State: ConnectionIdle}
+	e.openUpdates(cfg)
 	e.latency.results = map[string]int{}
 	e.latencyURL = latencyURL
 	e.net.state = NetworkState{DNS: []DNSServer{}}
@@ -145,6 +151,7 @@ func (e *Engine) Close() error {
 	}
 	e.stop()
 	e.stopped.Wait()
+	e.closeUpdates()
 	e.closeNetworkChecks()
 	e.closeLatencyTests()
 	err := e.closeConnection()

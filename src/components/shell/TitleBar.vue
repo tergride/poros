@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { EyeOff, Menu as MenuIcon, Minus, Plus, ScrollText, Settings, ShieldCheck, Square, X, Zap } from '@lucide/vue'
+import { Download, EyeOff, Menu as MenuIcon, Minus, Plus, ScrollText, Settings, ShieldCheck, Square, X, Zap } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -10,7 +10,7 @@ import { appControls, windowControls } from '@/platform'
 
 // The wizard has no menu: it leads through its own steps.
 defineProps<{ menu?: boolean; elevated?: boolean }>()
-const emit = defineEmits<{ addSubscription: []; logs: [] }>()
+const emit = defineEmits<{ addSubscription: []; logs: []; checkUpdates: [] }>()
 
 const { t } = useI18n()
 const router = useRouter()
@@ -34,6 +34,7 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
       <MenuSeparator />
       <MenuItem @select="router.push('/settings/presets')"><Settings />{{ t('menu.settings') }}</MenuItem>
       <MenuItem @select="emit('logs')"><ScrollText />{{ t('menu.logs') }}</MenuItem>
+      <MenuItem @select="emit('checkUpdates')"><Download />{{ t('menu.checkUpdates') }}</MenuItem>
       <MenuSeparator />
       <MenuItem @select="appControls.hide()"><EyeOff />{{ t('menu.hide') }}</MenuItem>
       <MenuItem @select="appControls.exit()"><X />{{ t('menu.exit') }}</MenuItem>

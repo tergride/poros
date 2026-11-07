@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
-import { CodeElevationCancelled, isCoreError } from '@/platform'
+import { CodeElevationCancelled, appControls, isCoreError } from '@/platform'
 import {
   ConnectionIdle,
   ConnectionRunning,
@@ -107,15 +107,16 @@ export const useConnect = defineStore('connect', () => {
   }
 
   /**
-   * At launch: connects when the settings ask for it, and asks for rights right away when the connection needs
-   * them or the kill switch blocks from the launch. Those were the user's choices, so the UAC prompt comes instead
-   * of the question; a refusal leaves the banner.
+   * At launch: connects when the settings ask for it or the run before an update was connected, and asks for
+   * rights right away when the connection needs them or the kill switch blocks from the launch. Those were the
+   * user's choices, so the UAC prompt comes instead of the question; a refusal leaves the banner.
    */
   async function autoStart(): Promise<void> {
+    const reconnect = await appControls.takeReconnect()
     const settings = core.settings
     if (!settings?.onboardingDone) return
     const wantsConnection =
-      settings.autoConnect &&
+      (settings.autoConnect || reconnect) &&
       !!settings.server &&
       core.connection.state === ConnectionIdle &&
       (settings.tun || settings.systemProxy || modesAsked())

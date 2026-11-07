@@ -14,6 +14,7 @@ import type {
   Settings,
   Subscription,
   SubscriptionUpdate,
+  UpdateState,
 } from './core-types'
 import {
   ActionBlock,
@@ -32,6 +33,7 @@ import {
   EventServersTested,
   EventSettingsChanged,
   EventSubscriptionsChanged,
+  EventUpdatesChanged,
   LeakNone,
   MethodAppInfo,
   MethodConnectionStart,
@@ -59,6 +61,9 @@ import {
   MethodSubscriptionsRemove,
   MethodSubscriptionsRename,
   MethodSubscriptionsUpdate,
+  MethodUpdatesCheck,
+  MethodUpdatesInstall,
+  MethodUpdatesState,
   ReasonCheckOff,
   ReasonDuplicate,
   ReasonInvalidEntry,
@@ -76,6 +81,12 @@ import {
   ReasonNotFound,
   ReasonSingleServer,
   ReasonUnknownPreset,
+  ReasonUpdateNotReady,
+  ReasonUpdateUnavailable,
+  UpdateChecking,
+  UpdateDownloading,
+  UpdateIdle,
+  UpdateReady,
 } from './core-types'
 import type { CoreClient, CoreError, CoreEvent, CoreEvents, CoreMethod, CoreMethods, CoreStatus } from './core'
 
@@ -102,6 +113,7 @@ const defaultSettings: Settings = {
   closeToTray: true,
   killSwitch: KillSwitchOff,
   textSize: 'normal',
+  updateCheck: true,
 }
 
 /** The servers every subscription of the stub core holds, with the delay a test gives them. */
@@ -133,6 +145,20 @@ const idle: ConnectionState = {
 const noAddress = { ip: '', countryCode: '', city: '', isp: '', asn: 0 }
 
 const noBlock: KillSwitchState = { on: false, error: '', errorText: '' }
+
+/** A release build of 0.1.0, with 0.1.1 out: a check finds it and downloads it. */
+const stubUpdates: UpdateState = {
+  available: true,
+  current: '0.1.0',
+  state: UpdateIdle,
+  version: '',
+  checkedAt: 0,
+  error: '',
+  errorText: '',
+  installError: '',
+  installVersion: '',
+}
+const stubRelease = '0.1.1'
 
 const noCheck: NetworkState = {
   checking: false,
@@ -344,6 +370,7 @@ export function createStubCore(): CoreClient {
   let network = { ...noCheck }
   // The block outlives a core, as the guard process does: a new core of the stub keeps it.
   let block = { ...noBlock }
+  let updates = { ...stubUpdates }
   let status: CoreStatus = { state: 'ready', elevated: false }
   let traffic: ReturnType<typeof setInterval> | undefined
   let nextId = 1
@@ -432,6 +459,10 @@ export function createStubCore(): CoreClient {
     else if (block.on) setBlock({ on: true, error: '', errorText: '' })
     else if (settings.killSwitch === KillSwitchAlways) arm()
     else disarm()
+  }
+  const setUpdates = (next: UpdateState) => {
+    updates = next
+    emit(EventUpdatesChanged, { ...updates })
   }
   const settle = (next: () => ConnectionState) => {
     const mine = ++serial
@@ -617,6 +648,20 @@ export function createStubCore(): CoreClient {
     [MethodNetworkState]: () => ({ ...network }),
     [MethodLogsGet]: () => [...stubLog],
     [MethodKillSwitchState]: () => ({ ...block }),
+    [MethodUpdatesState]: () => ({ ...updates }),
+    [MethodUpdatesCheck]: () => {
+      if (!updates.available) throw failed(ReasonUpdateUnavailable, 'this build does not update itself')
+      if (updates.state === UpdateIdle) {
+        setUpdates({ ...updates, state: UpdateChecking, error: '', errorText: '' })
+        setTimeout(() => setUpdates({ ...updates, state: UpdateDownloading, version: stubRelease }), 0)
+        setTimeout(() => setUpdates({ ...updates, state: UpdateReady, version: stubRelease, checkedAt: Date.now() }), 50)
+      }
+      return { ...updates }
+    },
+    [MethodUpdatesInstall]: () => {
+      if (updates.state !== UpdateReady) throw failed(ReasonUpdateNotReady, 'no update is downloaded')
+      return { archive: `browser/update/Poros-${updates.version}-windows-amd64.zip` }
+    },
   }
 
   return {

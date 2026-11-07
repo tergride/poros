@@ -91,6 +91,11 @@ export interface Settings {
    * TextSize is "normal" or "large".
    */
   textSize: string;
+  /**
+   * UpdateCheck looks for a new Poros at launch and every 4 hours and downloads it; it installs only when the
+   * user asks.
+   */
+  updateCheck: boolean;
 }
 /**
  * Subscription is a link from a provider and what its last update brought.
@@ -275,6 +280,70 @@ export interface KillSwitchState {
    */
   error: string;
   errorText: string;
+}
+/**
+ * Update states.
+ */
+export const UpdateIdle = "idle";
+/**
+ * Update states.
+ */
+export const UpdateChecking = "checking";
+/**
+ * Update states.
+ */
+export const UpdateDownloading = "downloading";
+/**
+ * Update states.
+ */
+export const UpdateReady = "ready";
+/**
+ * InstallBusy is a file of Poros that could not be replaced, most likely held by another program.
+ */
+export const InstallBusy = "busy";
+/**
+ * InstallDamaged is an archive that is no release the updater installs.
+ */
+export const InstallDamaged = "damaged";
+/**
+ * Reasons of an install that failed, as the updater gives them.
+ */
+export const InstallFailed = "failed";
+/**
+ * UpdateState is what Poros knows of its own updates.
+ */
+export interface UpdateState {
+  /**
+   * Available is a build that updates itself: one with a version and updater.exe next to it.
+   */
+  available: boolean;
+  current: string;
+  /**
+   * State is idle, checking, downloading or ready; Version is the release downloading or ready to install.
+   */
+  state: string;
+  version: string;
+  /**
+   * CheckedAt is the last check that worked, Unix milliseconds, 0 before one.
+   */
+  checkedAt: number /* int64 */;
+  /**
+   * Error is update_failed when the last check or download did not work; ErrorText tells why, in English.
+   */
+  error: string;
+  errorText: string;
+  /**
+   * InstallError is why the install of InstallVersion failed before this start: busy, damaged or failed. The
+   * updater put the old files back, and Poros runs as before.
+   */
+  installError: string;
+  installVersion: string;
+}
+/**
+ * UpdateInstall is the downloaded release, checked once more, for the updater.
+ */
+export interface UpdateInstall {
+  archive: string;
 }
 /**
  * IPInfo is what an outside service knows about an address.
@@ -626,6 +695,19 @@ export const MethodLogsGet = "logs.get";
  */
 export const MethodKillSwitchState = "killSwitch.state";
 /**
+ * MethodUpdatesCheck looks for a new release and downloads it in the background; it answers at once, and
+ * updates.changed tells how it went.
+ */
+export const MethodUpdatesCheck = "updates.check";
+/**
+ * Methods the core answers.
+ */
+export const MethodUpdatesState = "updates.state";
+/**
+ * MethodUpdatesInstall gives the shell the downloaded release for the updater, after checking it again.
+ */
+export const MethodUpdatesInstall = "updates.install";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -661,6 +743,10 @@ export const EventPresetsChanged = "presets.changed";
  * Events the core sends without a request.
  */
 export const EventKillSwitchChanged = "killSwitch.changed";
+/**
+ * Events the core sends without a request.
+ */
+export const EventUpdatesChanged = "updates.changed";
 /**
  * Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
  */
@@ -753,3 +839,15 @@ export const ReasonInvalidEntry = "invalid_entry";
  * ReasonInvalidLink is a preset or poros:// link Poros cannot read.
  */
 export const ReasonInvalidLink = "invalid_link";
+/**
+ * ReasonUpdateFailed is a check or download of an update that did not work.
+ */
+export const ReasonUpdateFailed = "update_failed";
+/**
+ * ReasonUpdateUnavailable is a build that does not update itself: it has no version or no updater.exe.
+ */
+export const ReasonUpdateUnavailable = "update_unavailable";
+/**
+ * ReasonUpdateNotReady is an install asked for before a release was downloaded, or after its archive changed.
+ */
+export const ReasonUpdateNotReady = "update_not_ready";

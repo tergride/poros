@@ -102,8 +102,8 @@ func TestInstallRefusesAnArchiveThatLeavesTheFolder(t *testing.T) {
 			archive := filepath.Join(t.TempDir(), "release.zip")
 			writeArchive(t, archive, map[string]string{program: "new program", name: "bad"})
 
-			if err := install(archive, dir); err == nil {
-				t.Fatal("the archive was accepted")
+			if err := install(archive, dir); reasonOf(err) != reasonDamaged {
+				t.Fatalf("the archive was accepted: %v", err)
 			}
 			assertUntouched(t, dir)
 			if got := readFile(t, filepath.Join(dir, "config", "poros.db")); got != "the user's data" {
@@ -118,8 +118,8 @@ func TestInstallRefusesAnArchiveWithoutTheProgram(t *testing.T) {
 	archive := filepath.Join(t.TempDir(), "release.zip")
 	writeArchive(t, archive, map[string]string{"PorosCore.exe": "new core"})
 
-	if err := install(archive, dir); err == nil {
-		t.Fatal("the archive was accepted")
+	if err := install(archive, dir); reasonOf(err) != reasonDamaged {
+		t.Fatalf("the archive was accepted: %v", err)
 	}
 	assertUntouched(t, dir)
 }
@@ -129,8 +129,8 @@ func TestInstallKeepsTheProgramWhenTheArchiveIsDamaged(t *testing.T) {
 	archive := filepath.Join(t.TempDir(), "release.zip")
 	writeFile(t, archive, "not a zip file")
 
-	if err := install(archive, dir); err == nil {
-		t.Fatal("the archive was accepted")
+	if err := install(archive, dir); reasonOf(err) != reasonDamaged {
+		t.Fatalf("the archive was accepted: %v", err)
 	}
 	assertUntouched(t, dir)
 }

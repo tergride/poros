@@ -14,7 +14,7 @@ const (
 	scheduleTick  = time.Minute
 )
 
-// StartSchedule updates the subscriptions that are due, checking once a minute until Close.
+// StartSchedule updates the subscriptions that are due and looks for a new Poros, checking once a minute until Close.
 func (e *Engine) StartSchedule() {
 	ctx, cancel := context.WithCancel(context.Background())
 	e.stop = cancel
@@ -29,6 +29,7 @@ func (e *Engine) StartSchedule() {
 				return
 			case <-ticker.C:
 				e.updateDue(ctx)
+				e.checkUpdatesIfDue()
 			}
 		}
 	}()

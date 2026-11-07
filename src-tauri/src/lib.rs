@@ -10,38 +10,31 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use serde::Serialize;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
-use crate::core_process::{Core, CoreConfig, CoreError, CoreState, CoreStatus, Sink};
+use crate::core_process::{
+    CODE_UPDATE_FAILED, Core, CoreConfig, CoreError, CoreState, CoreStatus, Sink,
+};
 use crate::instance::Claim;
 use crate::system::{Integration, UrlScheme};
 
+/// The version of a release build, from `POROS_VERSION` at build time; a local build has none.
+pub const VERSION: &str = match option_env!("POROS_VERSION") {
+    Some(version) => version,
+    None => "",
+};
+
 /// What the shell keeps besides the core.
 struct Shell {
-    data_dir: PathBuf,
     /// The window's close button hides it to the tray; follows the core's settings.
     close_to_tray: AtomicBool,
     /// `poros://` links from the command line and from later starts, until the interface takes them.
     links: Mutex<Vec<String>>,
     /// What was last written into the system, to write only changes.
     integration: Mutex<Option<Integration>>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AppInfo {
-    version: &'static str,
-    data_dir: String,
-}
-
-#[tauri::command]
-fn app_info(shell: tauri::State<'_, Shell>) -> AppInfo {
-    AppInfo {
-        version: env!("CARGO_PKG_VERSION"),
-        data_dir: shell.data_dir.display().to_string(),
-    }
+    /// The updater started this Poros after an install, and the connection that ran before comes back.
+    reconnect: AtomicBool,
 }
 
 #[tauri::command]
@@ -59,6 +52,78 @@ fn app_hide(app: AppHandle) {
 #[tauri::command]
 fn app_exit(app: AppHandle) {
     app.exit(0);
+}
+
+/// Whether this start should connect as the run before the update did; true once.
+#[tauri::command]
+fn app_take_reconnect(shell: tauri::State<'_, Shell>) -> bool {
+    shell.reconnect.swap(false, Ordering::Relaxed)
+}
+
+/// Installs the downloaded release: the updater waits for this process to exit, swaps the files and starts Poros
+/// again, connected when `reconnect` says so. It runs as a copy, so that the release may replace updater.exe too.
+#[tauri::command]
+async fn app_update(
+    app: AppHandle,
+    core: tauri::State<'_, Core>,
+    reconnect: bool,
+) -> Result<(), CoreError> {
+    let install = core.call("updates.install", Value::Null).await?;
+    let archive = install
+        .get("archive")
+        .and_then(Value::as_str)
+        .ok_or_else(|| CoreError::local(CODE_UPDATE_FAILED, "the core gave no archive"))?;
+    let hidden = app
+        .get_webview_window("main")
+        .and_then(|window| window.is_visible().ok())
+        .is_some_and(|visible| !visible);
+    let failed = |err: std::io::Error| CoreError::local(CODE_UPDATE_FAILED, err.to_string());
+    let exe = std::env::current_exe().map_err(failed)?;
+    let dir = exe.parent().unwrap_or(std::path::Path::new("."));
+    let updater = dir.join("updater.old");
+    std::fs::copy(dir.join("updater.exe"), &updater).map_err(failed)?;
+    std::process::Command::new(&updater)
+        .args(updater_arguments(
+            std::process::id(),
+            archive,
+            dir,
+            reconnect,
+            hidden,
+        ))
+        .current_dir(dir)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(failed)?;
+    app.exit(0);
+    Ok(())
+}
+
+/// The updater's arguments, and after `--` those of the Poros it starts.
+fn updater_arguments(
+    pid: u32,
+    archive: &str,
+    dir: &std::path::Path,
+    reconnect: bool,
+    hidden: bool,
+) -> Vec<String> {
+    let mut args = vec![
+        "-pid".to_string(),
+        pid.to_string(),
+        "-archive".to_string(),
+        archive.to_string(),
+        "-dir".to_string(),
+        dir.display().to_string(),
+        "--".to_string(),
+    ];
+    if reconnect {
+        args.push("--reconnect".to_string());
+    }
+    if hidden {
+        args.push("--minimized".to_string());
+    }
+    args
 }
 
 /// Who opens `poros://` links now: this copy, another one or nobody.
@@ -242,13 +307,15 @@ pub fn run() {
         None => None,
     };
     let minimized = args.iter().any(|arg| arg == "--minimized");
+    let reconnect = args.iter().any(|arg| arg == "--reconnect");
 
     let app = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            app_info,
             app_show,
             app_hide,
             app_exit,
+            app_take_reconnect,
+            app_update,
             take_links,
             url_scheme_get,
             url_scheme_set,
@@ -275,10 +342,10 @@ pub fn run() {
                 Err(dir) => fatal::data_dir_unwritable(&dir),
             };
             app.manage(Shell {
-                data_dir: data_dir.clone(),
                 close_to_tray: AtomicBool::new(true),
                 links: Mutex::new(Vec::new()),
                 integration: Mutex::new(None),
+                reconnect: AtomicBool::new(reconnect),
             });
             add_links(app.handle(), &args);
             tray::create(app.handle(), show_window)?;

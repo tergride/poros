@@ -10,19 +10,7 @@ import { createStubCore } from './stubCore'
 export type { CoreClient, CoreError, CoreEvent, CoreMethod, CoreStatus } from './core'
 export { CodeElevationCancelled, CodeStartFailed, isCoreError } from './core'
 
-export interface AppInfo {
-  version: string
-  dataDir: string
-}
-
 const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
-
-// Outside Tauri (Vite in a browser, Playwright, Vitest) the shell answers with fixed values.
-const stubInfo: AppInfo = { version: 'dev', dataDir: 'browser' }
-
-export function appInfo(): Promise<AppInfo> {
-  return inTauri ? invoke<AppInfo>('app_info') : Promise.resolve(stubInfo)
-}
 
 let corePromise: Promise<CoreClient> | undefined
 
@@ -58,11 +46,16 @@ export const urlScheme = {
   },
 }
 
-/** The program as a whole: show or hide its window, quit. */
+/** The program as a whole: show or hide its window, quit, install the downloaded update. */
 export const appControls = {
   show: (): Promise<void> => (inTauri ? invoke('app_show') : Promise.resolve()),
   hide: (): Promise<void> => (inTauri ? invoke('app_hide') : Promise.resolve()),
   exit: (): Promise<void> => (inTauri ? invoke('app_exit') : Promise.resolve()),
+  /** The updater replaces the files and starts Poros again, connected when `reconnect` says so; Poros exits. */
+  update: (reconnect: boolean): Promise<void> =>
+    inTauri ? invoke('app_update', { reconnect }) : Promise.resolve(),
+  /** Whether this start follows an update of a connected Poros; true once. */
+  takeReconnect: (): Promise<boolean> => (inTauri ? invoke<boolean>('app_take_reconnect') : Promise.resolve(false)),
 }
 
 export async function setTray(items: TrayItem[], tooltip: string): Promise<void> {

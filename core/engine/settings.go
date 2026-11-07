@@ -22,6 +22,7 @@ func DefaultSettings() Settings {
 		CloseToTray:            true,
 		KillSwitch:             KillSwitchOff,
 		TextSize:               "normal",
+		UpdateCheck:            true,
 	}
 }
 

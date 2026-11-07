@@ -261,3 +261,23 @@ test('the kill switch asks for rights, blocks from a Start and lets go on Stop',
   await expect(page.getByTestId('portal-state')).toHaveText('Не подключено')
   await expect(page.getByTestId('kill-switch-lock')).toBeHidden()
 })
+
+test('an update is checked from the menu, downloaded and offered over the servers', async ({ page }) => {
+  await throughWizard(page)
+  await page.getByRole('button', { name: 'Меню' }).click()
+  await page.getByRole('menuitem', { name: 'Проверить обновления' }).click()
+  await expect(page.getByTestId('updates')).toContainText('Версия 0.1.1 загружена и готова к установке.')
+  await expect(page.getByTestId('updates').getByRole('button', { name: 'Перезапустить и обновить' })).toBeVisible()
+  await expect(page.getByText('Проверять обновления автоматически')).toBeVisible()
+  await shot(page, 'settings-help-ready')
+
+  await page.getByRole('link', { name: 'К серверам' }).click()
+  await expect(page.getByTestId('update-ready')).toHaveText(/Готово обновление Poros 0\.1\.1\./)
+  await expect(page.getByTestId('update-ready')).not.toContainText('Подключение вернётся само')
+  await page.getByTestId('system').click()
+  await page.getByTestId('start').click()
+  await expect(page.getByTestId('update-ready')).toContainText('Подключение вернётся само.')
+  await shot(page, 'main-update-ready')
+  await page.getByTestId('update-ready').getByRole('button', { name: 'Позже' }).click()
+  await expect(page.getByTestId('update-ready')).toBeHidden()
+})

@@ -13,8 +13,10 @@ defineProps<{ tone?: 'warn' | 'info' }>()
       tone === 'info' ? 'border-line2 bg-s3' : 'border-warn/35 bg-warn/10',
     ]"
   >
-    <Info v-if="tone === 'info'" class="size-4 flex-none text-blue" />
-    <TriangleAlert v-else class="size-4 flex-none text-warn" />
+    <slot name="icon">
+      <Info v-if="tone === 'info'" class="size-4 flex-none text-blue" />
+      <TriangleAlert v-else class="size-4 flex-none text-warn" />
+    </slot>
     <span class="min-w-0 flex-1"><slot /></span>
     <slot name="actions" />
   </div>

@@ -12,6 +12,7 @@ import {
   EventServersChanged,
   EventServersTested,
   EventSubscriptionsChanged,
+  EventUpdatesChanged,
   KillSwitchAlways,
   KillSwitchConnected,
   KillSwitchOff,
@@ -38,6 +39,9 @@ import {
   MethodSubscriptionsAdd,
   MethodSubscriptionsList,
   MethodSubscriptionsRemove,
+  MethodUpdatesCheck,
+  MethodUpdatesInstall,
+  MethodUpdatesState,
   ReasonCheckOff,
   ReasonDuplicate,
   ReasonInvalidEntry,
@@ -49,6 +53,9 @@ import {
   ReasonNoServer,
   ReasonNotFound,
   ReasonSingleServer,
+  ReasonUpdateNotReady,
+  UpdateChecking,
+  UpdateReady,
 } from './core-types'
 
 async function reasonOf(promise: Promise<unknown>): Promise<string | undefined> {
@@ -101,6 +108,18 @@ describe('the stub core', () => {
     off()
     await core.call(MethodSettingsSet, { ...settings, tun: false })
     expect(handler).toHaveBeenCalledOnce()
+  })
+
+  it('checks for an update and downloads it in the background, as the engine does', async () => {
+    const core = createStubCore()
+    const states = vi.fn()
+    core.on(EventUpdatesChanged, states)
+    expect(await core.call(MethodUpdatesState)).toEqual(expect.objectContaining({ available: true, current: '0.1.0' }))
+    expect(await reasonOf(core.call(MethodUpdatesInstall))).toBe(ReasonUpdateNotReady)
+    expect((await core.call(MethodUpdatesCheck)).state).toBe(UpdateChecking)
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    expect(states).toHaveBeenLastCalledWith(expect.objectContaining({ state: UpdateReady, version: '0.1.1' }))
+    expect((await core.call(MethodUpdatesInstall)).archive).toContain('Poros-0.1.1-windows-amd64.zip')
   })
 
   it('keeps the kill switch block as the engine does', async () => {

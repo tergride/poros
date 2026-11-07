@@ -66,9 +66,11 @@ const CODE_TIMEOUT: i64 = -33001;
 pub const CODE_ELEVATION_CANCELLED: i64 = -33002;
 /// The core could not be started, with or without rights.
 pub const CODE_START_FAILED: i64 = -33003;
+/// The updater could not be started; Poros runs on.
+pub const CODE_UPDATE_FAILED: i64 = -33004;
 
 impl CoreError {
-    fn local(code: i64, message: impl Into<String>) -> Self {
+    pub fn local(code: i64, message: impl Into<String>) -> Self {
         Self {
             code,
             message: message.into(),

@@ -27,6 +27,7 @@
     "wizard": "Quick setup…",
     "settings": "Settings",
     "logs": "Log",
+    "checkUpdates": "Check for updates",
     "hide": "Hide to tray",
     "exit": "Exit"
   },
@@ -195,6 +196,18 @@
   "killSwitch": {
     "broken": "The kill switch is not working, so programs can reach the internet past Poros. The reason is in the log."
   },
+  "updates": {
+    "ready": "Poros {version} is ready to install.",
+    "killSwitch": "The kill switch is off during the restart.",
+    "reconnect": "The connection comes back by itself.",
+    "install": "Restart and update",
+    "installFailed": "The update did not start: {reason}.",
+    "failed": {
+      "busy": "The update to {version} did not install: a file is held by another program. Poros runs the previous version.",
+      "damaged": "The update to {version} did not install: the archive is damaged. Poros runs the previous version.",
+      "failed": "The update to {version} did not install. Poros runs the previous version; the reason is in the log."
+    }
+  },
   "ip": {
     "title": "IP and DNS",
     "without": "Without VPN",
@@ -307,8 +320,18 @@
       "resetHint": "Restarts the core if TUN stopped working.",
       "resetButton": "Reset",
       "updates": "Updates",
-      "version": "Current version: {version}",
-      "check": "Check"
+      "version": "Current version: {version}.",
+      "checked": "Current version: {version}. Checked {when}.",
+      "latest": "The latest version, {version}, is installed.",
+      "checking": "Checking for updates…",
+      "downloading": "Downloading version {version}…",
+      "ready": "Version {version} is downloaded and ready to install.",
+      "checkFailed": "The update check did not work. Current version: {version}.",
+      "local": "A local build without a version does not update itself.",
+      "noUpdater": "Current version: {version}. Without updater.exe next to it this build does not update itself.",
+      "check": "Check",
+      "autoCheck": "Check for updates automatically",
+      "autoCheckHint": "At launch and every 4 hours. An update installs only when you press the button."
     }
   },
   "linkPreset": {
@@ -370,7 +393,10 @@
     "invalid_entry": "this is no site, address, subnet or program",
     "invalid_link": "this is no Poros preset link",
     "invalid_value": "invalid value",
-    "unknown": "something went wrong"
+    "unknown": "something went wrong",
+    "update_failed": "the update check did not work",
+    "update_unavailable": "this build does not update itself",
+    "update_not_ready": "no update is downloaded, or it changed after the download"
   },
   "time": {
     "never": "never"
