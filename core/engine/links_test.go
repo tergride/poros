@@ -46,10 +46,17 @@ func TestOutsideLinks(t *testing.T) {
 		t.Fatalf("server link: %+v, %v", info, err)
 	}
 
+	throne := `{"type":"trojan","tag":"Throne","server":"th.example.com","server_port":8443,"password":"p"}`
+	info, err = e.ParseLink(OutsideLink{Link: "throne://add/" + encode(throne)})
+	if err != nil || info.Kind != LinkServer || info.Server == nil ||
+		*info.Server != (Server{Name: "Throne", Protocol: "trojan", Host: "th.example.com", Port: 8443}) {
+		t.Fatalf("Throne server link: %+v, %v", info, err)
+	}
+
 	for link, want := range map[string]string{
 		"poros://add/" + encode(`{"type":"vless"}`): ReasonInvalidLink,
 		"poros://add/%%%": ReasonInvalidLink,
-		"throne://add/" + encode(`{"type":"vless"}`):      ReasonSingleServer,
+		"throne://add/" + encode(`{"type":"direct"}`):     ReasonInvalidLink,
 		"poros://addsub/" + encode("vless://id@host:443"): ReasonSingleServer,
 		"poros://addsub/" + encode("ftp://example.com/x"): ReasonInvalidURL,
 		"poros://addsub/%%%":                              ReasonInvalidLink,

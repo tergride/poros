@@ -25,6 +25,7 @@ import {
   ConnectionRunning,
   ConnectionStarting,
   ConnectionStopping,
+  CoreSingBox,
   EventConnectionChanged,
   EventConnectionTraffic,
   EventKillSwitchChanged,
@@ -62,7 +63,10 @@ import {
   MethodPresetsWriteLists,
   MethodServersAdd,
   MethodServersClone,
+  MethodServersDeepLinks,
+  MethodServersExport,
   MethodServersGet,
+  MethodServersLinks,
   MethodServersList,
   MethodServersMove,
   MethodServersRemove,
@@ -308,8 +312,12 @@ function encodeLink(copy: PresetCopy): string {
     dns: copy.dns,
     default: copy.default,
   })
+  return presetLinkPrefix + encodeBase64(data)
+}
+
+function encodeBase64(data: string): string {
   const base64 = btoa(String.fromCharCode(...new TextEncoder().encode(data)))
-  return presetLinkPrefix + base64.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
+  return base64.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
 }
 
 function decodeLink(link: string): PresetCopy {
@@ -370,9 +378,29 @@ const shareSchemes: Record<string, string> = {
   anytls: 'anytls',
 }
 
+/** A throne://add/ link holds a sing-box outbound with the name as its tag. */
+function readThroneLink(data: string): Profile | null {
+  try {
+    const { tag, type, server, server_port: port, ...rest } = JSON.parse(decodeBase64(data.trim())) as Record<string, unknown>
+    if (!Object.values(shareSchemes).includes(type as string)) return null
+    const profile = { type, name: tag ?? '', server, server_port: port, [type as string]: rest } as unknown as Profile
+    return validProfile(profile) ? profile : null
+  } catch {
+    return null
+  }
+}
+
+/** A share link the stub reads back: the scheme, the address and the name, as readShareLink needs. */
+function writeShareLink(p: Profile): string {
+  const scheme = Object.keys(shareSchemes).find((key) => shareSchemes[key] === p.type)!
+  const host = p.server.includes(':') ? `[${p.server}]` : p.server
+  return `${scheme}://${host}:${p.server_port}` + (p.name ? '#' + encodeURIComponent(p.name) : '')
+}
+
 /** A share link read as far as the stub needs: the scheme gives the protocol, the fragment the name. */
 function readShareLink(line: string): Profile | null {
   if (line.toLowerCase().startsWith('poros://add/')) return readPorosLink(line.slice('poros://add/'.length))
+  if (line.toLowerCase().startsWith('throne://add/')) return readThroneLink(line.slice('throne://add/'.length))
   try {
     const url = new URL(line)
     const type = shareSchemes[url.protocol.slice(0, -1).toLowerCase()]
@@ -424,9 +452,8 @@ function parseOutsideLink(link: string): LinkInfo {
       return { kind: LinkSubscription, url, name: name.trim() }
     }
     case 'add': {
-      if (scheme.toLowerCase() !== 'poros') throw failed(ReasonSingleServer, 'this is a link to one server, not a subscription')
-      const profile = readPorosLink(data)
-      if (!profile) throw failed(ReasonInvalidLink, 'the poros://add/ link is damaged')
+      const profile = scheme.toLowerCase() === 'poros' ? readPorosLink(data) : readThroneLink(data)
+      if (!profile) throw failed(ReasonInvalidLink, `the ${scheme.toLowerCase()}://add/ link is damaged`)
       return { kind: LinkServer, url: '', name: '', server: serverOf(profile, '', '') }
     }
     case 'route':
@@ -824,6 +851,16 @@ export function createStubCore(): CoreClient {
       })
       changed(...touched)
       return { ids: moved }
+    },
+    [MethodServersLinks]: ({ ids }) => ({ links: ids.map((id) => (findServer(id), writeShareLink(profiles.get(id)!))) }),
+    [MethodServersDeepLinks]: ({ ids }) => ({
+      links: ids.map((id) => (findServer(id), 'poros://add/' + encodeBase64(JSON.stringify(profiles.get(id)!)))),
+    }),
+    [MethodServersExport]: ({ id }) => {
+      findServer(id)
+      const { type, server, server_port, [type]: part } = profiles.get(id)! as unknown as Record<string, unknown> & { type: string }
+      const outbound = { type, tag: 'proxy', server, server_port, ...(part as object) }
+      return { core: CoreSingBox, json: JSON.stringify(outbound, null, 2) }
     },
     [MethodServersTest]: ({ groupId }) => {
       const tested = servers.filter((s) => groupId === '' || s.groupId === groupId)

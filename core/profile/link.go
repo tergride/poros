@@ -45,6 +45,7 @@ var linkParsers = map[string]linkParser{
 	"https":     parseHTTPLink,
 	"anytls":    parseAnyTLSLink,
 	"poros":     parsePorosLink,
+	"throne":    parseThroneLink,
 }
 
 // ParseLink reads one share link into a valid profile.

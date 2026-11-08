@@ -26,9 +26,6 @@ func (e *Engine) ParseLink(p OutsideLink) (LinkInfo, error) {
 	case "addsub":
 		return parseSubscriptionLink(data)
 	case "add":
-		if scheme != "poros" {
-			return LinkInfo{}, jsonrpc.Failed(ReasonSingleServer, "this is a link to one server, not a subscription")
-		}
 		p, err := profile.ParseLink(text)
 		if err != nil {
 			return LinkInfo{}, jsonrpc.Failed(ReasonInvalidLink, "%s", err.Error())

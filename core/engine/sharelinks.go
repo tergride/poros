@@ -1,0 +1,78 @@
+package engine
+
+import (
+	"errors"
+
+	"github.com/sagernet/bbolt"
+
+	"PorosCore/config"
+	"PorosCore/internal/jsonrpc"
+	"PorosCore/profile"
+)
+
+// profilesOf reads the profiles of servers in the order of the IDs.
+func (e *Engine) profilesOf(ids []string) ([]profile.Profile, error) {
+	profiles := make([]profile.Profile, 0, len(ids))
+	err := e.db.View(func(tx *bbolt.Tx) error {
+		store, err := loadServers(tx)
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			g, i := store.locate(id)
+			if g < 0 {
+				return serverNotFound(id)
+			}
+			profiles = append(profiles, store.servers[store.groups[g].ID][i].Profile)
+		}
+		return nil
+	})
+	return profiles, err
+}
+
+// ShareLinks gives each server as the share link of its protocol, which other clients read too; a server such a link
+// cannot carry whole comes as a poros://add/ link.
+func (e *Engine) ShareLinks(req ServerIDs) (ServerLinks, error) {
+	return e.linksOf(req.IDs, profile.ShareLink)
+}
+
+// DeepLinks gives each server as a poros://add/ link, which carries all of its settings.
+func (e *Engine) DeepLinks(req ServerIDs) (ServerLinks, error) {
+	return e.linksOf(req.IDs, profile.PorosLink)
+}
+
+func (e *Engine) linksOf(ids []string, write func(profile.Profile) string) (ServerLinks, error) {
+	profiles, err := e.profilesOf(ids)
+	if err != nil {
+		return ServerLinks{}, err
+	}
+	links := ServerLinks{Links: make([]string, len(profiles))}
+	for i, p := range profiles {
+		links.Links[i] = write(p)
+	}
+	return links, nil
+}
+
+// ExportServer gives a server as the outbound of the core that runs it with the current settings.
+func (e *Engine) ExportServer(req ByID) (ServerConfig, error) {
+	settings, err := e.Settings()
+	if err != nil {
+		return ServerConfig{}, err
+	}
+	profiles, err := e.profilesOf([]string{req.ID})
+	if err != nil {
+		return ServerConfig{}, err
+	}
+	onXray, data, err := config.Export(profiles[0], settings.RealityOnXray)
+	switch {
+	case errors.Is(err, profile.ErrUnsupported):
+		return ServerConfig{}, jsonrpc.Failed(ReasonServerUnsupported, "%s", err.Error())
+	case err != nil:
+		return ServerConfig{}, err
+	}
+	out := ServerConfig{Core: CoreSingBox, JSON: string(data)}
+	if onXray {
+		out.Core = CoreXray
+	}
+	return out, nil
+}

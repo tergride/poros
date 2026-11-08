@@ -23,7 +23,9 @@ import type {
   RenameGroup,
   SaveServer,
   Server,
+  ServerConfig,
   ServerIDs,
+  ServerLinks,
   ServerProfile,
   ServersAdded,
   ServersChanged,
@@ -69,7 +71,10 @@ import {
   MethodPresetsWriteLists,
   MethodServersAdd,
   MethodServersClone,
+  MethodServersDeepLinks,
+  MethodServersExport,
   MethodServersGet,
+  MethodServersLinks,
   MethodServersList,
   MethodServersMove,
   MethodServersRemove,
@@ -102,6 +107,9 @@ export interface CoreMethods {
   [MethodServersRemove]: { params: ServerIDs; result: null }
   [MethodServersClone]: { params: ServerIDs; result: ServerIDs }
   [MethodServersMove]: { params: MoveServers; result: ServerIDs }
+  [MethodServersLinks]: { params: ServerIDs; result: ServerLinks }
+  [MethodServersDeepLinks]: { params: ServerIDs; result: ServerLinks }
+  [MethodServersExport]: { params: ByID; result: ServerConfig }
   [MethodServersTest]: { params: ServersQuery; result: null }
   [MethodPresetsList]: { params: undefined; result: Preset[] }
   [MethodPresetsGet]: { params: ByID; result: PresetCopy }

@@ -466,6 +466,25 @@ type ServerIDs struct {
 	IDs []string `json:"ids"`
 }
 
+// ServerLinks are links of servers, in the order they were asked for.
+type ServerLinks struct {
+	Links []string `json:"links"`
+}
+
+// ServerConfig is a server as the core that runs it reads it, for the user to copy.
+type ServerConfig struct {
+	// Core is sing-box or xray.
+	Core string `json:"core"`
+	// JSON is the core's outbound, indented.
+	JSON string `json:"json"`
+}
+
+// Cores of ServerConfig.
+const (
+	CoreSingBox = "sing-box"
+	CoreXray    = "xray"
+)
+
 // MoveServers moves servers to a group of the user's, after those it holds. Servers of a subscription are copied
 // instead, as its next update would bring them back.
 type MoveServers struct {
@@ -519,7 +538,14 @@ const (
 	MethodServersClone = "servers.clone"
 	// MethodServersMove answers with the IDs the servers have in the group they went to.
 	MethodServersMove = "servers.move"
-	MethodPresetsList = "presets.list"
+	// MethodServersLinks gives the share links of servers: the link of the protocol, which other clients read, or
+	// poros://add/ for a server such a link cannot carry whole.
+	MethodServersLinks = "servers.links"
+	// MethodServersDeepLinks gives servers as poros://add/ links, which carry all of their settings.
+	MethodServersDeepLinks = "servers.deepLinks"
+	// MethodServersExport gives a server as the outbound of the core that runs it.
+	MethodServersExport = "servers.export"
+	MethodPresetsList   = "presets.list"
 	// MethodConnectionStart connects with the settings, or reconnects with them: it answers at once with the
 	// starting state, and connection.changed tells how it went.
 	MethodConnectionStart = "connection.start"

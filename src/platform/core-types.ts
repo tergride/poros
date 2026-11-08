@@ -675,6 +675,33 @@ export interface ServerIDs {
   ids: string[];
 }
 /**
+ * ServerLinks are links of servers, in the order they were asked for.
+ */
+export interface ServerLinks {
+  links: string[];
+}
+/**
+ * ServerConfig is a server as the core that runs it reads it, for the user to copy.
+ */
+export interface ServerConfig {
+  /**
+   * Core is sing-box or xray.
+   */
+  core: string;
+  /**
+   * JSON is the core's outbound, indented.
+   */
+  json: string;
+}
+/**
+ * Cores of ServerConfig.
+ */
+export const CoreSingBox = "sing-box";
+/**
+ * Cores of ServerConfig.
+ */
+export const CoreXray = "xray";
+/**
  * MoveServers moves servers to a group of the user's, after those it holds. Servers of a subscription are copied
  * instead, as its next update would bring them back.
  */
@@ -776,6 +803,19 @@ export const MethodServersClone = "servers.clone";
  * MethodServersMove answers with the IDs the servers have in the group they went to.
  */
 export const MethodServersMove = "servers.move";
+/**
+ * MethodServersLinks gives the share links of servers: the link of the protocol, which other clients read, or
+ * poros://add/ for a server such a link cannot carry whole.
+ */
+export const MethodServersLinks = "servers.links";
+/**
+ * MethodServersDeepLinks gives servers as poros://add/ links, which carry all of their settings.
+ */
+export const MethodServersDeepLinks = "servers.deepLinks";
+/**
+ * MethodServersExport gives a server as the outbound of the core that runs it.
+ */
+export const MethodServersExport = "servers.export";
 /**
  * Methods the core answers.
  */

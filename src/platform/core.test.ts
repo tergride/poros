@@ -6,6 +6,7 @@ import {
   ConnectionIdle,
   ConnectionRunning,
   ConnectionStarting,
+  CoreSingBox,
   EventConnectionChanged,
   EventKillSwitchChanged,
   EventNetworkChanged,
@@ -39,6 +40,9 @@ import {
   MethodPresetsWriteLists,
   MethodServersAdd,
   MethodServersClone,
+  MethodServersDeepLinks,
+  MethodServersExport,
+  MethodServersLinks,
   MethodServersGet,
   MethodServersList,
   MethodServersMove,
@@ -167,6 +171,30 @@ ${vless('se.example.com', 'Sweden')}` })
     expect(info.server).toEqual(expect.objectContaining({ name: '🇩🇪 Home', protocol: 'trojan', host: 'de.example.com', country: 'DE' }))
     expect(await core.call(MethodGroupsList)).toEqual([])
     expect(await reasonOf(core.call(MethodLinksParse, { link: 'poros://add/%%%' }))).toBe(ReasonInvalidLink)
+
+    const outbound = JSON.stringify({ type: 'trojan', tag: 'Throne', server: 'th.example.com', server_port: 8443, password: 'p' })
+    const throne = 'throne://add/' + btoa(outbound).replaceAll('+', '-').replaceAll('/', '_')
+    expect((await core.call(MethodLinksParse, { link: throne })).server).toEqual(
+      expect.objectContaining({ name: 'Throne', protocol: 'trojan', host: 'th.example.com', port: 8443 }),
+    )
+  })
+
+  it('gives servers back as links and as an outbound', async () => {
+    const core = createStubCore()
+    const added = await core.call(MethodServersAdd, { groupId: '', newGroup: 'Mine', text: 'trojan://p@tr.example.com:443#Home' })
+    const id = added.ids[0]!
+    const { links } = await core.call(MethodServersLinks, { ids: [id] })
+    const { links: deep } = await core.call(MethodServersDeepLinks, { ids: [id] })
+    expect(deep[0]).toMatch(/^poros:\/\/add\//)
+    for (const link of [links[0]!, deep[0]!]) {
+      const again = await core.call(MethodServersAdd, { groupId: added.group.id, newGroup: '', text: link })
+      const { server } = await core.call(MethodServersGet, { id: again.ids[0]! })
+      expect(server).toEqual(expect.objectContaining({ name: 'Home', host: 'tr.example.com', port: 443 }))
+    }
+    const exported = await core.call(MethodServersExport, { id })
+    expect(exported.core).toBe(CoreSingBox)
+    expect(JSON.parse(exported.json)).toEqual(expect.objectContaining({ type: 'trojan', server: 'tr.example.com' }))
+    expect(await reasonOf(core.call(MethodServersLinks, { ids: ['missing'] }))).toBe(ReasonNotFound)
   })
 
   it('stops delivering events to a handler once it unsubscribes', async () => {
@@ -395,7 +423,7 @@ ${vless('se.example.com', 'Sweden')}` })
     expect(await core.call(MethodPresetsList)).toHaveLength(3)
 
     expect(await reasonOf(core.call(MethodLinksParse, { link: `poros://add/${encode('{}')}` }))).toBe(ReasonInvalidLink)
-    expect(await reasonOf(core.call(MethodLinksParse, { link: `throne://add/${encode('{}')}` }))).toBe(ReasonSingleServer)
+    expect(await reasonOf(core.call(MethodLinksParse, { link: `throne://add/${encode('{}')}` }))).toBe(ReasonInvalidLink)
     expect(await reasonOf(core.call(MethodLinksParse, { link: `throne://route/${encode('{}')}` }))).toBe(ReasonInvalidLink)
     expect(await reasonOf(core.call(MethodLinksParse, { link: 'https://sub.example.com/u/8f3a' }))).toBe(ReasonInvalidLink)
   })
