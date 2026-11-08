@@ -1,8 +1,10 @@
 package profile
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -30,6 +32,15 @@ const minHopInterval = 5 * time.Second
 func (p Profile) Validate() error {
 	if err := p.validatePart(); err != nil {
 		return err
+	}
+	// The compound profiles have no address of their own.
+	switch p.Type {
+	case TypeChain:
+		return p.Chain.validate()
+	case TypeCustom:
+		return p.Custom.validate()
+	case TypeDirect:
+		return nil
 	}
 	if strings.TrimSpace(p.Server) == "" {
 		return errors.New("the server address is missing")
@@ -436,6 +447,7 @@ func (p Profile) validatePart() error {
 		{TypeWireGuard, p.WireGuard != nil}, {TypeHysteria, p.Hysteria != nil}, {TypeNaive, p.Naive != nil},
 		{TypeSSH, p.SSH != nil}, {TypeSnell, p.Snell != nil},
 		{TypeOpenVPN, p.OpenVPN != nil}, {TypeOpenConnect, p.OpenConnect != nil}, {TypeMASQUE, p.MASQUE != nil},
+		{TypeChain, p.Chain != nil}, {TypeCustom, p.Custom != nil}, {TypeDirect, p.Direct != nil},
 	}
 	known := false
 	for _, part := range parts {
@@ -525,4 +537,45 @@ func isUUID(text string) bool {
 		}
 	}
 	return true
+}
+
+func (c *Chain) validate() error {
+	if len(c.Servers) < 2 {
+		return errors.New("a chain needs at least two servers")
+	}
+	seen := map[string]bool{}
+	for _, id := range c.Servers {
+		if strings.TrimSpace(id) == "" {
+			return errors.New("a server of the chain is missing")
+		}
+		if seen[id] {
+			return errors.New("a server comes twice in the chain")
+		}
+		seen[id] = true
+	}
+	return nil
+}
+
+// Outbounds that are not servers, which a custom profile cannot be.
+var customInfraTypes = []string{"direct", "block", "dns", "selector", "urltest"}
+
+// validate checks the shape of a custom outbound; whether sing-box takes it, its check tells when it is saved.
+func (c *Custom) validate() error {
+	var head struct {
+		Type   any    `json:"type"`
+		Detour string `json:"detour"`
+	}
+	if trimmed := bytes.TrimSpace(c.JSON); len(trimmed) == 0 || trimmed[0] != '{' || json.Unmarshal(c.JSON, &head) != nil {
+		return errors.New("the custom outbound is not a JSON object")
+	}
+	kind, _ := head.Type.(string)
+	switch {
+	case strings.TrimSpace(kind) == "":
+		return errors.New("the custom outbound has no type")
+	case slices.Contains(customInfraTypes, kind):
+		return fmt.Errorf("a %s outbound is no server", kind)
+	case strings.TrimSpace(head.Detour) != "":
+		return errors.New("Poros dials the custom outbound itself; to go through another server, make a chain")
+	}
+	return nil
 }

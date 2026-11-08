@@ -69,13 +69,13 @@ func downloadLeg(extra json.RawMessage) map[string]any {
 	return leg
 }
 
-// buildXray writes the Xray config of a VLESS server behind the bridge.
-func buildXray(in Input) ([]byte, error) {
-	outbound, err := xrayVLESS(in.Server, TagProxy, in.Interface, in.Resolved)
+// buildXray writes the Xray config of a VLESS server behind the bridge, under tag.
+func buildXray(in Input, server profile.Profile, tag string) ([]byte, error) {
+	outbound, err := xrayVLESS(server, tag, in.Interface, in.Resolved)
 	if err != nil {
 		return nil, err
 	}
-	return xrayConfig([]xrayEntry{{tag: TagProxy, bridge: in.Bridge, outbound: outbound}})
+	return xrayConfig([]xrayEntry{{tag: tag, bridge: in.Bridge, outbound: outbound}})
 }
 
 // xrayEntry is one server of an Xray config with the bridge sing-box reaches it through.

@@ -235,8 +235,14 @@ func (e *Engine) SaveServer(req SaveServer) (Server, error) {
 		}
 		return Server{}, jsonrpc.Failed(reason, "%s", err.Error())
 	}
+	if err := checkCustom(req.Profile); err != nil {
+		return Server{}, err
+	}
 	var saved Server
 	err := e.changeServers(func(s *serverStore) error {
+		if err := checkChain(s, req.ID, req.Profile); err != nil {
+			return err
+		}
 		r := serverRecord{ID: req.ID, Profile: req.Profile}
 		var groupID string
 		if req.ID != "" {

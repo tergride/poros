@@ -57,6 +57,8 @@ type Input struct {
 	// DNS included, is refused, and the rest goes as the preset says. Server is not used.
 	Refuse bool
 	Server profile.Profile
+	// Links are the servers of a chain, in its order.
+	Links  []profile.Profile
 	Preset Preset
 	// Tun and the mixed inbound always exist; SystemProxy is the engine's business, not the config's.
 	Tun bool
@@ -91,7 +93,7 @@ func (c Configs) SingBoxJSON() ([]byte, error) {
 // Build builds a connection. A server neither core can run fails with an error matching profile.ErrUnsupported.
 func Build(in Input) (Configs, error) {
 	if !in.Refuse {
-		if err := in.Server.Validate(); err != nil {
+		if err := validateServer(in.Server, in.Links); err != nil {
 			return Configs{}, err
 		}
 	}
@@ -106,19 +108,23 @@ func Build(in Input) (Configs, error) {
 	switch {
 	case in.Refuse:
 		proxy.outbounds = []option.Outbound{{Type: C.TypeBlock, Tag: TagProxy, Options: &option.StubOptions{}}}
-	case RunsOnXray(in.Server, in.RealityOnXray):
-		if in.Bridge.Port == 0 || in.Bridge.Username == "" || in.Bridge.Password == "" {
-			return Configs{}, errors.New("a server on Xray needs the bridge")
-		}
-		xray, err := buildXray(in)
-		if err != nil {
-			return Configs{}, err
-		}
-		configs.Xray = xray
-		proxy.outbounds = []option.Outbound{bridgeOutbound(TagProxy, in.Bridge)}
 	default:
+		var bridge *option.Outbound
+		if entry := Entry(in.Server, in.Links); RunsOnXray(entry, in.RealityOnXray) {
+			if in.Bridge.Port == 0 || in.Bridge.Username == "" || in.Bridge.Password == "" {
+				return Configs{}, errors.New("a server on Xray needs the bridge")
+			}
+			tag := entryTag(in.Server, TagProxy)
+			xray, err := buildXray(in, entry, tag)
+			if err != nil {
+				return Configs{}, err
+			}
+			configs.Xray = xray
+			b := bridgeOutbound(tag, in.Bridge)
+			bridge = &b
+		}
 		var err error
-		if proxy, err = singBoxServer(in.Server, TagProxy, in.Preset.Hardened); err != nil {
+		if proxy, err = serverParts(in.Server, in.Links, TagProxy, bridge, in.Preset.Hardened); err != nil {
 			return Configs{}, err
 		}
 	}

@@ -24,6 +24,9 @@ const (
 	TypeOpenVPN     = "openvpn"
 	TypeOpenConnect = "openconnect"
 	TypeMASQUE      = "masque"
+	TypeChain       = "chain"
+	TypeCustom      = "custom"
+	TypeDirect      = "direct"
 )
 
 // Profile is one server. Exactly the part named by Type is set.
@@ -50,6 +53,9 @@ type Profile struct {
 	OpenVPN     *OpenVPN     `json:"openvpn,omitempty"`
 	OpenConnect *OpenConnect `json:"openconnect,omitempty"`
 	MASQUE      *MASQUE      `json:"masque,omitempty"`
+	Chain       *Chain       `json:"chain,omitempty"`
+	Custom      *Custom      `json:"custom,omitempty"`
+	Direct      *Direct      `json:"direct,omitempty"`
 }
 
 type VLESS struct {
@@ -400,3 +406,19 @@ type Multiplex struct {
 	MaxStreams     int    `json:"max_streams,omitempty"`
 	Padding        bool   `json:"padding,omitempty"`
 }
+
+// Chain dials servers one through another. It has no address of its own and names servers of this Poros, so it
+// travels in no link.
+type Chain struct {
+	// Servers are IDs: the first is dialled directly, each next one through the one before, and the last is where
+	// the traffic leaves.
+	Servers []string `json:"servers"`
+}
+
+// Custom is one sing-box outbound or endpoint as JSON, for what the model has no fields for.
+type Custom struct {
+	JSON json.RawMessage `json:"json"`
+}
+
+// Direct connects without a server, with the rest of what Poros does: the preset, TUN, the kill switch.
+type Direct struct{}

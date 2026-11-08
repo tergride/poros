@@ -23,7 +23,11 @@ func (e *Engine) profilesOf(ids []string) ([]profile.Profile, error) {
 			if g < 0 {
 				return serverNotFound(id)
 			}
-			profiles = append(profiles, store.servers[store.groups[g].ID][i].Profile)
+			p := store.servers[store.groups[g].ID][i].Profile
+			if p.Type == profile.TypeChain {
+				return jsonrpc.Failed(ReasonInvalidValue, "a chain is made of the servers of this Poros and has no link: share its servers")
+			}
+			profiles = append(profiles, p)
 		}
 		return nil
 	})
@@ -59,11 +63,17 @@ func (e *Engine) ExportServer(req ByID) (ServerConfig, error) {
 	if err != nil {
 		return ServerConfig{}, err
 	}
-	profiles, err := e.profilesOf([]string{req.ID})
-	if err != nil {
+	p, links, found, err := e.serverWithLinks(req.ID)
+	var missing missingLink
+	switch {
+	case errors.As(err, &missing):
+		return ServerConfig{}, jsonrpc.Failed(ReasonNoServer, "%v", err)
+	case err != nil:
 		return ServerConfig{}, err
+	case !found:
+		return ServerConfig{}, serverNotFound(req.ID)
 	}
-	onXray, data, err := config.Export(profiles[0], settings.RealityOnXray)
+	onXray, data, err := config.Export(p, links, settings.RealityOnXray)
 	switch {
 	case errors.Is(err, profile.ErrUnsupported):
 		return ServerConfig{}, jsonrpc.Failed(ReasonServerUnsupported, "%s", err.Error())

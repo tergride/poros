@@ -20,7 +20,12 @@ type serverRecord struct {
 func (r serverRecord) view(groupID string) Server {
 	p := r.Profile
 	name := strings.TrimSpace(p.Name)
-	if name == "" {
+	switch {
+	case name != "":
+	case p.Server == "":
+		// A chain, Direct and a custom outbound have no address to stand for a name.
+		name = p.Type
+	default:
 		name = net.JoinHostPort(p.Server, strconv.Itoa(p.ServerPort))
 	}
 	return Server{

@@ -47,22 +47,35 @@ func (e *Engine) TestServers(query ServersQuery) (any, error) {
 	type target struct {
 		id     string
 		server profile.Profile
+		links  []profile.Profile
 	}
 	var targets []target
 	groups, err := e.groups()
 	if err != nil {
 		return nil, err
 	}
+	// A chain may go through servers of other groups.
+	all := map[string]profile.Profile{}
 	for _, group := range groups {
-		if query.GroupID != "" && group.ID != query.GroupID {
-			continue
-		}
 		list, err := e.serverRecords(group.ID)
 		if err != nil {
 			return nil, err
 		}
 		for _, r := range list {
-			targets = append(targets, target{r.ID, r.Profile})
+			all[r.ID] = r.Profile
+			if query.GroupID == "" || group.ID == query.GroupID {
+				targets = append(targets, target{id: r.ID, server: r.Profile})
+			}
+		}
+	}
+	for i, t := range targets {
+		if t.server.Type != profile.TypeChain {
+			continue
+		}
+		for _, id := range t.server.Chain.Servers {
+			if link, ok := all[id]; ok {
+				targets[i].links = append(targets[i].links, link)
+			}
 		}
 	}
 	settings, err := e.Settings()
@@ -88,18 +101,20 @@ func (e *Engine) TestServers(query ServersQuery) (any, error) {
 		}
 		var hosts []string
 		for _, t := range targets {
-			server := config.TestServer{Tag: t.id, Server: t.server}
-			if config.RunsOnXray(t.server, settings.RealityOnXray) {
+			server := config.TestServer{Tag: t.id, Server: t.server, Links: t.links}
+			entry := config.Entry(t.server, t.links)
+			if config.RunsOnXray(entry, settings.RealityOnXray) {
 				bridge, err := newBridge()
 				if err != nil {
 					continue
 				}
 				server.Bridge = bridge
-				hosts = append(hosts, config.XrayHosts(t.server, settings.RealityOnXray)...)
-			} else {
+				hosts = append(hosts, config.XrayHosts(entry, settings.RealityOnXray)...)
+			} else if entry.Server != "" {
 				// sing-box gets the addresses too: its own lookup would go to the system's DNS, which a TUN of
-				// another client may hold or answer with fake addresses.
-				hosts = append(hosts, t.server.Server)
+				// another client may hold or answer with fake addresses. The links after the first are dialled
+				// through it, which resolves their names.
+				hosts = append(hosts, entry.Server)
 			}
 			in.Servers = append(in.Servers, server)
 		}

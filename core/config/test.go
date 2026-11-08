@@ -15,7 +15,9 @@ import (
 type TestServer struct {
 	Tag    string
 	Server profile.Profile
-	// Bridge is needed by a server that runs on Xray.
+	// Links are the servers of a chain, in its order.
+	Links []profile.Profile
+	// Bridge is needed by a server that runs on Xray, or a chain whose first server does.
 	Bridge Bridge
 }
 
@@ -45,27 +47,33 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 	var endpoints []option.Endpoint
 	var entries []xrayEntry
 	for _, server := range in.Servers {
-		if err := server.Server.Validate(); err != nil {
+		if err := validateServer(server.Server, server.Links); err != nil {
 			configs.Failed[server.Tag] = err
 			continue
 		}
-		if !RunsOnXray(server.Server, in.RealityOnXray) {
-			built, err := singBoxServer(server.Server, server.Tag, false)
+		var bridge *option.Outbound
+		var entry *xrayEntry
+		if xrayServer := Entry(server.Server, server.Links); RunsOnXray(xrayServer, in.RealityOnXray) {
+			tag := entryTag(server.Server, server.Tag)
+			outbound, err := xrayVLESS(xrayServer, tag, in.Interface, in.Resolved)
 			if err != nil {
 				configs.Failed[server.Tag] = err
 				continue
 			}
-			outbounds = append(outbounds, built.outbounds...)
-			endpoints = append(endpoints, built.endpoints...)
-			continue
+			entry = &xrayEntry{tag: tag, bridge: server.Bridge, outbound: outbound}
+			b := bridgeOutbound(tag, server.Bridge)
+			bridge = &b
 		}
-		outbound, err := xrayVLESS(server.Server, server.Tag, in.Interface, in.Resolved)
+		built, err := serverParts(server.Server, server.Links, server.Tag, bridge, false)
 		if err != nil {
 			configs.Failed[server.Tag] = err
 			continue
 		}
-		entries = append(entries, xrayEntry{tag: server.Tag, bridge: server.Bridge, outbound: outbound})
-		outbounds = append(outbounds, bridgeOutbound(server.Tag, server.Bridge))
+		if entry != nil {
+			entries = append(entries, *entry)
+		}
+		outbounds = append(outbounds, built.outbounds...)
+		endpoints = append(endpoints, built.endpoints...)
 	}
 	if len(entries) > 0 {
 		xray, err := xrayConfig(entries)

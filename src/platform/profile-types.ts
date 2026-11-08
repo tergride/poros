@@ -73,6 +73,18 @@ export const TypeOpenConnect = "openconnect";
  */
 export const TypeMASQUE = "masque";
 /**
+ * Types of servers, as stored.
+ */
+export const TypeChain = "chain";
+/**
+ * Types of servers, as stored.
+ */
+export const TypeCustom = "custom";
+/**
+ * Types of servers, as stored.
+ */
+export const TypeDirect = "direct";
+/**
  * Profile is one server. Exactly the part named by Type is set.
  */
 export interface Profile {
@@ -97,6 +109,9 @@ export interface Profile {
   openvpn?: OpenVPN;
   openconnect?: OpenConnect;
   masque?: MASQUE;
+  chain?: Chain;
+  custom?: Custom;
+  direct?: Direct;
 }
 export interface VLESS {
   uuid: string;
@@ -555,4 +570,26 @@ export interface Multiplex {
   min_streams?: number /* int */;
   max_streams?: number /* int */;
   padding?: boolean;
+}
+/**
+ * Chain dials servers one through another. It has no address of its own and names servers of this Poros, so it
+ * travels in no link.
+ */
+export interface Chain {
+  /**
+   * Servers are IDs: the first is dialled directly, each next one through the one before, and the last is where
+   * the traffic leaves.
+   */
+  servers: string[];
+}
+/**
+ * Custom is one sing-box outbound or endpoint as JSON, for what the model has no fields for.
+ */
+export interface Custom {
+  json: unknown;
+}
+/**
+ * Direct connects without a server, with the rest of what Poros does: the preset, TUN, the kill switch.
+ */
+export interface Direct {
 }

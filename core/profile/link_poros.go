@@ -22,5 +22,8 @@ func parsePorosLink(link string) (Profile, error) {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return Profile{}, errors.New("the poros://add/ link holds no server")
 	}
+	if p.Type == TypeChain {
+		return Profile{}, unsupported("a chain is made of the servers of one Poros and cannot be added from a link")
+	}
 	return p, nil
 }

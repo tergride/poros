@@ -213,7 +213,8 @@ export interface Server {
   name: string;
   /**
    * Protocol is the type of its profile: vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http, anytls,
-   * wireguard, hysteria, naive, ssh, snell, openvpn, openconnect or masque.
+   * wireguard, hysteria, naive, ssh, snell, openvpn, openconnect, masque, chain, custom or direct. A chain, Direct and
+   * a custom outbound have no host or port.
    */
   protocol: string;
   host: string;

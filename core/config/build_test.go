@@ -132,6 +132,12 @@ func sampleLinks(t *testing.T) map[string]string {
 			`"openconnect":{"flavor":"anyconnect","path":"/staff","username":"u","password":"pw","ca":` + jsonString(t, ca) + `}}`),
 		"masque": porosLink(`{"type":"masque","name":"masque","server":"m.example.com","server_port":443,"masque":{"username":"u",` +
 			`"password":"pw","path":"/.well-known/masque/ip/","tls":{"enabled":true,"server_name":"m.example.com"}}}`),
+		"custom outbound": porosLink(`{"type":"custom","name":"custom","custom":{"json":{"type":"shadowsocks","tag":"mine",` +
+			`"server":"cs.example.com","server_port":8388,"method":"aes-128-gcm","password":"pw","multiplex":{"enabled":true}}}}`),
+		"custom endpoint": porosLink(`{"type":"custom","name":"custom-wg","custom":{"json":{"type":"wireguard","address":["172.16.0.2/32"],` +
+			`"private_key":"` + testWGPrivate + `","peers":[{"address":"cw.example.com","port":51820,"public_key":"` + testWGPublic +
+			`","allowed_ips":["0.0.0.0/0"]}]}}}`),
+		"direct server": porosLink(`{"type":"direct","name":"direct","direct":{}}`),
 		"hysteria2 realm": porosLink(`{"type":"hysteria2","name":"realm","server":"realm.example.com","server_port":443,` +
 			`"hysteria2":{"password":"pw","tls":{"enabled":true,"server_name":"hy.example.com"},` +
 			`"realm":{"server_url":"https://realm.example.com","realm_id":"home","stun_servers":["stun.example.com:3478"]}}}`),

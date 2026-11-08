@@ -224,7 +224,11 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if settings.Server == "" {
 		return ConnectionState{}, failure(ReasonNoServer, "no server is chosen")
 	}
-	server, found, err := e.serverProfile(settings.Server)
+	server, links, found, err := e.serverWithLinks(settings.Server)
+	var missing missingLink
+	if errors.As(err, &missing) {
+		return ConnectionState{}, failure(ReasonNoServer, "%v", err)
+	}
 	if err != nil {
 		return ConnectionState{}, err
 	}
@@ -241,7 +245,8 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if settings.Tun && !elevated() {
 		return ConnectionState{}, failure(ReasonNeedsElevation, "TUN needs administrator rights")
 	}
-	onXray := config.RunsOnXray(server, settings.RealityOnXray)
+	entry := config.Entry(server, links)
+	onXray := config.RunsOnXray(entry, settings.RealityOnXray)
 	log.Printf("connection: starting %s on %s, TUN %t, System %t, kill switch %s, IPv6 %t, preset %s",
 		server.Type, coreName(onXray), settings.Tun, settings.SystemProxy, settings.KillSwitch, settings.IPv6, settings.Preset)
 	listen := "127.0.0.1"
@@ -275,6 +280,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 
 	in := config.Input{
 		Server:        server,
+		Links:         links,
 		Preset:        preset,
 		Tun:           settings.Tun,
 		AllowLAN:      settings.AllowLAN,
@@ -292,7 +298,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 			in.Interface = iface.Name
 		}
 		resolveCtx, cancel := context.WithTimeout(ctx, resolveTimeout)
-		in.Resolved, err = resolveHosts(resolveCtx, e.systemResolver(), config.XrayHosts(server, settings.RealityOnXray), !settings.IPv6)
+		in.Resolved, err = resolveHosts(resolveCtx, e.systemResolver(), config.XrayHosts(entry, settings.RealityOnXray), !settings.IPv6)
 		cancel()
 		if ctx.Err() != nil {
 			return ConnectionState{}, ctx.Err()

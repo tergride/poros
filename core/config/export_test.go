@@ -10,7 +10,7 @@ func TestExportPicksTheCoreAndKeepsNames(t *testing.T) {
 		"&sni=www.example.com&fp=chrome&pbk=Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw&sid=ab&type=tcp#Germany")
 	trojan := mustParse(t, "trojan://secret@tr.example.com:443?security=tls&sni=tr.example.com&type=ws&path=%2Ftr")
 
-	onXray, data, err := Export(reality, true)
+	onXray, data, err := Export(reality, nil, true)
 	var xray map[string]any
 	if err != nil || !onXray || json.Unmarshal(data, &xray) != nil {
 		t.Fatalf("REALITY on Xray: %v, %s", err, data)
@@ -21,29 +21,29 @@ func TestExportPicksTheCoreAndKeepsNames(t *testing.T) {
 		t.Errorf("the Xray outbound keeps the name and binds no interface: %s", data)
 	}
 
-	onXray, data, err = Export(reality, false)
+	onXray, data, err = Export(reality, nil, false)
 	var box map[string]any
 	if err != nil || onXray || json.Unmarshal(data, &box) != nil || box["type"] != "vless" {
 		t.Errorf("REALITY on sing-box: %v, %s", err, data)
 	}
-	onXray, data, err = Export(trojan, true)
+	onXray, data, err = Export(trojan, nil, true)
 	if err != nil || onXray || json.Unmarshal(data, &box) != nil || box["type"] != "trojan" || box["server"] != "tr.example.com" {
 		t.Errorf("Trojan: %v, %s", err, data)
 	}
 
 	broken := trojan
 	broken.Server = ""
-	if _, _, err = Export(broken, true); err == nil {
+	if _, _, err = Export(broken, nil, true); err == nil {
 		t.Error("an invalid server is exported")
 	}
 
 	links := sampleLinks(t)
-	_, data, err = Export(mustParse(t, links["wireguard"]), true)
+	_, data, err = Export(mustParse(t, links["wireguard"]), nil, true)
 	var endpoint map[string]any
 	if err != nil || json.Unmarshal(data, &endpoint) != nil || endpoint["type"] != "wireguard" || endpoint["peers"] == nil {
 		t.Errorf("WireGuard is an endpoint: %v, %s", err, data)
 	}
-	_, data, err = Export(mustParse(t, links["ss over shadowtls"]), true)
+	_, data, err = Export(mustParse(t, links["ss over shadowtls"]), nil, true)
 	var pair struct {
 		Outbounds []map[string]any `json:"outbounds"`
 	}

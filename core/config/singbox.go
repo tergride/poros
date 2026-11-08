@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/netip"
 	"strings"
@@ -31,6 +32,12 @@ const tagShadowTLS = "-shadowtls"
 // its ShadowTLS outbound, one outbound for the rest.
 func singBoxServer(p profile.Profile, tag string, hardened bool) (boxServer, error) {
 	switch {
+	case p.Custom != nil:
+		return customServer(p.Custom.JSON, tag)
+	case p.Direct != nil:
+		return directServer(tag), nil
+	case p.Chain != nil:
+		return boxServer{}, errors.New("a chain is built from its links")
 	case p.WireGuard != nil:
 		endpoint, err := wireGuardEndpoint(p, tag)
 		return boxServer{endpoints: []option.Endpoint{endpoint}}, err
