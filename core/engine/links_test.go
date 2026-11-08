@@ -49,7 +49,7 @@ func TestOutsideLinks(t *testing.T) {
 	throne := `{"type":"trojan","tag":"Throne","server":"th.example.com","server_port":8443,"password":"p"}`
 	info, err = e.ParseLink(OutsideLink{Link: "throne://add/" + encode(throne)})
 	if err != nil || info.Kind != LinkServer || info.Server == nil ||
-		*info.Server != (Server{Name: "Throne", Protocol: "trojan", Host: "th.example.com", Port: 8443}) {
+		*info.Server != (Server{Name: "Throne", Protocol: "trojan", Host: "th.example.com", Port: 8443, Security: "none"}) {
 		t.Fatalf("Throne server link: %+v, %v", info, err)
 	}
 

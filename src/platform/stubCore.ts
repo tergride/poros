@@ -33,6 +33,8 @@ import {
   EventNetworkChanged,
   EventPresetsChanged,
   EventServersChanged,
+  EventServersIPTested,
+  EventServersSpeedTested,
   EventServersTested,
   EventGroupsChanged,
   EventSettingsChanged,
@@ -73,6 +75,13 @@ import {
   MethodServersMove,
   MethodServersRemove,
   MethodServersSave,
+  MethodServersClean,
+  MethodServersClearResults,
+  MethodServersIPTest,
+  MethodServersResetTraffic,
+  MethodServersResolve,
+  MethodServersSpeedTest,
+  MethodServersStopTests,
   MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
@@ -82,6 +91,7 @@ import {
   MethodUpdatesInstall,
   MethodUpdatesState,
   ReasonCheckOff,
+  SpeedTestFull,
   ReasonDuplicate,
   ReasonInvalidEntry,
   LinkPreset,
@@ -132,6 +142,8 @@ const defaultSettings: Settings = {
   subscriptionUserAgent: '',
   subscriptionTls: '',
   subscriptionHttp: '',
+  speedTestMode: SpeedTestFull,
+  speedTestUrl: 'https://speed.cloudflare.com/__down?bytes=25000000',
   sendDeviceInfo: false,
   showChanges: true,
   autoConnect: true,
@@ -171,9 +183,9 @@ const noGroupSettings: GroupSettings = {
 
 /** The servers every subscription of the stub core holds, with the delay a test gives them. */
 const stubServers: (Omit<Server, 'id' | 'groupId' | 'latency'> & { measured: number })[] = [
-  { name: '🇩🇪 Germany', protocol: 'vless', host: 'de.example.com', port: 443, country: 'DE', measured: 42 },
-  { name: '🇳🇱 Netherlands', protocol: 'vless', host: 'nl.example.com', port: 443, country: 'NL', measured: 48 },
-  { name: '🇫🇮 Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI', measured: -1 },
+  { name: '🇩🇪 Germany', protocol: 'vless', host: 'de.example.com', port: 443, country: 'DE', security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '', measured: 42 },
+  { name: '🇳🇱 Netherlands', protocol: 'vless', host: 'nl.example.com', port: 443, country: 'NL', security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '', measured: 48 },
+  { name: '🇫🇮 Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI', security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '', measured: -1 },
 ]
 
 const builtins: (Preset & { inherited: InheritedRule[] })[] = [
@@ -449,12 +461,15 @@ function readShareLink(line: string): Profile | null {
 
 const regional = (c: string | undefined) => c !== undefined && c.codePointAt(0)! >= 0x1f1e6 && c.codePointAt(0)! <= 0x1f1ff
 
-/** The view of a server, as serverRecord.view in core/engine/servers.go. */
+const noMeasures = { security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '' }
+
+/** The view of a server, as serverRecord.view in core/engine/servers.go; the stub knows only SOCKS as insecure. */
 function serverOf(p: Profile, id: string, groupId: string): Server {
   const name = p.name?.trim() || p.server + ':' + p.server_port
   const flag = [...name].slice(0, 2)
   const country = regional(flag[0]) && regional(flag[1]) ? flag.map((c) => String.fromCharCode(c.codePointAt(0)! - 0x1f1e6 + 65)).join('') : ''
-  return { id, groupId, name, protocol: p.type, host: p.server, port: p.server_port, country, latency: 0 }
+  const security = p.type === 'socks' ? 'none' : ''
+  return { id, groupId, name, protocol: p.type, host: p.server, port: p.server_port, country, latency: 0, ...noMeasures, security }
 }
 
 /** The rules of core/engine/links.go: nothing is added, the link is only read. */
@@ -912,8 +927,8 @@ export function createStubCore(): CoreClient {
       const outbound = { type, tag: 'proxy', server, server_port, ...(part as object) }
       return { core: CoreSingBox, json: JSON.stringify(outbound, null, 2) }
     },
-    [MethodServersTest]: ({ groupId }) => {
-      const tested = servers.filter((s) => groupId === '' || s.groupId === groupId)
+    [MethodServersTest]: ({ groupId, ids }) => {
+      const tested = servers.filter((s) => (ids?.length ? ids.includes(s.id) : groupId === '' || s.groupId === groupId))
       tested.forEach((server, i) => {
         setTimeout(() => {
           const measured = stubServers.find((s) => s.host === server.host)?.measured ?? -1
@@ -923,6 +938,49 @@ export function createStubCore(): CoreClient {
       })
       if (tested.length === 0) setTimeout(() => emit(EventServersTested, { results: [], done: true }), 0)
       return null
+    },
+    [MethodServersSpeedTest]: ({ groupId, ids }) => {
+      const tested = servers.filter((s) => (ids?.length ? ids.includes(s.id) : groupId === '' || s.groupId === groupId))
+      setTimeout(() => {
+        const results = tested.map((s) => ({ serverId: s.id, download: '84.2 Mbps', upload: '21.7 Mbps', country: s.country, error: '' }))
+        servers = servers.map((s) => (tested.includes(s) ? { ...s, speedDown: '84.2 Mbps', speedUp: '21.7 Mbps' } : s))
+        emit(EventServersSpeedTested, { results, done: true })
+      }, 0)
+      return null
+    },
+    [MethodServersIPTest]: ({ groupId, ids }) => {
+      const tested = servers.filter((s) => (ids?.length ? ids.includes(s.id) : groupId === '' || s.groupId === groupId))
+      setTimeout(() => {
+        const results = tested.map((s) => ({ serverId: s.id, ip: '203.0.113.' + (Number(s.id) % 250), country: s.country, error: '' }))
+        servers = servers.map((s) => {
+          const result = results.find((r) => r.serverId === s.id)
+          return result ? { ...s, exitIp: result.ip, exitCountry: result.country } : s
+        })
+        emit(EventServersIPTested, { results, done: true })
+      }, 0)
+      return null
+    },
+    [MethodServersResolve]: () => ({ resolved: 0 }),
+    [MethodServersClearResults]: ({ groupId, ids }) => {
+      const picked = (s: Server) => (ids?.length ? ids.includes(s.id) : groupId === '' || s.groupId === groupId)
+      servers = servers.map((s) => (picked(s) ? { ...s, latency: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '' } : s))
+      changed(...new Set(servers.filter(picked).map((s) => s.groupId)))
+      return null
+    },
+    [MethodServersStopTests]: () => null,
+    [MethodServersResetTraffic]: ({ groupId, ids }) => {
+      const picked = (s: Server) => (ids?.length ? ids.includes(s.id) : groupId === '' || s.groupId === groupId)
+      servers = servers.map((s) => (picked(s) ? { ...s, upload: 0, download: 0 } : s))
+      changed(...new Set(servers.filter(picked).map((s) => s.groupId)))
+      return null
+    },
+    [MethodServersClean]: ({ groupId, unavailable, insecure }) => {
+      const gone = servers.filter(
+        (s) => (groupId === '' || s.groupId === groupId) && ((unavailable && s.latency < 0) || (insecure && s.security !== '')),
+      )
+      servers = servers.filter((s) => !gone.includes(s))
+      changed(...new Set(gone.map((s) => s.groupId)))
+      return { ids: gone.map((s) => s.id) }
     },
     [MethodPresetsList]: () => presetList(),
     [MethodPresetsGet]: ({ id }) => copyOf(id),

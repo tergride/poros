@@ -11,6 +11,7 @@ import {
   EventKillSwitchChanged,
   EventNetworkChanged,
   EventServersChanged,
+  EventServersSpeedTested,
   EventGroupsChanged,
   EventServersTested,
   EventUpdatesChanged,
@@ -49,6 +50,8 @@ import {
   MethodServersMove,
   MethodServersRemove,
   MethodServersSave,
+  MethodServersClean,
+  MethodServersSpeedTest,
   MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
@@ -161,6 +164,21 @@ ${vless('se.example.com', 'Sweden')}` })
     await core.call(MethodSettingsSet, { ...settings, server: added.ids[0]! })
     await core.call(MethodServersRemove, { ids: [added.ids[0]!] })
     expect((await core.call(MethodSettingsGet)).server).toBe(copy)
+  })
+
+  it('tests and cleans servers by the rules of the engine', async () => {
+    const core = createStubCore()
+    const { group } = await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
+    const [first] = await core.call(MethodServersList, { groupId: group.id })
+    const speed = new Promise((resolve) => core.on(EventServersSpeedTested, resolve))
+    await core.call(MethodServersSpeedTest, { groupId: '', ids: [first!.id] })
+    expect(await speed).toMatchObject({ results: [{ serverId: first!.id }], done: true })
+    const tested = new Promise((resolve) => core.on(EventServersTested, (e) => e.done && resolve(e)))
+    await core.call(MethodServersTest, { groupId: group.id })
+    await tested
+    const { ids } = await core.call(MethodServersClean, { groupId: group.id, unavailable: true, duplicates: false, insecure: false })
+    expect(ids).toHaveLength(1)
+    expect(await core.call(MethodServersList, { groupId: group.id })).toHaveLength(2)
   })
 
   it('configures a group by the rules of the engine', async () => {

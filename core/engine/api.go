@@ -48,6 +48,10 @@ type Settings struct {
 	// SubscriptionHTTP is "" for any HTTP version or "1.1" for HTTP/1.1 alone.
 	SubscriptionTLS  string `json:"subscriptionTls"`
 	SubscriptionHTTP string `json:"subscriptionHttp"`
+	// SpeedTestMode is what a speed test measures: "full" for download and upload, "download", "upload",
+	// "simple" for one download of SpeedTestURL, or "country" for the country of the test's server alone.
+	SpeedTestMode string `json:"speedTestMode"`
+	SpeedTestURL  string `json:"speedTestUrl"`
 	// SendDeviceInfo sends providers a device ID and the system's version, for those that limit devices.
 	SendDeviceInfo bool `json:"sendDeviceInfo"`
 	// ShowChanges shows what a subscription update by hand added and removed.
@@ -211,6 +215,17 @@ type Server struct {
 	Country string `json:"country"`
 	// Latency is the last delay test in milliseconds: 0 before a test, -1 when the server did not answer.
 	Latency int `json:"latency"`
+	// Security is "" for a server that protects the traffic, "weak" for an old cipher or TLS that checks no
+	// certificate, "none" for plain text; a server on a private address is never insecure.
+	Security string `json:"security"`
+	// Upload and Download count the bytes that went through it since it came or its traffic was reset.
+	Upload   int64 `json:"upload"`
+	Download int64 `json:"download"`
+	// SpeedDown and SpeedUp are the last speed test, "" before one; ExitIP and ExitCountry the last IP test.
+	SpeedDown   string `json:"speedDown"`
+	SpeedUp     string `json:"speedUp"`
+	ExitIP      string `json:"exitIp"`
+	ExitCountry string `json:"exitCountry"`
 }
 
 // ServerLatency is a delay test result: Latency in milliseconds, -1 when the server did not answer.
@@ -257,6 +272,15 @@ type ConnectionState struct {
 	Error     string `json:"error"`
 	ErrorText string `json:"errorText"`
 }
+
+// Modes of a speed test.
+const (
+	SpeedTestFull     = "full"
+	SpeedTestDownload = "download"
+	SpeedTestUpload   = "upload"
+	SpeedTestSimple   = "simple"
+	SpeedTestCountry  = "country"
+)
 
 // Kill switch modes.
 const (
@@ -566,9 +590,54 @@ type ByID struct {
 	ID string `json:"id"`
 }
 
-// ServersQuery picks the servers of one group, or of all with an empty ID.
+// ServersQuery picks servers: those IDs names, else those of one group, or of all with an empty GroupID.
 type ServersQuery struct {
-	GroupID string `json:"groupId"`
+	GroupID string   `json:"groupId"`
+	IDs     []string `json:"ids,omitempty"`
+}
+
+// ServerSpeed is a speed test of a server: the rates as the test writes them, such as "84.2 Mbps", "" for a
+// direction the mode leaves out, and the country of the test's server; Error tells why it failed, in English.
+type ServerSpeed struct {
+	ServerID string `json:"serverId"`
+	Download string `json:"download"`
+	Upload   string `json:"upload"`
+	Country  string `json:"country"`
+	Error    string `json:"error"`
+}
+
+// ServersSpeedTested brings speed test results as they come; Done is the last report of a test.
+type ServersSpeedTested struct {
+	Results []ServerSpeed `json:"results"`
+	Done    bool          `json:"done"`
+}
+
+// ServerIP is the address sites see a server's traffic come from, with its country; Error tells why the test failed.
+type ServerIP struct {
+	ServerID string `json:"serverId"`
+	IP       string `json:"ip"`
+	Country  string `json:"country"`
+	Error    string `json:"error"`
+}
+
+// ServersIPTested brings IP test results; Done is the last report of a test.
+type ServersIPTested struct {
+	Results []ServerIP `json:"results"`
+	Done    bool       `json:"done"`
+}
+
+// ServersResolved counts the servers whose host names were replaced by the addresses they resolve to.
+type ServersResolved struct {
+	Resolved int `json:"resolved"`
+}
+
+// CleanServers removes servers of a group, or of all: those that did not answer their last delay test, the second
+// and later of servers that are the same but for the name, and those that protect the traffic poorly.
+type CleanServers struct {
+	GroupID     string `json:"groupId"`
+	Unavailable bool   `json:"unavailable"`
+	Duplicates  bool   `json:"duplicates"`
+	Insecure    bool   `json:"insecure"`
 }
 
 // ServersChanged tells which group's servers changed.
@@ -619,8 +688,23 @@ const (
 	// MethodNetworkCheck starts a check of the addresses and DNS at once; network.changed brings the result.
 	MethodNetworkCheck = "network.check"
 	MethodNetworkState = "network.state"
-	// MethodServersTest measures the delay of the servers of a group, or of all; servers.tested brings the results.
+	// MethodServersTest measures the delay of servers; servers.tested brings the results.
 	MethodServersTest = "servers.test"
+	// MethodServersSpeedTest measures the speed of servers one by one, as speedTestMode says; servers.speedTested
+	// brings the results.
+	MethodServersSpeedTest = "servers.speedTest"
+	// MethodServersIPTest finds the address sites see each server's traffic come from; servers.ipTested brings it.
+	MethodServersIPTest = "servers.ipTest"
+	// MethodServersResolve replaces the host names of servers by the addresses they resolve to, as Throne does;
+	// TLS and HTTP keep the names.
+	MethodServersResolve = "servers.resolve"
+	// MethodServersClearResults forgets the delay, speed and IP tests of servers; MethodServersStopTests stops the
+	// tests that run.
+	MethodServersClearResults = "servers.clearResults"
+	MethodServersStopTests    = "servers.stopTests"
+	MethodServersResetTraffic = "servers.resetTraffic"
+	// MethodServersClean removes servers as CleanServers says and answers with their IDs.
+	MethodServersClean = "servers.clean"
 	// MethodPresetsGet gives a user's preset for the editor; for a built-in preset, a new copy of it, and for "" a
 	// new preset from scratch.
 	MethodPresetsGet    = "presets.get"
@@ -648,12 +732,14 @@ const (
 
 // Events the core sends without a request.
 const (
-	EventSettingsChanged   = "settings.changed"
-	EventGroupsChanged     = "groups.changed"
-	EventServersChanged    = "servers.changed"
-	EventConnectionChanged = "connection.changed"
-	EventNetworkChanged    = "network.changed"
-	EventServersTested     = "servers.tested"
+	EventSettingsChanged    = "settings.changed"
+	EventGroupsChanged      = "groups.changed"
+	EventServersChanged     = "servers.changed"
+	EventConnectionChanged  = "connection.changed"
+	EventNetworkChanged     = "network.changed"
+	EventServersTested      = "servers.tested"
+	EventServersSpeedTested = "servers.speedTested"
+	EventServersIPTested    = "servers.ipTested"
 	// EventConnectionTraffic comes every second while the connection runs.
 	EventConnectionTraffic = "connection.traffic"
 	EventPresetsChanged    = "presets.changed"

@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -36,6 +37,7 @@ func (r serverRecord) view(groupID string) Server {
 		Host:     p.Server,
 		Port:     p.ServerPort,
 		Country:  flagCountry(name),
+		Security: p.Security(),
 	}
 }
 
@@ -64,9 +66,10 @@ func (e *Engine) Servers(query ServersQuery) ([]Server, error) {
 				return err
 			}
 			for _, r := range records {
-				view := r.view(group.ID)
-				view.Latency = e.latencyOf(r.ID)
-				servers = append(servers, view)
+				if len(query.IDs) > 0 && !slices.Contains(query.IDs, r.ID) {
+					continue
+				}
+				servers = append(servers, e.serverView(r, group.ID))
 			}
 		}
 		return nil

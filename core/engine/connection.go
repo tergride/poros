@@ -363,7 +363,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	}
 	trafficCtx, stopTraffic := context.WithCancel(context.Background())
 	running.stopTraffic = stopTraffic
-	go e.reportTraffic(trafficCtx, counter)
+	go e.reportTraffic(trafficCtx, counter, settings.Server)
 	go e.pingConnection(trafficCtx, running.box, settings.Server)
 
 	// OpenVPN and OpenConnect refuse connections until their handshake is done: the connection is up only then.

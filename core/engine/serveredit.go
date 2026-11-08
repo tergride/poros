@@ -160,9 +160,7 @@ func (e *Engine) Server(req ByID) (ServerProfile, error) {
 		return ServerProfile{}, serverNotFound(req.ID)
 	}
 	r := place.servers[place.index]
-	view := r.view(place.group.ID)
-	view.Latency = e.latencyOf(r.ID)
-	return ServerProfile{Server: view, Profile: r.Profile}, nil
+	return ServerProfile{Server: e.serverView(r, place.group.ID), Profile: r.Profile}, nil
 }
 
 // AddServers adds the servers of a text to a group of the user's, or to a new one.
@@ -261,13 +259,12 @@ func (e *Engine) SaveServer(req SaveServer) (Server, error) {
 			s.servers[groupID] = append(s.servers[groupID], r)
 		}
 		s.changed[groupID] = true
-		saved = r.view(groupID)
+		saved = e.serverView(r, groupID)
 		return nil
 	})
 	if err != nil {
 		return Server{}, err
 	}
-	saved.Latency = e.latencyOf(saved.ID)
 	return saved, nil
 }
 

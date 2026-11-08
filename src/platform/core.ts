@@ -7,6 +7,7 @@ import type {
   AddSubscription,
   AppInfo,
   ByID,
+  CleanServers,
   ConfigureGroup,
   ConnectionState,
   Group,
@@ -31,6 +32,9 @@ import type {
   ServersAdded,
   ServersChanged,
   ServersQuery,
+  ServersIPTested,
+  ServersResolved,
+  ServersSpeedTested,
   ServersTested,
   Settings,
   SubscriptionUpdate,
@@ -45,6 +49,8 @@ import {
   EventNetworkChanged,
   EventPresetsChanged,
   EventServersChanged,
+  EventServersIPTested,
+  EventServersSpeedTested,
   EventServersTested,
   EventGroupsChanged,
   EventSettingsChanged,
@@ -81,6 +87,13 @@ import {
   MethodServersMove,
   MethodServersRemove,
   MethodServersSave,
+  MethodServersClean,
+  MethodServersClearResults,
+  MethodServersIPTest,
+  MethodServersResetTraffic,
+  MethodServersResolve,
+  MethodServersSpeedTest,
+  MethodServersStopTests,
   MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
@@ -114,6 +127,13 @@ export interface CoreMethods {
   [MethodServersDeepLinks]: { params: ServerIDs; result: ServerLinks }
   [MethodServersExport]: { params: ByID; result: ServerConfig }
   [MethodServersTest]: { params: ServersQuery; result: null }
+  [MethodServersSpeedTest]: { params: ServersQuery; result: null }
+  [MethodServersIPTest]: { params: ServersQuery; result: null }
+  [MethodServersResolve]: { params: ServersQuery; result: ServersResolved }
+  [MethodServersClearResults]: { params: ServersQuery; result: null }
+  [MethodServersStopTests]: { params: undefined; result: null }
+  [MethodServersResetTraffic]: { params: ServersQuery; result: null }
+  [MethodServersClean]: { params: CleanServers; result: ServerIDs }
   [MethodPresetsList]: { params: undefined; result: Preset[] }
   [MethodPresetsGet]: { params: ByID; result: PresetCopy }
   [MethodPresetsSave]: { params: PresetCopy; result: Preset }
@@ -140,6 +160,8 @@ export interface CoreEvents {
   [EventGroupsChanged]: Group[]
   [EventServersChanged]: ServersChanged
   [EventServersTested]: ServersTested
+  [EventServersSpeedTested]: ServersSpeedTested
+  [EventServersIPTested]: ServersIPTested
   [EventPresetsChanged]: Preset[]
   [EventConnectionChanged]: ConnectionState
   [EventConnectionTraffic]: Traffic

@@ -72,6 +72,9 @@ type Engine struct {
 	guard   Guard
 	net     networkCheck
 	latency latencyTest
+	tests   testRuns
+	results serverResults
+	traffic serverTraffic
 	// latencyURL is what a delay test requests through each server; tests point it at a page of their own.
 	latencyURL  string
 	mixedPort   uint16
@@ -151,6 +154,11 @@ func Open(cfg Config) (*Engine, error) {
 	e.conn.state = ConnectionState{State: ConnectionIdle}
 	e.openUpdates(cfg)
 	e.latency.results = map[string]int{}
+	e.results.speed, e.results.ip = map[string]ServerSpeed{}, map[string]ServerIP{}
+	if err = e.loadTraffic(); err != nil {
+		db.Close()
+		return nil, err
+	}
 	e.latencyURL = latencyURL
 	e.net.state = NetworkState{DNS: []DNSServer{}}
 	// A core under another account sets no proxy of Windows, so it keeps no entry for the next sign-in either.
@@ -189,6 +197,7 @@ func (e *Engine) Close() error {
 	e.closeLatencyTests()
 	err := e.closeConnection()
 	e.closeKillSwitch()
+	e.saveTraffic()
 	return errors.Join(err, e.db.Close())
 }
 

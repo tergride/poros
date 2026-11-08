@@ -76,6 +76,12 @@ export interface Settings {
   subscriptionTls: string;
   subscriptionHttp: string;
   /**
+   * SpeedTestMode is what a speed test measures: "full" for download and upload, "download", "upload",
+   * "simple" for one download of SpeedTestURL, or "country" for the country of the test's server alone.
+   */
+  speedTestMode: string;
+  speedTestUrl: string;
+  /**
    * SendDeviceInfo sends providers a device ID and the system's version, for those that limit devices.
    */
   sendDeviceInfo: boolean;
@@ -315,6 +321,23 @@ export interface Server {
    * Latency is the last delay test in milliseconds: 0 before a test, -1 when the server did not answer.
    */
   latency: number /* int */;
+  /**
+   * Security is "" for a server that protects the traffic, "weak" for an old cipher or TLS that checks no
+   * certificate, "none" for plain text; a server on a private address is never insecure.
+   */
+  security: string;
+  /**
+   * Upload and Download count the bytes that went through it since it came or its traffic was reset.
+   */
+  upload: number /* int64 */;
+  download: number /* int64 */;
+  /**
+   * SpeedDown and SpeedUp are the last speed test, "" before one; ExitIP and ExitCountry the last IP test.
+   */
+  speedDown: string;
+  speedUp: string;
+  exitIp: string;
+  exitCountry: string;
 }
 /**
  * ServerLatency is a delay test result: Latency in milliseconds, -1 when the server did not answer.
@@ -381,6 +404,26 @@ export interface ConnectionState {
   error: string;
   errorText: string;
 }
+/**
+ * Modes of a speed test.
+ */
+export const SpeedTestFull = "full";
+/**
+ * Modes of a speed test.
+ */
+export const SpeedTestDownload = "download";
+/**
+ * Modes of a speed test.
+ */
+export const SpeedTestUpload = "upload";
+/**
+ * Modes of a speed test.
+ */
+export const SpeedTestSimple = "simple";
+/**
+ * Modes of a speed test.
+ */
+export const SpeedTestCountry = "country";
 /**
  * Kill switch modes.
  */
@@ -813,10 +856,61 @@ export interface ByID {
   id: string;
 }
 /**
- * ServersQuery picks the servers of one group, or of all with an empty ID.
+ * ServersQuery picks servers: those IDs names, else those of one group, or of all with an empty GroupID.
  */
 export interface ServersQuery {
   groupId: string;
+  ids?: string[];
+}
+/**
+ * ServerSpeed is a speed test of a server: the rates as the test writes them, such as "84.2 Mbps", "" for a
+ * direction the mode leaves out, and the country of the test's server; Error tells why it failed, in English.
+ */
+export interface ServerSpeed {
+  serverId: string;
+  download: string;
+  upload: string;
+  country: string;
+  error: string;
+}
+/**
+ * ServersSpeedTested brings speed test results as they come; Done is the last report of a test.
+ */
+export interface ServersSpeedTested {
+  results: ServerSpeed[];
+  done: boolean;
+}
+/**
+ * ServerIP is the address sites see a server's traffic come from, with its country; Error tells why the test failed.
+ */
+export interface ServerIP {
+  serverId: string;
+  ip: string;
+  country: string;
+  error: string;
+}
+/**
+ * ServersIPTested brings IP test results; Done is the last report of a test.
+ */
+export interface ServersIPTested {
+  results: ServerIP[];
+  done: boolean;
+}
+/**
+ * ServersResolved counts the servers whose host names were replaced by the addresses they resolve to.
+ */
+export interface ServersResolved {
+  resolved: number /* int */;
+}
+/**
+ * CleanServers removes servers of a group, or of all: those that did not answer their last delay test, the second
+ * and later of servers that are the same but for the name, and those that protect the traffic poorly.
+ */
+export interface CleanServers {
+  groupId: string;
+  unavailable: boolean;
+  duplicates: boolean;
+  insecure: boolean;
 }
 /**
  * ServersChanged tells which group's servers changed.
@@ -936,9 +1030,40 @@ export const MethodNetworkCheck = "network.check";
  */
 export const MethodNetworkState = "network.state";
 /**
- * MethodServersTest measures the delay of the servers of a group, or of all; servers.tested brings the results.
+ * MethodServersTest measures the delay of servers; servers.tested brings the results.
  */
 export const MethodServersTest = "servers.test";
+/**
+ * MethodServersSpeedTest measures the speed of servers one by one, as speedTestMode says; servers.speedTested
+ * brings the results.
+ */
+export const MethodServersSpeedTest = "servers.speedTest";
+/**
+ * MethodServersIPTest finds the address sites see each server's traffic come from; servers.ipTested brings it.
+ */
+export const MethodServersIPTest = "servers.ipTest";
+/**
+ * MethodServersResolve replaces the host names of servers by the addresses they resolve to, as Throne does;
+ * TLS and HTTP keep the names.
+ */
+export const MethodServersResolve = "servers.resolve";
+/**
+ * MethodServersClearResults forgets the delay, speed and IP tests of servers; MethodServersStopTests stops the
+ * tests that run.
+ */
+export const MethodServersClearResults = "servers.clearResults";
+/**
+ * Methods the core answers.
+ */
+export const MethodServersStopTests = "servers.stopTests";
+/**
+ * Methods the core answers.
+ */
+export const MethodServersResetTraffic = "servers.resetTraffic";
+/**
+ * MethodServersClean removes servers as CleanServers says and answers with their IDs.
+ */
+export const MethodServersClean = "servers.clean";
 /**
  * MethodPresetsGet gives a user's preset for the editor; for a built-in preset, a new copy of it, and for "" a
  * new preset from scratch.
@@ -1018,6 +1143,14 @@ export const EventNetworkChanged = "network.changed";
  * Events the core sends without a request.
  */
 export const EventServersTested = "servers.tested";
+/**
+ * Events the core sends without a request.
+ */
+export const EventServersSpeedTested = "servers.speedTested";
+/**
+ * Events the core sends without a request.
+ */
+export const EventServersIPTested = "servers.ipTested";
 /**
  * EventConnectionTraffic comes every second while the connection runs.
  */

@@ -48,8 +48,8 @@ const group: Group = {
   },
 }
 const servers: Server[] = [
-  { id: 's1', groupId: 'g1', name: 'Germany', protocol: 'vless', host: 'de.example.com', port: 443, country: 'DE', latency: 42 },
-  { id: 's2', groupId: 'g1', name: 'Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI', latency: 0 },
+  { id: 's1', groupId: 'g1', name: 'Germany', protocol: 'vless', host: 'de.example.com', port: 443, country: 'DE', latency: 42, security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '' },
+  { id: 's2', groupId: 'g1', name: 'Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI', latency: 0, security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '' },
 ]
 
 function mountGroup(props: Partial<{ group: Group }>) {

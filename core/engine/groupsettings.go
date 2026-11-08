@@ -289,14 +289,11 @@ func afterDownload(gs GroupSettings, profiles []profile.Profile) []profile.Profi
 			continue
 		}
 		if gs.RemoveDuplicates {
-			// The same server under another name is still the same server.
-			unnamed := p
-			unnamed.Name = ""
-			key, _ := json.Marshal(unnamed)
-			if seen[string(key)] {
+			key := sameServerKey(p)
+			if seen[key] {
 				continue
 			}
-			seen[string(key)] = true
+			seen[key] = true
 		}
 		kept = append(kept, p)
 	}
@@ -358,4 +355,11 @@ func (e *Engine) afterTest(groupID string, results map[string]int) {
 		s.changed[groupID] = true
 		return nil
 	})
+}
+
+// sameServerKey is the same for servers that differ only in name: the same server under another name.
+func sameServerKey(p profile.Profile) string {
+	p.Name = ""
+	key, _ := json.Marshal(p)
+	return string(key)
 }

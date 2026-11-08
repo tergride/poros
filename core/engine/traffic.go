@@ -46,11 +46,28 @@ func (t *trafficCounter) RoutedFlow(context.Context, adapter.InboundContext, ada
 	return nil
 }
 
-// reportTraffic sends the speed every second until ctx ends.
-func (e *Engine) reportTraffic(ctx context.Context, counter *trafficCounter) {
+// trafficSaveTicks is how often, in seconds, the traffic of the server in use is kept and shown in its group.
+const trafficSaveTicks = 60
+
+// reportTraffic sends the speed every second until ctx ends, and counts it to the server in use.
+func (e *Engine) reportTraffic(ctx context.Context, counter *trafficCounter, serverID string) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	var lastUpload, lastDownload int64
+	ticks := 0
+	save := func() {
+		upload, download := counter.upload.Load(), counter.download.Load()
+		e.addTraffic(serverID, upload-lastUpload, download-lastDownload)
+		lastUpload, lastDownload = upload, download
+		e.saveTraffic()
+		if groups, err := e.queryGroups(ServersQuery{IDs: []string{serverID}}); err == nil {
+			for groupID := range groups {
+				e.notify(EventServersChanged, ServersChanged{GroupID: groupID})
+			}
+		}
+	}
+	defer save()
+	var shownUpload, shownDownload int64
 	for {
 		select {
 		case <-ctx.Done():
@@ -58,9 +75,12 @@ func (e *Engine) reportTraffic(ctx context.Context, counter *trafficCounter) {
 		case <-ticker.C:
 			upload, download := counter.upload.Load(), counter.download.Load()
 			e.notify(EventConnectionTraffic, Traffic{
-				Upload: upload - lastUpload, Download: download - lastDownload, TotalUpload: upload, TotalDownload: download,
+				Upload: upload - shownUpload, Download: download - shownDownload, TotalUpload: upload, TotalDownload: download,
 			})
-			lastUpload, lastDownload = upload, download
+			shownUpload, shownDownload = upload, download
+			if ticks++; ticks%trafficSaveTicks == 0 {
+				save()
+			}
 		}
 	}
 }

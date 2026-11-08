@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"slices"
+	"strings"
 
 	"github.com/sagernet/bbolt"
 
@@ -26,8 +27,13 @@ func DefaultSettings() Settings {
 		KillSwitch:             KillSwitchOff,
 		TextSize:               "normal",
 		UpdateCheck:            true,
+		SpeedTestMode:          SpeedTestFull,
+		SpeedTestURL:           defaultSpeedTestURL,
 	}
 }
+
+// defaultSpeedTestURL is a download of 25 MB that answers fast from everywhere.
+const defaultSpeedTestURL = "https://speed.cloudflare.com/__down?bytes=25000000"
 
 // maxUpdateHours is a week: a longer interval is as good as no updates.
 const maxUpdateHours = 7 * 24
@@ -136,6 +142,12 @@ func (e *Engine) validateSettings(settings Settings) error {
 	}
 	if !slices.Contains([]string{"", "1.2", "1.3"}, settings.SubscriptionTLS) {
 		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionTls must be empty, 1.2 or 1.3, not %q", settings.SubscriptionTLS)
+	}
+	if !slices.Contains([]string{SpeedTestFull, SpeedTestDownload, SpeedTestUpload, SpeedTestSimple, SpeedTestCountry}, settings.SpeedTestMode) {
+		return jsonrpc.Failed(ReasonInvalidValue, "unknown speed test mode %q", settings.SpeedTestMode)
+	}
+	if settings.SpeedTestMode == SpeedTestSimple && !strings.HasPrefix(settings.SpeedTestURL, "http://") && !strings.HasPrefix(settings.SpeedTestURL, "https://") {
+		return jsonrpc.Failed(ReasonInvalidValue, "the simple speed test downloads an http:// or https:// address")
 	}
 	if !slices.Contains([]string{"", "1.1"}, settings.SubscriptionHTTP) {
 		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionHttp must be empty or 1.1, not %q", settings.SubscriptionHTTP)
