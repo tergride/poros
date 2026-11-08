@@ -7,6 +7,7 @@ import type {
   AddSubscription,
   AppInfo,
   ByID,
+  ConfigureGroup,
   ConnectionState,
   Group,
   KillSwitchState,
@@ -53,6 +54,7 @@ import {
   MethodConnectionState,
   MethodConnectionStop,
   MethodGroupsAdd,
+  MethodGroupsConfigure,
   MethodGroupsList,
   MethodGroupsRemove,
   MethodGroupsRename,
@@ -96,6 +98,7 @@ export interface CoreMethods {
   [MethodSettingsSet]: { params: Settings; result: Settings }
   [MethodGroupsList]: { params: undefined; result: Group[] }
   [MethodGroupsAdd]: { params: AddGroup; result: Group }
+  [MethodGroupsConfigure]: { params: ConfigureGroup; result: Group }
   [MethodGroupsRename]: { params: RenameGroup; result: Group }
   [MethodGroupsRemove]: { params: ByID; result: null }
   [MethodSubscriptionsAdd]: { params: AddSubscription; result: SubscriptionUpdate }

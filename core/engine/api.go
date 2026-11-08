@@ -41,6 +41,13 @@ type Settings struct {
 	// SubscriptionViaProxy downloads subscriptions through the running connection, for providers whose site is
 	// blocked. Without a connection they download directly.
 	SubscriptionViaProxy bool `json:"subscriptionViaProxy"`
+	// SubscriptionUserAgent replaces Poros's User-Agent when subscriptions download, for providers that serve a
+	// format by it; "" keeps Poros's.
+	SubscriptionUserAgent string `json:"subscriptionUserAgent"`
+	// SubscriptionTLS is the TLS version subscriptions download with: "" for any, "1.2" or "1.3".
+	// SubscriptionHTTP is "" for any HTTP version or "1.1" for HTTP/1.1 alone.
+	SubscriptionTLS  string `json:"subscriptionTls"`
+	SubscriptionHTTP string `json:"subscriptionHttp"`
 	// SendDeviceInfo sends providers a device ID and the system's version, for those that limit devices.
 	SendDeviceInfo bool `json:"sendDeviceInfo"`
 	// ShowChanges shows what a subscription update by hand added and removed.
@@ -107,8 +114,62 @@ type Group struct {
 	SupportURL string `json:"supportUrl"`
 	Announce   string `json:"announce"`
 	// Error is the reason the last update failed, "" when it worked; ErrorText tells more, in English.
-	Error     string `json:"error"`
-	ErrorText string `json:"errorText"`
+	Error     string        `json:"error"`
+	ErrorText string        `json:"errorText"`
+	Settings  GroupSettings `json:"settings"`
+}
+
+// GroupSettings change how the servers of a group connect and, for a subscription, how it downloads and updates.
+type GroupSettings struct {
+	// ServerAddress, when set, is dialled for every server of the group, such as an IP of a CDN in front of them;
+	// each server keeps its own name as the TLS server name and the HTTP host.
+	ServerAddress string `json:"serverAddress"`
+	// FrontProxy is a server of another group that every server of this one is dialled through; LandingProxy one
+	// the traffic leaves by after it. IDs, "" for none.
+	FrontProxy   string `json:"frontProxy"`
+	LandingProxy string `json:"landingProxy"`
+
+	// The rest is a subscription's. The request: "" takes what the settings of all subscriptions say.
+	UserAgent string `json:"userAgent"`
+	// TLS is "", "auto", "1.2" or "1.3"; HTTP is "", "auto" or "1.1".
+	TLS  string `json:"tls"`
+	HTTP string `json:"http"`
+	// DeviceInfo is "", "on" or "off", whether the provider is told the device; DeviceID, OS, OSVersion and
+	// DeviceModel replace what Poros tells it.
+	DeviceInfo  string `json:"deviceInfo"`
+	DeviceID    string `json:"deviceId"`
+	OS          string `json:"os"`
+	OSVersion   string `json:"osVersion"`
+	DeviceModel string `json:"deviceModel"`
+	// Update is "" as the settings of all subscriptions say, "provider" as the provider advises, "hours" every
+	// UpdateHours hours, or "never" for updates by hand only.
+	Update      string `json:"update"`
+	UpdateHours int    `json:"updateHours"`
+	// What an update does after the download. KeepWorking keeps the servers the provider dropped whose last delay
+	// test worked; RemoveDuplicates and RemoveInsecure leave out servers the subscription brings twice or that
+	// protect the traffic poorly. Test measures the servers afterwards, and by its results RemoveUnavailable
+	// removes those that did not answer and SortByLatency puts the fastest first.
+	KeepWorking       bool `json:"keepWorking"`
+	RemoveDuplicates  bool `json:"removeDuplicates"`
+	RemoveInsecure    bool `json:"removeInsecure"`
+	Test              bool `json:"test"`
+	RemoveUnavailable bool `json:"removeUnavailable"`
+	SortByLatency     bool `json:"sortByLatency"`
+}
+
+// Choices of GroupSettings.Update.
+const (
+	GroupUpdateDefault  = ""
+	GroupUpdateProvider = "provider"
+	GroupUpdateHours    = "hours"
+	GroupUpdateNever    = "never"
+)
+
+// ConfigureGroup changes the settings of a group and, for a subscription, its URL; an empty URL keeps it.
+type ConfigureGroup struct {
+	ID       string        `json:"id"`
+	URL      string        `json:"url"`
+	Settings GroupSettings `json:"settings"`
 }
 
 // SubscriptionUpdate is what adding or updating a subscription did.
@@ -520,13 +581,15 @@ const (
 	MethodAppInfo = "app.info"
 	// MethodAppHandOver tells the core that the shell replaces it with another core: it leaves the system proxy
 	// and what the kill switch holds to the next one.
-	MethodAppHandOver         = "app.handOver"
-	MethodSettingsGet         = "settings.get"
-	MethodSettingsSet         = "settings.set"
-	MethodGroupsList          = "groups.list"
-	MethodGroupsAdd           = "groups.add"
-	MethodGroupsRename        = "groups.rename"
-	MethodGroupsRemove        = "groups.remove"
+	MethodAppHandOver  = "app.handOver"
+	MethodSettingsGet  = "settings.get"
+	MethodSettingsSet  = "settings.set"
+	MethodGroupsList   = "groups.list"
+	MethodGroupsAdd    = "groups.add"
+	MethodGroupsRename = "groups.rename"
+	MethodGroupsRemove = "groups.remove"
+	// MethodGroupsConfigure changes the settings of a group and the URL of a subscription.
+	MethodGroupsConfigure     = "groups.configure"
 	MethodSubscriptionsAdd    = "subscriptions.add"
 	MethodSubscriptionsUpdate = "subscriptions.update"
 	MethodServersList         = "servers.list"

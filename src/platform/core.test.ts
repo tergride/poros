@@ -25,6 +25,7 @@ import {
   MethodConnectionState,
   MethodConnectionStop,
   MethodGroupsAdd,
+  MethodGroupsConfigure,
   MethodGroupsList,
   MethodGroupsRemove,
   MethodKillSwitchState,
@@ -160,6 +161,17 @@ ${vless('se.example.com', 'Sweden')}` })
     await core.call(MethodSettingsSet, { ...settings, server: added.ids[0]! })
     await core.call(MethodServersRemove, { ids: [added.ids[0]!] })
     expect((await core.call(MethodSettingsGet)).server).toBe(copy)
+  })
+
+  it('configures a group by the rules of the engine', async () => {
+    const core = createStubCore()
+    const { group } = await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
+    const settings = { ...group.settings, serverAddress: '104.16.1.1', test: true, sortByLatency: true }
+    const configured = await core.call(MethodGroupsConfigure, { id: group.id, url: '', settings })
+    expect(configured.settings).toEqual(settings)
+    expect(configured.url).toBe(group.url)
+    const unsorted = { ...settings, test: false }
+    expect(await reasonOf(core.call(MethodGroupsConfigure, { id: group.id, url: '', settings: unsorted }))).toBe(ReasonInvalidValue)
   })
 
   it('reads a poros://add/ link without adding the server', async () => {

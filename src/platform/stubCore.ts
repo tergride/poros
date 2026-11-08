@@ -2,6 +2,7 @@ import type {
   LinkInfo,
   ConnectionState,
   Group,
+  GroupSettings,
   InheritedRule,
   KillSwitchState,
   NetworkState,
@@ -45,6 +46,7 @@ import {
   MethodConnectionState,
   MethodConnectionStop,
   MethodGroupsAdd,
+  MethodGroupsConfigure,
   MethodGroupsList,
   MethodGroupsRemove,
   MethodGroupsRename,
@@ -127,6 +129,9 @@ const defaultSettings: Settings = {
   subscriptionAutoUpdate: true,
   subscriptionUpdateHours: 0,
   subscriptionViaProxy: false,
+  subscriptionUserAgent: '',
+  subscriptionTls: '',
+  subscriptionHttp: '',
   sendDeviceInfo: false,
   showChanges: true,
   autoConnect: true,
@@ -139,6 +144,29 @@ const defaultSettings: Settings = {
   textSize: 'normal',
   updateCheck: true,
   debugLog: false,
+}
+
+/** The settings of a new group: nothing changed, as in core/engine. */
+const noGroupSettings: GroupSettings = {
+  serverAddress: '',
+  frontProxy: '',
+  landingProxy: '',
+  userAgent: '',
+  tls: '',
+  http: '',
+  deviceInfo: '',
+  deviceId: '',
+  os: '',
+  osVersion: '',
+  deviceModel: '',
+  update: '',
+  updateHours: 0,
+  keepWorking: false,
+  removeDuplicates: false,
+  removeInsecure: false,
+  test: false,
+  removeUnavailable: false,
+  sortByLatency: false,
 }
 
 /** The servers every subscription of the stub core holds, with the delay a test gives them. */
@@ -530,6 +558,7 @@ export function createStubCore(): CoreClient {
     announce: '',
     error: '',
     errorText: '',
+    settings: { ...noGroupSettings },
   })
   const addServer = (p: Profile, groupId: string, after = -1): Server => {
     const server = serverOf(p, String(nextId++), groupId)
@@ -726,6 +755,20 @@ export function createStubCore(): CoreClient {
       const renamed = { ...group, name: name.trim() || new URL(group.url).hostname }
       groups = groups.map((g) => (g.id === id ? renamed : g))
       changed()
+      return groupList().find((g) => g.id === id)!
+    },
+    [MethodGroupsConfigure]: ({ id, url, settings }) => {
+      const group = find(id)
+      if (group.kind === GroupManual && url) throw failed(ReasonInvalidValue, "a group of the user's has no URL")
+      if (settings.frontProxy && settings.frontProxy === settings.landingProxy) {
+        throw failed(ReasonInvalidValue, 'the front and the landing proxy are two servers')
+      }
+      if ((settings.removeUnavailable || settings.sortByLatency) && !settings.test) {
+        throw failed(ReasonInvalidValue, 'removing unavailable servers and sorting by delay go by the test after the update')
+      }
+      const configured = { ...group, url: url.trim() || group.url, settings: { ...settings } }
+      groups = groups.map((g) => (g.id === id ? configured : g))
+      changed(id)
       return groupList().find((g) => g.id === id)!
     },
     [MethodGroupsRemove]: ({ id }) => {

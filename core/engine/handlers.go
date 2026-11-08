@@ -25,6 +25,7 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodGroupsAdd:           withParams(e.AddGroup),
 		MethodGroupsRename:        withParams(e.RenameGroup),
 		MethodGroupsRemove:        withParams(func(p ByID) (any, error) { return nil, e.RemoveGroup(p.ID) }),
+		MethodGroupsConfigure:     withParams(e.ConfigureGroup),
 		MethodSubscriptionsAdd:    withContext(e.AddSubscription),
 		MethodSubscriptionsUpdate: withContext(func(ctx context.Context, p ByID) (SubscriptionUpdate, error) { return e.UpdateSubscription(ctx, p.ID) }),
 		MethodServersList:         withParams(e.Servers),

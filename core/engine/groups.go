@@ -29,6 +29,7 @@ type groupRecord struct {
 	Info      subfetch.Info `json:"info,omitzero"`
 	Error     string        `json:"error,omitempty"`
 	ErrorText string        `json:"errorText,omitempty"`
+	Settings  GroupSettings `json:"settings,omitzero"`
 }
 
 func (r groupRecord) manual() bool { return r.Kind == GroupManual }
@@ -61,6 +62,7 @@ func (r groupRecord) view() Group {
 		Announce:   r.Info.Announce,
 		Error:      r.Error,
 		ErrorText:  r.ErrorText,
+		Settings:   r.Settings,
 	}
 }
 

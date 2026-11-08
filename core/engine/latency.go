@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sagernet/bbolt"
+
 	"PorosCore/config"
 	"PorosCore/internal/boxbox"
 	"PorosCore/internal/boxmain"
@@ -44,39 +46,35 @@ func (e *Engine) latencyOf(id string) int {
 // TestServers measures the servers of a group, or of all, in the background; a newer test replaces one that runs.
 // Each result comes with servers.tested.
 func (e *Engine) TestServers(query ServersQuery) (any, error) {
-	type target struct {
-		id     string
-		server profile.Profile
-		links  []profile.Profile
-	}
-	var targets []target
-	groups, err := e.groups()
+	return e.testServers(query, nil)
+}
+
+// testServers starts a test; onDone, unless nil, gets every result of a test that ran to its end.
+func (e *Engine) testServers(query ServersQuery, onDone func(results map[string]int)) (any, error) {
+	var servers []config.TestServer
+	err := e.db.View(func(tx *bbolt.Tx) error {
+		store, err := loadServers(tx)
+		if err != nil {
+			return err
+		}
+		for _, group := range store.groups {
+			if query.GroupID != "" && group.ID != query.GroupID {
+				continue
+			}
+			for _, r := range store.servers[group.ID] {
+				p, links, _, err := resolveServer(store, r.ID)
+				if err != nil {
+					// A server of a chain, or a proxy of the group, is gone: an empty profile fails the test, as the
+					// start would fail.
+					p, links = profile.Profile{}, nil
+				}
+				servers = append(servers, config.TestServer{Tag: r.ID, Server: p, Links: links})
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-	// A chain may go through servers of other groups.
-	all := map[string]profile.Profile{}
-	for _, group := range groups {
-		list, err := e.serverRecords(group.ID)
-		if err != nil {
-			return nil, err
-		}
-		for _, r := range list {
-			all[r.ID] = r.Profile
-			if query.GroupID == "" || group.ID == query.GroupID {
-				targets = append(targets, target{id: r.ID, server: r.Profile})
-			}
-		}
-	}
-	for i, t := range targets {
-		if t.server.Type != profile.TypeChain {
-			continue
-		}
-		for _, id := range t.server.Chain.Servers {
-			if link, ok := all[id]; ok {
-				targets[i].links = append(targets[i].links, link)
-			}
-		}
 	}
 	settings, err := e.Settings()
 	if err != nil {
@@ -100,9 +98,8 @@ func (e *Engine) TestServers(query ServersQuery) (any, error) {
 			in.Interface = iface.Name
 		}
 		var hosts []string
-		for _, t := range targets {
-			server := config.TestServer{Tag: t.id, Server: t.server, Links: t.links}
-			entry := config.Entry(t.server, t.links)
+		for _, server := range servers {
+			entry := config.Entry(server.Server, server.Links)
 			if config.RunsOnXray(entry, settings.RealityOnXray) {
 				bridge, err := newBridge()
 				if err != nil {
@@ -119,7 +116,10 @@ func (e *Engine) TestServers(query ServersQuery) (any, error) {
 			in.Servers = append(in.Servers, server)
 		}
 		in.Resolved = resolveEach(ctx, e.systemResolver(), hosts, !settings.IPv6)
-		e.runLatencyTest(ctx, in)
+		results := e.runLatencyTest(ctx, in)
+		if onDone != nil && ctx.Err() == nil {
+			onDone(results)
+		}
 	}()
 	return nil, nil
 }
@@ -154,11 +154,13 @@ func resolveEach(ctx context.Context, resolver *net.Resolver, hosts []string, ip
 	return resolved
 }
 
-func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) {
+func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) map[string]int {
+	all := map[string]int{}
 	report := func(results []ServerLatency, done bool) {
 		e.latency.mu.Lock()
 		for _, result := range results {
 			e.latency.results[result.ServerID] = result.Latency
+			all[result.ServerID] = result.Latency
 		}
 		e.latency.mu.Unlock()
 		e.notify(EventServersTested, ServersTested{Results: results, Done: done})
@@ -166,7 +168,7 @@ func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) {
 	configs, err := config.BuildTest(in)
 	if err != nil {
 		report(failedAll(in.Servers), true)
-		return
+		return all
 	}
 	var failed []ServerLatency
 	var tags []string
@@ -184,7 +186,7 @@ func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) {
 	singBox, err := configs.SingBoxJSON()
 	if err != nil || len(tags) == 0 {
 		report(failedAll(nil), true)
-		return
+		return all
 	}
 	if configs.Xray != nil {
 		instance, err := xray.CreateXrayInstance(string(configs.Xray))
@@ -193,14 +195,14 @@ func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) {
 		}
 		if err != nil {
 			report(failedTags(tags), true)
-			return
+			return all
 		}
 		defer instance.Close()
 	}
 	box, cancelBox, err := boxmain.Create(singBox, nil)
 	if err != nil {
 		report(failedTags(tags), true)
-		return
+		return all
 	}
 	defer func() {
 		cancelBox()
@@ -214,6 +216,7 @@ func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) {
 		report([]ServerLatency{{ServerID: result.Tag, Latency: latency}}, false)
 	})
 	report([]ServerLatency{}, true)
+	return all
 }
 
 // pingConnection keeps the delay of the server in use current: now and then it measures through the running

@@ -134,5 +134,11 @@ func (e *Engine) validateSettings(settings Settings) error {
 	if settings.SubscriptionUpdateHours < 0 || settings.SubscriptionUpdateHours > maxUpdateHours {
 		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionUpdateHours must be from 0 to %d, not %d", maxUpdateHours, settings.SubscriptionUpdateHours)
 	}
+	if !slices.Contains([]string{"", "1.2", "1.3"}, settings.SubscriptionTLS) {
+		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionTls must be empty, 1.2 or 1.3, not %q", settings.SubscriptionTLS)
+	}
+	if !slices.Contains([]string{"", "1.1"}, settings.SubscriptionHTTP) {
+		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionHttp must be empty or 1.1, not %q", settings.SubscriptionHTTP)
+	}
 	return nil
 }

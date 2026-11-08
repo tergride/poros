@@ -18,29 +18,15 @@ func (m missingLink) Error() string {
 	return fmt.Sprintf("the server %q of the chain is no longer in its group", string(m))
 }
 
-// serverWithLinks reads a server and, for a chain, its servers in its order, in one transaction. found is false for
-// a missing server; a missing server of the chain is a missingLink error.
+// serverWithLinks reads what a server connects with, as resolveServer gives it, in one transaction.
 func (e *Engine) serverWithLinks(id string) (p profile.Profile, links []profile.Profile, found bool, err error) {
 	err = e.db.View(func(tx *bbolt.Tx) error {
-		place, err := findServer(tx, id)
-		if err != nil || !place.found() {
+		store, err := loadServers(tx)
+		if err != nil {
 			return err
 		}
-		p, found = place.servers[place.index].Profile, true
-		if p.Type != profile.TypeChain {
-			return nil
-		}
-		for _, linkID := range p.Chain.Servers {
-			link, err := findServer(tx, linkID)
-			if err != nil {
-				return err
-			}
-			if !link.found() {
-				return missingLink(linkID)
-			}
-			links = append(links, link.servers[link.index].Profile)
-		}
-		return nil
+		p, links, found, err = resolveServer(store, id)
+		return err
 	})
 	return p, links, found, err
 }

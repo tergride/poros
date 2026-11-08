@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"cmp"
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
@@ -24,22 +25,24 @@ func (e *Engine) fetchClient() (*http.Client, func()) {
 	return client, done
 }
 
-// deviceHeaders tell providers that limit devices which device asks, when the user agreed to it: a random ID of
-// this Poros, kept with its data, and the system.
-func (e *Engine) deviceHeaders() http.Header {
-	settings, err := e.Settings()
-	if err != nil || !settings.SendDeviceInfo {
-		return nil
-	}
-	id, err := e.deviceID()
-	if err != nil {
-		return nil
+// deviceHeadersOf tell providers that limit devices which device asks: a random ID of this Poros, kept with its
+// data, and the system, or what the group says instead.
+func (e *Engine) deviceHeadersOf(gs GroupSettings) http.Header {
+	id := gs.DeviceID
+	if id == "" {
+		var err error
+		if id, err = e.deviceID(); err != nil {
+			return nil
+		}
 	}
 	headers := http.Header{}
 	headers.Set("X-Hwid", id)
-	headers.Set("X-Device-Os", osName)
-	if version := osVersion(); version != "" {
+	headers.Set("X-Device-Os", cmp.Or(gs.OS, osName))
+	if version := cmp.Or(gs.OSVersion, osVersion()); version != "" {
 		headers.Set("X-Ver-Os", version)
+	}
+	if gs.DeviceModel != "" {
+		headers.Set("X-Device-Model", gs.DeviceModel)
 	}
 	return headers
 }

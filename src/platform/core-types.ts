@@ -65,6 +65,17 @@ export interface Settings {
    */
   subscriptionViaProxy: boolean;
   /**
+   * SubscriptionUserAgent replaces Poros's User-Agent when subscriptions download, for providers that serve a
+   * format by it; "" keeps Poros's.
+   */
+  subscriptionUserAgent: string;
+  /**
+   * SubscriptionTLS is the TLS version subscriptions download with: "" for any, "1.2" or "1.3".
+   * SubscriptionHTTP is "" for any HTTP version or "1.1" for HTTP/1.1 alone.
+   */
+  subscriptionTls: string;
+  subscriptionHttp: string;
+  /**
    * SendDeviceInfo sends providers a device ID and the system's version, for those that limit devices.
    */
   sendDeviceInfo: boolean;
@@ -169,6 +180,83 @@ export interface Group {
    */
   error: string;
   errorText: string;
+  settings: GroupSettings;
+}
+/**
+ * GroupSettings change how the servers of a group connect and, for a subscription, how it downloads and updates.
+ */
+export interface GroupSettings {
+  /**
+   * ServerAddress, when set, is dialled for every server of the group, such as an IP of a CDN in front of them;
+   * each server keeps its own name as the TLS server name and the HTTP host.
+   */
+  serverAddress: string;
+  /**
+   * FrontProxy is a server of another group that every server of this one is dialled through; LandingProxy one
+   * the traffic leaves by after it. IDs, "" for none.
+   */
+  frontProxy: string;
+  landingProxy: string;
+  /**
+   * The rest is a subscription's. The request: "" takes what the settings of all subscriptions say.
+   */
+  userAgent: string;
+  /**
+   * TLS is "", "auto", "1.2" or "1.3"; HTTP is "", "auto" or "1.1".
+   */
+  tls: string;
+  http: string;
+  /**
+   * DeviceInfo is "", "on" or "off", whether the provider is told the device; DeviceID, OS, OSVersion and
+   * DeviceModel replace what Poros tells it.
+   */
+  deviceInfo: string;
+  deviceId: string;
+  os: string;
+  osVersion: string;
+  deviceModel: string;
+  /**
+   * Update is "" as the settings of all subscriptions say, "provider" as the provider advises, "hours" every
+   * UpdateHours hours, or "never" for updates by hand only.
+   */
+  update: string;
+  updateHours: number /* int */;
+  /**
+   * What an update does after the download. KeepWorking keeps the servers the provider dropped whose last delay
+   * test worked; RemoveDuplicates and RemoveInsecure leave out servers the subscription brings twice or that
+   * protect the traffic poorly. Test measures the servers afterwards, and by its results RemoveUnavailable
+   * removes those that did not answer and SortByLatency puts the fastest first.
+   */
+  keepWorking: boolean;
+  removeDuplicates: boolean;
+  removeInsecure: boolean;
+  test: boolean;
+  removeUnavailable: boolean;
+  sortByLatency: boolean;
+}
+/**
+ * Choices of GroupSettings.Update.
+ */
+export const GroupUpdateDefault = "";
+/**
+ * Choices of GroupSettings.Update.
+ */
+export const GroupUpdateProvider = "provider";
+/**
+ * Choices of GroupSettings.Update.
+ */
+export const GroupUpdateHours = "hours";
+/**
+ * Choices of GroupSettings.Update.
+ */
+export const GroupUpdateNever = "never";
+/**
+ * ConfigureGroup changes the settings of a group and, for a subscription, its URL; an empty URL keeps it.
+ */
+export interface ConfigureGroup {
+  id: string;
+  url: string;
+  settings: GroupSettings;
 }
 /**
  * SubscriptionUpdate is what adding or updating a subscription did.
@@ -769,6 +857,10 @@ export const MethodGroupsRename = "groups.rename";
  * Methods the core answers.
  */
 export const MethodGroupsRemove = "groups.remove";
+/**
+ * MethodGroupsConfigure changes the settings of a group and the URL of a subscription.
+ */
+export const MethodGroupsConfigure = "groups.configure";
 /**
  * Methods the core answers.
  */

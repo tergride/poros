@@ -34,7 +34,7 @@ func (e *Engine) AddSubscription(ctx context.Context, req AddSubscription) (Subs
 	if e.hasURL(link) {
 		return SubscriptionUpdate{}, jsonrpc.Failed(ReasonDuplicate, "this subscription is already added")
 	}
-	doc, info, failure := e.download(ctx, link)
+	doc, info, failure := e.download(ctx, groupRecord{Kind: GroupSubscription, URL: link})
 	if failure != nil {
 		return SubscriptionUpdate{}, failure.rpc()
 	}
@@ -80,11 +80,17 @@ func (e *Engine) hasURL(link string) bool {
 	return err == nil && slices.ContainsFunc(list, func(r groupRecord) bool { return r.URL == link })
 }
 
-// download fetches and reads a subscription. Its errors leave out the URL, which carries the user's token.
-func (e *Engine) download(ctx context.Context, link string) (profile.Document, subfetch.Info, *updateFailure) {
+// download fetches and reads a subscription as its group asks. Its errors leave out the URL, which carries the
+// user's token.
+func (e *Engine) download(ctx context.Context, rec groupRecord) (profile.Document, subfetch.Info, *updateFailure) {
+	settings, err := e.Settings()
+	if err != nil {
+		return profile.Document{}, subfetch.Info{}, &updateFailure{ReasonFetchFailed, err.Error()}
+	}
+	request := e.requestOf(rec, settings)
 	client, done := e.fetchClient()
 	defer done()
-	result, err := subfetch.Fetch(ctx, client, link, e.userAgent, e.deviceHeaders())
+	result, err := subfetch.Fetch(ctx, request.client(client), rec.URL, request.userAgent, request.device)
 	if err != nil {
 		if errors.Is(err, subfetch.ErrEmpty) {
 			return profile.Document{}, subfetch.Info{}, &updateFailure{ReasonNoServers, err.Error()}
@@ -99,6 +105,7 @@ func (e *Engine) download(ctx context.Context, link string) (profile.Document, s
 	if err != nil {
 		return profile.Document{}, subfetch.Info{}, &updateFailure{ReasonInvalidSubscription, err.Error()}
 	}
+	doc.Profiles = afterDownload(rec.Settings, doc.Profiles)
 	if len(doc.Profiles) == 0 {
 		text := "the subscription holds no servers"
 		if doc.SkippedCount > 0 {
@@ -156,7 +163,7 @@ func (e *Engine) UpdateSubscription(ctx context.Context, id string) (Subscriptio
 	if err != nil {
 		return SubscriptionUpdate{}, err
 	}
-	doc, info, failure := e.download(ctx, rec.URL)
+	doc, info, failure := e.download(ctx, rec)
 	// Poros is closing: that is no failure of the provider's.
 	if err = ctx.Err(); err != nil {
 		return SubscriptionUpdate{}, err
@@ -183,11 +190,18 @@ func (e *Engine) UpdateSubscription(ctx context.Context, id string) (Subscriptio
 		return SubscriptionUpdate{}, err
 	}
 	servers, update := rec.apply(doc, info, old, now)
+	servers = e.keepWorking(rec.Settings, old, servers)
 	if err = e.storeGroup(rec, servers); err != nil {
 		return SubscriptionUpdate{}, err
 	}
 	e.announce(id)
 	e.keepServerChosen(id)
+	if rec.Settings.Test {
+		// The test runs on its own: it reports through servers.tested, and what it decides lands when it ends.
+		if _, err := e.testServers(ServersQuery{GroupID: id}, func(results map[string]int) { e.afterTest(id, results) }); err != nil {
+			log.Printf("subscription %s: the test after the update did not start: %v", id, err)
+		}
+	}
 	return update, nil
 }
 

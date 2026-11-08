@@ -38,7 +38,7 @@ func (e *Engine) StartSchedule() {
 // updateDue updates, one at a time, each subscription whose time has come; groups of the user's have no updates.
 func (e *Engine) updateDue(ctx context.Context) {
 	settings, err := e.Settings()
-	if err != nil || !settings.SubscriptionAutoUpdate {
+	if err != nil {
 		return
 	}
 	list, err := e.groups()
@@ -50,7 +50,7 @@ func (e *Engine) updateDue(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		if rec.manual() || now.Before(dueAt(rec, settings)) {
+		if rec.manual() || !updatesItself(rec, settings) || now.Before(dueAt(rec, settings)) {
 			continue
 		}
 		// A failure is kept on the subscription for the interface to show.
@@ -60,12 +60,31 @@ func (e *Engine) updateDue(ctx context.Context) {
 	}
 }
 
+// updatesItself tells whether a subscription updates on a schedule: as its group says, or as the settings of all
+// subscriptions do.
+func updatesItself(rec groupRecord, settings Settings) bool {
+	switch rec.Settings.Update {
+	case GroupUpdateNever:
+		return false
+	case GroupUpdateProvider, GroupUpdateHours:
+		return true
+	}
+	return settings.SubscriptionAutoUpdate
+}
+
 // dueAt is when a subscription is updated next: an interval after the last update, or sooner after a failure.
 func dueAt(rec groupRecord, settings Settings) time.Time {
 	interval := defaultUpdateInterval
+	hours := settings.SubscriptionUpdateHours
+	switch rec.Settings.Update {
+	case GroupUpdateProvider:
+		hours = 0
+	case GroupUpdateHours:
+		hours = rec.Settings.UpdateHours
+	}
 	switch {
-	case settings.SubscriptionUpdateHours > 0:
-		interval = time.Duration(settings.SubscriptionUpdateHours) * time.Hour
+	case hours > 0:
+		interval = time.Duration(hours) * time.Hour
 	case rec.Info.UpdateInterval > 0:
 		interval = rec.Info.UpdateInterval
 	}
