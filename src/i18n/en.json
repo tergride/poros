@@ -348,7 +348,13 @@
       "adminAutostart": "Give administrator rights at autostart",
       "adminAutostartHint": "At sign-in, TUN and the kill switch come on without asking for rights. Poros creates a Task Scheduler task for this, and Windows asks for permission once.",
       "runAsAdmin": "Run with administrator rights",
-      "runAsAdminHint": "Windows asks for permission at every start, and then TUN and the kill switch ask nothing. The Poros window runs without rights."
+      "runAsAdminHint": "Windows asks for permission at every start, and then TUN and the kill switch ask nothing. The Poros window runs without rights.",
+      "urlSchemeTitle": "poros:// links",
+      "urlSchemeThis": "poros:// links open in this copy of Poros.",
+      "urlSchemeOtherCopy": "poros:// links open in another copy of Poros: {program}.",
+      "urlSchemeNone": "poros:// links are not set up: from a browser they will not open in Poros.",
+      "urlSchemeRemove": "Remove",
+      "urlSchemeInstall": "Set up"
     },
     "look": {
       "lead": "Language and size of the interface.",
@@ -483,5 +489,47 @@
   },
   "links": {
     "unknown": "Poros does not know this link: {link}"
+  },
+  "mode": {
+    "simple": "Simple mode",
+    "advanced": "Advanced mode",
+    "simpleShort": "Simple",
+    "advancedShort": "Advanced",
+    "simpleHint": "Simple mode: the main settings for every day. Click to move to the advanced mode.",
+    "advancedHint": "Advanced mode: every setting and feature of Poros. Click to move to the simple mode.",
+    "menuLabel": "Interface mode",
+    "toAdvancedTitle": "Move to the advanced mode?",
+    "toSimpleTitle": "Move to the simple mode?",
+    "toAdvancedText": "The advanced mode opens every setting and feature of Poros: your own groups and profiles, the profile editor, routing rules, connections, statistics and tools.",
+    "toSimpleText": "The simple mode keeps the main things: servers, presets and the basic settings. Everything set up in the advanced mode stays and keeps working.",
+    "note": "The connection keeps running. You can come back the same way, with the mode chip in the title bar or from the menu.",
+    "toAdvanced": "Move to the advanced mode",
+    "toSimple": "Move to the simple mode"
+  },
+  "adv": {
+    "sections": "Sections",
+    "nav": {
+      "profiles": "Profiles",
+      "connections": "Connections",
+      "routing": "Routing",
+      "logs": "Log",
+      "stats": "Statistics",
+      "tools": "Tools",
+      "settings": "Settings"
+    },
+    "soon": "This section is still being built and comes in one of the next builds.",
+    "presetsMore": "Presets…",
+    "selected": "Chosen: {name}",
+    "settings": {
+      "basic": "Basic",
+      "search": "Search settings",
+      "nothingFound": "Nothing found",
+      "unsaved": "There are unsaved changes."
+    },
+    "unsaved": {
+      "title": "Save the changes?",
+      "text": "The page has unsaved changes.",
+      "leave": "Leave without saving"
+    }
   }
 }

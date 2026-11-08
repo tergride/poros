@@ -6,7 +6,6 @@ import { type TrayActions, type TrayWords, statusText, trayFallback, trayMenu } 
 import { useAttempt } from '@/composables/useAttempt'
 import { appControls, setTray } from '@/platform'
 import type { Preset } from '@/platform/core-types'
-import { ConnectionRunning } from '@/platform/core-types'
 import { useConnect } from '@/composables/useConnect'
 import { useCoreStore } from '@/stores/core'
 
@@ -56,11 +55,7 @@ export function useTray(): void {
   const actions: TrayActions = {
     connect: () => void withWindow(connect.start),
     disconnect: () => void withWindow(connect.stop),
-    choosePreset: (id) =>
-      void withWindow(async () => {
-        await core.updateSettings({ preset: id })
-        if (core.connection.state === ConnectionRunning) await connect.connect()
-      }),
+    choosePreset: (id) => void withWindow(() => connect.choosePreset(id)),
     showPresets: () => void showAt('/settings/presets'),
     setTun: (on) => void withWindow(() => connect.setTun(on)),
     setSystemProxy: (on) => void withWindow(() => connect.setSystemProxy(on)),

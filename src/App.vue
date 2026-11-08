@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AddSubscriptionDialog from '@/components/main/AddSubscriptionDialog.vue'
 import LinkPresetDialog from '@/components/main/LinkPresetDialog.vue'
 import LogsDialog from '@/components/shell/LogsDialog.vue'
+import ModeDialog from '@/components/shell/ModeDialog.vue'
 import RestartDialog from '@/components/shell/RestartDialog.vue'
 import TitleBar from '@/components/shell/TitleBar.vue'
 import { useAttempt } from '@/composables/useAttempt'
@@ -13,6 +14,7 @@ import { useConnect } from '@/composables/useConnect'
 import { useLinks } from '@/composables/useLinks'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import { useTray } from '@/composables/useTray'
+import { useUiMode } from '@/composables/useUiMode'
 import { useUpdates } from '@/composables/useUpdates'
 import { resolveLocale } from '@/i18n/locale'
 import { ConnectionIdle, KillSwitchConnected } from '@/platform/core-types'
@@ -69,7 +71,8 @@ watch(
   { immediate: true },
 )
 
-const withMenu = computed(() => route.path.startsWith('/main') || route.path.startsWith('/settings') || route.path.startsWith('/preset'))
+const withMenu = computed(() => ['/main', '/settings', '/preset', '/adv'].some((prefix) => route.path.startsWith(prefix)))
+const uiMode = useUiMode()
 
 // The menu's check: on the help page, where its result shows.
 const updates = useUpdates()
@@ -93,6 +96,9 @@ async function addSubscription(): Promise<void> {
       :kill-switch-blocking="killSwitchBlocking"
       :kill-switch-full="core.killSwitch.full"
       :restart-needed="restart.needed"
+      :mode="uiMode.mode.value"
+      @mode-chip="ui.modeDialog = true"
+      @switch-mode="(next) => attempt(() => uiMode.switchTo(next))"
       @restart="restart.dialogOpen = true"
       @kill-switch="router.push('/settings/conn')"
       @add-subscription="addSubscription"
@@ -106,5 +112,6 @@ async function addSubscription(): Promise<void> {
     <AddSubscriptionDialog v-model:open="ui.addSubscription" />
     <LinkPresetDialog />
     <RestartDialog />
+    <ModeDialog />
   </div>
 </template>

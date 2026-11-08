@@ -6,23 +6,33 @@ import { useRouter } from 'vue-router'
 
 import mark from '@/assets/img/mark.png'
 import wordmark from '@/assets/img/wordmark.png'
-import { Button, Menu, MenuItem, MenuSeparator } from '@/components/ui'
+import { Button, Menu, MenuItem, MenuSeparator, Segmented } from '@/components/ui'
 import { appControls, windowControls } from '@/platform'
 import { KillSwitchAlways, KillSwitchConnected } from '@/platform/core-types'
 
 // The wizard has no menu: it leads through its own steps. Each chip tells what it means when the pointer rests on it.
 // killSwitch is the mode of the setting: its chip shows while it is on, turns red while it blocks (killSwitchBlocking:
 // held after a lost connection, or always without one; killSwitchFull: the whole internet) and opens its setting.
-// restartNeeded: saved settings wait for a restart of the running connection, and their chip asks for it.
+// restartNeeded: saved settings wait for a restart of the running connection, and their chip asks for it. mode is the
+// mode of the interface: its chip offers the other one, the menu switches at once.
 const props = defineProps<{
   menu?: boolean
+  mode?: 'simple' | 'advanced'
   elevated?: boolean
   killSwitch?: string
   killSwitchBlocking?: '' | 'held' | 'always'
   killSwitchFull?: boolean
   restartNeeded?: boolean
 }>()
-const emit = defineEmits<{ addSubscription: []; logs: []; checkUpdates: []; restart: []; killSwitch: [] }>()
+const emit = defineEmits<{
+  addSubscription: []
+  logs: []
+  checkUpdates: []
+  restart: []
+  killSwitch: []
+  modeChip: []
+  switchMode: [mode: 'simple' | 'advanced']
+}>()
 
 const { t } = useI18n()
 const router = useRouter()
@@ -33,6 +43,14 @@ const killSwitchHint = computed(() =>
     ? t(`window.killSwitchBlocking.${props.killSwitchBlocking}${props.killSwitchFull ? 'Full' : ''}`)
     : t(`window.killSwitchHint.${props.killSwitch}`),
 )
+const modes = computed(() => [
+  { value: 'simple', label: t('mode.simpleShort') },
+  { value: 'advanced', label: t('mode.advancedShort') },
+])
+const modeModel = computed({
+  get: () => props.mode ?? 'simple',
+  set: (next: string) => emit('switchMode', next === 'advanced' ? 'advanced' : 'simple'),
+})
 const chip = 'inline-flex h-[26px] cursor-default items-center gap-1.5 rounded-full bg-s3 px-2.5 text-xs'
 
 const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 hover:text-t1 [&_svg]:stroke-[1.8]'
@@ -52,7 +70,11 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
       <MenuSeparator />
       <MenuItem @select="router.push('/wizard/1')"><Zap />{{ t('menu.wizard') }}</MenuItem>
       <MenuSeparator />
-      <MenuItem @select="router.push('/settings/presets')"><Settings />{{ t('menu.settings') }}</MenuItem>
+      <div class="px-2 pt-1 pb-1.5 text-[11.5px] text-t3">{{ t('mode.menuLabel') }}</div>
+      <div class="px-1.5 pb-1.5"><Segmented v-model="modeModel" :options="modes" :aria-label="t('mode.menuLabel')" /></div>
+      <MenuSeparator />
+      <!-- The advanced mode has its settings on the rail. -->
+      <MenuItem v-if="mode !== 'advanced'" @select="router.push('/settings/presets')"><Settings />{{ t('menu.settings') }}</MenuItem>
       <MenuItem @select="emit('logs')"><ScrollText />{{ t('menu.logs') }}</MenuItem>
       <MenuItem @select="emit('checkUpdates')"><Download />{{ t('menu.checkUpdates') }}</MenuItem>
       <MenuSeparator />
@@ -60,7 +82,7 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
       <MenuItem @select="appControls.exit()"><X />{{ t('menu.exit') }}</MenuItem>
     </Menu>
     <div data-tauri-drag-region class="ml-auto flex h-full items-center gap-1">
-      <div v-if="restartNeeded || killSwitchOn || elevated" data-tauri-drag-region class="mr-2 flex items-center gap-1.5">
+      <div v-if="menu || restartNeeded || killSwitchOn || elevated" data-tauri-drag-region class="mr-2 flex items-center gap-1.5">
         <button
           v-if="restartNeeded"
           type="button"
@@ -85,6 +107,16 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
         <span v-if="elevated" :class="[chip, 'text-warn']" :title="t('window.administratorHint')" data-testid="admin-chip">
           <ShieldCheck class="size-3.5" />{{ t('window.administrator') }}
         </span>
+        <button
+          v-if="menu"
+          type="button"
+          :class="[chip, 'cursor-pointer text-t2 hover:bg-s4']"
+          :title="t(mode === 'advanced' ? 'mode.advancedHint' : 'mode.simpleHint')"
+          data-testid="mode-chip"
+          @click="emit('modeChip')"
+        >
+          {{ t(mode === 'advanced' ? 'mode.advanced' : 'mode.simple') }}
+        </button>
       </div>
       <Button variant="ghost" :class="windowButton" :aria-label="t('window.minimize')" @click="windowControls.minimize()">
         <Minus />

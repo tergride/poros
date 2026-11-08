@@ -4,16 +4,15 @@ import { useI18n } from 'vue-i18n'
 
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
-import { Switch } from '@/components/ui'
+import { Button, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
-import { useSetting } from '@/composables/useSetting'
+import { useSetting, useSettingAction } from '@/composables/useSetting'
+import { useSettingsDraft } from '@/composables/useSettingsDraft'
 import { type UrlScheme, urlScheme } from '@/platform'
-import { useCoreStore } from '@/stores/core'
 
 const { t } = useI18n()
 const attempt = useAttempt()
-const core = useCoreStore()
 const connect = useConnect()
 const autostart = useSetting('autostart')
 const autoConnect = useSetting('autoConnect')
@@ -22,10 +21,7 @@ const closeToTray = useSetting('closeToTray')
 const runAsAdmin = useSetting('runAsAdmin')
 
 // Turning it on asks for rights first: the sign-in task is made by a core that has them.
-const adminAutostart = computed({
-  get: () => core.settings?.adminAutostart ?? false,
-  set: (on: boolean) => void attempt(() => connect.setAdminAutostart(on)),
-})
+const adminAutostart = useSettingAction('adminAutostart', (on) => connect.setAdminAutostart(on))
 
 // The switch shows what Windows holds and changes it at once.
 const scheme = ref<UrlScheme | null>(null)
@@ -34,6 +30,17 @@ const schemeOn = computed({
   get: () => scheme.value?.owner === 'this',
   set: (on: boolean) => void attempt(async () => (scheme.value = await urlScheme.set(on))),
 })
+// The advanced mode tells what Windows holds and offers the one action that changes it.
+const advanced = useSettingsDraft() !== null
+const schemeState = computed(() =>
+  !scheme.value
+    ? ''
+    : scheme.value.owner === 'this'
+      ? t('settings.start.urlSchemeThis')
+      : scheme.value.owner === 'other'
+        ? t('settings.start.urlSchemeOtherCopy', { program: scheme.value.program })
+        : t('settings.start.urlSchemeNone'),
+)
 const schemeHint = computed(() =>
   scheme.value?.owner === 'other' ? t('settings.start.urlSchemeOther', { program: scheme.value.program }) : '',
 )
@@ -62,7 +69,12 @@ const schemeHint = computed(() =>
       <Switch v-model="runAsAdmin" data-testid="run-as-admin" />
     </OptionRow>
     <OptionRow :title="t('wizard.start.autoConnect')"><Switch v-model="autoConnect" /></OptionRow>
-    <OptionRow :title="t('wizard.start.urlScheme')" :hint="schemeHint">
+    <OptionRow v-if="advanced" :title="t('settings.start.urlSchemeTitle')" :hint="schemeState">
+      <Button size="sm" :disabled="!scheme" data-testid="url-scheme-action" @click="schemeOn = !schemeOn">
+        {{ schemeOn ? t('settings.start.urlSchemeRemove') : t('settings.start.urlSchemeInstall') }}
+      </Button>
+    </OptionRow>
+    <OptionRow v-else :title="t('wizard.start.urlScheme')" :hint="schemeHint">
       <Switch v-model="schemeOn" :disabled="!scheme" data-testid="url-scheme" />
     </OptionRow>
     <OptionRow :title="t('settings.start.closeToTray')" :hint="t('settings.start.closeToTrayHint')">

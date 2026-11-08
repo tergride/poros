@@ -6,19 +6,20 @@ import AdminDialog from '@/components/main/AdminDialog.vue'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Segmented, Switch } from '@/components/ui'
-import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
-import { useSetting } from '@/composables/useSetting'
+import { useSetting, useSettingAction } from '@/composables/useSetting'
+import { useSettingsDraft } from '@/composables/useSettingsDraft'
 import { KillSwitchAlways, KillSwitchConnected, KillSwitchOff } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 const core = useCoreStore()
 const connect = useConnect()
-const attempt = useAttempt()
 const { t } = useI18n()
 const allowLan = useSetting('allowLan')
 const checkIp = useSetting('checkIp')
 const ipv6 = useSetting('ipv6')
+// The advanced mode keeps the dialog of rights in its shell, for every section.
+const inShell = useSettingsDraft() !== null
 const reality = useSetting('realityOnXray')
 
 const modes = computed(() => [
@@ -26,10 +27,8 @@ const modes = computed(() => [
   { value: KillSwitchConnected, label: t('settings.conn.killSwitchConnected') },
   { value: KillSwitchAlways, label: t('settings.conn.killSwitchAlways') },
 ])
-const killSwitch = computed({
-  get: () => core.settings?.killSwitch ?? KillSwitchOff,
-  set: (mode: string) => void attempt(() => connect.setKillSwitch(mode)),
-})
+// Turning it on may ask for rights first, at once or on «Save» of the advanced mode.
+const killSwitch = useSettingAction('killSwitch', (mode) => connect.setKillSwitch(mode))
 </script>
 
 <template>
@@ -50,5 +49,5 @@ const killSwitch = computed({
     <OptionRow :title="t('settings.conn.ipv6')" :hint="t('settings.conn.ipv6Hint')"><Switch v-model="ipv6" /></OptionRow>
     <OptionRow :title="t('settings.conn.reality')" :hint="t('settings.conn.realityHint')"><Switch v-model="reality" /></OptionRow>
   </SettingsCard>
-  <AdminDialog />
+  <AdminDialog v-if="!inShell" />
 </template>

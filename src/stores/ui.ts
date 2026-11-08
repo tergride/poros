@@ -23,5 +23,7 @@ export const useUiStore = defineStore('ui', () => {
   const linkPreset = ref<{ link: string; preset: PresetCopy } | null>(null)
   const logs = ref(false)
   const notice = ref<Notice | null>(null)
-  return { addSubscription, addPrefill, linkPreset, logs, notice }
+  // The dialog that moves to the other mode of the interface, opened from the chip of the title bar.
+  const modeDialog = ref(false)
+  return { addSubscription, addPrefill, linkPreset, logs, notice, modeDialog }
 })

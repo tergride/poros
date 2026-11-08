@@ -304,6 +304,13 @@ export const useConnect = defineStore('connect', () => {
     if (core.connection.state === ConnectionRunning) await connect()
   }
 
+  /** Another preset: a running connection takes it at once, as a choice from the tray or the connection bar. */
+  async function choosePreset(id: string): Promise<void> {
+    if (core.settings?.preset === id) return
+    await core.updateSettings({ preset: id })
+    if (core.connection.state === ConnectionRunning) await connect()
+  }
+
   return {
     modesOpen,
     adminOpen,
@@ -324,6 +331,7 @@ export const useConnect = defineStore('connect', () => {
     setAdminAutostart,
     setSystemProxy,
     chooseServer,
+    choosePreset,
     connect,
   }
 })
