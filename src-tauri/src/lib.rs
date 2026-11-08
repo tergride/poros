@@ -306,6 +306,7 @@ fn apply_settings(app: &AppHandle, settings: &Value) {
     let integration = Integration {
         autostart: flag("autostart"),
         start_minimized: flag("startMinimized"),
+        logon_core: flag("adminAutostart"),
     };
     let mut applied = shell.integration.lock().unwrap();
     if applied.as_ref() == Some(&integration) {
@@ -396,6 +397,8 @@ pub fn run() {
         None => None,
     };
     let minimized = args.iter().any(|arg| arg == "--minimized");
+    // Autostart with rights at sign-in: the core comes from the sign-in task.
+    let logon_core = cfg!(windows) && args.iter().any(|arg| arg == "--logon-core");
     let reconnect = args.iter().any(|arg| arg == "--reconnect");
 
     let app = tauri::Builder::default()
@@ -435,13 +438,18 @@ pub fn run() {
             };
             applog::init(&data_dir);
             applog::write(&format!(
-                "shell: Poros {} started{}",
+                "shell: Poros {} started{}{}",
                 if VERSION.is_empty() {
                     "without a version"
                 } else {
                     VERSION
                 },
-                if minimized { ", minimized" } else { "" }
+                if minimized { ", minimized" } else { "" },
+                if logon_core {
+                    ", waits for the core of the sign-in task"
+                } else {
+                    ""
+                }
             ));
             app.manage(Shell {
                 close_to_tray: AtomicBool::new(false),
@@ -457,6 +465,7 @@ pub fn run() {
                 CoreConfig {
                     program: core_program(),
                     data_dir: data_dir.clone(),
+                    logon: logon_core,
                 },
                 WindowSink(app.handle().clone()),
             );

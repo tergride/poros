@@ -76,6 +76,7 @@ import {
   KillSwitchConnected,
   KillSwitchOff,
   ReasonKillSwitchNeedsElevation,
+  ReasonLogonTaskNeedsElevation,
   ReasonNeedsElevation,
   ReasonNoServer,
   ReasonNotFound,
@@ -112,6 +113,8 @@ const defaultSettings: Settings = {
   autostart: false,
   startMinimized: false,
   closeToTray: true,
+  adminAutostart: false,
+  runAsAdmin: false,
   killSwitch: KillSwitchOff,
   textSize: 'normal',
   updateCheck: true,
@@ -542,6 +545,10 @@ export function createStubCore(): CoreClient {
       if (next.server && !servers.some((s) => s.id === next.server)) throw failed(ReasonNotFound, `there is no server "${next.server}"`)
       if (![KillSwitchOff, KillSwitchConnected, KillSwitchAlways].includes(next.killSwitch)) {
         throw failed(ReasonInvalidValue, `killSwitch must be off, connected or always, not "${next.killSwitch}"`)
+      }
+      // As core/engine/settings.go: the sign-in task is made by a core with rights.
+      if (next.adminAutostart && !settings.adminAutostart && !status.elevated) {
+        throw failed(ReasonLogonTaskNeedsElevation, 'the sign-in task takes administrator rights')
       }
       const previous = settings.killSwitch
       settings = { ...next }

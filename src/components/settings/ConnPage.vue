@@ -45,7 +45,7 @@ const killSwitch = computed({
     >
       <Segmented v-model="killSwitch" :options="modes" :aria-label="t('settings.conn.killSwitch')" />
     </OptionRow>
-    <OptionRow :title="t('settings.conn.allowLan')" :hint="t('settings.conn.allowLanHint')"><Switch v-model="allowLan" /></OptionRow>
+    <OptionRow :title="t('settings.conn.allowLan')" :hint="t('settings.conn.allowLanHint')"><Switch v-model="allowLan" data-testid="allow-lan" /></OptionRow>
     <OptionRow :title="t('settings.conn.checkIp')" :hint="t('settings.conn.checkIpHint')"><Switch v-model="checkIp" /></OptionRow>
     <OptionRow :title="t('settings.conn.ipv6')" :hint="t('settings.conn.ipv6Hint')"><Switch v-model="ipv6" /></OptionRow>
     <OptionRow :title="t('settings.conn.reality')" :hint="t('settings.conn.realityHint')"><Switch v-model="reality" /></OptionRow>

@@ -14,6 +14,8 @@ use serde::Serialize;
 pub struct Integration {
     pub autostart: bool,
     pub start_minimized: bool,
+    /// The autostart waits for the core of the sign-in task, which has rights, instead of starting a core.
+    pub logon_core: bool,
 }
 
 /// Who opens `poros://` links now.
@@ -33,9 +35,15 @@ pub struct UrlScheme {
 }
 
 /// The command line Windows runs at sign-in.
-pub fn autostart_command(exe: &Path, minimized: bool) -> String {
-    let flag = if minimized { " --minimized" } else { "" };
-    format!("\"{}\" --autostart{flag}", exe.display())
+pub fn autostart_command(exe: &Path, integration: &Integration) -> String {
+    let mut command = format!("\"{}\" --autostart", exe.display());
+    if integration.start_minimized {
+        command.push_str(" --minimized");
+    }
+    if integration.logon_core {
+        command.push_str(" --logon-core");
+    }
+    command
 }
 
 /// The command line Windows runs for a `poros://` link.
@@ -117,7 +125,7 @@ mod windows {
     pub fn apply(exe: &Path, integration: Integration) -> io::Result<()> {
         let current = read(RUN, Some(RUN_VALUE))?;
         if integration.autostart {
-            let command = autostart_command(exe, integration.start_minimized);
+            let command = autostart_command(exe, &integration);
             if current.as_deref() != Some(command.as_str()) {
                 write(RUN, Some(RUN_VALUE), &command)?;
             }
@@ -228,6 +236,7 @@ mod windows {
             let autostart = Integration {
                 autostart: true,
                 start_minimized: true,
+                logon_core: false,
             };
 
             apply(&exe, autostart).unwrap();
@@ -278,11 +287,21 @@ mod tests {
     #[test]
     fn commands_point_at_the_program() {
         let exe = PathBuf::from(r"D:\Apps\Poros\Poros.exe");
+        let mut integration = Integration {
+            autostart: true,
+            ..Integration::default()
+        };
         assert_eq!(
-            autostart_command(&exe, false),
+            autostart_command(&exe, &integration),
             r#""D:\Apps\Poros\Poros.exe" --autostart"#
         );
-        assert!(points_at(&autostart_command(&exe, true), &exe));
+        integration.start_minimized = true;
+        integration.logon_core = true;
+        assert_eq!(
+            autostart_command(&exe, &integration),
+            r#""D:\Apps\Poros\Poros.exe" --autostart --minimized --logon-core"#
+        );
+        assert!(points_at(&autostart_command(&exe, &integration), &exe));
         assert!(points_at(&url_command(&exe).to_uppercase(), &exe));
         assert!(!points_at(
             &url_command(&PathBuf::from(r"D:\Apps\Poros2\Poros.exe")),

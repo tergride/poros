@@ -116,8 +116,9 @@ export const useConnect = defineStore('connect', () => {
 
   /**
    * At launch: connects when the settings ask for it or the run before an update was connected, and asks for
-   * rights right away when the connection needs them or the kill switch blocks from the launch. Those were the
-   * user's choices, so the UAC prompt comes instead of the question; a refusal leaves the banner.
+   * rights right away when the connection needs them, the kill switch blocks from the launch or Poros runs with
+   * rights. Those were the user's choices, so the UAC prompt comes instead of the question; a refusal leaves the
+   * banner, and a connection that needs no rights starts anyway.
    */
   async function autoStart(): Promise<void> {
     const reconnect = await appControls.takeReconnect()
@@ -130,8 +131,9 @@ export const useConnect = defineStore('connect', () => {
       (settings.tun || settings.systemProxy || modesAsked())
     const reason = wantsConnection ? rightsNeeded() : null
     const blockFromLaunch = settings.killSwitch === KillSwitchAlways && !core.status.elevated
-    if (reason || blockFromLaunch) {
-      await elevate(wantsConnection, reason ?? 'killSwitch')
+    const withRights = settings.runAsAdmin && !core.status.elevated
+    if (reason || blockFromLaunch || withRights) {
+      await elevate(wantsConnection, reason ?? (blockFromLaunch ? 'killSwitch' : null))
       return
     }
     if (wantsConnection) await connect()
@@ -168,21 +170,44 @@ export const useConnect = defineStore('connect', () => {
     })
   }
 
-  /** Restarts the core with rights after the UAC prompt and connects if asked to; a refusal leaves the banner. */
-  async function elevate(thenConnect: boolean, reason: RightsFor): Promise<void> {
-    killSwitchBefore.value = null
-    adminOpen.value = false
+  /** Restarts the core with rights after the UAC prompt; false when the user declined, and the old core runs on. */
+  async function gainRights(): Promise<boolean> {
     try {
       await core.core().elevate()
       await readyWithRights()
-      tunFailed.value = false
-      killSwitchFailed.value = false
-      if (thenConnect) await connect()
     } catch (error) {
-      if (reason === 'tun') tunFailed.value = true
-      else killSwitchFailed.value = true
-      if (!(isCoreError(error) && error.code === CodeElevationCancelled)) throw error
+      if (isCoreError(error) && error.code === CodeElevationCancelled) return false
+      throw error
     }
+    tunFailed.value = false
+    killSwitchFailed.value = false
+    return true
+  }
+
+  function failedWithout(reason: RightsFor | null): void {
+    if (reason === 'tun') tunFailed.value = true
+    if (reason === 'killSwitch') killSwitchFailed.value = true
+  }
+
+  /**
+   * Restarts the core with rights after the UAC prompt and connects if asked to. A refusal leaves the banner of
+   * what needed them; rights that were only wanted, `reason` null, leave a connection that runs without them.
+   */
+  async function elevate(thenConnect: boolean, reason: RightsFor | null): Promise<void> {
+    killSwitchBefore.value = null
+    adminOpen.value = false
+    let gained: boolean
+    try {
+      gained = await gainRights()
+    } catch (error) {
+      failedWithout(reason)
+      throw error
+    }
+    if (!gained) {
+      failedWithout(reason)
+      if (reason) return
+    }
+    if (thenConnect) await connect()
   }
 
   /** The admin dialog's restart: the rights it was opened for, then the connection it was waiting for. */
@@ -198,6 +223,19 @@ export const useConnect = defineStore('connect', () => {
   /** The kill switch banner's restart: the block comes with the new core; a running connection starts again. */
   async function elevateForKillSwitch(): Promise<void> {
     await elevate(core.running, 'killSwitch')
+  }
+
+  /**
+   * Rights at sign-in: the sign-in task is made by a core with rights, so turning them on asks for rights first,
+   * unless the core has them. A refusal leaves the switch off; a running connection starts again in the new core.
+   */
+  async function setAdminAutostart(on: boolean): Promise<void> {
+    if (on && !core.status.elevated) {
+      const running = core.running
+      if (!(await gainRights())) return
+      if (running) await connect()
+    }
+    await core.updateSettings({ adminAutostart: on })
   }
 
   async function tryWithoutRights(): Promise<void> {
@@ -280,6 +318,7 @@ export const useConnect = defineStore('connect', () => {
     useSystemInstead,
     setTun,
     setKillSwitch,
+    setAdminAutostart,
     setSystemProxy,
     chooseServer,
     connect,

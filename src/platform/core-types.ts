@@ -83,6 +83,17 @@ export interface Settings {
   startMinimized: boolean;
   closeToTray: boolean;
   /**
+   * AdminAutostart gives the core administrator rights at sign-in without a UAC prompt: a task of the Task
+   * Scheduler starts it, and the shell of the autostart waits for it. Turning it on takes rights; turning it off
+   * without them leaves the task to remove itself at the next sign-in.
+   */
+  adminAutostart: boolean;
+  /**
+   * RunAsAdmin asks for rights through UAC as Poros starts, so TUN and the kill switch ask nothing later. Only the
+   * core gets them, as always.
+   */
+  runAsAdmin: boolean;
+  /**
    * KillSwitch is off, connected or always. Connected blocks the internet from a Start until the Stop, through
    * a broken connection and a failed core; always blocks it while Poros runs. Both need administrator rights.
    */
@@ -811,6 +822,14 @@ export const ReasonNeedsElevation = "needs_elevation";
  * ReasonKillSwitchNeedsElevation is the kill switch in a core without administrator rights.
  */
 export const ReasonKillSwitchNeedsElevation = "kill_switch_needs_elevation";
+/**
+ * ReasonLogonTaskNeedsElevation is rights at sign-in asked of a core without administrator rights.
+ */
+export const ReasonLogonTaskNeedsElevation = "logon_task_needs_elevation";
+/**
+ * ReasonLogonTaskFailed is a sign-in task Windows did not create.
+ */
+export const ReasonLogonTaskFailed = "logon_task_failed";
 /**
  * ReasonKillSwitchFailed is a block of the kill switch that did not turn on or went away.
  */

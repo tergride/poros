@@ -318,7 +318,11 @@
       "closeToTray": "Сворачивать в трей при закрытии",
       "closeToTrayHint": "Если выключить, крестик завершит Poros.",
       "urlSchemeOther": "Сейчас их открывает другая копия Poros: {program}. Включите, чтобы открывала эта.",
-      "startMinimizedOff": "Работает, когда Poros запускается вместе с Windows."
+      "autostartOnly": "Работает, когда Poros запускается вместе с Windows.",
+      "adminAutostart": "Давать права администратора при автозапуске",
+      "adminAutostartHint": "При входе в Windows TUN и Kill switch включатся без запроса прав. Для этого Poros создаст задание в Планировщике, и Windows один раз спросит разрешение.",
+      "runAsAdmin": "Запускать с правами администратора",
+      "runAsAdminHint": "Windows будет спрашивать разрешение при каждом запуске, зато потом TUN и Kill switch включатся без вопросов. Окно Poros работает без прав."
     },
     "look": {
       "lead": "Язык и размер интерфейса.",
@@ -413,6 +417,8 @@
     "server_unsupported": "Poros не умеет подключаться к этому серверу",
     "needs_elevation": "для TUN нужны права администратора",
     "kill_switch_needs_elevation": "для Kill switch нужны права администратора",
+    "logon_task_needs_elevation": "чтобы давать права при автозапуске, нужны права администратора",
+    "logon_task_failed": "Windows не создала задание в Планировщике",
     "kill_switch_failed": "Kill switch не включился",
     "stop_timeout": "подключение не закрылось вовремя, сбросьте его в «Помощи»",
     "fetch_failed": "подписка не загрузилась",

@@ -7,7 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sagernet/bbolt"
+
 	"PorosCore/internal/jsonrpc"
+	"PorosCore/internal/logontask"
 )
 
 type event struct {
@@ -121,5 +124,30 @@ func TestHandlersDecodeParamsStrictly(t *testing.T) {
 	var rpcErr *jsonrpc.Error
 	if !errors.As(err, &rpcErr) || rpcErr.Code != jsonrpc.CodeInvalidParams {
 		t.Fatalf("an unknown field must be rejected, got %v", err)
+	}
+}
+
+// Rights at sign-in take rights to turn on; off, a core without rights leaves the task a note to remove itself.
+func TestRightsAtSignInTakeRights(t *testing.T) {
+	if elevated() {
+		t.Skip("the core runs with administrator rights here")
+	}
+	dir := t.TempDir()
+	e, _ := openTest(t, dir)
+	settings := DefaultSettings()
+	settings.AdminAutostart = true
+	if _, err := e.SetSettings(settings); reason(err) != ReasonLogonTaskNeedsElevation {
+		t.Fatalf("on without rights: %v", err)
+	}
+	if got, _ := e.Settings(); got.AdminAutostart {
+		t.Fatal("the setting was saved without its task")
+	}
+	e.db.Update(func(tx *bbolt.Tx) error { return putJSON(tx, bucketSettings, keySettings, settings) })
+	settings.AdminAutostart = false
+	if _, err := e.SetSettings(settings); err != nil {
+		t.Fatalf("off without rights: %v", err)
+	}
+	if !logontask.RemovalMarked(dir) {
+		t.Error("the task was not asked to remove itself")
 	}
 }

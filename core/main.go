@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -24,6 +25,7 @@ import (
 	"PorosCore/internal/host"
 	"PorosCore/internal/ipc"
 	"PorosCore/internal/jsonrpc"
+	"PorosCore/internal/logontask"
 
 	C "github.com/sagernet/sing-box/constant"
 )
@@ -133,7 +135,25 @@ func openLog(dataDir string) (*os.File, error) {
 	return host.OpenLog(filepath.Join(dataDir, "logs", logFile))
 }
 
-// runCore serves the shell over its channel and exits when the shell goes away: the channel is the core's lifetime.
+// startLog sends the log, and what sing-box and Xray print, to the log of the data folder.
+func startLog(dataDir string) {
+	logOutput, err := openLog(dataDir)
+	if err != nil {
+		return
+	}
+	if err = host.RedirectOutput(logOutput); err != nil {
+		log.Printf("log to %s: %v", logOutput.Name(), err)
+	}
+	log.SetOutput(logOutput)
+	_ = runtimeDebug.SetCrashOutput(logOutput, runtimeDebug.CrashOptions{})
+}
+
+func logBanner(opts options) {
+	log.Printf("Poros core %s, sing-box %s, Xray %s, %s, administrator %t", cmp.Or(opts.version, "without a version"),
+		C.Version, core.Version(), host.SystemVersion(), host.Elevated())
+}
+
+// runCore is the core the shell starts.
 func runCore() {
 	opts, err := parseOptions(os.Args[1:])
 	if err != nil {
@@ -144,22 +164,69 @@ func runCore() {
 			log.Fatalf("%v", err)
 		}
 	}
-	if logOutput, err := openLog(opts.dataDir); err == nil {
-		if err = host.RedirectOutput(logOutput); err != nil {
-			log.Printf("log to %s: %v", logOutput.Name(), err)
-		}
-		log.SetOutput(logOutput)
-		_ = runtimeDebug.SetCrashOutput(logOutput, runtimeDebug.CrashOptions{})
-	}
-	log.Printf("Poros core %s, sing-box %s, Xray %s, %s, administrator %t", cmp.Or(opts.version, "without a version"),
-		C.Version, core.Version(), host.SystemVersion(), host.Elevated())
-
-	boxmain.DisableColor()
-
+	startLog(opts.dataDir)
+	logBanner(opts)
 	conn, err := ipc.Dial(opts.pipe)
 	if err != nil {
 		log.Fatalf("connect to the shell: %v", err)
 	}
+	serve(opts, conn)
+}
+
+// waitShell is how long the core of the sign-in task waits for the shell that autostart starts: Windows may hold
+// autostart back on a slow sign-in.
+const waitShell = 5 * time.Minute
+
+// runLogonCore is the core the sign-in task starts with administrator rights. It joins the shell that autostart
+// starts in the same sign-in, when that shell waits for it, and serves it as the core the shell would start.
+func runLogonCore(args []string) {
+	var dataDir string
+	flags := flag.NewFlagSet("PorosCore", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.StringVar(&dataDir, "data-dir", "", "")
+	if err := flags.Parse(args); err != nil || dataDir == "" {
+		log.Fatal("arguments: --data-dir is required")
+	}
+	startLog(dataDir)
+	program, err := os.Executable()
+	if err != nil {
+		log.Fatalf("sign-in task: %v", err)
+	}
+	if logontask.RemovalMarked(dataDir) {
+		if err = logontask.Remove(program, dataDir); err != nil {
+			log.Fatalf("sign-in task: remove the task: %v", err)
+		}
+		log.Print("sign-in task: removed, its setting went off")
+		os.Exit(0)
+	}
+	if !host.Elevated() {
+		log.Fatal("sign-in task: the core has no administrator rights")
+	}
+	if !logontask.AutostartWaits(program) {
+		log.Print("sign-in task: autostart does not wait for this core")
+		os.Exit(0)
+	}
+	launch, err := logontask.WaitLaunch(dataDir, waitShell)
+	if err != nil {
+		log.Printf("sign-in task: %v", err)
+		os.Exit(0)
+	}
+	opts := options{pipe: launch.Pipe, token: launch.Token, dataDir: dataDir, version: launch.Version, hostPID: launch.HostPID}
+	logBanner(opts)
+	conn, err := ipc.Dial(opts.pipe)
+	if err != nil {
+		log.Fatalf("connect to the shell: %v", err)
+	}
+	if err = logontask.VerifyShell(conn, opts.hostPID, program); err != nil {
+		log.Fatalf("sign-in task: %v", err)
+	}
+	log.Print("sign-in task: the core joined the shell with administrator rights")
+	serve(opts, conn)
+}
+
+// serve serves the shell over its channel and exits when the shell goes away: the channel is the core's lifetime.
+func serve(opts options, conn net.Conn) {
+	boxmain.DisableColor()
 	foreignUser := false
 	if opts.hostPID != 0 {
 		same, err := host.SameUser(opts.hostPID)
@@ -220,5 +287,8 @@ func main() {
 	runtimeDebug.SetMemoryLimit(memoryLimit)
 	go watchMemory()
 
+	if len(os.Args) > 1 && os.Args[1] == "--logon" {
+		runLogonCore(os.Args[2:])
+	}
 	runCore()
 }
