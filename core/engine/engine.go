@@ -39,6 +39,9 @@ type Config struct {
 	ForeignUser bool
 	// Guard holds the block of the kill switch; nil has no kill switch.
 	Guard Guard
+	// Window is the PID of the Poros window the core serves, 0 without one: what the kill switch held goes on with
+	// the next core of the same window.
+	Window int
 	// UpdateFeed is latest.json of the releases, "" for those of tergride/poros; ProgramDir is the folder with
 	// updater.exe, "" for the folder of this program.
 	UpdateFeed string
@@ -155,7 +158,16 @@ func Open(cfg Config) (*Engine, error) {
 		e.sysProxy.OnPending(hook)
 	}
 	// Only now, with the data folder locked: the proxy of another core on the folder is not this one's to clear.
-	if err = e.sysProxy.Recover(); err != nil {
+	// A core of the same window that the kill switch held traffic in left it for this one.
+	e.ks.window = cfg.Window
+	if settings, _ := e.Settings(); e.readMark() && settings.KillSwitch != KillSwitchOff {
+		e.ks.resume = true
+		err = e.sysProxy.Adopt()
+	} else {
+		e.writeMark(false)
+		err = e.sysProxy.Recover()
+	}
+	if err != nil {
 		e.conn.state.Error, e.conn.state.ErrorText = ReasonSystemProxyFailed, err.Error()
 	}
 	if monitor := netmon.Monitor(); monitor != nil {

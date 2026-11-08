@@ -740,6 +740,9 @@ async fn run_once(
                     Some(request) = requests.recv() => {
                         match prepare(config, request.elevated, process.pid(), request.window).await {
                             Ok(next) => {
+                                // The old core leaves the system proxy and what the kill switch holds to the new
+                                // one: nothing goes out directly in between.
+                                asks(&tx, &pending, shared, "app.handOver").await;
                                 // Calls wait for the new core from here on; the status says so before the reply.
                                 shared.link.lock().unwrap().take();
                                 shared.set_status(CoreState::Starting, next.process.elevated(), None);
@@ -806,10 +809,20 @@ async fn run_once(
 
 /// Asks the core for its version and tells whether the answer came in time.
 async fn answers(tx: &mpsc::UnboundedSender<String>, pending: &Pending, shared: &Shared) -> bool {
+    asks(tx, pending, shared, "app.info").await
+}
+
+/// Calls `method` without parameters and tells whether the answer came in time.
+async fn asks(
+    tx: &mpsc::UnboundedSender<String>,
+    pending: &Pending,
+    shared: &Shared,
+    method: &str,
+) -> bool {
     let id = shared.next_id.fetch_add(1, Ordering::Relaxed);
     let (reply_tx, reply_rx) = oneshot::channel();
     pending.lock().unwrap().insert(id, reply_tx);
-    let message = json!({ "jsonrpc": "2.0", "id": id, "method": "app.info", "params": null });
+    let message = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": null });
     if tx.send(message.to_string()).is_err() {
         pending.lock().unwrap().remove(&id);
         return false;

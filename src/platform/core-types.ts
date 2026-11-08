@@ -94,8 +94,10 @@ export interface Settings {
    */
   runAsAdmin: boolean;
   /**
-   * KillSwitch is off, connected or always. Connected blocks the internet from a Start until the Stop, through
-   * a broken connection and a failed core; always blocks it while Poros runs. Both need administrator rights.
+   * KillSwitch is off, connected or always. It keeps the traffic of the server from going out directly: after a
+   * lost connection the TUN, the system proxy and the local proxy stay up with the preset and a refusal instead
+   * of the server. Connected holds it from a lost connection until the Stop, always while Poros runs. With the
+   * TUN a block of Windows covers the moments without Poros's TUN, which needs administrator rights.
    */
   killSwitch: string;
   /**
@@ -283,16 +285,22 @@ export const KillSwitchConnected = "connected";
  */
 export const KillSwitchAlways = "always";
 /**
- * KillSwitchState is the block of the kill switch.
+ * KillSwitchState is what the kill switch holds.
  */
 export interface KillSwitchState {
   /**
-   * On is the block: only Poros and its TUN reach the network, everything else waits for the connection.
+   * On is the kill switch at work: a connection runs under it, or the traffic of the server is refused, or the
+   * block of Windows is on.
    */
   on: boolean;
   /**
-   * Error is why the block is off although the setting asks for it: kill_switch_needs_elevation, or
-   * kill_switch_failed with ErrorText in English.
+   * Full is the block of Windows without Poros's TUN, as when the core came back without rights: only Poros and
+   * the local network reach the network, not just the traffic of the server waits.
+   */
+  full: boolean;
+  /**
+   * Error is why the kill switch does not hold what the setting asks for: kill_switch_needs_elevation for the
+   * TUN, or kill_switch_failed with ErrorText in English.
    */
   error: string;
   errorText: string;
@@ -613,6 +621,11 @@ export interface ServersChanged {
  */
 export const MethodAppInfo = "app.info";
 /**
+ * MethodAppHandOver tells the core that the shell replaces it with another core: it leaves the system proxy
+ * and what the kill switch holds to the next one.
+ */
+export const MethodAppHandOver = "app.handOver";
+/**
  * Methods the core answers.
  */
 export const MethodSettingsGet = "settings.get";
@@ -713,8 +726,7 @@ export const MethodLinksParse = "links.parse";
  */
 export const MethodLogsGet = "logs.get";
 /**
- * MethodKillSwitchState gives the block of the kill switch; the setting turns it on and off, and Start and Stop
- * in the connected mode.
+ * MethodKillSwitchState gives what the kill switch holds; the setting, Start and Stop change it.
  */
 export const MethodKillSwitchState = "killSwitch.state";
 /**

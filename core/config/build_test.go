@@ -414,3 +414,21 @@ func TestPresetDNS(t *testing.T) {
 		}
 	}
 }
+
+func TestRefusalNeedsNoServer(t *testing.T) {
+	configs, err := Build(Input{Refuse: true, Preset: allPreset, Tun: true, MixedPort: 2090, RealityOnXray: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if configs.Xray != nil {
+		t.Error("a refusal runs no Xray")
+	}
+	proxy := configs.SingBox.Outbounds[0]
+	if proxy.Tag != TagProxy || proxy.Type != C.TypeBlock {
+		t.Errorf("the server must be a refusal: %s %s", proxy.Type, proxy.Tag)
+	}
+	data, _ := configs.SingBoxJSON()
+	if err = boxmain.Check(data); err != nil {
+		t.Errorf("sing-box refuses it: %v", err)
+	}
+}

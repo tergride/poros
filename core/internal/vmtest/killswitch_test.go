@@ -155,6 +155,37 @@ func (s *shell) waitKillSwitch(t *testing.T, check func(map[string]any) bool, wh
 
 func blockOn(state map[string]any) bool { return state["on"] == true }
 
+// fullBlock is the block of Windows without Poros's TUN: everything but Poros and the local network waits.
+func fullBlock(state map[string]any) bool { return state["on"] == true && state["full"] == true }
+
+// refusedThroughPoros tells whether Poros's local proxy refuses what the preset sends to the server.
+func refusedThroughPoros() bool {
+	proxy := &url.URL{Scheme: "http", Host: "127.0.0.1:2090"}
+	client := &http.Client{
+		Timeout:       15 * time.Second,
+		Transport:     &http.Transport{Proxy: http.ProxyURL(proxy), DisableKeepAlives: true},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	response, err := client.Get("http://" + outside + "/")
+	if err != nil {
+		return true
+	}
+	response.Body.Close()
+	return response.StatusCode == http.StatusBadGateway
+}
+
+// loseConnection makes the next start fail while the core lives, as a lost connection does: the server is gone.
+func (s *shell) loseConnection(t *testing.T) {
+	t.Helper()
+	var settings map[string]any
+	json.Unmarshal(s.call("settings.get", nil), &settings)
+	settings["server"] = ""
+	s.call("settings.set", settings)
+	if state := s.start(); state["state"] != "idle" || state["error"] != "no_server" {
+		t.Fatalf("the reconnect must fail: %v", state)
+	}
+}
+
 // useDirectPreset picks the server and a preset that sends the probe page direct, so that it opens through
 // Poros's proxy while the server is not there: the page proves that the core's own traffic gets out.
 func (s *shell) useDirectPreset(providerURL, mode string) {
@@ -186,13 +217,14 @@ func (s *shell) exit(t *testing.T) {
 	}
 }
 
-// TestKillSwitchOutlivesTheCore blocks the internet for every program but Poros from a Start, keeps the block
-// through a crash of the core, lets a core without rights turn it off with Stop, turns it on at the start of a core
-// in the always mode, and takes it away with the Poros window.
-func TestKillSwitchOutlivesTheCore(t *testing.T) {
+// TestKillSwitchWithoutTUN guards a connection without the TUN with no rights and no block of Windows: programs
+// that do not use the proxy keep the internet throughout. After a lost connection, and after a crash of the core,
+// the local proxy refuses what the preset sends to the server and still opens what it sends direct; Stop ends it,
+// the always mode refuses from the start, and the window takes it away.
+func TestKillSwitchWithoutTUN(t *testing.T) {
 	program := os.Getenv("POROS_TEST_CORE")
 	if os.Getenv("POROS_VM_TESTS") != "1" || program == "" {
-		t.Skip("blocks the internet of the machine; runs only in the virtual machine")
+		t.Skip("runs the kill switch of a Poros window; runs only in the virtual machine")
 	}
 	if !reachable() {
 		t.Fatalf("%s is not reachable before the test", outside)
@@ -204,7 +236,7 @@ func TestKillSwitchOutlivesTheCore(t *testing.T) {
 		if !t.Failed() {
 			return
 		}
-		for _, name := range []string{"guard.1.log", "guard.log", "core.1.log", "core.log"} {
+		for _, name := range []string{"core.1.log", "core.log"} {
 			if text, err := os.ReadFile(filepath.Join(dataDir, "logs", name)); err == nil {
 				t.Logf("%s:\n%s", name, text)
 			}
@@ -212,55 +244,68 @@ func TestKillSwitchOutlivesTheCore(t *testing.T) {
 	})
 	_, providerURL := startTestServer(t)
 
-	first := startShellWith(t, shellOptions{program: program, dataDir: dataDir, hostPID: window.Process.Pid})
+	first := startShellWith(t, shellOptions{program: program, dataDir: dataDir, hostPID: window.Process.Pid, token: limited})
 	first.useDirectPreset(providerURL, "connected")
-	if blockOn(first.killSwitch()) {
-		t.Fatal("the connected mode blocks before a Start")
-	}
 	first.connect()
 	first.waitKillSwitch(t, blockOn, "after the Start")
-	waitReachable(t, false, "connected")
-	if err := fetchThroughPoros(); err != nil {
-		t.Fatalf("Poros's own traffic must pass the block: %v", err)
+	if fullBlock(first.killSwitch()) || !reachable() {
+		t.Fatal("without the TUN the kill switch must not block Windows")
 	}
-	t.Log("connected: other programs are blocked, Poros gets out")
+	t.Log("connected without rights: the kill switch is on, other programs keep the internet")
 
-	// A crash: the core goes, its guard stays.
+	first.loseConnection(t)
+	first.waitKillSwitch(t, blockOn, "after a lost connection")
+	if err := fetchThroughPoros(); err != nil {
+		t.Fatalf("the direct site of the preset must open through the refusal: %v", err)
+	}
+	if !refusedThroughPoros() {
+		t.Fatal("the traffic of the server went out through the refusal")
+	}
+	if !reachable() {
+		t.Fatal("a program without the proxy lost the internet")
+	}
+	t.Log("lost connection: the server's traffic is refused, the direct site opens, other programs are out")
+
+	// A crash: the next core of the window brings the refusal back.
 	killedPID := first.process.Process.Pid
 	first.process.Process.Kill()
 	first.process.Wait()
 	first.conn.Close()
-	time.Sleep(2 * time.Second)
-	waitReachable(t, false, "after the core was killed")
-	t.Log("the block outlived the killed core")
-
-	// The next core comes up without rights, as after a crash, finds the block and turns it off with Stop.
 	second := startShellWith(t, shellOptions{program: program, dataDir: dataDir, hostPID: window.Process.Pid, waitPID: killedPID, token: limited})
-	var info struct{ Elevated bool }
-	json.Unmarshal(second.call("app.info", nil), &info)
-	if info.Elevated {
-		t.Fatal("the second core must run without rights")
+	second.waitKillSwitch(t, blockOn, "the next core of the window")
+	if err := fetchThroughPoros(); err != nil {
+		t.Fatalf("the refusal of the next core: %v", err)
 	}
-	second.waitKillSwitch(t, blockOn, "the core without rights joins the block")
+	if !refusedThroughPoros() {
+		t.Fatal("the traffic of the server went out after the crash")
+	}
+	t.Log("after a crash the next core refuses again")
+
 	second.call("connection.stop", nil)
 	second.waitKillSwitch(t, func(state map[string]any) bool { return !blockOn(state) }, "after Stop")
-	waitReachable(t, true, "after Stop from a core without rights")
-	t.Log("a core without rights turned the block off")
+	if fetchThroughPoros() == nil {
+		t.Fatal("the local proxy still answers after Stop")
+	}
 
-	// Always: a core without rights cannot turn the block on and says so; one with rights does at its start.
+	// Always refuses from the start of a core without rights.
 	var settings map[string]any
 	json.Unmarshal(second.call("settings.get", nil), &settings)
 	settings["killSwitch"] = "always"
 	second.call("settings.set", settings)
-	second.waitKillSwitch(t, func(state map[string]any) bool { return state["error"] == "kill_switch_needs_elevation" }, "always without rights")
+	second.waitKillSwitch(t, blockOn, "always without rights")
+	if state := second.killSwitch(); state["error"] != "" {
+		t.Fatalf("always without the TUN needs no rights: %v", state)
+	}
 	secondPID := second.process.Process.Pid
 	second.exit(t)
-	third := startShellWith(t, shellOptions{program: program, dataDir: dataDir, hostPID: window.Process.Pid, waitPID: secondPID})
-	third.waitKillSwitch(t, blockOn, "always at the start of a core with rights")
-	waitReachable(t, false, "always, without a connection")
-	t.Log("always: the block is on at the start, without a connection")
+	third := startShellWith(t, shellOptions{program: program, dataDir: dataDir, hostPID: window.Process.Pid, waitPID: secondPID, token: limited})
+	third.waitKillSwitch(t, blockOn, "always at the start of a core")
+	if !refusedThroughPoros() || !reachable() {
+		t.Fatal("always: the server's traffic must be refused and other programs out")
+	}
+	t.Log("always: refused from the start, without a connection")
 
-	// The window goes: its core exits, and the guard takes the block away.
+	// The window goes: its core exits, and the refusal with it.
 	window.Process.Kill()
 	window.Wait()
 	exited := make(chan error, 1)
@@ -271,24 +316,26 @@ func TestKillSwitchOutlivesTheCore(t *testing.T) {
 		third.process.Process.Kill()
 		t.Fatal("the core did not exit after the window went")
 	}
-	waitReachable(t, true, "after the window went")
-	out, _ := exec.Command("tasklist", "/fi", "imagename eq PorosCore.exe", "/fo", "csv", "/nh").Output()
-	if len(out) > 0 && out[0] == '"' {
-		t.Errorf("a PorosCore process stayed after the window went: %s", out)
+	if fetchThroughPoros() == nil {
+		t.Fatal("the local proxy answers after the window went")
 	}
-	t.Log("the window went, and the block with it")
+	t.Log("the window went, and the refusal with it")
 }
 
-// TestKillSwitchWithTUN connects through the TUN with the block on: what the preset sends direct opens through the
-// TUN, what it sends to the server does not get past the block, and Stop gives the network back.
+// TestKillSwitchWithTUN connects through the TUN with the kill switch: the block of Windows is on, but the TUN
+// carries everything. After a lost connection the TUN stays with the refusal: what the preset sends direct opens,
+// the rest does not get out. A crash takes the TUN away, and the block holds alone, the whole internet but Poros,
+// for the next core, which comes without rights; its Stop gives the network back.
 func TestKillSwitchWithTUN(t *testing.T) {
 	program := os.Getenv("POROS_TEST_CORE")
 	if os.Getenv("POROS_VM_TESTS") != "1" || program == "" {
 		t.Skip("brings up a TUN and blocks the internet of the machine; runs only in the virtual machine")
 	}
-	window := startWindow(t, limitedToken(t))
+	limited := limitedToken(t)
+	window := startWindow(t, limited)
+	dataDir := t.TempDir()
 	_, providerURL := startTestServer(t)
-	s := startShellWith(t, shellOptions{program: program, dataDir: t.TempDir(), hostPID: window.Process.Pid})
+	s := startShellWith(t, shellOptions{program: program, dataDir: dataDir, hostPID: window.Process.Pid})
 	s.useDirectPreset(providerURL, "connected")
 	var settings map[string]any
 	json.Unmarshal(s.call("settings.get", nil), &settings)
@@ -297,20 +344,41 @@ func TestKillSwitchWithTUN(t *testing.T) {
 
 	s.connect()
 	s.waitKillSwitch(t, blockOn, "TUN with the kill switch")
-	if !tunPresent() {
-		t.Fatal("the TUN adapter is missing while the connection runs")
+	if fullBlock(s.killSwitch()) || !tunPresent() {
+		t.Fatalf("the TUN must carry the traffic: %v, TUN %v", s.killSwitch(), tunPresent())
 	}
 	if err := fetch(30 * time.Second); err != nil {
 		t.Fatalf("a page the preset sends direct must open through the TUN: %v", err)
 	}
-	// The server runs in this test, which the block stops: the traffic for it must not find another way out.
-	if answers() {
-		t.Fatalf("%s answered past the block", outside)
-	}
-	t.Log("TUN: the page opens through the TUN, nothing passes the block")
+	t.Log("TUN: connected, the page opens through the TUN")
 
-	s.call("connection.stop", nil)
-	s.waitKillSwitch(t, func(state map[string]any) bool { return !blockOn(state) }, "after Stop")
-	waitReachable(t, true, "after Stop with TUN")
-	s.exit(t)
+	s.loseConnection(t)
+	s.waitKillSwitch(t, func(state map[string]any) bool { return blockOn(state) && !fullBlock(state) }, "the refusal on the TUN")
+	if !tunPresent() {
+		t.Fatal("the refusal must keep the TUN")
+	}
+	if err := fetch(30 * time.Second); err != nil {
+		t.Fatalf("a page the preset sends direct must open through the refusal: %v", err)
+	}
+	if answers() {
+		t.Fatalf("%s answered through the refusal", outside)
+	}
+	t.Log("lost connection: the TUN stays, the direct page opens, the server's traffic does not get out")
+
+	// A crash takes the TUN; the block holds the whole internet but Poros for the next core without rights.
+	killedPID := s.process.Process.Pid
+	s.process.Process.Kill()
+	s.process.Wait()
+	s.conn.Close()
+	time.Sleep(2 * time.Second)
+	waitReachable(t, false, "after the core was killed")
+	next := startShellWith(t, shellOptions{program: program, dataDir: dataDir, hostPID: window.Process.Pid, waitPID: killedPID, token: limited})
+	next.waitKillSwitch(t, fullBlock, "the next core without rights and without the TUN")
+	waitReachable(t, false, "the next core without rights")
+	t.Log("after a crash the block holds the whole internet but Poros")
+
+	next.call("connection.stop", nil)
+	next.waitKillSwitch(t, func(state map[string]any) bool { return !blockOn(state) }, "after Stop")
+	waitReachable(t, true, "after Stop from a core without rights")
+	next.exit(t)
 }

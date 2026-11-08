@@ -264,7 +264,7 @@ func serve(opts options, conn net.Conn) {
 	peer := jsonrpc.NewConn(conn)
 	eng, err := engine.Open(engine.Config{
 		DataDir: opts.dataDir, Version: opts.version, Notify: peer.Notify, ForeignUser: foreignUser,
-		Guard: engine.NewGuard(opts.hostPID, opts.dataDir), UpdateFeed: opts.updateFeed,
+		Guard: engine.NewGuard(opts.hostPID, opts.dataDir), Window: opts.hostPID, UpdateFeed: opts.updateFeed,
 	})
 	if err != nil {
 		log.Printf("open the data folder: %v", err)

@@ -66,6 +66,8 @@ func (e *Engine) SetSettings(settings Settings) (Settings, error) {
 	go e.syncSystemProxy()
 	if settings.KillSwitch != previous.KillSwitch {
 		go e.syncKillSwitch(previous.KillSwitch)
+	} else if settings.Tun != previous.Tun || settings.Preset != previous.Preset || settings.AllowLAN != previous.AllowLAN || settings.IPv6 != previous.IPv6 {
+		go e.restartRefusal()
 	}
 	switch {
 	case settings.CheckIP && !previous.CheckIP:

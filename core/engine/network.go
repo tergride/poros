@@ -146,14 +146,25 @@ func (e *Engine) runNetworkCheck(ctx context.Context) NetworkState {
 		settings = DefaultSettings()
 	}
 
-	if running == nil {
+	switch {
+	case running != nil && running.refusing:
+		// The refusal has no way through the server; the way out is the preset's direct one, past its TUN.
+		directClient := func(family int) (*http.Client, func()) {
+			return outboundClient(running.box, config.TagDirect, config.TagDNSDirect, family)
+		}
+		direct, _, err := lookupAddresses(ctx, directClient, true)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("without the VPN: %w", err))
+		}
+		state.Direct = direct
+	case running == nil:
 		// Without a connection the way out is the system's; Poros's own proxy is down, so no proxy.
 		direct, _, err := lookupAddresses(ctx, e.plainClient, true)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("without the VPN: %w", err))
 		}
 		state.Direct = direct
-	} else {
+	default:
 		// Through the outbounds of the running connection, not its routes: with TUN, plain requests would go
 		// into the tunnel, and a preset may send the services' sites either way.
 		directClient := func(family int) (*http.Client, func()) {

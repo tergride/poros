@@ -139,29 +139,17 @@ describe('the stub core', () => {
     expect(settings.killSwitch).toBe(KillSwitchOff)
     expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, killSwitch: 'on' }))).toBe(ReasonInvalidValue)
 
-    // Connected: a Start without rights does not connect, and says why.
+    // Connected with System: no rights needed, the kill switch guards the connection, and Stop lets it go.
     settings = await core.call(MethodSettingsSet, { ...settings, server: server!.id, systemProxy: true, killSwitch: KillSwitchConnected })
     await core.call(MethodConnectionStart)
     await settle()
-    expect((await core.call(MethodConnectionState)).error).toBe(ReasonKillSwitchNeedsElevation)
-    expect(await core.call(MethodKillSwitchState)).toEqual({ on: false, error: ReasonKillSwitchNeedsElevation, errorText: expect.any(String) })
-
-    // With rights the Start blocks; the block outlives the core, and Stop from a core without rights lifts it.
-    await core.elevate()
-    await settle()
-    await core.call(MethodConnectionStart)
-    await settle()
-    expect((await core.call(MethodKillSwitchState)).on).toBe(true)
-    await core.restart()
-    await settle()
+    expect((await core.call(MethodConnectionState)).error).toBe('')
     expect((await core.call(MethodKillSwitchState)).on).toBe(true)
     await core.call(MethodConnectionStop)
     await settle()
-    expect(await core.call(MethodKillSwitchState)).toEqual({ on: false, error: '', errorText: '' })
+    expect(await core.call(MethodKillSwitchState)).toEqual({ on: false, full: false, error: '', errorText: '' })
 
-    // Always: on at once with rights, and Stop keeps it.
-    await core.elevate()
-    await settle()
+    // Always: the refusal runs at once, and Stop keeps it.
     await core.call(MethodSettingsSet, { ...settings, killSwitch: KillSwitchAlways })
     await settle()
     expect((await core.call(MethodKillSwitchState)).on).toBe(true)
@@ -170,7 +158,15 @@ describe('the stub core', () => {
     expect((await core.call(MethodKillSwitchState)).on).toBe(true)
     await core.call(MethodSettingsSet, { ...settings, killSwitch: KillSwitchOff })
     await settle()
-    expect(blocks).toHaveBeenLastCalledWith({ on: false, error: '', errorText: '' })
+    expect(blocks).toHaveBeenLastCalledWith({ on: false, full: false, error: '', errorText: '' })
+
+    // Always with TUN asks for rights: without them the refusal runs without its TUN.
+    settings = await core.call(MethodSettingsSet, { ...settings, tun: true, killSwitch: KillSwitchAlways })
+    await settle()
+    expect(await core.call(MethodKillSwitchState)).toEqual({ on: true, full: false, error: ReasonKillSwitchNeedsElevation, errorText: expect.any(String) })
+    await core.elevate()
+    await settle()
+    expect(await core.call(MethodKillSwitchState)).toEqual({ on: true, full: false, error: '', errorText: '' })
   })
 
   it('answers a start at once and settles it the way the engine does', async () => {

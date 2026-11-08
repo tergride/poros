@@ -40,7 +40,7 @@ const killSwitch = computed({
       :title="t('settings.conn.killSwitch')"
       :hint="t(`settings.conn.killSwitchHint.${killSwitch}`)"
       :note="t('settings.conn.killSwitchNote')"
-      :shield="!core.status.elevated"
+      :shield="!core.status.elevated && !!core.settings?.tun"
       data-testid="kill-switch"
     >
       <Segmented v-model="killSwitch" :options="modes" :aria-label="t('settings.conn.killSwitch')" />

@@ -25,13 +25,15 @@ const on = computed(() => state.value === ConnectionRunning)
 const busy = computed(() => state.value === ConnectionStarting || state.value === ConnectionStopping)
 const subscription = computed(() => core.subscriptions.find((s) => s.id === core.server?.subscriptionId))
 const empty = computed(() => core.servers.length === 0)
-// The kill switch lets only Poros out; after a lost connection it holds until Stop.
+// The kill switch keeps the traffic of the server from going out directly; after a lost connection it holds until
+// Stop. Full is Windows blocking everything while Poros's TUN is down.
 const blocked = computed(() => core.killSwitch.on)
+const full = computed(() => core.killSwitch.full)
 const held = computed(
   () => blocked.value && !on.value && !busy.value && core.settings?.killSwitch === KillSwitchConnected,
 )
 
-// The kill switch in Always blocks without a connection too: the internet is off, not merely disconnected.
+// The kill switch in Always holds without a connection too: VPN traffic is closed, not merely disconnected.
 const blockedIdle = computed(() => blocked.value && !on.value && !busy.value && !held.value)
 
 // A start that takes long may be cancelled; a quick one has no time to show the choice.
@@ -46,10 +48,10 @@ const cancellable = computed(() => startingSince.value > 0 && now.value - starti
 
 const stateText = computed(() => {
   if (on.value) return t('portal.on', { time: formatDuration(now.value - core.connection.since) })
-  if (held.value) return t('portal.blocked')
+  if (held.value) return t(full.value ? 'portal.blockedFull' : 'portal.blocked')
   if (state.value === ConnectionStarting) return t('portal.starting')
   if (state.value === ConnectionStopping) return t('portal.stopping')
-  if (blockedIdle.value) return t('portal.blockedAlways')
+  if (blockedIdle.value) return t(full.value ? 'portal.blockedAlwaysFull' : 'portal.blockedAlways')
   return t('portal.off')
 })
 
@@ -179,7 +181,10 @@ const serverName = computed(() => (core.server ? serverTitle(core.server.name, c
       </div>
     </div>
 
-    <div class="relative flex gap-2.5" :title="held ? t('portal.heldTitle') : blocked ? t('portal.lockTitle') : undefined">
+    <div
+      class="relative flex gap-2.5"
+      :title="held ? t(full ? 'portal.heldFullTitle' : 'portal.heldTitle') : blocked ? t('portal.lockTitle') : undefined"
+    >
       <Button
         v-if="on || held"
         size="start"

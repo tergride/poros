@@ -10,7 +10,7 @@ const words: TrayWords = {
   connected: (s) => `on ${s}`,
   connecting: () => 'connecting',
   disconnected: () => 'off',
-  blocked: () => 'blocked until Stop',
+  blocked: (full) => (full ? 'all closed until Stop' : 'blocked until Stop'),
   blockedAlways: () => 'blocked',
   coreDown: () => 'core down',
   starting: () => 'starting',
@@ -85,6 +85,9 @@ describe('the tray menu', () => {
     // In Always the block stays without a connection, and Connect is what lifts it.
     const always = trayMenu({ ...state({ killSwitch: 'always' }), blocked: true }, actions(), words)
     expect(texts(always).slice(0, 2)).toEqual(['blocked', 'Connect'])
+    // Without Poros's TUN Windows blocks everything, and the tray says so.
+    const full = trayMenu({ ...state({ killSwitch: 'connected' }), blocked: true, full: true }, actions(), words)
+    expect(texts(full)[0]).toBe('all closed until Stop')
   })
 
   it('says the core is down and offers nothing that needs it', () => {

@@ -1,14 +1,31 @@
 package engine
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net"
+	"os"
+	"path/filepath"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"PorosCore/config"
+	"PorosCore/internal/boxmain"
 )
 
-// Guard keeps the block of the kill switch in a process of its own that lives as long as the Poros window: the
-// block outlasts a core that fails or is replaced, and the next core of the window joins it.
+// The kill switch keeps the traffic of the server from going out directly: after a lost connection, and in the
+// always mode while there is none, a refusal runs instead, the connection of the preset with a refusal in place of
+// the server, so that the TUN, the system proxy and the local proxy stay up and the rest of the preset still
+// works. Without the TUN it needs no rights. With the TUN a block of Windows covers the moments without Poros's
+// TUN: a reconnect, a core that failed, a core that came back without rights.
+
+// Guard keeps the block of Windows in a process of its own that lives as long as the Poros window: the block
+// outlasts a core that fails or is replaced, and the next core of the window joins it.
 type Guard interface {
 	// Find joins the block that is on for this window; it is nil without one.
 	Find() (GuardLink, error)
@@ -33,14 +50,27 @@ var errGuardRights = errors.New("the kill switch needs administrator rights")
 // rearmInterval spaces the attempts to bring back a block that went away, as when the firewall service restarts.
 const rearmInterval = 30 * time.Second
 
+// markFile tells the next core of the same window that the kill switch held traffic: a core that failed or was
+// replaced leaves it, and the next one brings the refusal back instead of giving the system proxy back.
+const markFile = "kill-switch.json"
+
 type killSwitch struct {
 	// mu guards the fields below. Arming and disarming happen under the connection's lifecycle, one at a time;
 	// only a block that went away is let go without it.
-	mu      sync.Mutex
-	link    GuardLink
-	state   KillSwitchState
-	closed  bool
-	rearmed time.Time
+	mu   sync.Mutex
+	link GuardLink
+	// guarding is a connection or a refusal that runs under the kill switch; tun, that it has Poros's TUN up.
+	guarding, tun bool
+	// failure is why the kill switch does not hold what its mode asks for, with the details in English.
+	failure, failureText string
+	state                KillSwitchState
+	closed               bool
+	rearmed              time.Time
+	// window is the PID of the Poros window, 0 without one; resume is the mark of this window found at the open.
+	window int
+	resume bool
+	// handover is a core that is being replaced: it leaves the system proxy and the mark to the next one.
+	handover atomic.Bool
 }
 
 func (e *Engine) KillSwitchState() KillSwitchState {
@@ -49,8 +79,15 @@ func (e *Engine) KillSwitchState() KillSwitchState {
 	return e.ks.state
 }
 
-// setKillSwitch announces the state; the caller holds ks.mu, so that events leave in the order of the changes.
-func (e *Engine) setKillSwitch(state KillSwitchState) {
+// announceKillSwitch tells what the kill switch holds; the caller holds ks.mu, so that events leave in the order of
+// the changes.
+func (e *Engine) announceKillSwitch() {
+	state := KillSwitchState{
+		On:        e.ks.guarding || e.ks.link != nil,
+		Full:      e.ks.link != nil && !e.ks.tun,
+		Error:     e.ks.failure,
+		ErrorText: e.ks.failureText,
+	}
 	if state == e.ks.state {
 		return
 	}
@@ -58,9 +95,69 @@ func (e *Engine) setKillSwitch(state KillSwitchState) {
 	e.notify(EventKillSwitchChanged, state)
 }
 
-// armKillSwitch turns the block on, or keeps it on; its error is that of a failed start. The caller holds the
-// lifecycle.
-func (e *Engine) armKillSwitch() error {
+// setGuarding records what runs under the kill switch and keeps the mark for the next core of the window. The
+// caller holds the lifecycle.
+func (e *Engine) setGuarding(on, tun bool) {
+	e.ks.mu.Lock()
+	defer e.ks.mu.Unlock()
+	if on != e.ks.guarding && e.ks.window != 0 {
+		e.writeMark(on)
+	}
+	e.ks.guarding, e.ks.tun = on, tun
+	e.announceKillSwitch()
+}
+
+// clearFailure forgets why the kill switch failed before, as a new attempt begins.
+func (e *Engine) clearFailure() {
+	e.ks.mu.Lock()
+	defer e.ks.mu.Unlock()
+	e.ks.failure, e.ks.failureText = "", ""
+	e.announceKillSwitch()
+}
+
+// failKillSwitch tells why the kill switch does not hold what its mode asks for.
+func (e *Engine) failKillSwitch(reason string, err error) {
+	log.Printf("kill switch: %v", err)
+	e.ks.mu.Lock()
+	defer e.ks.mu.Unlock()
+	e.ks.failure, e.ks.failureText = reason, err.Error()
+	e.announceKillSwitch()
+}
+
+func (e *Engine) writeMark(on bool) {
+	path := filepath.Join(e.dataDir, markFile)
+	if !on {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Printf("kill switch: %v", err)
+		}
+		return
+	}
+	data, _ := json.Marshal(map[string]int{"window": e.ks.window})
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		log.Printf("kill switch: %v", err)
+	}
+}
+
+// readMark tells whether the mark names this window; one of another window, a Poros that is gone, is removed.
+func (e *Engine) readMark() bool {
+	path := filepath.Join(e.dataDir, markFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var mark struct {
+		Window int `json:"window"`
+	}
+	if json.Unmarshal(data, &mark) == nil && mark.Window != 0 && mark.Window == e.ks.window {
+		return true
+	}
+	_ = os.Remove(path)
+	return false
+}
+
+// armBlock turns the block of Windows on, or keeps it on; its error is that of a failed start. The caller holds
+// the lifecycle.
+func (e *Engine) armBlock() error {
 	e.ks.mu.Lock()
 	on, closed := e.ks.link != nil, e.ks.closed
 	e.ks.mu.Unlock()
@@ -75,26 +172,26 @@ func (e *Engine) armKillSwitch() error {
 	case e.guard != nil:
 		link, err = e.guard.Arm()
 	}
-	e.ks.mu.Lock()
-	defer e.ks.mu.Unlock()
 	if err != nil {
 		reason := ReasonKillSwitchFailed
 		if errors.Is(err, errGuardRights) {
 			reason = ReasonKillSwitchNeedsElevation
 		}
-		log.Printf("kill switch: %v", err)
-		e.setKillSwitch(KillSwitchState{Error: reason, ErrorText: err.Error()})
+		e.failKillSwitch(reason, err)
 		return failure(reason, "%v", err)
 	}
+	e.ks.mu.Lock()
+	defer e.ks.mu.Unlock()
 	e.holdLink(link)
 	return nil
 }
 
 // holdLink makes link the block of this core and follows it; the caller holds ks.mu.
 func (e *Engine) holdLink(link GuardLink) {
-	log.Print("kill switch: the block is on")
+	log.Print("kill switch: the block of Windows is on")
 	e.ks.link = link
-	e.setKillSwitch(KillSwitchState{On: true})
+	e.ks.failure, e.ks.failureText = "", ""
+	e.announceKillSwitch()
 	go e.watchLink(link)
 }
 
@@ -112,7 +209,8 @@ func (e *Engine) watchLink(link GuardLink) {
 	if reason == "" {
 		reason = "the kill switch process stopped"
 	}
-	e.setKillSwitch(KillSwitchState{Error: ReasonKillSwitchFailed, ErrorText: reason})
+	e.ks.failure, e.ks.failureText = ReasonKillSwitchFailed, reason
+	e.announceKillSwitch()
 	retry := e.ks.rearmed.IsZero() || e.now().Sub(e.ks.rearmed) >= rearmInterval
 	if retry {
 		e.ks.rearmed = e.now()
@@ -120,41 +218,54 @@ func (e *Engine) watchLink(link GuardLink) {
 	e.ks.mu.Unlock()
 	log.Printf("kill switch: the block went away: %s", reason)
 	if retry {
-		e.rearmKillSwitch()
+		e.rearmBlock()
 	}
 }
 
-func (e *Engine) rearmKillSwitch() {
+func (e *Engine) rearmBlock() {
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
 	settings, err := e.Settings()
-	if err != nil || settings.KillSwitch == KillSwitchOff {
+	if err != nil || settings.KillSwitch == KillSwitchOff || !settings.Tun || e.conn.running == nil {
 		return
 	}
-	_ = e.armKillSwitch()
+	_ = e.armBlock()
 }
 
-// disarmKillSwitch turns the block off and clears an error. The caller holds the lifecycle.
-func (e *Engine) disarmKillSwitch() {
+// disarmBlock turns the block of Windows off. The caller holds the lifecycle.
+func (e *Engine) disarmBlock() {
 	e.ks.mu.Lock()
 	link := e.ks.link
 	e.ks.link = nil
 	e.ks.mu.Unlock()
-	state := KillSwitchState{}
-	if link != nil {
-		log.Print("kill switch: turning the block off")
-		if err := link.Disarm(); err != nil {
-			log.Printf("kill switch: %v", err)
-			state = KillSwitchState{Error: ReasonKillSwitchFailed, ErrorText: err.Error()}
-		}
+	if link == nil {
+		return
+	}
+	log.Print("kill switch: turning the block of Windows off")
+	err := link.Disarm()
+	if err != nil {
+		log.Printf("kill switch: %v", err)
 	}
 	e.ks.mu.Lock()
 	defer e.ks.mu.Unlock()
-	e.setKillSwitch(state)
+	if err != nil {
+		e.ks.failure, e.ks.failureText = ReasonKillSwitchFailed, err.Error()
+	}
+	e.announceKillSwitch()
 }
 
-// StartKillSwitch joins the block a previous core of this window left on, or turns the block on when the setting
-// is always. A block found with the setting off goes off.
+// releaseKillSwitch lets everything go: the connection or refusal, the system proxy, the block, the failure. The
+// caller holds the lifecycle.
+func (e *Engine) releaseKillSwitch() error {
+	err := e.stopRunning(false)
+	e.disarmBlock()
+	e.clearFailure()
+	e.setGuarding(false, false)
+	return err
+}
+
+// StartKillSwitch brings back what the previous core of this window held, the block it left on or the refusal its
+// mark tells of, and starts the refusal in the always mode. A block found with the setting off goes off.
 func (e *Engine) StartKillSwitch() {
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
@@ -162,26 +273,30 @@ func (e *Engine) StartKillSwitch() {
 	if err != nil {
 		return
 	}
+	var link GuardLink
 	if e.guard != nil {
-		link, err := e.guard.Find()
-		if err != nil {
+		if link, err = e.guard.Find(); err != nil {
 			log.Printf("kill switch: %v", err)
 		}
-		if link != nil && settings.KillSwitch == KillSwitchOff {
+	}
+	if settings.KillSwitch == KillSwitchOff {
+		if link != nil {
 			if err = link.Disarm(); err != nil {
 				log.Printf("kill switch: %v", err)
 			}
-			return
 		}
-		if link != nil {
-			e.ks.mu.Lock()
-			defer e.ks.mu.Unlock()
-			e.holdLink(link)
-			return
-		}
+		return
 	}
-	if settings.KillSwitch == KillSwitchAlways {
-		_ = e.armKillSwitch()
+	if link != nil {
+		e.ks.mu.Lock()
+		e.holdLink(link)
+		e.ks.mu.Unlock()
+	}
+	if settings.KillSwitch == KillSwitchAlways || e.ks.resume || link != nil {
+		if e.ks.resume || link != nil {
+			log.Print("kill switch: the previous core of this window held the traffic of the server")
+		}
+		e.startRefusal(settings)
 	}
 }
 
@@ -194,41 +309,133 @@ func (e *Engine) syncKillSwitch(previous string) {
 	if err != nil {
 		return
 	}
-	switch settings.KillSwitch {
-	case KillSwitchOff:
-		e.disarmKillSwitch()
-	case KillSwitchAlways:
-		_ = e.armKillSwitch()
-	case KillSwitchConnected:
-		if e.conn.running != nil {
-			_ = e.armKillSwitch()
-		} else if previous == KillSwitchAlways {
-			e.disarmKillSwitch()
+	running := e.conn.running
+	switch {
+	case settings.KillSwitch == KillSwitchOff:
+		if running != nil && running.refusing {
+			_ = e.releaseKillSwitch()
+			return
 		}
+		e.disarmBlock()
+		e.clearFailure()
+		e.setGuarding(false, false)
+	case running == nil && settings.KillSwitch == KillSwitchAlways:
+		e.startRefusal(settings)
+	case running == nil:
+	case running.refusing && previous == KillSwitchAlways && settings.KillSwitch == KillSwitchConnected:
+		// Without a lost connection there is nothing for the connected mode to hold.
+		_ = e.releaseKillSwitch()
+	default:
+		if running.tun {
+			_ = e.armBlock()
+		}
+		e.setGuarding(true, running.tun)
 	}
 }
 
-// afterFailedStart takes back a block that came with a Start that failed: no connection ran for it to guard. A
-// block that guarded an earlier connection holds, as after any loss of the connection. The caller holds the
-// lifecycle.
-func (e *Engine) afterFailedStart(wasOn bool) {
-	if wasOn || !e.KillSwitchState().On {
+// afterFailedStart decides what a failed start leaves. A kill switch that held traffic before, or holds it always,
+// brings the refusal up; otherwise no connection ran for it to guard, and everything goes. A cancelled start is
+// left to the request that cancelled it. The caller holds the lifecycle.
+func (e *Engine) afterFailedStart(held, cancelled bool) {
+	if cancelled {
 		return
 	}
-	if settings, err := e.Settings(); err == nil && settings.KillSwitch == KillSwitchConnected {
-		e.disarmKillSwitch()
+	settings, err := e.Settings()
+	if err == nil && (settings.KillSwitch == KillSwitchAlways || held && settings.KillSwitch == KillSwitchConnected) {
+		e.startRefusal(settings)
+		return
 	}
+	_ = e.releaseKillSwitch()
 }
 
-// afterStop turns the block off with the connection, except in the always mode. The caller holds the lifecycle.
-func (e *Engine) afterStop() {
-	if settings, err := e.Settings(); err == nil && settings.KillSwitch != KillSwitchAlways {
-		e.disarmKillSwitch()
+// startRefusal brings up the refusal of the kill switch on the TUN, the system proxy and the local proxy the
+// settings ask for. The TUN needs rights: without them the block of Windows, if there is one, holds alone. The
+// caller holds the lifecycle and nothing runs.
+func (e *Engine) startRefusal(settings Settings) {
+	e.ks.mu.Lock()
+	closed := e.ks.closed
+	e.ks.mu.Unlock()
+	if closed {
+		return
 	}
+	e.clearFailure()
+	preset, found, err := e.preset(settings.Preset)
+	if err != nil || !found {
+		preset = config.Preset{Name: "Refusal", DefaultOutbound: config.OutboundProxy}
+	}
+	tun := false
+	if settings.Tun {
+		// The block holds while the TUN comes up, and alone if it cannot.
+		_ = e.armBlock()
+		tun = elevated() && prepareTun(context.Background())
+	}
+	listen := "127.0.0.1"
+	if settings.AllowLAN {
+		listen = "0.0.0.0"
+	}
+	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(e.mixedPort)))) {
+		e.refusalFailed(settings, fmt.Errorf("port %d is taken by another program", e.mixedPort))
+		return
+	}
+	configs, err := config.Build(config.Input{
+		Refuse:      true,
+		Preset:      preset,
+		Tun:         tun,
+		AllowLAN:    settings.AllowLAN,
+		DisableIPv6: !settings.IPv6,
+		MixedPort:   e.mixedPort,
+		LogLevel:    singBoxLogLevel(settings.DebugLog),
+	})
+	var singBox []byte
+	if err == nil {
+		singBox, err = configs.SingBoxJSON()
+	}
+	running := &runningConnection{tun: tun, refusing: true}
+	if err == nil {
+		running.box, running.cancel, err = boxmain.Create(singBox, nil)
+	}
+	if err != nil {
+		e.refusalFailed(settings, fmt.Errorf("sing-box: %w", err))
+		return
+	}
+	running.stopTraffic = func() {}
+	e.conn.running = running
+	log.Printf("kill switch: refusing the traffic of the server, TUN %t, System %t", tun, settings.SystemProxy)
+	e.setGuarding(true, tun)
+	if !settings.Tun {
+		e.disarmBlock()
+	}
+	e.syncProxyOf(settings)
+}
+
+// restartRefusal brings a running refusal up again with the settings: no one is asked to apply them, as for a
+// connection.
+func (e *Engine) restartRefusal() {
+	e.conn.lifecycle.Lock()
+	defer e.conn.lifecycle.Unlock()
+	settings, err := e.Settings()
+	if err != nil || e.conn.running == nil || !e.conn.running.refusing {
+		return
+	}
+	_ = e.stopRunning(true)
+	e.startRefusal(settings)
+}
+
+// refusalFailed leaves what still holds: the block of Windows with the TUN on. A system proxy would point at a
+// port that is not Poros's, so it goes. The caller holds the lifecycle.
+func (e *Engine) refusalFailed(settings Settings, err error) {
+	if clearErr := e.sysProxy.Clear(); clearErr != nil {
+		log.Printf("kill switch: system proxy: %v", clearErr)
+	}
+	e.failKillSwitch(ReasonKillSwitchFailed, fmt.Errorf("the refusal did not start: %w", err))
+	e.ks.mu.Lock()
+	link := e.ks.link != nil
+	e.ks.mu.Unlock()
+	e.setGuarding(link && settings.Tun, false)
 }
 
 // closeKillSwitch lets go of the block as the core exits: it stays on until the window goes, or the next core
-// of the window turns it off.
+// of the window turns it off. The mark stays only for a core that takes over.
 func (e *Engine) closeKillSwitch() {
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
@@ -239,4 +446,14 @@ func (e *Engine) closeKillSwitch() {
 		e.ks.link.Close()
 		e.ks.link = nil
 	}
+	if !e.ks.handover.Load() && e.ks.window != 0 {
+		e.writeMark(false)
+	}
+}
+
+// HandOver tells the core that another core of the window replaces it: it leaves the system proxy and the mark of
+// the kill switch as they are, so that nothing goes out directly in between.
+func (e *Engine) HandOver() {
+	log.Print("handing over to the next core")
+	e.ks.handover.Store(true)
 }

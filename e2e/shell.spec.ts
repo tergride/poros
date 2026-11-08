@@ -269,7 +269,7 @@ test('settings of a running connection offer a restart', async ({ page }) => {
   await expect(page.getByTestId('restart-banner')).toBeHidden()
 })
 
-test('the kill switch asks for rights, blocks from a Start and lets go on Stop', async ({ page }) => {
+test('the kill switch guards System without rights and asks for them only for TUN in Always', async ({ page }) => {
   await throughWizard(page)
   await page.getByTestId('system').click()
   await page.getByRole('button', { name: 'Меню' }).click()
@@ -278,41 +278,45 @@ test('the kill switch asks for rights, blocks from a Start and lets go on Stop',
   await expect(page.getByTestId('segment-off')).toHaveAttribute('data-state', 'checked')
   await shot(page, 'settings-conn')
 
-  // Without rights the dialog asks for them; Cancel puts the mode back, and the note says how the kill switch works.
+  // With System alone the kill switch needs no rights, and the note says how it works.
   await expect(page.getByTestId('kill-switch').getByTestId('option-note')).toContainText('Как работает Kill switch')
   await page.getByTestId('segment-connected').click()
-  await expect(page.getByRole('dialog', { name: 'Для Kill switch нужны права администратора' })).toBeVisible()
-  await shot(page, 'settings-conn-admin')
-  await page.getByRole('button', { name: 'Отмена' }).click()
-  await expect(page.getByTestId('segment-off')).toHaveAttribute('data-state', 'checked')
-  await expect(page.getByTestId('restart-banner')).toBeHidden()
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page.getByTestId('kill-switch')).toContainText('трафик VPN не пойдёт напрямую')
 
-  // "Try without rights" keeps the mode, which a Start without rights cannot apply.
-  await page.getByTestId('segment-connected').click()
-  await page.getByRole('button', { name: 'Попробовать без прав' }).click()
-  await expect(page.getByTestId('kill-switch')).toContainText('пока вы не нажмёте «Стоп»')
-
-  // A Start without rights does not connect past the block: the banner says why.
   await page.getByRole('link', { name: 'К серверам' }).click()
   await page.getByTestId('start').click()
-  await expect(page.getByRole('dialog', { name: 'Для Kill switch нужны права администратора' })).toBeVisible()
-  await page.getByRole('button', { name: 'Попробовать без прав' }).click()
-  await expect(page.getByTestId('kill-switch-failed')).toContainText('Kill switch не включился без прав администратора.')
-  await expect(page.getByTestId('connection-error')).toBeHidden()
+  await expect(page.getByTestId('portal-state')).toContainText('Подключено')
+  await expect(page.getByTestId('stop').getByTestId('kill-switch-lock')).toBeVisible()
+  await shot(page, 'main-ks-on')
+  await page.getByTestId('stop').click()
   await expect(page.getByTestId('portal-state')).toHaveText('Не подключено')
+  await expect(page.getByTestId('kill-switch-lock')).toBeHidden()
+
+  // Always with TUN keeps the TUN up without a connection, which takes rights: Cancel puts the mode back.
+  await page.getByTestId('tun').click()
+  await page.getByRole('button', { name: 'Меню' }).click()
+  await page.getByRole('menuitem', { name: 'Настройки' }).click()
+  await page.getByRole('link', { name: 'Подключение', exact: true }).click()
+  await page.getByTestId('segment-always').click()
+  await expect(page.getByRole('dialog', { name: 'Для Kill switch с TUN нужны права администратора' })).toBeVisible()
+  await shot(page, 'settings-conn-admin')
+  await page.getByRole('button', { name: 'Отмена' }).click()
+  await expect(page.getByTestId('segment-connected')).toHaveAttribute('data-state', 'checked')
+
+  // Without rights the refusal runs without its TUN, and the banner offers them.
+  await page.getByTestId('segment-always').click()
+  await page.getByRole('button', { name: 'Попробовать без прав' }).click()
+  await page.getByRole('link', { name: 'К серверам' }).click()
+  await expect(page.getByTestId('kill-switch-failed')).toContainText('Kill switch не включился без прав администратора.')
+  await expect(page.getByTestId('portal-state')).toHaveText('Трафик VPN закрыт до подключения')
   await shot(page, 'main-ks-failed')
 
   await page.getByTestId('kill-switch-failed').getByRole('button', { name: 'Перезапустить с правами' }).click()
   await expect(page.getByTestId('admin-chip')).toBeVisible()
   await expect(page.getByTestId('kill-switch-failed')).toBeHidden()
-  await page.getByTestId('start').click()
-  await expect(page.getByTestId('portal-state')).toContainText('Подключено')
-  await expect(page.getByTestId('stop').getByTestId('kill-switch-lock')).toBeVisible()
-  await shot(page, 'main-ks-on')
-
-  await page.getByTestId('stop').click()
-  await expect(page.getByTestId('portal-state')).toHaveText('Не подключено')
-  await expect(page.getByTestId('kill-switch-lock')).toBeHidden()
+  await expect(page.getByTestId('start').getByTestId('kill-switch-lock')).toBeVisible()
+  await expect(page.getByTestId('portal-state')).toHaveText('Трафик VPN закрыт до подключения')
 })
 
 test('an update is checked from the menu, downloaded and offered over the servers', async ({ page }) => {

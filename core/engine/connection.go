@@ -65,9 +65,10 @@ type runningConnection struct {
 	cancel context.CancelFunc
 	xray   *core.Instance
 	// iface is the interface Xray's sockets are bound to.
-	iface       string
-	tun         bool
-	systemProxy bool
+	iface string
+	tun   bool
+	// refusing is the refusal of the kill switch, which has no server.
+	refusing bool
 	// stopTraffic ends the speed and delay reports.
 	stopTraffic context.CancelFunc
 }
@@ -142,8 +143,10 @@ func (e *Engine) runStart(ctx context.Context, serial uint64) {
 	if !e.isLatest(serial) {
 		return
 	}
-	wasOn := e.KillSwitchState().On
-	stopErr := e.stopRunning()
+	// The kill switch keeps the system proxy through a reconnect: in between, programs are refused, not let out.
+	held := e.KillSwitchState().On
+	settings, _ := e.Settings()
+	stopErr := e.stopRunning(settings.KillSwitch == KillSwitchConnected || settings.KillSwitch == KillSwitchAlways)
 	began := time.Now()
 	state, err := e.startRunning(ctx)
 	if err == nil && stopErr != nil {
@@ -164,7 +167,7 @@ func (e *Engine) runStart(ctx context.Context, serial uint64) {
 		if errors.As(err, &failed) {
 			state.Error = failed.reason
 		}
-		e.afterFailedStart(wasOn)
+		e.afterFailedStart(held, ctx.Err() != nil)
 	}
 	e.conn.mu.Lock()
 	defer e.conn.mu.Unlock()
@@ -182,11 +185,18 @@ func (e *Engine) runStop(serial uint64, changesNetwork bool) {
 		return
 	}
 	state := ConnectionState{State: ConnectionIdle}
-	if err := e.stopRunning(); err != nil {
+	// In the always mode the refusal takes the connection's place; otherwise everything goes.
+	var err error
+	if settings, _ := e.Settings(); settings.KillSwitch == KillSwitchAlways {
+		err = e.stopRunning(true)
+		e.startRefusal(settings)
+	} else {
+		err = e.releaseKillSwitch()
+	}
+	if err != nil {
 		state.Error, state.ErrorText = ReasonStopTimeout, err.Error()
 		log.Printf("connection: stop: %v", err)
 	}
-	e.afterStop()
 	e.conn.mu.Lock()
 	defer e.conn.mu.Unlock()
 	if serial == e.conn.serial {
@@ -240,6 +250,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(e.mixedPort)))) {
 		return ConnectionState{}, failure(ReasonPortBusy, "port %d is taken by another program", e.mixedPort)
 	}
+	e.clearFailure()
 	if settings.Tun && !waitTunGone(ctx, tunGoneTimeout) {
 		if ctx.Err() != nil {
 			return ConnectionState{}, ctx.Err()
@@ -253,9 +264,10 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 			log.Print("connection: removed the TUN adapter an earlier run left behind")
 		}
 	}
-	// The block comes first: nothing may go out past the connection while it comes up.
-	if settings.KillSwitch != KillSwitchOff {
-		if err = e.armKillSwitch(); err != nil {
+	// The block of Windows comes first: nothing may go out past the TUN while it comes up.
+	guarded := settings.KillSwitch != KillSwitchOff
+	if guarded && settings.Tun {
+		if err = e.armBlock(); err != nil {
 			return ConnectionState{}, err
 		}
 	}
@@ -337,42 +349,53 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	}
 	e.conn.running = running
 	e.conn.box.Store(running.box)
+	e.setGuarding(guarded, settings.Tun)
+	if !settings.Tun {
+		// A block for the TUN of before is no longer needed: without the TUN the kill switch is the system proxy.
+		e.disarmBlock()
+	}
 	trafficCtx, stopTraffic := context.WithCancel(context.Background())
 	running.stopTraffic = stopTraffic
 	go e.reportTraffic(trafficCtx, counter)
 	go e.pingConnection(trafficCtx, running.box, settings.Server)
 
 	if ctx.Err() != nil {
-		_ = e.stopRunning()
+		_ = e.stopRunning(true)
 		return ConnectionState{}, ctx.Err()
 	}
 	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Since: e.now().UnixMilli()}
-	if settings.SystemProxy {
-		if err = e.applySystemProxy(); err != nil {
-			state.Error, state.ErrorText = ReasonSystemProxyFailed, err.Error()
-			log.Printf("connection: system proxy: %v", err)
-		}
-		// Apply may have set some connections before failing on others: Clear must still see them.
-		running.systemProxy = true
-		state.SystemProxy = err == nil
+	if err = e.syncProxyOf(settings); err != nil {
+		state.Error, state.ErrorText = ReasonSystemProxyFailed, err.Error()
+		log.Printf("connection: system proxy: %v", err)
 	}
+	state.SystemProxy = settings.SystemProxy && err == nil
 	return state, nil
 }
 
-// stopRunning brings the connection down, the system proxy first: nothing may lead to a closed port. The caller
-// holds the lifecycle.
-func (e *Engine) stopRunning() error {
+// syncProxyOf points the system proxy at Poros when the settings ask for it and gives it back otherwise. Apply may
+// set some connections before failing on others, and Clear still sees them. The caller holds the lifecycle.
+func (e *Engine) syncProxyOf(settings Settings) error {
+	if settings.SystemProxy {
+		return e.applySystemProxy()
+	}
+	return e.sysProxy.Clear()
+}
+
+// stopRunning brings the connection or the refusal down, the system proxy first: nothing may lead to a closed
+// port, unless keepProxy asks for it, as the kill switch does while the next one comes. The caller holds the
+// lifecycle.
+func (e *Engine) stopRunning(keepProxy bool) error {
+	var errs []error
+	if !keepProxy {
+		errs = append(errs, e.sysProxy.Clear())
+	}
 	running := e.conn.running
 	if running == nil {
-		return nil
+		return errors.Join(errs...)
 	}
 	e.conn.running = nil
 	e.conn.box.Store(nil)
 	running.stopTraffic()
-	var errs []error
-	if running.systemProxy {
-		errs = append(errs, e.sysProxy.Clear())
-	}
 	done := make(chan struct{})
 	go func() {
 		running.cancel()
@@ -390,24 +413,24 @@ func (e *Engine) stopRunning() error {
 	return errors.Join(errs...)
 }
 
-// syncSystemProxy sets or clears the system proxy of a running connection after the setting changed.
+// syncSystemProxy sets or clears the system proxy of a running connection or refusal after the setting changed.
 func (e *Engine) syncSystemProxy() {
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
 	running := e.conn.running
 	settings, err := e.Settings()
-	if running == nil || err != nil || settings.SystemProxy == running.systemProxy {
+	if running == nil || err != nil || settings.SystemProxy == e.sysProxy.Active() {
+		return
+	}
+	err = e.syncProxyOf(settings)
+	if running.refusing {
+		if err != nil {
+			log.Printf("kill switch: system proxy: %v", err)
+		}
 		return
 	}
 	state := e.ConnectionState()
 	state.Error, state.ErrorText = "", ""
-	if settings.SystemProxy {
-		err = e.applySystemProxy()
-		running.systemProxy = true
-	} else {
-		err = e.sysProxy.Clear()
-		running.systemProxy = false
-	}
 	state.SystemProxy = settings.SystemProxy && err == nil
 	if err != nil {
 		state.Error, state.ErrorText = ReasonSystemProxyFailed, err.Error()
@@ -470,6 +493,20 @@ func waitTunGone(ctx context.Context, timeout time.Duration) bool {
 	}
 }
 
+// prepareTun waits for the TUN of an earlier start to go and removes an adapter an earlier run left behind; false
+// is a TUN that cannot come up now.
+func prepareTun(ctx context.Context) bool {
+	if !waitTunGone(ctx, tunGoneTimeout) {
+		return false
+	}
+	if removed, err := removeStaleTun(); err != nil {
+		log.Printf("connection: the TUN adapter an earlier run left behind could not be removed: %v", err)
+	} else if removed {
+		log.Print("connection: removed the TUN adapter an earlier run left behind")
+	}
+	return true
+}
+
 // tunFailed tells a start that failed on the TUN, in the words of sing-box's tun inbound.
 func tunFailed(err error) bool {
 	text := strings.ToLower(err.Error())
@@ -489,7 +526,7 @@ func (e *Engine) closeConnection() error {
 	e.conn.mu.Unlock()
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
-	return e.stopRunning()
+	return e.stopRunning(e.ks.handover.Load())
 }
 
 func (e *Engine) serverProfile(id string) (p profile.Profile, found bool, err error) {

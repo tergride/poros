@@ -69,7 +69,7 @@ export const useConnect = defineStore('connect', () => {
     () => core.killSwitch,
     (block) => {
       if (block.error === ReasonKillSwitchNeedsElevation) killSwitchFailed.value = true
-      if (block.on) killSwitchFailed.value = false
+      else if (block.on && !block.error) killSwitchFailed.value = false
     },
   )
   watch(
@@ -79,13 +79,16 @@ export const useConnect = defineStore('connect', () => {
     },
   )
 
-  /** What a start lacks rights for: TUN first, since it can fall back to System. */
+  /** What a start lacks rights for: only TUN, which the kill switch needs them for too. */
   function rightsNeeded(): RightsFor | null {
     const settings = core.settings
     if (!settings || core.status.elevated) return null
-    if (settings.tun) return 'tun'
-    if (settings.killSwitch !== KillSwitchOff) return 'killSwitch'
-    return null
+    return settings.tun ? 'tun' : null
+  }
+
+  /** The kill switch needs rights of its own only in Always with TUN: it keeps the TUN up without a connection. */
+  function killSwitchNeedsRights(mode: string): boolean {
+    return mode === KillSwitchAlways && !!core.settings?.tun && !core.status.elevated
   }
 
   function askRights(reason: RightsFor, thenConnect: boolean): void {
@@ -116,8 +119,8 @@ export const useConnect = defineStore('connect', () => {
 
   /**
    * At launch: connects when the settings ask for it or the run before an update was connected, and asks for
-   * rights right away when the connection needs them, the kill switch blocks from the launch or Poros runs with
-   * rights. Those were the user's choices, so the UAC prompt comes instead of the question; a refusal leaves the
+   * rights right away when the connection needs them, the kill switch keeps the TUN from the launch or Poros runs
+   * with rights. Those were the user's choices, so the UAC prompt comes instead of the question; a refusal leaves the
    * banner, and a connection that needs no rights starts anyway.
    */
   async function autoStart(): Promise<void> {
@@ -130,7 +133,7 @@ export const useConnect = defineStore('connect', () => {
       core.connection.state === ConnectionIdle &&
       (settings.tun || settings.systemProxy || modesAsked())
     const reason = wantsConnection ? rightsNeeded() : null
-    const blockFromLaunch = settings.killSwitch === KillSwitchAlways && !core.status.elevated
+    const blockFromLaunch = killSwitchNeedsRights(settings.killSwitch)
     const withRights = settings.runAsAdmin && !core.status.elevated
     if (reason || blockFromLaunch || withRights) {
       await elevate(wantsConnection, reason ?? (blockFromLaunch ? 'killSwitch' : null))
@@ -265,13 +268,13 @@ export const useConnect = defineStore('connect', () => {
   }
 
   /**
-   * The kill switch mode: the core applies it at once. Without rights the dialog asks for them; the new core
+   * The kill switch mode: the core applies it at once. When it needs rights, the dialog asks for them; the new core
    * comes up without the connection, so a running one starts again.
    */
   async function setKillSwitch(mode: string): Promise<void> {
     const before = core.settings?.killSwitch ?? KillSwitchOff
     await core.updateSettings({ killSwitch: mode })
-    if (mode !== KillSwitchOff && !core.status.elevated) {
+    if (killSwitchNeedsRights(mode)) {
       killSwitchBefore.value = before
       askRights('killSwitch', core.running)
     }

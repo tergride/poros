@@ -40,8 +40,10 @@
     "presets": "Presets…",
     "show": "Show window",
     "exit": "Exit",
-    "blocked": "Connection lost — internet blocked",
-    "blockedAlways": "Internet blocked until you connect",
+    "blocked": "Connection lost — VPN traffic closed",
+    "blockedFull": "Connection lost — internet closed",
+    "blockedAlways": "VPN traffic closed until you connect",
+    "blockedAlwaysFull": "Internet closed until you connect",
     "coreDown": "The Poros core has stopped",
     "stop": "Stop"
   },
@@ -121,14 +123,15 @@
     "off": "Not connected",
     "starting": "Connecting…",
     "stopping": "Disconnecting…",
-    "blocked": "Connection lost — internet blocked",
+    "blocked": "Connection lost — VPN traffic closed",
+    "blockedFull": "Connection lost — internet closed",
     "on": "Connected · {time}",
     "noServer": "No server chosen",
     "addFirst": "Add a subscription to begin",
     "start": "Start",
     "connecting": "Connecting",
     "stop": "Stop",
-    "lockTitle": "Kill switch on: the internet goes only through Poros",
+    "lockTitle": "Kill switch: VPN traffic goes only through the server",
     "download": "Download",
     "upload": "Upload",
     "exit": "Exit",
@@ -141,8 +144,10 @@
       "system": "Browsers and programs that use the system proxy go through the server.",
       "none": "Without TUN and System only programs set to the proxy {address} go through the server."
     },
-    "blockedAlways": "Internet blocked until you connect",
-    "heldTitle": "The kill switch keeps traffic from going around the VPN until the connection is back. Stop opens the internet without the VPN.",
+    "blockedAlways": "VPN traffic closed until you connect",
+    "blockedAlwaysFull": "Internet closed until you connect",
+    "heldTitle": "The kill switch keeps VPN traffic from going out directly until the connection is back. What the preset sends directly still works. Stop lets all traffic out without the VPN.",
+    "heldFullTitle": "The Poros core restarted without rights, and TUN is not running: until it is back, Windows closes the whole internet except Poros and the local network. Connect again with rights, or press Stop to open the internet without the VPN.",
     "cancel": "Cancel",
     "disconnecting": "Disconnecting",
     "settings": "Settings"
@@ -207,12 +212,12 @@
     "restart": "Restart with rights",
     "failed": "TUN did not start without administrator rights.",
     "useSystemShort": "Use System",
-    "killSwitchTitle": "The kill switch needs administrator rights",
-    "killSwitchText": "The kill switch adds rules to the Windows firewall so that traffic leaves only through Poros. Without rights the rules do not apply.",
+    "killSwitchTitle": "The kill switch with TUN needs administrator rights",
+    "killSwitchText": "In the Always mode Poros keeps TUN up even without a connection, so that VPN traffic does not go around the server. TUN creates a network adapter in Windows, which only an administrator may do.",
     "killSwitchFailed": "The kill switch did not turn on without administrator rights."
   },
   "killSwitch": {
-    "broken": "The kill switch is not working, so programs can reach the internet past Poros. The reason is in the log."
+    "broken": "The kill switch is not working, so VPN traffic can go out directly. The reason is in the log."
   },
   "updates": {
     "ready": "Poros {version} is ready to install.",
@@ -280,8 +285,8 @@
       "killSwitch": "Kill switch",
       "killSwitchHint": {
         "off": "The internet is not blocked, even if the connection to the server breaks.",
-        "connected": "If the connection to the server breaks, the internet is blocked until you press Stop. Needs administrator rights.",
-        "always": "While Poros runs, the internet goes only through the server. Without a connection there is no internet. Needs administrator rights from the start."
+        "connected": "If the connection to the server breaks, VPN traffic does not go out directly until you press Stop. The rest of the internet works.",
+        "always": "While Poros runs, VPN traffic goes only through the server and is closed without a connection. The rest of the internet works. With TUN, needs administrator rights from the start."
       },
       "killSwitchOff": "Off",
       "killSwitchConnected": "While connected",
@@ -294,7 +299,7 @@
       "ipv6Hint": "Off, sites open over IPv4 only, and IPv6 connections do not go past the server.",
       "reality": "REALITY on Xray",
       "realityHint": "VLESS servers with REALITY run on Xray. Off, they run on sing-box.",
-      "killSwitchNote": "How the kill switch works: Windows lets only Poros reach the internet, and other programs go out only through its connection. A separate guard process holds the block, so it stays even if the Poros core fails. Stop lifts it in the “On connect” mode, and so does choosing Off."
+      "killSwitchNote": "How the kill switch works: VPN traffic is what the preset sends through the server. If the connection breaks, Poros keeps TUN and System on and refuses in place of the server: sites and programs the preset sends directly still work. With TUN, while the Poros core restarts, Windows closes the whole internet except Poros and the local network. Stop lifts the kill switch in the While connected mode, and so does choosing Off."
     },
     "subs": {
       "lead": "How the server list is updated.",

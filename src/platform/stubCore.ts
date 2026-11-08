@@ -149,7 +149,7 @@ const idle: ConnectionState = {
 
 const noAddress = { ip: '', ipv6: '', countryCode: '', city: '', isp: '', asn: 0 }
 
-const noBlock: KillSwitchState = { on: false, error: '', errorText: '' }
+const noBlock: KillSwitchState = { on: false, full: false, error: '', errorText: '' }
 
 /** A release build of 0.1.0, with 0.1.1 out: a check finds it and downloads it. */
 const stubUpdates: UpdateState = {
@@ -446,18 +446,25 @@ export function createStubCore(): CoreClient {
     return { ...network }
   }
   const setBlock = (next: KillSwitchState) => {
-    if (next.on === block.on && next.error === block.error && next.errorText === block.errorText) return
+    if (
+      next.on === block.on &&
+      next.full === block.full &&
+      next.error === block.error &&
+      next.errorText === block.errorText
+    ) {
+      return
+    }
     block = { ...next }
     emit(EventKillSwitchChanged, { ...block })
   }
-  // The rules of core/engine/killswitch.go: the block needs rights to come on, and any core turns it off.
+  // The rules of core/engine/killswitch.go: the kill switch holds VPN traffic without rights; a core without them
+  // misses only the TUN of the refusal and asks for them.
   const arm = (): boolean => {
-    if (block.on) return true
-    if (!status.elevated) {
-      setBlock({ on: false, error: ReasonKillSwitchNeedsElevation, errorText: 'the kill switch needs administrator rights' })
+    if (settings.tun && !status.elevated) {
+      setBlock({ on: true, full: false, error: ReasonKillSwitchNeedsElevation, errorText: 'the kill switch needs administrator rights' })
       return false
     }
-    setBlock({ on: true, error: '', errorText: '' })
+    setBlock({ on: true, full: false, error: '', errorText: '' })
     return true
   }
   const disarm = () => setBlock({ ...noBlock })
@@ -467,11 +474,9 @@ export function createStubCore(): CoreClient {
     else if (connection.state === ConnectionRunning) arm()
     else if (previous === KillSwitchAlways) disarm()
   }
-  // A new core joins the block the previous one left, or turns it on in the always mode.
+  // A new core refuses in the always mode; the connected mode starts with nothing to hold.
   const startBlock = () => {
-    if (block.on && settings.killSwitch === KillSwitchOff) disarm()
-    else if (block.on) setBlock({ on: true, error: '', errorText: '' })
-    else if (settings.killSwitch === KillSwitchAlways) arm()
+    if (settings.killSwitch === KillSwitchAlways) arm()
     else disarm()
   }
   const setUpdates = (next: UpdateState) => {
@@ -661,9 +666,7 @@ export function createStubCore(): CoreClient {
         if (settings.tun && !status.elevated) {
           return { ...idle, error: ReasonNeedsElevation, errorText: 'TUN needs administrator rights' }
         }
-        if (settings.killSwitch !== KillSwitchOff && !arm()) {
-          return { ...idle, error: ReasonKillSwitchNeedsElevation, errorText: 'the kill switch needs administrator rights' }
-        }
+        if (settings.killSwitch !== KillSwitchOff) arm()
         return {
           ...idle,
           state: ConnectionRunning,
@@ -678,7 +681,8 @@ export function createStubCore(): CoreClient {
     [MethodConnectionStop]: () => {
       if (connection.state !== ConnectionIdle) setConnection({ ...connection, state: ConnectionStopping })
       settle(() => {
-        if (settings.killSwitch !== KillSwitchAlways) disarm()
+        if (settings.killSwitch === KillSwitchAlways) arm()
+        else disarm()
         return { ...idle }
       })
       return { ...connection }

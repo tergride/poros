@@ -55,9 +55,9 @@ func TestTestSubscriptionThroughTUN(t *testing.T) {
 }
 
 // TestKillSwitchWithTheTestSubscription connects to every server of the test subscription with the kill switch on,
-// through the TUN and through the proxy alone. The block keeps the DNS client of Windows in, so the core must find the
-// servers' addresses by itself; the cache of Windows is emptied before each start, so that no answer from before the
-// block helps. Neither the link nor the servers' addresses are printed.
+// through the TUN and through the proxy alone. With the TUN the block of Windows keeps the DNS client of Windows in,
+// so the core must find the servers' addresses by itself; the cache of Windows is emptied before each start, so that
+// no answer from before the block helps. Neither the link nor the servers' addresses are printed.
 func TestKillSwitchWithTheTestSubscription(t *testing.T) {
 	program, link := os.Getenv("POROS_TEST_CORE"), os.Getenv("POROS_TEST_SUBSCRIPTION")
 	if os.Getenv("POROS_VM_TESTS") != "1" || program == "" || link == "" {

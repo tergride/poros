@@ -126,6 +126,35 @@ func (p *Proxy) Clear() error {
 func (p *Proxy) Recover() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if err := p.load(); err != nil {
+		return err
+	}
+	return p.clear()
+}
+
+// Adopt takes over, instead of Recover, the proxy a core that stopped left pointing at Poros, for the core that
+// serves it next: the settings stay, and Clear later gives back what the user had before.
+func (p *Proxy) Adopt() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if err := p.load(); err != nil {
+		return err
+	}
+	if p.pending != nil && len(p.saved) > 0 {
+		p.pending(true)
+	}
+	return nil
+}
+
+// Active tells whether the proxy points at Poros, with settings to give back.
+func (p *Proxy) Active() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.saved) > 0
+}
+
+// load reads the state file into a Proxy that has applied nothing yet.
+func (p *Proxy) load() error {
 	if p.backend == nil || len(p.saved) > 0 {
 		return nil
 	}
@@ -145,7 +174,7 @@ func (p *Proxy) Recover() error {
 	for _, connection := range state.Connections {
 		p.saved[connection.Name] = connection
 	}
-	return p.clear()
+	return nil
 }
 
 func (p *Proxy) clear() error {

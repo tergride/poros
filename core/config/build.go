@@ -53,6 +53,9 @@ var loopbackRanges = []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8"), netip.
 
 // Input is everything a connection is built from.
 type Input struct {
+	// Refuse builds the connection of the kill switch without a server: what the preset sends to the server, its
+	// DNS included, is refused, and the rest goes as the preset says. Server is not used.
+	Refuse bool
 	Server profile.Profile
 	Preset Preset
 	// Tun and the mixed inbound always exist; SystemProxy is the engine's business, not the config's.
@@ -87,8 +90,10 @@ func (c Configs) SingBoxJSON() ([]byte, error) {
 
 // Build builds a connection. A server neither core can run fails with an error matching profile.ErrUnsupported.
 func Build(in Input) (Configs, error) {
-	if err := in.Server.Validate(); err != nil {
-		return Configs{}, err
+	if !in.Refuse {
+		if err := in.Server.Validate(); err != nil {
+			return Configs{}, err
+		}
 	}
 	if err := in.Preset.Validate(); err != nil {
 		return Configs{}, err
@@ -98,7 +103,10 @@ func Build(in Input) (Configs, error) {
 	}
 	var configs Configs
 	var proxy option.Outbound
-	if RunsOnXray(in.Server, in.RealityOnXray) {
+	switch {
+	case in.Refuse:
+		proxy = option.Outbound{Type: C.TypeBlock, Tag: TagProxy, Options: &option.StubOptions{}}
+	case RunsOnXray(in.Server, in.RealityOnXray):
 		if in.Bridge.Port == 0 || in.Bridge.Username == "" || in.Bridge.Password == "" {
 			return Configs{}, errors.New("a server on Xray needs the bridge")
 		}
@@ -112,7 +120,7 @@ func Build(in Input) (Configs, error) {
 			Username:      in.Bridge.Username,
 			Password:      in.Bridge.Password,
 		}}
-	} else {
+	default:
 		var err error
 		if proxy, err = singBoxOutbound(in.Server, TagProxy, in.Preset.Hardened); err != nil {
 			return Configs{}, err

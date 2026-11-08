@@ -12,7 +12,7 @@ import Portal from './Portal.vue'
 const settings = { tun: false, systemProxy: true, server: 's1', preset: 'all' } as Settings
 const server = { id: 's1', subscriptionId: '', name: 'Germany', protocol: 'vless', host: '', port: 443, country: 'DE', latency: 0 }
 const idle = { state: ConnectionIdle, serverId: '', tun: false, systemProxy: false, since: 0, error: '', errorText: '' }
-const blocked = { on: true, error: '', errorText: '' }
+const blocked = { on: true, full: false, error: '', errorText: '' }
 
 function mountPortal() {
   return mount(Portal, { global: { plugins: [createAppI18n(['ru-RU'])], stubs: { RouterLink: true } } })
@@ -25,17 +25,22 @@ describe('Portal and the kill switch', () => {
     core.servers = [server]
   })
 
-  it('keeps Stop after a lost connection while the block holds', async () => {
+  it('keeps Stop after a lost connection while the kill switch holds', async () => {
     const core = useCoreStore()
     core.settings = { ...settings, killSwitch: KillSwitchConnected }
     core.connection = { ...idle }
     core.killSwitch = { ...blocked }
     const wrapper = mountPortal()
-    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Соединение прервано — интернет закрыт')
+    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Соединение прервано — трафик VPN закрыт')
     expect(wrapper.find('[data-testid="start"]').exists()).toBe(false)
     expect(wrapper.get('[data-testid="stop"]').find('[data-testid="kill-switch-lock"]').exists()).toBe(true)
 
-    core.killSwitch = { on: false, error: '', errorText: '' }
+    // The core came back without rights and its TUN is down: Windows blocks everything.
+    core.killSwitch = { ...blocked, full: true }
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Соединение прервано — интернет закрыт')
+
+    core.killSwitch = { on: false, full: false, error: '', errorText: '' }
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Не подключено')
     expect(wrapper.find('[data-testid="kill-switch-lock"]').exists()).toBe(false)
@@ -48,8 +53,8 @@ describe('Portal and the kill switch', () => {
     core.killSwitch = { ...blocked }
     const wrapper = mountPortal()
     expect(wrapper.get('[data-testid="start"]').find('[data-testid="kill-switch-lock"]').exists()).toBe(true)
-    // Without a connection the internet is off, and the window says so.
-    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Интернет закрыт до подключения')
+    // Without a connection VPN traffic is closed, and the window says so.
+    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Трафик VPN закрыт до подключения')
 
     core.connection = { ...idle, state: ConnectionRunning, since: Date.now() }
     await wrapper.vm.$nextTick()

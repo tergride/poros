@@ -1,7 +1,10 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -106,12 +109,18 @@ type ksTest struct {
 // which a start does not notice. A nil guard is a core without a kill switch.
 func openKillSwitchTest(t *testing.T, g *fakeGuard, dir, mode string) ksTest {
 	t.Helper()
+	return openWindowTest(t, g, dir, mode, 0)
+}
+
+// openWindowTest opens the engine as a core of the Poros window with the PID window.
+func openWindowTest(t *testing.T, g *fakeGuard, dir, mode string, window int) ksTest {
+	t.Helper()
 	k := ksTest{states: make(chan ConnectionState, 64), blocks: make(chan KillSwitchState, 64)}
 	var guard Guard
 	if g != nil {
 		guard = g
 	}
-	e, err := Open(Config{DataDir: dir, MixedPort: freePort(t), Guard: guard, Notify: func(method string, params any) {
+	e, err := Open(Config{DataDir: dir, MixedPort: freePort(t), Guard: guard, Window: window, Notify: func(method string, params any) {
 		switch method {
 		case EventConnectionChanged:
 			k.states <- params.(ConnectionState)
@@ -125,7 +134,12 @@ func openKillSwitchTest(t *testing.T, g *fakeGuard, dir, mode string) ksTest {
 	k.Engine = e
 	k.close = sync.OnceFunc(func() { e.Close() })
 	t.Cleanup(k.close)
-	e.presets = append(e.presets, presetRecord{ID: "through", Preset: config.Preset{Name: "Through", DefaultOutbound: config.OutboundProxy}})
+	e.presets = append(e.presets,
+		presetRecord{ID: "through", Preset: config.Preset{Name: "Through", DefaultOutbound: config.OutboundProxy}},
+		// split sends 127.0.0.1 directly and the rest through the server.
+		presetRecord{ID: "split", Preset: config.Preset{Name: "Split", DefaultOutbound: config.OutboundProxy, Rules: []config.Rule{
+			{Action: config.ActionRoute, Outbound: config.OutboundDirect, IPCIDR: []string{"127.0.0.1/32"}},
+		}}})
 	if g != nil {
 		g.mu.Lock()
 		g.engine = e
@@ -163,191 +177,259 @@ func waitBlock(t *testing.T, e *Engine, on bool) KillSwitchState {
 	}
 }
 
-func TestKillSwitchWhileConnected(t *testing.T) {
-	g := &fakeGuard{rights: true}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchConnected)
-	if g.on() {
-		t.Fatal("the connected mode blocks nothing before a Start")
+func setSettings(t *testing.T, e *Engine, change func(*Settings)) {
+	t.Helper()
+	settings, _ := e.Settings()
+	change(&settings)
+	if _, err := e.SetSettings(settings); err != nil {
+		t.Fatal(err)
 	}
+}
 
+// refusing tells whether the refusal of the kill switch runs.
+func refusing(e *Engine) bool {
+	e.conn.lifecycle.Lock()
+	defer e.conn.lifecycle.Unlock()
+	return e.conn.running != nil && e.conn.running.refusing
+}
+
+// failReconnect makes the next start fail, as a lost connection does: the server is gone.
+func failReconnect(t *testing.T, k ksTest) ConnectionState {
+	t.Helper()
+	setSettings(t, k.Engine, func(s *Settings) { s.Server = "" })
 	k.StartConnection()
-	if state := waitState(t, k.states); state.State != ConnectionRunning {
-		t.Fatalf("start: %+v", state)
+	return waitState(t, k.states)
+}
+
+func TestKillSwitchWithoutTunNeedsNoRights(t *testing.T) {
+	g := &fakeGuard{}
+	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchConnected)
+	if k.KillSwitchState().On {
+		t.Fatal("the connected mode holds nothing before a Start")
 	}
-	if !g.on() || !k.KillSwitchState().On || g.whileRun {
-		t.Fatalf("the block must be on, and on before the connection: %+v, armed while running %v", k.KillSwitchState(), g.whileRun)
+	k.StartConnection()
+	if state := waitState(t, k.states); state.State != ConnectionRunning || state.Error != "" {
+		t.Fatalf("a connection without TUN needs no rights for the kill switch: %+v", state)
 	}
-	// A reconnect keeps the block: nothing goes out between the two connections.
+	if state := k.KillSwitchState(); !state.On || state.Full || state.Error != "" || g.on() {
+		t.Fatalf("the kill switch guards the connection without a block of Windows: %+v, block %v", state, g.on())
+	}
+	k.StopConnection()
+	waitState(t, k.states)
+	if state := k.KillSwitchState(); state != (KillSwitchState{}) || refusing(k.Engine) {
+		t.Fatalf("Stop lets everything go: %+v", state)
+	}
+}
+
+func TestKillSwitchRefusesTheServerAfterALostConnection(t *testing.T) {
+	direct := webPage(t)
+	k := openKillSwitchTest(t, &fakeGuard{}, t.TempDir(), KillSwitchConnected)
+	setSettings(t, k.Engine, func(s *Settings) { s.Preset = "split" })
 	k.StartConnection()
 	waitState(t, k.states)
-	if arms, disarms := g.counts(); arms != 1 || disarms != 0 {
-		t.Errorf("a reconnect armed %d times, disarmed %d times", arms, disarms)
+
+	state := failReconnect(t, k)
+	if state.State != ConnectionIdle || state.Error != ReasonNoServer {
+		t.Fatalf("the reconnect must fail: %+v", state)
+	}
+	if !refusing(k.Engine) || !k.KillSwitchState().On || k.KillSwitchState().Full {
+		t.Fatalf("a lost connection brings the refusal up: %+v", k.KillSwitchState())
+	}
+	// The preset still works: its direct site opens, and what went through the server is refused.
+	if body, err := fetchThrough(k.Engine, direct); err != nil || body != "through the server" {
+		t.Errorf("the direct site of the preset: %q, %v", body, err)
+	}
+	if _, err := fetchThrough(k.Engine, "http://127.0.0.2:1/"); err == nil {
+		t.Error("the traffic of the server went out")
 	}
 
 	k.StopConnection()
 	waitState(t, k.states)
-	if g.on() || k.KillSwitchState() != (KillSwitchState{}) {
-		t.Fatalf("Stop turns the block off: %+v", k.KillSwitchState())
+	if refusing(k.Engine) || k.KillSwitchState().On {
+		t.Fatalf("Stop ends the refusal: %+v", k.KillSwitchState())
 	}
-
-	// A Start that fails after its block came takes the block back: no connection ran for it to guard.
-	k.conn.lifecycle.Lock()
-	if err := k.armKillSwitch(); err != nil {
-		t.Fatal(err)
-	}
-	k.afterFailedStart(false)
-	k.conn.lifecycle.Unlock()
-	if g.on() {
-		t.Error("a failed start left its block on")
+	if _, err := fetchThrough(k.Engine, direct); err == nil {
+		t.Error("the local proxy still answers after Stop")
 	}
 }
 
-func TestKillSwitchHoldsForALostConnection(t *testing.T) {
-	g := &fakeGuard{rights: true}
-	dir := t.TempDir()
-	first := openKillSwitchTest(t, g, dir, KillSwitchConnected)
-	first.StartConnection()
-	waitState(t, first.states)
-	// The core goes away while connected, as in a crash: the block stays with its guard.
-	first.close()
-	if !g.on() {
-		t.Fatal("the block went with the core")
-	}
-
-	next := openKillSwitchTest(t, g, dir, KillSwitchConnected)
-	next.StartKillSwitch()
-	if state := next.KillSwitchState(); !state.On || next.ConnectionState().State != ConnectionIdle {
-		t.Fatalf("the next core holds the block it found: %+v", state)
-	}
-	// A reconnect that fails keeps a block that guarded a connection.
-	settings, _ := next.Settings()
-	settings.Server = ""
-	next.SetSettings(settings)
-	next.StartConnection()
-	waitState(t, next.states)
-	if !g.on() {
-		t.Fatal("a failed reconnect let the internet through")
-	}
-	next.StopConnection()
-	waitState(t, next.states)
-	if g.on() || next.KillSwitchState().On {
-		t.Fatal("Stop turns the found block off")
-	}
-	if arms, _ := g.counts(); arms != 1 {
-		t.Errorf("the block was armed %d times", arms)
+func TestKillSwitchFirstFailedStartHoldsNothing(t *testing.T) {
+	k := openKillSwitchTest(t, &fakeGuard{}, t.TempDir(), KillSwitchConnected)
+	failReconnect(t, k)
+	if refusing(k.Engine) || k.KillSwitchState().On {
+		t.Fatalf("a start that never ran has nothing to hold: %+v", k.KillSwitchState())
 	}
 }
 
 func TestKillSwitchAlways(t *testing.T) {
-	g := &fakeGuard{rights: true}
-	dir := t.TempDir()
-	k := openKillSwitchTest(t, g, dir, KillSwitchAlways)
-	waitBlock(t, k.Engine, true)
+	k := openKillSwitchTest(t, &fakeGuard{}, t.TempDir(), KillSwitchAlways)
+	k.StartKillSwitch()
+	if !refusing(k.Engine) || !k.KillSwitchState().On {
+		t.Fatalf("the always mode refuses from the start: %+v", k.KillSwitchState())
+	}
 	k.StartConnection()
-	waitState(t, k.states)
+	if state := waitState(t, k.states); state.State != ConnectionRunning || refusing(k.Engine) {
+		t.Fatalf("the connection replaces the refusal: %+v", state)
+	}
 	k.StopConnection()
 	waitState(t, k.states)
-	if !g.on() {
-		t.Fatal("Stop keeps the block in the always mode")
+	if !refusing(k.Engine) {
+		t.Fatal("Stop brings the refusal back in the always mode")
 	}
 
-	// Connected without a connection blocks nothing; off turns any block off.
+	// Connected without a lost connection holds nothing; always refuses again; off lets everything go.
 	setMode(t, k.Engine, KillSwitchConnected)
 	waitBlock(t, k.Engine, false)
 	setMode(t, k.Engine, KillSwitchAlways)
 	waitBlock(t, k.Engine, true)
+	if !refusing(k.Engine) {
+		t.Fatal("always without a connection refuses at once")
+	}
 	setMode(t, k.Engine, KillSwitchOff)
 	waitBlock(t, k.Engine, false)
-	if g.on() {
-		t.Fatal("off left the block on")
-	}
-
-	// The next core joins a block that is on, and one that starts without a block turns it on.
-	setMode(t, k.Engine, KillSwitchAlways)
-	waitBlock(t, k.Engine, true)
-	k.close()
-	next := openKillSwitchTest(t, g, dir, KillSwitchAlways)
-	next.StartKillSwitch()
-	if !next.KillSwitchState().On {
-		t.Fatal("the next core did not join the block")
-	}
-	next.close()
-	g.current().Disarm()
-	last := openKillSwitchTest(t, g, dir, KillSwitchAlways)
-	last.StartKillSwitch()
-	if !last.KillSwitchState().On {
-		t.Fatal("a core in the always mode did not turn the block on at its start")
-	}
-	if arms, _ := g.counts(); arms != 4 {
-		t.Errorf("armed %d times, want 4: a block that is on is joined, not armed again", arms)
+	if refusing(k.Engine) {
+		t.Fatal("off left the refusal running")
 	}
 }
 
-func TestKillSwitchConnectedWhileRunning(t *testing.T) {
-	g := &fakeGuard{rights: true}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchOff)
+func TestKillSwitchModeWhileConnected(t *testing.T) {
+	k := openKillSwitchTest(t, &fakeGuard{}, t.TempDir(), KillSwitchOff)
 	k.StartConnection()
 	waitState(t, k.states)
+	if k.KillSwitchState().On {
+		t.Fatal("the kill switch is off")
+	}
 	// The mode takes effect without a reconnect.
 	setMode(t, k.Engine, KillSwitchConnected)
 	waitBlock(t, k.Engine, true)
 	setMode(t, k.Engine, KillSwitchOff)
 	waitBlock(t, k.Engine, false)
+	if k.ConnectionState().State != ConnectionRunning {
+		t.Fatal("the connection must keep running")
+	}
 }
 
-func TestKillSwitchWithoutRights(t *testing.T) {
-	g := &fakeGuard{}
+// Tests run without administrator rights, so the TUN never comes up: they see what a core that came back without
+// rights sees.
+func TestKillSwitchWithTunWithoutItsTun(t *testing.T) {
+	g := &fakeGuard{rights: true}
 	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchConnected)
+	setSettings(t, k.Engine, func(s *Settings) { s.Tun = true })
 	k.StartConnection()
-	if state := waitState(t, k.states); state.State != ConnectionIdle || state.Error != ReasonKillSwitchNeedsElevation {
-		t.Fatalf("no connection without the block: %+v", state)
+	if state := waitState(t, k.states); state.Error != ReasonNeedsElevation {
+		t.Fatalf("TUN without rights: %+v", state)
 	}
-	if state := k.KillSwitchState(); state.On || state.Error != ReasonKillSwitchNeedsElevation {
-		t.Fatalf("the kill switch tells why it is off: %+v", state)
-	}
-	k.StopConnection()
-	waitState(t, k.states)
-	if state := k.KillSwitchState(); state.Error != "" {
-		t.Errorf("Stop takes the request back: %+v", state)
+	if g.on() || k.KillSwitchState().On {
+		t.Fatal("a start that never ran left a block")
 	}
 
+	// Always with TUN holds the block of Windows while its TUN cannot come up: the whole internet waits.
 	setMode(t, k.Engine, KillSwitchAlways)
+	state := waitBlock(t, k.Engine, true)
+	if !g.on() || !state.Full || !refusing(k.Engine) {
+		t.Fatalf("always with TUN and no TUN: %+v, block %v", state, g.on())
+	}
+	// Without TUN in the settings the refusal comes again without the block.
+	setSettings(t, k.Engine, func(s *Settings) { s.Tun = false })
 	deadline := time.Now().Add(5 * time.Second)
-	for k.KillSwitchState().Error != ReasonKillSwitchNeedsElevation && time.Now().Before(deadline) {
+	for (g.on() || k.KillSwitchState().Full) && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
 	}
-	if state := k.KillSwitchState(); state.Error != ReasonKillSwitchNeedsElevation {
-		t.Fatalf("the always mode asks for rights at once: %+v", state)
-	}
-
-	unsupported := openKillSwitchTest(t, nil, t.TempDir(), KillSwitchConnected)
-	unsupported.StartConnection()
-	if state := waitState(t, unsupported.states); state.Error != ReasonKillSwitchFailed {
-		t.Errorf("without a guard the kill switch fails the start: %+v", state)
+	if state := k.KillSwitchState(); g.on() || state.Full || !state.On || !refusing(k.Engine) {
+		t.Fatalf("without TUN: %+v, block %v", state, g.on())
 	}
 }
 
-func TestKillSwitchComesBackAfterAFailure(t *testing.T) {
+func TestKillSwitchAlwaysWithTunAsksForRights(t *testing.T) {
+	g := &fakeGuard{}
+	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchOff)
+	setSettings(t, k.Engine, func(s *Settings) { s.Tun = true })
+	setMode(t, k.Engine, KillSwitchAlways)
+	deadline := time.Now().Add(5 * time.Second)
+	for !refusing(k.Engine) && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	state := k.KillSwitchState()
+	if state.Error != ReasonKillSwitchNeedsElevation || !state.On || !refusing(k.Engine) {
+		t.Fatalf("the refusal runs without its TUN and asks for rights: %+v", state)
+	}
+
+	unsupported := openKillSwitchTest(t, nil, t.TempDir(), KillSwitchOff)
+	setSettings(t, unsupported.Engine, func(s *Settings) { s.Tun = true })
+	setMode(t, unsupported.Engine, KillSwitchAlways)
+	deadline = time.Now().Add(5 * time.Second)
+	for unsupported.KillSwitchState().Error == "" && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if state := unsupported.KillSwitchState(); state.Error != ReasonKillSwitchFailed {
+		t.Errorf("without a guard the block fails: %+v", state)
+	}
+}
+
+func TestKillSwitchGoesOnWithTheNextCoreOfTheWindow(t *testing.T) {
 	g := &fakeGuard{rights: true}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchAlways)
+	dir := t.TempDir()
+	first := openWindowTest(t, g, dir, KillSwitchConnected, 42)
+	first.StartConnection()
+	waitState(t, first.states)
+	// The shell replaces the core: what the kill switch held goes to the next one.
+	first.HandOver()
+	first.close()
+
+	next := openWindowTest(t, g, dir, KillSwitchConnected, 42)
+	next.StartKillSwitch()
+	if !refusing(next.Engine) || !next.KillSwitchState().On {
+		t.Fatalf("the next core of the window refuses: %+v", next.KillSwitchState())
+	}
+	// A core that exits for good takes its mark along.
+	next.close()
+	last := openWindowTest(t, g, dir, KillSwitchConnected, 42)
+	last.StartKillSwitch()
+	if refusing(last.Engine) || last.KillSwitchState().On {
+		t.Fatalf("Exit let the kill switch go: %+v", last.KillSwitchState())
+	}
+
+	// The mark of another window is a Poros that is gone.
+	last.StartConnection()
+	waitState(t, last.states)
+	last.HandOver()
+	last.close()
+	other := openWindowTest(t, g, dir, KillSwitchConnected, 43)
+	other.StartKillSwitch()
+	if refusing(other.Engine) {
+		t.Fatal("a core of another window took over the refusal")
+	}
+	if _, err := os.Stat(filepath.Join(dir, markFile)); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the mark of another window must go: %v", err)
+	}
+}
+
+func TestKillSwitchBlockComesBackAfterAFailure(t *testing.T) {
+	g := &fakeGuard{rights: true}
+	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchOff)
+	setSettings(t, k.Engine, func(s *Settings) { s.Tun = true })
+	setMode(t, k.Engine, KillSwitchAlways)
 	waitBlock(t, k.Engine, true)
+	for !g.on() {
+		time.Sleep(10 * time.Millisecond)
+	}
 
 	g.current().fail("the rules were removed")
 	failed := false
 	timeout := time.After(5 * time.Second)
-	for !failed || !k.KillSwitchState().On {
+	for !failed || !g.on() {
 		select {
 		case state := <-k.blocks:
 			failed = failed || state.Error == ReasonKillSwitchFailed && state.ErrorText == "the rules were removed"
 		case <-timeout:
 			t.Fatalf("the failure was not told, or the block did not come back: %+v", k.KillSwitchState())
+		case <-time.After(10 * time.Millisecond):
 		}
 	}
 	// A second failure soon after is told, and the block stays off: it would keep failing.
 	g.current().fail("again")
-	state := waitBlock(t, k.Engine, false)
 	time.Sleep(100 * time.Millisecond)
-	if state.ErrorText != "again" || g.on() {
+	if state := k.KillSwitchState(); state.ErrorText != "again" || g.on() {
 		t.Errorf("after a second failure: %+v, on %v", state, g.on())
 	}
 }

@@ -18,6 +18,7 @@ func (e *Engine) Info() AppInfo {
 func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 	return map[string]jsonrpc.Handler{
 		MethodAppInfo:             noParams(func() (AppInfo, error) { return e.Info(), nil }),
+		MethodAppHandOver:         noParams(func() (any, error) { e.HandOver(); return nil, nil }),
 		MethodSettingsGet:         noParams(e.Settings),
 		MethodSettingsSet:         withParams(e.SetSettings),
 		MethodSubscriptionsList:   noParams(e.Subscriptions),

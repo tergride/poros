@@ -56,8 +56,10 @@ type Settings struct {
 	// RunAsAdmin asks for rights through UAC as Poros starts, so TUN and the kill switch ask nothing later. Only the
 	// core gets them, as always.
 	RunAsAdmin bool `json:"runAsAdmin"`
-	// KillSwitch is off, connected or always. Connected blocks the internet from a Start until the Stop, through
-	// a broken connection and a failed core; always blocks it while Poros runs. Both need administrator rights.
+	// KillSwitch is off, connected or always. It keeps the traffic of the server from going out directly: after a
+	// lost connection the TUN, the system proxy and the local proxy stay up with the preset and a refusal instead
+	// of the server. Connected holds it from a lost connection until the Stop, always while Poros runs. With the
+	// TUN a block of Windows covers the moments without Poros's TUN, which needs administrator rights.
 	KillSwitch string `json:"killSwitch"`
 	// TextSize is "normal" or "large".
 	TextSize string `json:"textSize"`
@@ -185,12 +187,16 @@ const (
 	KillSwitchAlways    = "always"
 )
 
-// KillSwitchState is the block of the kill switch.
+// KillSwitchState is what the kill switch holds.
 type KillSwitchState struct {
-	// On is the block: only Poros and its TUN reach the network, everything else waits for the connection.
+	// On is the kill switch at work: a connection runs under it, or the traffic of the server is refused, or the
+	// block of Windows is on.
 	On bool `json:"on"`
-	// Error is why the block is off although the setting asks for it: kill_switch_needs_elevation, or
-	// kill_switch_failed with ErrorText in English.
+	// Full is the block of Windows without Poros's TUN, as when the core came back without rights: only Poros and
+	// the local network reach the network, not just the traffic of the server waits.
+	Full bool `json:"full"`
+	// Error is why the kill switch does not hold what the setting asks for: kill_switch_needs_elevation for the
+	// TUN, or kill_switch_failed with ErrorText in English.
 	Error     string `json:"error"`
 	ErrorText string `json:"errorText"`
 }
@@ -421,7 +427,10 @@ type ServersChanged struct {
 
 // Methods the core answers.
 const (
-	MethodAppInfo             = "app.info"
+	MethodAppInfo = "app.info"
+	// MethodAppHandOver tells the core that the shell replaces it with another core: it leaves the system proxy
+	// and what the kill switch holds to the next one.
+	MethodAppHandOver         = "app.handOver"
 	MethodSettingsGet         = "settings.get"
 	MethodSettingsSet         = "settings.set"
 	MethodSubscriptionsList   = "subscriptions.list"
@@ -457,8 +466,7 @@ const (
 	MethodLinksParse = "links.parse"
 	// MethodLogsGet gives the last lines of the core's log.
 	MethodLogsGet = "logs.get"
-	// MethodKillSwitchState gives the block of the kill switch; the setting turns it on and off, and Start and Stop
-	// in the connected mode.
+	// MethodKillSwitchState gives what the kill switch holds; the setting, Start and Stop change it.
 	MethodKillSwitchState = "killSwitch.state"
 	// MethodUpdatesCheck looks for a new release and downloads it in the background; it answers at once, and
 	// updates.changed tells how it went.

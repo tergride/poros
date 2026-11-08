@@ -20,8 +20,10 @@ export interface TrayState {
   settings: Settings
   servers: Server[]
   presets: Preset[]
-  /** The kill switch blocks: after a lost connection until Stop, or in Always without one. */
+  /** The kill switch holds: after a lost connection until Stop, or in Always without one. */
   blocked?: boolean
+  /** Windows blocks everything, not just VPN traffic: Poros's TUN is down. */
+  full?: boolean
   /** The core does not answer: nothing that needs it can be done. */
   coreDown?: boolean
 }
@@ -41,8 +43,8 @@ export interface TrayWords {
   connected(server: string): string
   connecting(): string
   disconnected(): string
-  blocked(): string
-  blockedAlways(): string
+  blocked(full: boolean): string
+  blockedAlways(full: boolean): string
   coreDown(): string
   starting(): string
   connect(): string
@@ -57,7 +59,7 @@ export interface TrayWords {
 
 const separator: TrayItem = { kind: 'separator' }
 
-/** The kill switch holds the block after a lost connection: only Stop gives the internet back. */
+/** The kill switch holds VPN traffic after a lost connection: only Stop lets it out directly. */
 function held(state: TrayState): boolean {
   return !!state.blocked && state.connection.state === ConnectionIdle && state.settings.killSwitch === KillSwitchConnected
 }
@@ -66,8 +68,10 @@ export function statusText(state: TrayState, words: TrayWords): string {
   const { connection } = state
   if (state.coreDown) return words.coreDown()
   if (connection.state === ConnectionStarting || connection.state === ConnectionStopping) return words.connecting()
-  if (held(state)) return words.blocked()
-  if (connection.state !== ConnectionRunning) return state.blocked ? words.blockedAlways() : words.disconnected()
+  if (held(state)) return words.blocked(!!state.full)
+  if (connection.state !== ConnectionRunning) {
+    return state.blocked ? words.blockedAlways(!!state.full) : words.disconnected()
+  }
   const server = state.servers.find((s) => s.id === connection.serverId)
   return words.connected(server ? serverTitle(server.name, server.country) : '')
 }

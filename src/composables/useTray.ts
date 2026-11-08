@@ -28,8 +28,8 @@ export function useTray(): void {
     connected: (server) => t('tray.connected', { server }),
     connecting: () => t('tray.connecting'),
     disconnected: () => t('tray.disconnected'),
-    blocked: () => t('tray.blocked'),
-    blockedAlways: () => t('tray.blockedAlways'),
+    blocked: (full) => t(full ? 'tray.blockedFull' : 'tray.blocked'),
+    blockedAlways: (full) => t(full ? 'tray.blockedAlwaysFull' : 'tray.blockedAlways'),
     coreDown: () => t('tray.coreDown'),
     starting: () => t('boot.starting'),
     connect: () => t('tray.connect'),
@@ -82,6 +82,7 @@ export function useTray(): void {
         servers: core.servers,
         presets: core.presets,
         blocked: core.killSwitch.on,
+        full: core.killSwitch.full,
         coreDown: !core.ready,
       }
       void setTray(trayMenu(state, actions, words), `Poros · ${statusText(state, words)}`).catch(() => undefined)

@@ -173,3 +173,29 @@ func TestPendingFollowsTheStateFile(t *testing.T) {
 		t.Error("no state file, yet served")
 	}
 }
+
+func TestAdoptKeepsTheProxyAndWhatWasBefore(t *testing.T) {
+	b := newFake(map[string]fakeSetting{"": {flagDirect, ""}}, "")
+	stopped, path := testProxy(t, b)
+	if err := stopped.Apply("127.0.0.1", 2090); err != nil {
+		t.Fatal(err)
+	}
+	next := newProxy(path, b)
+	next.serves = func(string) bool { return true }
+	if err := next.Adopt(); err != nil {
+		t.Fatal(err)
+	}
+	if got := b.settings[""]; got != (fakeSetting{flagDirect | flagProxy, "127.0.0.1:2090"}) || !next.Active() {
+		t.Fatalf("Adopt must keep the proxy on Poros: %+v, active %v", got, next.Active())
+	}
+	// Applying again must not take Poros's own settings for the user's.
+	if err := next.Apply("127.0.0.1", 2090); err != nil {
+		t.Fatal(err)
+	}
+	if err := next.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	if got := b.settings[""]; got != (fakeSetting{flagDirect, ""}) || next.Active() {
+		t.Errorf("Clear after Adopt: %+v, want the settings from before Poros", got)
+	}
+}
