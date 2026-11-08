@@ -55,6 +55,8 @@ type Proxy struct {
 	saved   map[string]saved
 	// serves tells whether a proxy server still answers; a test replaces it.
 	serves func(server string) bool
+	// pending hears whether settings wait to be given back, each time the state file changes.
+	pending func(bool)
 }
 
 // New keeps the state in path, a file of the data folder.
@@ -64,6 +66,24 @@ func New(path string) *Proxy {
 
 func newProxy(path string, b backend) *Proxy {
 	return &Proxy{path: path, backend: b, saved: map[string]saved{}, serves: stillServes}
+}
+
+// OnPending calls f with true when the state file starts holding settings to give back, and with false when it
+// goes: so the platform can give them back even if no core ever starts again.
+func (p *Proxy) OnPending(f func(bool)) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.pending = f
+}
+
+// Served tells whether the proxy of a crashed run still has a server: then a core runs and the settings are its own.
+func (p *Proxy) Served() bool {
+	data, err := os.ReadFile(p.path)
+	if err != nil {
+		return false
+	}
+	var state stateFile
+	return json.Unmarshal(data, &state) == nil && state.Applied != "" && p.serves(state.Applied)
 }
 
 // Apply points every connection at host:port, remembering what each had the first time.
@@ -157,6 +177,9 @@ func (p *Proxy) clear() error {
 
 // save writes the state, so that a start after a crash can still give the settings back.
 func (p *Proxy) save() error {
+	if p.pending != nil {
+		p.pending(len(p.saved) > 0)
+	}
 	if len(p.saved) == 0 {
 		if err := os.Remove(p.path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err

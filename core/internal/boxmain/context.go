@@ -15,6 +15,6 @@ var disableColor bool
 // Must stay per-box: boxes sharing one service.Registry each overwrite the previous box's MustRegister[OutboundManager].
 func newBoxContext() context.Context {
 	ctx := service.ContextWith(context.Background(), deprecated.NewStderrManager(log.StdLogger()))
-	ctx = box.Context(ctx, include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry(), include.DNSTransportRegistry(), include.ServiceRegistry(), include.CertificateProviderRegistry())
+	ctx = box.Context(ctx, inboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry(), include.DNSTransportRegistry(), include.ServiceRegistry(), include.CertificateProviderRegistry())
 	return ctx
 }

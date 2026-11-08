@@ -26,6 +26,7 @@ import (
 	"PorosCore/internal/ipc"
 	"PorosCore/internal/jsonrpc"
 	"PorosCore/internal/logontask"
+	"PorosCore/internal/sysproxy"
 
 	C "github.com/sagernet/sing-box/constant"
 )
@@ -224,6 +225,34 @@ func runLogonCore(args []string) {
 	serve(opts, conn)
 }
 
+// runRestoreProxy is the core Windows runs once at sign-in after a run that left the proxy of Windows at Poros: it
+// gives the user's settings back, unless a Poros of the folder serves that proxy again by now.
+func runRestoreProxy(args []string) {
+	var dataDir string
+	flags := flag.NewFlagSet("PorosCore", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.StringVar(&dataDir, "data-dir", "", "")
+	if err := flags.Parse(args); err != nil || dataDir == "" {
+		log.Fatal("arguments: --data-dir is required")
+	}
+	startLog(dataDir)
+	proxy := sysproxy.New(filepath.Join(dataDir, "system-proxy.json"))
+	if proxy.Served() {
+		// A Poros of the autostart connected before Windows got to this entry, and Windows removed it on the way
+		// here: it stays for the next sign-in, as long as that Poros holds the proxy.
+		if keep := engine.ProxyRecovery(dataDir); keep != nil {
+			keep(true)
+		}
+		log.Print("system proxy: Poros serves it again, nothing to give back")
+		os.Exit(0)
+	}
+	if err := proxy.Recover(); err != nil {
+		log.Fatalf("system proxy: give back the settings an earlier run left: %v", err)
+	}
+	log.Print("system proxy: gave back the settings an earlier run left")
+	os.Exit(0)
+}
+
 // serve serves the shell over its channel and exits when the shell goes away: the channel is the core's lifetime.
 func serve(opts options, conn net.Conn) {
 	boxmain.DisableColor()
@@ -289,6 +318,9 @@ func main() {
 
 	if len(os.Args) > 1 && os.Args[1] == "--logon" {
 		runLogonCore(os.Args[2:])
+	}
+	if len(os.Args) > 1 && os.Args[1] == "--restore-proxy" {
+		runRestoreProxy(os.Args[2:])
 	}
 	runCore()
 }

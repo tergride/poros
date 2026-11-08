@@ -150,6 +150,10 @@ func Open(cfg Config) (*Engine, error) {
 	e.latency.results = map[string]int{}
 	e.latencyURL = latencyURL
 	e.net.state = NetworkState{DNS: []DNSServer{}}
+	// A core under another account sets no proxy of Windows, so it keeps no entry for the next sign-in either.
+	if hook := ProxyRecovery(cfg.DataDir); hook != nil && !cfg.ForeignUser {
+		e.sysProxy.OnPending(hook)
+	}
 	// Only now, with the data folder locked: the proxy of another core on the folder is not this one's to clear.
 	if err = e.sysProxy.Recover(); err != nil {
 		e.conn.state.Error, e.conn.state.ErrorText = ReasonSystemProxyFailed, err.Error()

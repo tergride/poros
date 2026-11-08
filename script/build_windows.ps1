@@ -44,7 +44,9 @@ try {
     Invoke-Step 'cronet' { go mod download $cronet }
     Copy-Item (Join-Path (go list -m -f '{{.Dir}}' $cronet) 'libcronet.dll') $out
     $singbox = go list -m -f '{{.Version}}' github.com/sagernet/sing-box
-    $ldflags = "-w -s -X 'github.com/sagernet/sing-box/constant.Version=$singbox' -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -checklinkname=0"
+    # A windows program, not a console one: the sign-in task and the entry that gives the proxy back at sign-in start
+    # the core in the user's session, where a console would stand on the desktop.
+    $ldflags = "-w -s -H=windowsgui -X 'github.com/sagernet/sing-box/constant.Version=$singbox' -X 'internal/godebug.defaultGODEBUG=multipathtcp=0' -checklinkname=0"
     Invoke-Step 'core' { go build -o "$out\PorosCore.exe" -trimpath -ldflags $ldflags -tags $tags }
     Invoke-Step 'updater' { go build -o "$out\updater.exe" -trimpath -ldflags '-w -s -H=windowsgui' ./cmd/updater }
 }

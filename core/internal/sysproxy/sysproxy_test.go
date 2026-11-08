@@ -148,3 +148,28 @@ func TestStillServes(t *testing.T) {
 		t.Error("a loopback proxy that does not answer is gone")
 	}
 }
+
+func TestPendingFollowsTheStateFile(t *testing.T) {
+	b := newFake(map[string]fakeSetting{"": {flagDirect, ""}}, "")
+	p, path := testProxy(t, b)
+	var heard []bool
+	p.OnPending(func(pending bool) { heard = append(heard, pending) })
+	if err := p.Apply("127.0.0.1", 2090); err != nil {
+		t.Fatal(err)
+	}
+	if !p.Served() {
+		t.Error("a proxy with its server is not served")
+	}
+	if err := p.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	if len(heard) != 2 || !heard[0] || heard[1] {
+		t.Errorf("heard %v", heard)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Error("the state file stayed")
+	}
+	if p.Served() {
+		t.Error("no state file, yet served")
+	}
+}

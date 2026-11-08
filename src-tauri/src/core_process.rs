@@ -379,10 +379,11 @@ async fn supervise(
                 }
             },
         };
-        let elevated = prepared.process.elevated();
-        shared.set_status(CoreState::Starting, elevated, None);
+        shared.set_status(CoreState::Starting, prepared.process.elevated(), None);
         let started = Instant::now();
         let outcome = run_once(&config, &shared, &mut stop, &mut requests, prepared).await;
+        // The status of its last moment: the core of the sign-in task has rights only once it came.
+        let elevated = shared.status.lock().unwrap().elevated;
         if *stop.borrow() {
             shared.set_status(CoreState::Down, false, None);
             return;
@@ -501,10 +502,15 @@ async fn stopped(stop: &mut watch::Receiver<bool>) {
 /// The core to start when none waits: the one of the sign-in task the first time, when autostart asked for it.
 async fn start_core(config: &CoreConfig, logon: &mut bool) -> Result<Prepared, CoreError> {
     if std::mem::take(logon) {
-        prepare_logon(config)
-    } else {
-        prepare(config, false, None, None).await
+        match prepare_logon(config) {
+            Ok(prepared) => return Ok(prepared),
+            Err(err) => crate::applog::write(&format!(
+                "shell: no channel for the core of the sign-in task, starting one without rights: {}",
+                err.message
+            )),
+        }
     }
+    prepare(config, false, None, None).await
 }
 
 /// Creates a channel and leaves it for the core of the sign-in task, which comes with rights on its own.

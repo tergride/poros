@@ -28,7 +28,7 @@ func runNetsh(cmds []string) error {
 		return err
 	}
 	cmd := exec.Command(filepath.Join(system32, "netsh.exe"))
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NO_WINDOW}
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

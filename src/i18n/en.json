@@ -287,7 +287,7 @@
       "killSwitchConnected": "While connected",
       "killSwitchAlways": "Always",
       "allowLan": "Let other devices connect",
-      "allowLanHint": "A phone or TV on this network can go out through Poros.",
+      "allowLanHint": "A phone or TV on this network can go out through Poros. On the first connection Windows Firewall asks about PorosCore: allow it on private networks.",
       "checkIp": "Check IP and DNS",
       "checkIpHint": "Before and after connecting, Poros asks an outside service for the IP and DNS servers. Click the IP for details and DNS leaks.",
       "ipv6": "IPv6",
