@@ -61,6 +61,18 @@ export const TypeSSH = "ssh";
  */
 export const TypeSnell = "snell";
 /**
+ * Types of servers, as stored.
+ */
+export const TypeOpenVPN = "openvpn";
+/**
+ * Types of servers, as stored.
+ */
+export const TypeOpenConnect = "openconnect";
+/**
+ * Types of servers, as stored.
+ */
+export const TypeMASQUE = "masque";
+/**
  * Profile is one server. Exactly the part named by Type is set.
  */
 export interface Profile {
@@ -82,6 +94,9 @@ export interface Profile {
   naive?: Naive;
   ssh?: SSH;
   snell?: Snell;
+  openvpn?: OpenVPN;
+  openconnect?: OpenConnect;
+  masque?: MASQUE;
 }
 export interface VLESS {
   uuid: string;
@@ -265,6 +280,126 @@ export interface Snell {
    * Mode is "", "default", "unshaped" or "unsafe-raw": version 6 only.
    */
   mode?: string;
+}
+/**
+ * OpenVPN is an OpenVPN client as a .ovpn file describes it; the profile's server is its first remote.
+ */
+export interface OpenVPN {
+  /**
+   * Network is "udp" or "tcp", with 4 or 6 for one address family; "" is udp.
+   */
+  network?: string;
+  /**
+   * Remotes are further servers, tried in turn after the first.
+   */
+  remotes?: OpenVPNRemote[];
+  remote_random?: boolean;
+  username?: string;
+  password?: string;
+  static_challenge?: string;
+  static_challenge_echo?: boolean;
+  /**
+   * CA, Cert and Key are PEM blocks: the authority of the server's certificate, and the client's own pair.
+   */
+  ca?: string;
+  cert?: string;
+  key?: string;
+  peer_fingerprint?: string[];
+  control_wrap?: OpenVPNControlWrap;
+  /**
+   * VerifyName is verify-x509-name; VerifyNameType is "", "subject", "name" or "name-prefix".
+   */
+  verify_name?: string;
+  verify_name_type?: string;
+  remote_cert_tls?: string;
+  tls_version_min?: string;
+  tls_version_max?: string;
+  cipher?: string;
+  data_ciphers?: string[];
+  data_ciphers_fallback?: string;
+  auth?: string;
+  /**
+   * Compression is compress, CompressionLZO comp-lzo, AllowCompression allow-compression.
+   */
+  compression?: string;
+  compression_lzo?: string;
+  allow_compression?: string;
+  mtu?: number /* int */;
+  mss_fix?: number /* int */;
+  fragment?: number /* int */;
+  ping_interval?: string;
+  ping_restart?: string;
+  renegotiate_interval?: string;
+}
+export interface OpenVPNRemote {
+  server: string;
+  port: number /* int */;
+  /**
+   * Network is the remote's own, "" for the profile's.
+   */
+  network?: string;
+}
+/**
+ * OpenVPNControlWrap protects the control channel: tls-auth, tls-crypt or tls-crypt-v2.
+ */
+export interface OpenVPNControlWrap {
+  /**
+   * Type is "tls_auth", "tls_crypt" or "tls_crypt_v2".
+   */
+  type?: string;
+  /**
+   * Key is the PEM block of the key.
+   */
+  key?: string;
+  /**
+   * Direction is "", "server" or "client", of tls-auth.
+   */
+  direction?: string;
+}
+/**
+ * OpenConnect is an SSL VPN client: Cisco AnyConnect and the gateways openconnect speaks to.
+ */
+export interface OpenConnect {
+  /**
+   * Flavor is "", "anyconnect", "gp", "fortinet", "f5", "pulse" or "nc"; "" is AnyConnect.
+   */
+  flavor?: string;
+  /**
+   * Path follows the host in the gateway's address, such as a group: /employees.
+   */
+  path?: string;
+  username?: string;
+  password?: string;
+  auth_group?: string;
+  /**
+   * PeerFingerprint pins the gateway's key, "pin-sha256:..." as openconnect --servercert writes it.
+   */
+  peer_fingerprint?: string[];
+  insecure?: boolean;
+  /**
+   * CA, Cert and Key are PEM blocks; KeyPassword opens an encrypted key.
+   */
+  ca?: string;
+  cert?: string;
+  key?: string;
+  key_password?: string;
+  no_udp?: boolean;
+  mtu?: number /* int */;
+}
+/**
+ * MASQUE tunnels IP over HTTP/3 or HTTP/2, as RFC 9484's CONNECT-IP; it always runs over TLS.
+ */
+export interface MASQUE {
+  username?: string;
+  password?: string;
+  path?: string;
+  headers?: { [key: string]: string};
+  /**
+   * Version is 0, HTTP/3 falling back to HTTP/2, or 1, 2 or 3 for that HTTP version alone.
+   */
+  version?: number /* int */;
+  mtu?: number /* int */;
+  tls?: TLS;
 }
 export interface TUIC {
   uuid: string;

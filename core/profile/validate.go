@@ -95,8 +95,102 @@ func (p Profile) Validate() error {
 		return p.SSH.validate()
 	case TypeSnell:
 		return p.Snell.validate()
+	case TypeOpenVPN:
+		return p.OpenVPN.validate()
+	case TypeOpenConnect:
+		return p.OpenConnect.validate()
+	case TypeMASQUE:
+		return p.MASQUE.validate()
 	}
 	return nil
+}
+
+var openVPNNetworks = []string{"", "udp", "udp4", "udp6", "tcp", "tcp4", "tcp6"}
+
+// validate checks the choices against what sing-box's OpenVPN takes and that the keys are PEM blocks.
+func (o *OpenVPN) validate() error {
+	choices := []struct {
+		value, what string
+		allowed     []string
+	}{
+		{o.Network, "network", openVPNNetworks},
+		{o.ControlWrap.Type, "control channel protection", []string{"", "tls_auth", "tls_crypt", "tls_crypt_v2"}},
+		{o.ControlWrap.Direction, "tls-auth direction", []string{"", "server", "client"}},
+		{o.VerifyNameType, "verify-x509-name type", []string{"", "subject", "name", "name-prefix"}},
+		{o.RemoteCertTLS, "remote-cert-tls", []string{"", "server", "client", "none"}},
+		{o.TLSVersionMin, "minimum TLS version", []string{"", "1.0", "1.1", "1.2", "1.3"}},
+		{o.TLSVersionMax, "maximum TLS version", []string{"", "1.0", "1.1", "1.2", "1.3"}},
+		{o.Compression, "compression", []string{"", "none", "no", "lz4", "lz4-v2", "stub", "stub-v2", "disabled", "off"}},
+		{o.CompressionLZO, "LZO compression", []string{"", "none", "no", "yes", "adaptive", "asym", "disabled", "off"}},
+		{o.AllowCompression, "allow-compression", []string{"", "no", "asym", "yes"}},
+	}
+	for _, c := range choices {
+		if !slices.Contains(c.allowed, c.value) {
+			return unsupported("OpenVPN's %s %q is not supported", c.what, c.value)
+		}
+	}
+	for _, r := range o.Remotes {
+		if strings.TrimSpace(r.Server) == "" || r.Port < 1 || r.Port > 65535 || !slices.Contains(openVPNNetworks, r.Network) {
+			return fmt.Errorf("the OpenVPN remote %q is not a server with a port from 1 to 65535", r.Server)
+		}
+	}
+	for _, d := range []string{o.PingInterval, o.PingRestart, o.RenegotiateInterval} {
+		if d != "" && goDuration(d) == "" {
+			return fmt.Errorf("%q is not a duration such as 10s", d)
+		}
+	}
+	pems := []struct{ text, marker, what string }{
+		{o.CA, "CERTIFICATE-----", "the OpenVPN CA"},
+		{o.Cert, "CERTIFICATE-----", "the OpenVPN client certificate"},
+		{o.Key, "PRIVATE KEY-----", "the OpenVPN client key"},
+		{o.ControlWrap.Key, "-----BEGIN OpenVPN", "the key of " + strings.ReplaceAll(o.ControlWrap.Type, "_", "-")},
+	}
+	for _, p := range pems {
+		if p.text != "" && !strings.Contains(p.text, p.marker) {
+			return fmt.Errorf("%s is not a PEM block", p.what)
+		}
+	}
+	switch {
+	case (o.Cert == "") != (o.Key == ""):
+		return errors.New("the OpenVPN client certificate and its key go together")
+	case o.ControlWrap.Type != "" && o.ControlWrap.Key == "":
+		return errors.New("the key of the control channel protection is missing")
+	case o.CA == "" && len(o.PeerFingerprint) == 0:
+		return errors.New("OpenVPN needs the CA of the server's certificate or its fingerprint")
+	}
+	return nil
+}
+
+var openConnectFlavors = []string{"", "anyconnect", "gp", "fortinet", "f5", "pulse", "nc"}
+
+func (o *OpenConnect) validate() error {
+	switch {
+	case !slices.Contains(openConnectFlavors, o.Flavor):
+		return unsupported("the OpenConnect gateway %q is not supported", o.Flavor)
+	case o.Path != "" && !strings.HasPrefix(o.Path, "/"):
+		return errors.New("the gateway's path starts with /")
+	case (o.Cert == "") != (o.Key == ""):
+		return errors.New("the OpenConnect client certificate and its key go together")
+	case o.CA != "" && !strings.Contains(o.CA, "CERTIFICATE-----"):
+		return errors.New("the OpenConnect CA is not a PEM block")
+	case o.MTU != 0 && (o.MTU < 576 || o.MTU > 65535):
+		return fmt.Errorf("the MTU %d is not from 576 to 65535", o.MTU)
+	}
+	return nil
+}
+
+func (m *MASQUE) validate() error {
+	switch {
+	case !m.TLS.Enabled:
+		return errors.New("MASQUE needs TLS")
+	case m.Version < 0 || m.Version > 3:
+		return unsupported("MASQUE over HTTP/%d is not supported", m.Version)
+	case m.Path != "" && !strings.HasPrefix(m.Path, "/"):
+		return errors.New("the MASQUE path starts with /")
+	case m.MTU != 0 && (m.MTU < 576 || m.MTU > 65535):
+		return fmt.Errorf("the MTU %d is not from 576 to 65535", m.MTU)
+	}
+	return m.TLS.validate("")
 }
 
 // validate refuses TLS settings a core would not start with, or would start and then fail every connection on.
@@ -341,6 +435,7 @@ func (p Profile) validatePart() error {
 		{TypeSOCKS, p.SOCKS != nil}, {TypeHTTP, p.HTTP != nil}, {TypeAnyTLS, p.AnyTLS != nil},
 		{TypeWireGuard, p.WireGuard != nil}, {TypeHysteria, p.Hysteria != nil}, {TypeNaive, p.Naive != nil},
 		{TypeSSH, p.SSH != nil}, {TypeSnell, p.Snell != nil},
+		{TypeOpenVPN, p.OpenVPN != nil}, {TypeOpenConnect, p.OpenConnect != nil}, {TypeMASQUE, p.MASQUE != nil},
 	}
 	known := false
 	for _, part := range parts {

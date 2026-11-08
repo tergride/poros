@@ -65,6 +65,7 @@ var allPreset = Preset{
 
 // sampleLinks covers every protocol and transport the builder writes; each must build and pass the core's check.
 func sampleLinks(t *testing.T) map[string]string {
+	ca, staticKey := testCA(t), testStaticKey(t)
 	leg := xhttpExtra(t, map[string]any{
 		"xPaddingBytes": "100-1000",
 		"downloadSettings": map[string]any{
@@ -123,6 +124,14 @@ func sampleLinks(t *testing.T) map[string]string {
 		"ss over shadowtls": porosLink(`{"type":"shadowsocks","name":"stls","server":"st.example.com","server_port":443,` +
 			`"shadowsocks":{"method":"2022-blake3-aes-128-gcm","password":"AAECAwQFBgcICQoLDA0ODw==",` +
 			`"shadowtls":{"version":3,"password":"pw","tls":{"enabled":true,"server_name":"www.apple.com","utls":{"enabled":true,"fingerprint":"chrome"}}}}}`),
+		"openvpn": porosLink(`{"type":"openvpn","name":"ovpn","server":"o1.example.com","server_port":1194,"openvpn":{"network":"udp",` +
+			`"remotes":[{"server":"o2.example.com","port":443,"network":"tcp"}],"username":"u","password":"pw","ca":` + jsonString(t, ca) +
+			`,"control_wrap":{"type":"tls_crypt","key":` + jsonString(t, staticKey) + `},"verify_name":"o.example.com",` +
+			`"remote_cert_tls":"server","data_ciphers":["AES-256-GCM"],"compression":"lz4-v2","ping_interval":"10s","ping_restart":"60s"}}`),
+		"openconnect": porosLink(`{"type":"openconnect","name":"office","server":"gw.example.com","server_port":8443,` +
+			`"openconnect":{"flavor":"anyconnect","path":"/staff","username":"u","password":"pw","ca":` + jsonString(t, ca) + `}}`),
+		"masque": porosLink(`{"type":"masque","name":"masque","server":"m.example.com","server_port":443,"masque":{"username":"u",` +
+			`"password":"pw","path":"/.well-known/masque/ip/","tls":{"enabled":true,"server_name":"m.example.com"}}}`),
 		"hysteria2 realm": porosLink(`{"type":"hysteria2","name":"realm","server":"realm.example.com","server_port":443,` +
 			`"hysteria2":{"password":"pw","tls":{"enabled":true,"server_name":"hy.example.com"},` +
 			`"realm":{"server_url":"https://realm.example.com","realm_id":"home","stun_servers":["stun.example.com:3478"]}}}`),
@@ -389,8 +398,17 @@ func TestBuildTestMeasuresEveryServer(t *testing.T) {
 	if len(configs.Failed) != 1 || configs.Failed["broken"] == nil {
 		t.Errorf("only the broken server fails: %v", configs.Failed)
 	}
-	if got := len(configs.SingBox.Outbounds); got != len(in.Servers) {
-		t.Errorf("an outbound per working server and direct: %d", got)
+	tags := map[string]bool{}
+	for _, outbound := range configs.SingBox.Outbounds {
+		tags[outbound.Tag] = true
+	}
+	for _, endpoint := range configs.SingBox.Endpoints {
+		tags[endpoint.Tag] = true
+	}
+	for _, server := range in.Servers {
+		if !tags[server.Tag] != (server.Tag == "broken") {
+			t.Errorf("a working server, and only one, is an outbound or endpoint under its tag: %s", server.Tag)
+		}
 	}
 	data, err := configs.SingBoxJSON()
 	if err != nil {

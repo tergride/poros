@@ -34,6 +34,14 @@ func singBoxServer(p profile.Profile, tag string, hardened bool) (boxServer, err
 	case p.WireGuard != nil:
 		endpoint, err := wireGuardEndpoint(p, tag)
 		return boxServer{endpoints: []option.Endpoint{endpoint}}, err
+	case p.OpenVPN != nil:
+		endpoint, err := openVPNEndpoint(p, tag)
+		return boxServer{endpoints: []option.Endpoint{endpoint}}, err
+	case p.OpenConnect != nil:
+		return boxServer{endpoints: []option.Endpoint{openConnectEndpoint(p, tag)}}, nil
+	case p.MASQUE != nil:
+		endpoint, err := masqueEndpoint(p, tag)
+		return boxServer{endpoints: []option.Endpoint{endpoint}}, err
 	case p.Shadowsocks != nil && p.Shadowsocks.ShadowTLS.Version > 0:
 		ss, err := singBoxOutbound(p, tag, false)
 		if err != nil {

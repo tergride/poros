@@ -53,8 +53,11 @@ func testCertificate(t *testing.T) (certificate, key string) {
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1)},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature,
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		// Its own authority, for the clients that take a CA rather than skip the check.
+		IsCA:                  true,
+		BasicConstraintsValid: true,
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &private.PublicKey, private)
 	if err != nil {
@@ -151,4 +154,60 @@ func TestConnectionThroughWireGuard(t *testing.T) {
 	useServer(t, e, fmt.Sprintf("wireguard://%s@127.0.0.1:%d?publickey=%s&address=10.200.0.2/32#local",
 		url.QueryEscape(clientPrivate), port, url.QueryEscape(serverPublic)))
 	connectAndFetch(t, e, states, "http://"+net.JoinHostPort(inside, page.Port()))
+}
+
+// insideRoute sends the documentation address a client asks for inside a tunnel to the page on loopback.
+const insideRoute = `"route":{"rules":[{"ip_cidr":["192.0.2.80/32"],"action":"route","outbound":"direct","override_address":"127.0.0.1"}],"final":"direct"}`
+
+func insidePage(t *testing.T) string {
+	page, err := url.Parse(webPage(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return "http://" + net.JoinHostPort("192.0.2.80", page.Port())
+}
+
+func TestConnectionThroughOpenVPN(t *testing.T) {
+	e, states := openConnectionTest(t)
+	page := insidePage(t)
+	certificate, key := testCertificate(t)
+	port := freePort(t)
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"openvpn-server","tag":"ovpn-in","listen":"127.0.0.1",`+
+		`"listen_port":%d,"network":"tcp","address":["10.8.0.1/24"],"users":[{"username":"u","password":"pw"}],`+
+		`"tls":{"certificate":%s,"key":%s,"verify_client_certificate":"none"}}],"outbounds":[{"type":"direct","tag":"direct"}],%s}`,
+		port, jsonText(t, certificate), jsonText(t, key), insideRoute))
+	useServer(t, e, porosLink(t, fmt.Sprintf(`{"type":"openvpn","name":"local","server":"127.0.0.1","server_port":%d,`+
+		`"openvpn":{"network":"tcp","username":"u","password":"pw","ca":%s}}`, port, jsonText(t, certificate))))
+	connectAndFetch(t, e, states, page)
+}
+
+func TestConnectionThroughMASQUE(t *testing.T) {
+	e, states := openConnectionTest(t)
+	page := insidePage(t)
+	certificate, key := testCertificate(t)
+	port := freePort(t)
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"masque-server","tag":"masque-in","listen":"127.0.0.1",`+
+		`"listen_port":%d,"users":[{"username":"u","password":"pw"}],"address":["10.9.0.1/24"],`+
+		`"tls":{"enabled":true,"certificate":%s,"key":%s}}],"outbounds":[{"type":"direct","tag":"direct"}],%s}`,
+		port, jsonText(t, certificate), jsonText(t, key), insideRoute))
+	useServer(t, e, porosLink(t, fmt.Sprintf(`{"type":"masque","name":"local","server":"127.0.0.1","server_port":%d,`+
+		`"masque":{"username":"u","password":"pw","tls":{"enabled":true,"server_name":"localhost","insecure":true}}}`, port)))
+	connectAndFetch(t, e, states, page)
+}
+
+// A refused login fails the start, rather than leave a connection that only looks up.
+func TestOpenVPNRefusalFailsTheStart(t *testing.T) {
+	e, states := openConnectionTest(t)
+	certificate, key := testCertificate(t)
+	port := freePort(t)
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"openvpn-server","tag":"ovpn-in","listen":"127.0.0.1",`+
+		`"listen_port":%d,"network":"tcp","address":["10.8.0.1/24"],"users":[{"username":"u","password":"pw"}],`+
+		`"tls":{"certificate":%s,"key":%s,"verify_client_certificate":"none"}}],"outbounds":[{"type":"direct","tag":"direct"}]}`,
+		port, jsonText(t, certificate), jsonText(t, key)))
+	useServer(t, e, porosLink(t, fmt.Sprintf(`{"type":"openvpn","name":"local","server":"127.0.0.1","server_port":%d,`+
+		`"openvpn":{"network":"tcp","username":"u","password":"wrong","ca":%s}}`, port, jsonText(t, certificate))))
+	e.StartConnection()
+	if state := waitState(t, states); state.State != ConnectionIdle || state.Error != ReasonStartFailed {
+		t.Fatalf("a refused login: %+v", state)
+	}
 }

@@ -21,6 +21,9 @@ const (
 	TypeNaive       = "naive"
 	TypeSSH         = "ssh"
 	TypeSnell       = "snell"
+	TypeOpenVPN     = "openvpn"
+	TypeOpenConnect = "openconnect"
+	TypeMASQUE      = "masque"
 )
 
 // Profile is one server. Exactly the part named by Type is set.
@@ -44,6 +47,9 @@ type Profile struct {
 	Naive       *Naive       `json:"naive,omitempty"`
 	SSH         *SSH         `json:"ssh,omitempty"`
 	Snell       *Snell       `json:"snell,omitempty"`
+	OpenVPN     *OpenVPN     `json:"openvpn,omitempty"`
+	OpenConnect *OpenConnect `json:"openconnect,omitempty"`
+	MASQUE      *MASQUE      `json:"masque,omitempty"`
 }
 
 type VLESS struct {
@@ -185,6 +191,95 @@ type Snell struct {
 	ObfsHost string `json:"obfs_host,omitempty"`
 	// Mode is "", "default", "unshaped" or "unsafe-raw": version 6 only.
 	Mode string `json:"mode,omitempty"`
+}
+
+// OpenVPN is an OpenVPN client as a .ovpn file describes it; the profile's server is its first remote.
+type OpenVPN struct {
+	// Network is "udp" or "tcp", with 4 or 6 for one address family; "" is udp.
+	Network string `json:"network,omitempty"`
+	// Remotes are further servers, tried in turn after the first.
+	Remotes             []OpenVPNRemote `json:"remotes,omitempty"`
+	RemoteRandom        bool            `json:"remote_random,omitempty"`
+	Username            string          `json:"username,omitempty"`
+	Password            string          `json:"password,omitempty"`
+	StaticChallenge     string          `json:"static_challenge,omitempty"`
+	StaticChallengeEcho bool            `json:"static_challenge_echo,omitempty"`
+	// CA, Cert and Key are PEM blocks: the authority of the server's certificate, and the client's own pair.
+	CA              string             `json:"ca,omitempty"`
+	Cert            string             `json:"cert,omitempty"`
+	Key             string             `json:"key,omitempty"`
+	PeerFingerprint []string           `json:"peer_fingerprint,omitempty"`
+	ControlWrap     OpenVPNControlWrap `json:"control_wrap,omitzero"`
+	// VerifyName is verify-x509-name; VerifyNameType is "", "subject", "name" or "name-prefix".
+	VerifyName          string   `json:"verify_name,omitempty"`
+	VerifyNameType      string   `json:"verify_name_type,omitempty"`
+	RemoteCertTLS       string   `json:"remote_cert_tls,omitempty"`
+	TLSVersionMin       string   `json:"tls_version_min,omitempty"`
+	TLSVersionMax       string   `json:"tls_version_max,omitempty"`
+	Cipher              string   `json:"cipher,omitempty"`
+	DataCiphers         []string `json:"data_ciphers,omitempty"`
+	DataCiphersFallback string   `json:"data_ciphers_fallback,omitempty"`
+	Auth                string   `json:"auth,omitempty"`
+	// Compression is compress, CompressionLZO comp-lzo, AllowCompression allow-compression.
+	Compression         string `json:"compression,omitempty"`
+	CompressionLZO      string `json:"compression_lzo,omitempty"`
+	AllowCompression    string `json:"allow_compression,omitempty"`
+	MTU                 int    `json:"mtu,omitempty"`
+	MSSFix              int    `json:"mss_fix,omitempty"`
+	Fragment            int    `json:"fragment,omitempty"`
+	PingInterval        string `json:"ping_interval,omitempty"`
+	PingRestart         string `json:"ping_restart,omitempty"`
+	RenegotiateInterval string `json:"renegotiate_interval,omitempty"`
+}
+
+type OpenVPNRemote struct {
+	Server string `json:"server"`
+	Port   int    `json:"port"`
+	// Network is the remote's own, "" for the profile's.
+	Network string `json:"network,omitempty"`
+}
+
+// OpenVPNControlWrap protects the control channel: tls-auth, tls-crypt or tls-crypt-v2.
+type OpenVPNControlWrap struct {
+	// Type is "tls_auth", "tls_crypt" or "tls_crypt_v2".
+	Type string `json:"type,omitempty"`
+	// Key is the PEM block of the key.
+	Key string `json:"key,omitempty"`
+	// Direction is "", "server" or "client", of tls-auth.
+	Direction string `json:"direction,omitempty"`
+}
+
+// OpenConnect is an SSL VPN client: Cisco AnyConnect and the gateways openconnect speaks to.
+type OpenConnect struct {
+	// Flavor is "", "anyconnect", "gp", "fortinet", "f5", "pulse" or "nc"; "" is AnyConnect.
+	Flavor string `json:"flavor,omitempty"`
+	// Path follows the host in the gateway's address, such as a group: /employees.
+	Path      string `json:"path,omitempty"`
+	Username  string `json:"username,omitempty"`
+	Password  string `json:"password,omitempty"`
+	AuthGroup string `json:"auth_group,omitempty"`
+	// PeerFingerprint pins the gateway's key, "pin-sha256:..." as openconnect --servercert writes it.
+	PeerFingerprint []string `json:"peer_fingerprint,omitempty"`
+	Insecure        bool     `json:"insecure,omitempty"`
+	// CA, Cert and Key are PEM blocks; KeyPassword opens an encrypted key.
+	CA          string `json:"ca,omitempty"`
+	Cert        string `json:"cert,omitempty"`
+	Key         string `json:"key,omitempty"`
+	KeyPassword string `json:"key_password,omitempty"`
+	NoUDP       bool   `json:"no_udp,omitempty"`
+	MTU         int    `json:"mtu,omitempty"`
+}
+
+// MASQUE tunnels IP over HTTP/3 or HTTP/2, as RFC 9484's CONNECT-IP; it always runs over TLS.
+type MASQUE struct {
+	Username string            `json:"username,omitempty"`
+	Password string            `json:"password,omitempty"`
+	Path     string            `json:"path,omitempty"`
+	Headers  map[string]string `json:"headers,omitempty"`
+	// Version is 0, HTTP/3 falling back to HTTP/2, or 1, 2 or 3 for that HTTP version alone.
+	Version int `json:"version,omitempty"`
+	MTU     int `json:"mtu,omitempty"`
+	TLS     TLS `json:"tls,omitzero"`
 }
 
 type TUIC struct {

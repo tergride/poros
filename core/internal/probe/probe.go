@@ -331,7 +331,9 @@ func (h *tunnelHandshake) await(ctx context.Context) error {
 	}
 }
 
-func awaitTunnels(ctx context.Context, i Box, tag string) error {
+// AwaitTunnels waits for the tunnels behind tag that refuse dials until their handshake completes, OpenVPN and
+// OpenConnect, to come up.
+func AwaitTunnels(ctx context.Context, i Box, tag string) error {
 	ctx, cancel := context.WithTimeout(ctx, TunnelHandshakeTimeout)
 	defer cancel()
 	for _, endpoint := range tunnelEndpoints(i, tag) {

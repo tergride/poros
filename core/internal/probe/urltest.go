@@ -32,7 +32,7 @@ func BatchURLTestTo(ctx context.Context, i Box, outboundTags []string, url strin
 
 	return runBatch(ctx, i, outboundTags, maxConcurrency, batchProbe[URLTestResult]{
 		run: func(ctx context.Context, tag string, outbound adapter.Outbound) *URLTestResult {
-			if err := awaitTunnels(ctx, i, tag); err != nil {
+			if err := AwaitTunnels(ctx, i, tag); err != nil {
 				return &URLTestResult{Tag: tag, Error: err}
 			}
 			client, closeClient := outboundHTTPClient(ctx, i, tag, outbound)

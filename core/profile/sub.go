@@ -18,6 +18,8 @@ const (
 	FormatSIP008  = "sip008"
 	// FormatWireGuard is a wg-quick config of one server.
 	FormatWireGuard = "wireguard"
+	// FormatOpenVPN is a .ovpn file of one server.
+	FormatOpenVPN = "openvpn"
 )
 
 // Document is what a subscription body held.
@@ -58,6 +60,10 @@ func ParseDocument(body []byte) (Document, error) {
 	jsonLike := len(text) > 0 && (text[0] == '{' || text[0] == '[')
 	if jsonLike && json.Valid(text) {
 		return d, parseJSONDocument(text, &d)
+	}
+	if isOpenVPNConfig(text) {
+		parseOpenVPNConfig(text, &d)
+		return d, nil
 	}
 	if isWireGuardConfig(text) {
 		parseWireGuardConfig(text, &d)

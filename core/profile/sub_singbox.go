@@ -16,20 +16,23 @@ import (
 var singBoxInfraTypes = []string{"direct", "block", "dns", "selector", "urltest"}
 
 var singBoxParsers = map[string]func(json.RawMessage) (Profile, error){
-	TypeVLESS:       singBoxVLESSOutbound,
-	TypeVMess:       singBoxVMessOutbound,
-	TypeTrojan:      singBoxTrojanOutbound,
-	TypeShadowsocks: singBoxShadowsocksOutbound,
-	TypeHysteria2:   singBoxHysteria2Outbound,
-	TypeTUIC:        singBoxTUICOutbound,
-	TypeSOCKS:       singBoxSOCKSOutbound,
-	TypeHTTP:        singBoxHTTPOutbound,
-	TypeAnyTLS:      singBoxAnyTLSOutbound,
-	TypeWireGuard:   singBoxWireGuardOutbound,
-	TypeHysteria:    singBoxHysteriaOutbound,
-	TypeNaive:       singBoxNaiveOutbound,
-	TypeSSH:         singBoxSSHOutbound,
-	TypeSnell:       singBoxSnellOutbound,
+	TypeVLESS:        singBoxVLESSOutbound,
+	TypeVMess:        singBoxVMessOutbound,
+	TypeTrojan:       singBoxTrojanOutbound,
+	TypeShadowsocks:  singBoxShadowsocksOutbound,
+	TypeHysteria2:    singBoxHysteria2Outbound,
+	TypeTUIC:         singBoxTUICOutbound,
+	TypeSOCKS:        singBoxSOCKSOutbound,
+	TypeHTTP:         singBoxHTTPOutbound,
+	TypeAnyTLS:       singBoxAnyTLSOutbound,
+	TypeWireGuard:    singBoxWireGuardOutbound,
+	TypeHysteria:     singBoxHysteriaOutbound,
+	TypeNaive:        singBoxNaiveOutbound,
+	TypeSSH:          singBoxSSHOutbound,
+	TypeSnell:        singBoxSnellOutbound,
+	"openvpn-client": singBoxOpenVPNEndpoint,
+	TypeOpenConnect:  singBoxOpenConnectEndpoint,
+	"masque-client":  singBoxMASQUEEndpoint,
 }
 
 // singBoxOutbound reads one outbound or endpoint of a sing-box config. What is not an object is left out, as in the
@@ -1021,4 +1024,247 @@ func singBoxShadowTLSTags(outbounds []json.RawMessage) map[string]json.RawMessag
 		}
 	}
 	return tags
+}
+
+// singBoxPEM joins the lines of a certificate or key that sing-box takes as a list.
+func singBoxPEM(lines singBoxList) string {
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+type singBoxOpenVPNOptions struct {
+	singBoxServerOptions
+	Network string `json:"network"`
+	Servers []struct {
+		Server     string `json:"server"`
+		ServerPort int    `json:"server_port"`
+		Network    string `json:"network"`
+	} `json:"servers"`
+	RemoteRandom        bool   `json:"remote_random"`
+	Username            string `json:"username"`
+	Password            string `json:"password"`
+	StaticChallenge     string `json:"static_challenge"`
+	StaticChallengeEcho bool   `json:"static_challenge_echo"`
+	Mode                string `json:"mode"`
+	TLS                 *struct {
+		ServerName            string      `json:"server_name"`
+		ServerNameType        string      `json:"server_name_type"`
+		Certificate           singBoxList `json:"certificate"`
+		CertificatePath       string      `json:"certificate_path"`
+		ClientCertificate     singBoxList `json:"client_certificate"`
+		ClientCertificatePath string      `json:"client_certificate_path"`
+		ClientKey             singBoxList `json:"client_key"`
+		ClientKeyPath         string      `json:"client_key_path"`
+		PeerFingerprint       singBoxList `json:"peer_fingerprint"`
+		RemoteCertificateTLS  string      `json:"remote_certificate_tls"`
+		VersionMin            string      `json:"version_min"`
+		VersionMax            string      `json:"version_max"`
+		ControlWrap           *struct {
+			Type      string      `json:"type"`
+			Key       singBoxList `json:"key"`
+			KeyPath   string      `json:"key_path"`
+			Direction string      `json:"direction"`
+		} `json:"control_wrap"`
+	} `json:"tls"`
+	Cipher              string      `json:"cipher"`
+	DataCiphers         singBoxList `json:"data_ciphers"`
+	DataCiphersFallback string      `json:"data_ciphers_fallback"`
+	Auth                string      `json:"auth"`
+	Compression         string      `json:"compression"`
+	CompressionLZO      string      `json:"compression_lzo"`
+	AllowCompression    string      `json:"allow_compression"`
+	MTU                 int         `json:"mtu"`
+	MSSFix              int         `json:"mss_fix"`
+	Fragment            int         `json:"fragment"`
+	PingInterval        string      `json:"ping_interval"`
+	PingRestart         string      `json:"ping_restart"`
+	RenegotiateInterval string      `json:"renegotiate_interval"`
+}
+
+// singBoxFileError is a key a config reads from a file, which an imported config cannot carry.
+func singBoxFileError(paths ...string) error {
+	for _, path := range paths {
+		if strings.TrimSpace(path) != "" {
+			return errors.New("the config reads a certificate or key from a file, which Poros cannot import")
+		}
+	}
+	return nil
+}
+
+func singBoxOpenVPNEndpoint(raw json.RawMessage) (Profile, error) {
+	var o singBoxOpenVPNOptions
+	if err := singBoxDecode(raw, &o); err != nil {
+		return Profile{}, err
+	}
+	if o.Server == "" && len(o.Servers) > 0 {
+		o.Server, o.ServerPort = o.Servers[0].Server, o.Servers[0].ServerPort
+		if o.Servers[0].Network != "" {
+			o.Network = o.Servers[0].Network
+		}
+		o.Servers = o.Servers[1:]
+	}
+	p, err := o.profile(TypeOpenVPN)
+	if err != nil {
+		return Profile{}, err
+	}
+	v := &OpenVPN{
+		Network:             strings.ToLower(strings.TrimSpace(o.Network)),
+		RemoteRandom:        o.RemoteRandom,
+		Username:            o.Username,
+		Password:            o.Password,
+		StaticChallenge:     o.StaticChallenge,
+		StaticChallengeEcho: o.StaticChallengeEcho,
+		Cipher:              o.Cipher,
+		DataCiphers:         linkList(strings.Join(o.DataCiphers, ",")),
+		DataCiphersFallback: o.DataCiphersFallback,
+		Auth:                o.Auth,
+		Compression:         o.Compression,
+		CompressionLZO:      o.CompressionLZO,
+		AllowCompression:    o.AllowCompression,
+		MTU:                 singBoxCount(o.MTU),
+		MSSFix:              singBoxCount(o.MSSFix),
+		Fragment:            singBoxCount(o.Fragment),
+		PingInterval:        goDuration(o.PingInterval),
+		PingRestart:         goDuration(o.PingRestart),
+		RenegotiateInterval: goDuration(o.RenegotiateInterval),
+	}
+	for _, s := range o.Servers {
+		host, err := normalizeLinkHost(strings.TrimSpace(s.Server))
+		if err != nil {
+			return Profile{}, err
+		}
+		network := strings.ToLower(strings.TrimSpace(s.Network))
+		if network == v.Network {
+			network = ""
+		}
+		v.Remotes = append(v.Remotes, OpenVPNRemote{Server: host, Port: s.ServerPort, Network: network})
+	}
+	if strings.EqualFold(o.Mode, "static_key") {
+		return Profile{}, unsupported("OpenVPN's static key mode, which OpenVPN itself is retiring, is not supported")
+	}
+	if t := o.TLS; t != nil {
+		if err := singBoxFileError(t.CertificatePath, t.ClientCertificatePath, t.ClientKeyPath); err != nil {
+			return Profile{}, err
+		}
+		v.VerifyName, v.VerifyNameType = t.ServerName, t.ServerNameType
+		v.CA, v.Cert, v.Key = singBoxPEM(t.Certificate), singBoxPEM(t.ClientCertificate), singBoxPEM(t.ClientKey)
+		v.PeerFingerprint = linkList(strings.Join(t.PeerFingerprint, ","))
+		v.RemoteCertTLS, v.TLSVersionMin, v.TLSVersionMax = t.RemoteCertificateTLS, t.VersionMin, t.VersionMax
+		if w := t.ControlWrap; w != nil && w.Type != "" {
+			if err := singBoxFileError(w.KeyPath); err != nil {
+				return Profile{}, err
+			}
+			v.ControlWrap = OpenVPNControlWrap{Type: w.Type, Key: singBoxPEM(w.Key), Direction: w.Direction}
+		}
+	}
+	p.OpenVPN = v
+	return p, nil
+}
+
+type singBoxOpenConnectOptions struct {
+	Detour    string `json:"detour"`
+	Server    string `json:"server"`
+	Flavor    string `json:"flavor"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	AuthGroup string `json:"auth_group"`
+	NoUDP     bool   `json:"no_udp"`
+	MTU       int    `json:"mtu"`
+	TLS       struct {
+		Insecure                 bool        `json:"insecure"`
+		PeerFingerprint          singBoxList `json:"peer_fingerprint"`
+		CertificateAuthority     singBoxList `json:"certificate_authority"`
+		CertificateAuthorityPath string      `json:"certificate_authority_path"`
+		ClientCertificate        singBoxList `json:"client_certificate"`
+		ClientCertificatePath    string      `json:"client_certificate_path"`
+		ClientKey                singBoxList `json:"client_key"`
+		ClientKeyPath            string      `json:"client_key_path"`
+		ClientKeyPassword        string      `json:"client_key_password"`
+	} `json:"tls"`
+}
+
+func singBoxOpenConnectEndpoint(raw json.RawMessage) (Profile, error) {
+	var o singBoxOpenConnectOptions
+	if err := singBoxDecode(raw, &o); err != nil {
+		return Profile{}, err
+	}
+	if err := singBoxFileError(o.TLS.CertificateAuthorityPath, o.TLS.ClientCertificatePath, o.TLS.ClientKeyPath); err != nil {
+		return Profile{}, err
+	}
+	p, path, err := openConnectGateway(o.Server)
+	if err != nil {
+		return Profile{}, err
+	}
+	if detour := strings.TrimSpace(o.Detour); detour != "" {
+		return Profile{}, unsupported("the server is reached through the outbound %q, and chains are not supported", detour)
+	}
+	p.OpenConnect = &OpenConnect{
+		Flavor:          strings.ToLower(strings.TrimSpace(o.Flavor)),
+		Path:            path,
+		Username:        o.Username,
+		Password:        o.Password,
+		AuthGroup:       o.AuthGroup,
+		PeerFingerprint: linkList(strings.Join(o.TLS.PeerFingerprint, ",")),
+		Insecure:        o.TLS.Insecure,
+		CA:              singBoxPEM(o.TLS.CertificateAuthority),
+		Cert:            singBoxPEM(o.TLS.ClientCertificate),
+		Key:             singBoxPEM(o.TLS.ClientKey),
+		KeyPassword:     o.TLS.ClientKeyPassword,
+		NoUDP:           o.NoUDP,
+		MTU:             singBoxCount(o.MTU),
+	}
+	return p, nil
+}
+
+// openConnectGateway splits a gateway's address, https://host:port/path or a bare host, as openconnect reads it.
+func openConnectGateway(server string) (Profile, string, error) {
+	server = strings.TrimSpace(server)
+	if !strings.Contains(server, "://") {
+		server = "https://" + server
+	}
+	u, err := url.Parse(server)
+	if err != nil || u.Hostname() == "" {
+		return Profile{}, "", errors.New("the OpenConnect gateway is not an address such as vpn.example.com")
+	}
+	host, err := normalizeLinkHost(u.Hostname())
+	if err != nil {
+		return Profile{}, "", err
+	}
+	port := 443
+	if u.Port() != "" {
+		if port, err = strconv.Atoi(u.Port()); err != nil {
+			return Profile{}, "", fmt.Errorf("the port %q is not a number", u.Port())
+		}
+	}
+	return Profile{Type: TypeOpenConnect, Server: host, ServerPort: port}, strings.TrimSuffix(u.EscapedPath(), "/"), nil
+}
+
+type singBoxMASQUEOptions struct {
+	singBoxServerOptions
+	Username string             `json:"username"`
+	Password string             `json:"password"`
+	Path     string             `json:"path"`
+	Headers  singBoxHeaders     `json:"headers"`
+	Version  int                `json:"version"`
+	MTU      int                `json:"mtu"`
+	TLS      *singBoxTLSOptions `json:"tls"`
+}
+
+func singBoxMASQUEEndpoint(raw json.RawMessage) (Profile, error) {
+	var o singBoxMASQUEOptions
+	if err := singBoxDecode(raw, &o); err != nil {
+		return Profile{}, err
+	}
+	if o.ServerPort == 0 {
+		o.ServerPort = 443
+	}
+	p, err := o.profile(TypeMASQUE)
+	if err != nil {
+		return Profile{}, err
+	}
+	m := &MASQUE{Username: o.Username, Password: o.Password, Path: o.Path, Headers: o.Headers.first(), Version: o.Version, MTU: singBoxCount(o.MTU)}
+	if m.TLS, err = singBoxTLS(o.TLS, true); err != nil {
+		return Profile{}, err
+	}
+	p.MASQUE = m
+	return p, nil
 }

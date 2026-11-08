@@ -21,6 +21,7 @@ import (
 	"PorosCore/internal/boxbox"
 	"PorosCore/internal/boxmain"
 	"PorosCore/internal/netmon"
+	"PorosCore/internal/probe"
 	"PorosCore/internal/xray"
 	"PorosCore/profile"
 
@@ -359,6 +360,11 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	go e.reportTraffic(trafficCtx, counter)
 	go e.pingConnection(trafficCtx, running.box, settings.Server)
 
+	// OpenVPN and OpenConnect refuse connections until their handshake is done: the connection is up only then.
+	if err = probe.AwaitTunnels(ctx, running.box, config.TagProxy); err != nil && ctx.Err() == nil {
+		_ = e.stopRunning(true)
+		return ConnectionState{}, failure(ReasonStartFailed, "%v", err)
+	}
 	if ctx.Err() != nil {
 		_ = e.stopRunning(true)
 		return ConnectionState{}, ctx.Err()
