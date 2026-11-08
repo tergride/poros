@@ -23,6 +23,8 @@ import {
   EventNetworkChanged,
   EventPresetsChanged,
   EventServersChanged,
+  EventServersIPTested,
+  EventServersSpeedTested,
   EventServersTested,
   EventSettingsChanged,
   EventUpdatesChanged,
@@ -32,6 +34,9 @@ import {
   MethodNetworkState,
   MethodPresetsList,
   MethodServersList,
+  MethodServersIPTest,
+  MethodServersSpeedTest,
+  MethodServersStopTests,
   MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
@@ -93,6 +98,9 @@ export const useCoreStore = defineStore('core', () => {
   const updates = ref<UpdateState>({ ...noUpdates })
   const traffic = ref<Traffic | null>(null)
   const testing = ref(false)
+  // Speed and IP tests run on their own, beside the delay test.
+  const speedTesting = ref(false)
+  const ipTesting = ref(false)
   const loaded = ref(false)
 
   const running = computed(() => connection.value.state === ConnectionRunning)
@@ -116,6 +124,8 @@ export const useCoreStore = defineStore('core', () => {
   async function load(): Promise<void> {
     const c = core()
     testing.value = false
+    speedTesting.value = false
+    ipTesting.value = false
     const [s, groupList, list, presetList, conn, net, block, upd] = await Promise.all([
       c.call(MethodSettingsGet),
       c.call(MethodGroupsList),
@@ -162,10 +172,26 @@ export const useCoreStore = defineStore('core', () => {
         servers.value = servers.value.map((s) => (results.has(s.id) ? { ...s, latency: results.get(s.id)! } : s))
         if (report.done) testing.value = false
       })
+      c.on(EventServersSpeedTested, (report) => {
+        const results = new Map(report.results.map((r) => [r.serverId, r]))
+        servers.value = servers.value.map((s) => {
+          const result = results.get(s.id)
+          return result ? { ...s, speedDown: result.download, speedUp: result.upload } : s
+        })
+        if (report.done) speedTesting.value = false
+      })
+      c.on(EventServersIPTested, (report) => {
+        const results = new Map(report.results.map((r) => [r.serverId, r]))
+        servers.value = servers.value.map((s) => {
+          const result = results.get(s.id)
+          return result ? { ...s, exitIp: result.ip, exitCountry: result.country } : s
+        })
+        if (report.done) ipTesting.value = false
+      })
       c.onStatus((next) => {
         const wasReady = status.value.state === 'ready'
         status.value = next
-        if (next.state !== 'ready') testing.value = false
+        if (next.state !== 'ready') testing.value = speedTesting.value = ipTesting.value = false
         if (next.state === 'ready' && !wasReady) void load().catch(() => undefined)
       })
       status.value = await c.status()
@@ -181,14 +207,40 @@ export const useCoreStore = defineStore('core', () => {
     return settings.value
   }
 
-  async function testServers(groupId = ''): Promise<void> {
+  /** A delay test of a group, of all servers, or of those ids names. */
+  async function testServers(groupId = '', ids?: string[]): Promise<void> {
     testing.value = true
     try {
-      await core().call(MethodServersTest, { groupId })
+      await core().call(MethodServersTest, { groupId, ids })
     } catch (error) {
       testing.value = false
       throw error
     }
+  }
+
+  async function speedTestServers(groupId = '', ids?: string[]): Promise<void> {
+    speedTesting.value = true
+    try {
+      await core().call(MethodServersSpeedTest, { groupId, ids })
+    } catch (error) {
+      speedTesting.value = false
+      throw error
+    }
+  }
+
+  async function ipTestServers(groupId = '', ids?: string[]): Promise<void> {
+    ipTesting.value = true
+    try {
+      await core().call(MethodServersIPTest, { groupId, ids })
+    } catch (error) {
+      ipTesting.value = false
+      throw error
+    }
+  }
+
+  async function stopTests(): Promise<void> {
+    await core().call(MethodServersStopTests)
+    testing.value = speedTesting.value = ipTesting.value = false
   }
 
   return {
@@ -204,6 +256,8 @@ export const useCoreStore = defineStore('core', () => {
     updates,
     traffic,
     testing,
+    speedTesting,
+    ipTesting,
     loaded,
     running,
     ready,
@@ -214,5 +268,8 @@ export const useCoreStore = defineStore('core', () => {
     load,
     updateSettings,
     testServers,
+    speedTestServers,
+    ipTestServers,
+    stopTests,
   }
 })

@@ -1,6 +1,7 @@
 export { Banner } from './banner'
 export { Button, buttonVariants } from './button'
 export { Checkbox } from './checkbox'
+export { ContextMenu, ContextMenuItem, ContextMenuSeparator } from './context-menu'
 export { Dialog } from './dialog'
 export { Flag } from './flag'
 export { Input } from './input'

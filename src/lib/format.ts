@@ -83,3 +83,28 @@ export function serverTitle(name: string, country: string): string {
   const stripped = name.replace(leadingFlag, '').trim()
   return stripped || name
 }
+
+const protocolNames: Record<string, string> = {
+  vless: 'VLESS',
+  vmess: 'VMess',
+  trojan: 'Trojan',
+  shadowsocks: 'Shadowsocks',
+  hysteria2: 'Hysteria2',
+  hysteria: 'Hysteria',
+  tuic: 'TUIC',
+  socks: 'SOCKS',
+  http: 'HTTP',
+  anytls: 'AnyTLS',
+  wireguard: 'WireGuard',
+  naive: 'NaiveProxy',
+  ssh: 'SSH',
+  snell: 'Snell',
+  openvpn: 'OpenVPN',
+  openconnect: 'OpenConnect',
+  masque: 'MASQUE',
+}
+
+/** The name of a protocol as its authors write it; the profiles Poros makes up are named in the interface's language. */
+export function protocolName(type: string, t: (key: string) => string): string {
+  return protocolNames[type] ?? (['chain', 'custom', 'direct'].includes(type) ? t(`profiles.kind.${type}`) : type)
+}

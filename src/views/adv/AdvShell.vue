@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import ConnBar from '@/components/adv/ConnBar.vue'
+import LinkServerDialog from '@/components/adv/LinkServerDialog.vue'
 import AdminDialog from '@/components/main/AdminDialog.vue'
 import IpDialog from '@/components/main/IpDialog.vue'
 import ModesDialog from '@/components/main/ModesDialog.vue'
@@ -39,7 +40,7 @@ onMounted(() => {
 
 <template>
   <div class="flex min-h-0 min-w-0 flex-1">
-    <nav class="flex w-[188px] flex-none flex-col gap-0.5 border-r border-line bg-s0 p-2.5" :aria-label="t('adv.sections')">
+    <nav class="flex w-[172px] flex-none flex-col gap-0.5 border-r border-line bg-s0 p-2.5" :aria-label="t('adv.sections')">
       <RouterLink
         v-for="section in sections"
         :key="section.id"
@@ -62,5 +63,6 @@ onMounted(() => {
     <ModesDialog />
     <AdminDialog />
     <IpDialog v-model:open="ipOpen" />
+    <LinkServerDialog />
   </div>
 </template>

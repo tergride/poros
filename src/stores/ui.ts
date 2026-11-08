@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import type { PresetCopy } from '@/platform/core-types'
+import type { PresetCopy, Server } from '@/platform/core-types'
 
 /** A link for the add dialog; check tries it at once, to say why it is no subscription. */
 export interface AddPrefill {
@@ -25,5 +25,7 @@ export const useUiStore = defineStore('ui', () => {
   const notice = ref<Notice | null>(null)
   // The dialog that moves to the other mode of the interface, opened from the chip of the title bar.
   const modeDialog = ref(false)
-  return { addSubscription, addPrefill, linkPreset, logs, notice, modeDialog }
+  // A link to one server the advanced mode offers to add.
+  const linkServer = ref<{ link: string; server: Server } | null>(null)
+  return { addSubscription, addPrefill, linkPreset, logs, notice, modeDialog, linkServer }
 })

@@ -31,7 +31,12 @@ export function useLinks(): void {
         ui.linkPreset = { link, preset: info.preset }
         return
       }
-      // The simple mode adds no server by hand: the add dialog tries the link and says so.
+      // The advanced mode offers to add the server; the simple mode adds none by hand: the add dialog tries the link
+      // and says so.
+      if (info.kind === LinkServer && info.server && core.settings?.uiMode === 'advanced') {
+        ui.linkServer = { link, server: info.server }
+        return
+      }
       if (info.kind === LinkServer) {
         ui.addPrefill = { url: link, name: '', check: true }
         ui.addSubscription = true
@@ -54,9 +59,9 @@ export function useLinks(): void {
   }
 
   watch(
-    () => [queue.value.length, core.loaded, route.path, ui.addSubscription, ui.linkPreset, opening.value] as const,
-    ([waiting, loaded, path, adding, preset, busyOpening]) => {
-      const busy = !loaded || path === '/' || path.startsWith('/wizard') || adding || preset || busyOpening
+    () => [queue.value.length, core.loaded, route.path, ui.addSubscription, ui.linkPreset, ui.linkServer, opening.value] as const,
+    ([waiting, loaded, path, adding, preset, server, busyOpening]) => {
+      const busy = !loaded || path === '/' || path.startsWith('/wizard') || adding || preset || server || busyOpening
       if (!waiting || busy) return
       const link = queue.value.shift()
       if (!link) return
