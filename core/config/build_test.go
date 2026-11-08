@@ -111,7 +111,32 @@ func sampleLinks(t *testing.T) map[string]string {
 		"socks":  "socks5://user:pass@198.51.100.9:1080#socks",
 		"http":   "https://user:pass@proxy.example.com:8443#http",
 		"anytls": "anytls://passw0rd@at.example.com:8443?sni=at.example.com&idle_session_timeout=60s#anytls",
+		"wireguard": "wireguard://" + url.QueryEscape(testWGPrivate) + "@wg.example.com:51820?publickey=" + url.QueryEscape(testWGPublic) +
+			"&address=172.16.0.2/32,fd01::2/128&reserved=1,2,3&mtu=1280&keepalive=25#wg",
+		"hysteria v1": "hysteria://hy1.example.com:443?auth=pw&upmbps=50&downmbps=200&obfsParam=ob&mport=20000-30000" +
+			"&sni=hy1.example.com#hy1",
+		"naive":      "naive+https://user:pw@nv.example.com:443?sni=nv.example.com&extra-headers=X-A%3A%201#naive",
+		"naive quic": "naive+quic://user:pw@nq.example.com:443?congestion_control=bbr&uot=1#naive-quic",
+		"ssh":        "ssh://root:pw@ssh.example.com:22?client_version=SSH-2.0-OpenSSH_9.6#ssh",
+		"snell v4":   "snell://psk@sn.example.com:8443?version=4&obfs=http&obfs-host=bing.com#snell4",
+		"snell v6":   "snell://psk@sn6.example.com:8443?version=6&mode=unshaped&reuse=1#snell6",
+		"ss over shadowtls": porosLink(`{"type":"shadowsocks","name":"stls","server":"st.example.com","server_port":443,` +
+			`"shadowsocks":{"method":"2022-blake3-aes-128-gcm","password":"AAECAwQFBgcICQoLDA0ODw==",` +
+			`"shadowtls":{"version":3,"password":"pw","tls":{"enabled":true,"server_name":"www.apple.com","utls":{"enabled":true,"fingerprint":"chrome"}}}}}`),
+		"hysteria2 realm": porosLink(`{"type":"hysteria2","name":"realm","server":"realm.example.com","server_port":443,` +
+			`"hysteria2":{"password":"pw","tls":{"enabled":true,"server_name":"hy.example.com"},` +
+			`"realm":{"server_url":"https://realm.example.com","realm_id":"home","stun_servers":["stun.example.com:3478"]}}}`),
 	}
+}
+
+// WireGuard keys from its documentation.
+const (
+	testWGPrivate = "yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk="
+	testWGPublic  = "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
+)
+
+func porosLink(profileJSON string) string {
+	return "poros://add/" + base64.RawURLEncoding.EncodeToString([]byte(profileJSON))
 }
 
 func TestBuildPassesCoreChecks(t *testing.T) {

@@ -330,6 +330,34 @@ type clashProxy struct {
 	MinIdleSession           clashInt `yaml:"min-idle-session"`
 
 	Headers clashMap[map[string]clashString] `yaml:"headers"`
+
+	PrivateKey           clashString               `yaml:"private-key"`
+	PublicKey            clashString               `yaml:"public-key"`
+	PreSharedKey         clashString               `yaml:"pre-shared-key"`
+	IPv6                 clashString               `yaml:"ipv6"`
+	Reserved             clashList                 `yaml:"reserved"`
+	MTU                  clashInt                  `yaml:"mtu"`
+	PersistentKeepalive  clashInt                  `yaml:"persistent-keepalive"`
+	Peers                []clashWireGuardPeer      `yaml:"peers"`
+	AmneziaWG            clashPresence             `yaml:"amnezia-wg-option"`
+	AuthStr              clashString               `yaml:"auth-str"`
+	Auth                 clashString               `yaml:"auth"`
+	Protocol             clashString               `yaml:"protocol"`
+	PrivateKeyPassphrase clashString               `yaml:"private-key-passphrase"`
+	HostKey              clashList                 `yaml:"host-key"`
+	HostKeyAlgorithms    clashList                 `yaml:"host-key-algorithms"`
+	PSK                  clashString               `yaml:"psk"`
+	Version              clashInt                  `yaml:"version"`
+	ObfsOpts             clashMap[clashPluginOpts] `yaml:"obfs-opts"`
+}
+
+// clashWireGuardPeer is mihomo's peer list; Poros keeps one peer.
+type clashWireGuardPeer struct {
+	Server       clashString `yaml:"server"`
+	Port         clashInt    `yaml:"port"`
+	PublicKey    clashString `yaml:"public-key"`
+	PreSharedKey clashString `yaml:"pre-shared-key"`
+	Reserved     clashList   `yaml:"reserved"`
 }
 
 type clashRealityOpts struct {
@@ -377,11 +405,13 @@ type clashSmux struct {
 
 // clashPluginOpts holds the keys of both plugins: obfs reads mode and host, v2ray-plugin all of them.
 type clashPluginOpts struct {
-	Mode clashString `yaml:"mode"`
-	Host clashString `yaml:"host"`
-	Path clashString `yaml:"path"`
-	TLS  clashBool   `yaml:"tls"`
-	Mux  clashBool   `yaml:"mux"`
+	Mode     clashString `yaml:"mode"`
+	Host     clashString `yaml:"host"`
+	Path     clashString `yaml:"path"`
+	TLS      clashBool   `yaml:"tls"`
+	Mux      clashBool   `yaml:"mux"`
+	Password clashString `yaml:"password"`
+	Version  clashInt    `yaml:"version"`
 }
 
 // clashTrojanSSOpts is Trojan-Go's Shadowsocks layer inside Trojan.
@@ -447,6 +477,10 @@ var clashBuilders = map[string]func(*clashProxy, *Profile) error{
 	"socks5":    (*clashProxy).socks5,
 	"http":      (*clashProxy).http,
 	"anytls":    (*clashProxy).anyTLS,
+	"wireguard": (*clashProxy).wireGuard,
+	"hysteria":  (*clashProxy).hysteria,
+	"ssh":       (*clashProxy).ssh,
+	"snell":     (*clashProxy).snell,
 }
 
 func (p *clashProxy) profile() (Profile, bool, error) {
@@ -559,7 +593,20 @@ func (p *clashProxy) shadowsocks(out *Profile) (err error) {
 				opts = append(opts, key+"="+clashPluginValue(text))
 			}
 		}
+		if strings.EqualFold(raw, "shadow-tls") {
+			s.ShadowTLS = ShadowTLS{Version: int(o.Version), Password: string(o.Password), TLS: TLS{
+				Enabled:    true,
+				ServerName: strings.TrimSpace(string(o.Host)),
+				UTLS:       clashUTLS(string(p.ClientFingerprint)),
+			}}
+			// mihomo takes version 2 when none is given.
+			if s.ShadowTLS.Version == 0 {
+				s.ShadowTLS.Version = 2
+			}
+			raw = ""
+		}
 		switch s.Plugin = shadowsocksLinkPlugin(raw); s.Plugin {
+		case "":
 		case "obfs-local":
 			add("obfs", o.Mode)
 			add("obfs-host", o.Host)
@@ -718,6 +765,121 @@ func (p *clashProxy) anyTLS(out *Profile) (err error) {
 		return err
 	}
 	out.Type, out.AnyTLS = TypeAnyTLS, a
+	return nil
+}
+
+// wireGuard reads mihomo's WireGuard: the server and keys at the top, or a list of peers, of which the first counts.
+func (p *clashProxy) wireGuard(out *Profile) (err error) {
+	if p.AmneziaWG {
+		return unsupported("AmneziaWG servers are not supported")
+	}
+	w := &WireGuard{
+		PrivateKey:          strings.TrimSpace(string(p.PrivateKey)),
+		PeerPublicKey:       strings.TrimSpace(string(p.PublicKey)),
+		PreSharedKey:        strings.TrimSpace(string(p.PreSharedKey)),
+		MTU:                 int(p.MTU),
+		PersistentKeepalive: int(p.PersistentKeepalive),
+	}
+	reserved := p.Reserved
+	if len(p.Peers) > 0 {
+		peer := p.Peers[0]
+		if out.Server, err = clashHost(string(peer.Server)); err != nil {
+			return err
+		}
+		out.ServerPort = int(peer.Port)
+		w.PeerPublicKey = strings.TrimSpace(string(peer.PublicKey))
+		w.PreSharedKey = strings.TrimSpace(string(peer.PreSharedKey))
+		reserved = peer.Reserved
+	}
+	if err = reserved.check("reserved"); err != nil {
+		return err
+	}
+	if w.Reserved, err = wireGuardReserved(strings.Join(reserved.items, ",")); err != nil {
+		return err
+	}
+	var addresses []string
+	for _, address := range []clashString{p.IP, p.IPv6} {
+		if text := strings.TrimSpace(string(address)); text != "" {
+			addresses = append(addresses, text)
+		}
+	}
+	if w.Address, err = wireGuardAddresses(addresses); err != nil {
+		return err
+	}
+	out.Type, out.WireGuard = TypeWireGuard, w
+	return nil
+}
+
+// hysteria reads Hysteria v1; auth is the password in base64, auth-str in plain text.
+func (p *clashProxy) hysteria(out *Profile) (err error) {
+	if protocol := strings.ToLower(strings.TrimSpace(string(p.Protocol))); protocol != "" && protocol != "udp" {
+		return unsupported("Hysteria over %s is not supported; sing-box runs it over UDP", protocol)
+	}
+	h := &Hysteria{
+		Auth:        string(p.AuthStr),
+		Obfs:        string(p.Obfs),
+		UpMbps:      hysteriaLinkMbps(string(p.Up)),
+		DownMbps:    hysteriaLinkMbps(string(p.Down)),
+		HopInterval: clashHopInterval(string(p.HopInterval)),
+	}
+	if h.Auth == "" {
+		if decoded, ok := decodeLinkBase64(string(p.Auth)); ok {
+			h.Auth = string(decoded)
+		}
+	}
+	if ports := strings.ReplaceAll(strings.TrimSpace(string(p.Ports)), "/", ","); ports != "" {
+		if h.ServerPorts, err = hysteriaPortRanges(ports); err != nil {
+			return err
+		}
+	}
+	if out.ServerPort == 0 && len(h.ServerPorts) > 0 {
+		first, _, _ := strings.Cut(h.ServerPorts[0], ":")
+		out.ServerPort, _ = strconv.Atoi(first)
+	}
+	tls, err := p.tls(true)
+	if err != nil {
+		return err
+	}
+	h.TLS = quicLinkTLS(tls)
+	out.Type, out.Hysteria = TypeHysteria, h
+	return nil
+}
+
+// ssh reads mihomo's SSH. Its private-key may also be a file path, which a subscription cannot carry.
+func (p *clashProxy) ssh(out *Profile) error {
+	for _, err := range []error{p.HostKey.check("host-key"), p.HostKeyAlgorithms.check("host-key-algorithms")} {
+		if err != nil {
+			return err
+		}
+	}
+	s := &SSH{
+		User:                 string(p.Username),
+		Password:             string(p.Password),
+		PrivateKey:           strings.TrimSpace(string(p.PrivateKey)),
+		PrivateKeyPassphrase: string(p.PrivateKeyPassphrase),
+		HostKey:              p.HostKey.items,
+		HostKeyAlgorithms:    p.HostKeyAlgorithms.items,
+	}
+	if s.PrivateKey != "" && !strings.Contains(s.PrivateKey, "-----BEGIN ") {
+		return errors.New("the SSH private key is a file path, which Poros cannot read from a subscription")
+	}
+	out.Type, out.SSH = TypeSSH, s
+	return nil
+}
+
+// snell reads mihomo's Snell. mihomo runs versions 1 to 3 and sing-box 4 and 6, so most of them stay unsupported.
+func (p *clashProxy) snell(out *Profile) error {
+	if err := p.ObfsOpts.check("obfs-opts"); err != nil {
+		return err
+	}
+	s := &Snell{Version: int(p.Version), PSK: string(p.PSK)}
+	if s.Version == 0 {
+		s.Version = 1
+	}
+	if mode := strings.ToLower(strings.TrimSpace(string(p.ObfsOpts.v.Mode))); mode != "" && mode != "none" {
+		s.ObfsMode, s.ObfsHost = mode, strings.TrimSpace(string(p.ObfsOpts.v.Host))
+	}
+	out.Type, out.Snell = TypeSnell, s
 	return nil
 }
 

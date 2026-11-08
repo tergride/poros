@@ -212,7 +212,8 @@ export interface Server {
   groupId: string;
   name: string;
   /**
-   * Protocol is the type of its profile: vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http or anytls.
+   * Protocol is the type of its profile: vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http, anytls,
+   * wireguard, hysteria, naive, ssh or snell.
    */
   protocol: string;
   host: string;

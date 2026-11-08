@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/netip"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -83,6 +85,16 @@ func (p Profile) Validate() error {
 			return err
 		}
 		return p.AnyTLS.TLS.validate("")
+	case TypeWireGuard:
+		return p.WireGuard.validate()
+	case TypeHysteria:
+		return p.Hysteria.validate()
+	case TypeNaive:
+		return p.Naive.validate()
+	case TypeSSH:
+		return p.SSH.validate()
+	case TypeSnell:
+		return p.Snell.validate()
 	}
 	return nil
 }
@@ -159,15 +171,164 @@ func (t TLS) validateXray() error {
 
 func (h *Hysteria2) validate() error {
 	// The password may be empty, as the Qt client allowed.
-	for _, item := range h.ServerPorts {
+	if err := validatePortHopping(h.ServerPorts, h.HopInterval); err != nil {
+		return err
+	}
+	if err := h.Realm.validate(len(h.ServerPorts) > 0); err != nil {
+		return err
+	}
+	return h.TLS.validate("")
+}
+
+func validatePortHopping(ports []string, hopInterval string) error {
+	for _, item := range ports {
 		if ranges, err := hysteriaPortRanges(item); err != nil || len(ranges) != 1 || !strings.Contains(item, ":") {
 			return fmt.Errorf("the port range %q is not written as 20000:30000", item)
 		}
 	}
-	if interval, _ := time.ParseDuration(h.HopInterval); len(h.ServerPorts) > 0 && interval > 0 && interval < minHopInterval {
+	if interval, _ := time.ParseDuration(hopInterval); len(ports) > 0 && interval > 0 && interval < minHopInterval {
 		return fmt.Errorf("port hopping needs at least %v between hops", minHopInterval)
 	}
+	return nil
+}
+
+// On reports a realm in use: it takes the place of the server's address.
+func (r HysteriaRealm) On() bool { return r.ServerURL != "" || r.RealmID != "" }
+
+func (r HysteriaRealm) validate(hopping bool) error {
+	if !r.On() {
+		return nil
+	}
+	if u, err := url.Parse(r.ServerURL); err != nil || u.Scheme != "https" || u.Hostname() == "" {
+		return errors.New("the realm service must be an https:// address")
+	}
+	if strings.TrimSpace(r.RealmID) == "" {
+		return errors.New("the realm ID is missing")
+	}
+	if hopping {
+		return errors.New("a realm cannot be combined with port hopping")
+	}
+	return nil
+}
+
+func (h *Hysteria) validate() error {
+	if h.UpMbps <= 0 || h.DownMbps <= 0 {
+		return errors.New("Hysteria v1 needs the upload and download speeds")
+	}
+	if err := validatePortHopping(h.ServerPorts, h.HopInterval); err != nil {
+		return err
+	}
 	return h.TLS.validate("")
+}
+
+func (w *WireGuard) validate() error {
+	keys := []struct {
+		key, what string
+		optional  bool
+	}{{w.PrivateKey, "private key", false}, {w.PeerPublicKey, "peer's public key", false}, {w.PreSharedKey, "pre-shared key", true}}
+	for _, k := range keys {
+		if k.key == "" && k.optional {
+			continue
+		}
+		if decoded, err := base64.StdEncoding.DecodeString(k.key); err != nil || len(decoded) != 32 {
+			return fmt.Errorf("the WireGuard %s must be 32 bytes in base64", k.what)
+		}
+	}
+	if len(w.Address) == 0 {
+		return errors.New("the WireGuard tunnel needs its own address, such as 172.16.0.2/32")
+	}
+	for _, address := range w.Address {
+		if _, err := netip.ParsePrefix(address); err != nil {
+			return fmt.Errorf("the WireGuard address %q is not written as 172.16.0.2/32", address)
+		}
+	}
+	if len(w.Reserved) != 0 && len(w.Reserved) != 3 {
+		return errors.New("WireGuard's reserved bytes are three numbers")
+	}
+	for _, b := range w.Reserved {
+		if b < 0 || b > 255 {
+			return errors.New("WireGuard's reserved bytes are numbers from 0 to 255")
+		}
+	}
+	if w.MTU != 0 && (w.MTU < 576 || w.MTU > 65535) {
+		return fmt.Errorf("the MTU %d is not from 576 to 65535", w.MTU)
+	}
+	if w.PersistentKeepalive < 0 || w.PersistentKeepalive > 65535 {
+		return errors.New("the keepalive interval is not from 0 to 65535 seconds")
+	}
+	return nil
+}
+
+var naiveCongestionControls = []string{"", "bbr", "bbr2", "cubic", "reno"}
+
+// validate refuses the TLS settings Chromium's stack has no room for: it checks the certificate as a browser does.
+func (n *Naive) validate() error {
+	t := n.TLS
+	switch {
+	case !t.Enabled:
+		return errors.New("NaiveProxy needs TLS")
+	case t.Insecure || len(t.CertificateSHA256) > 0 || len(t.CertificatePublicKeySHA256) > 0:
+		return unsupported("NaiveProxy checks the server certificate as a browser does: it cannot skip the check or pin a certificate")
+	case t.DisableSNI || len(t.ALPN) > 0 || t.MinVersion != "" || t.MaxVersion != "" || t.UTLS.Enabled || t.Reality.Enabled:
+		return unsupported("NaiveProxy takes only the server name and ECH of the TLS settings")
+	case !slices.Contains(naiveCongestionControls, n.QUICCongestionControl):
+		return unsupported("unknown QUIC congestion control %q", n.QUICCongestionControl)
+	case n.InsecureConcurrency < 0:
+		return errors.New("the number of connections cannot be negative")
+	}
+	return nil
+}
+
+func (s *SSH) validate() error {
+	if key := strings.TrimSpace(s.PrivateKey); key != "" && !(strings.Contains(key, "-----BEGIN ") && strings.Contains(key, "PRIVATE KEY-----")) {
+		return errors.New("the SSH private key must be the whole block from -----BEGIN to the PRIVATE KEY----- line")
+	}
+	for _, key := range s.HostKey {
+		if len(strings.Fields(key)) < 2 {
+			return fmt.Errorf("the host key %q is not written as ssh-ed25519 AAAA...", key)
+		}
+	}
+	return nil
+}
+
+func (s *Snell) validate() error {
+	switch s.Version {
+	case 4:
+		if !slices.Contains([]string{"", "none", "http", "tls"}, s.ObfsMode) {
+			return unsupported("unknown Snell obfuscation %q", s.ObfsMode)
+		}
+		if s.Mode != "" {
+			return errors.New("the Snell mode is a setting of version 6")
+		}
+	case 6:
+		if !slices.Contains([]string{"", "default", "unshaped", "unsafe-raw"}, s.Mode) {
+			return unsupported("unknown Snell mode %q", s.Mode)
+		}
+		if s.ObfsMode != "" || s.ObfsHost != "" {
+			return errors.New("Snell obfuscation is a setting of version 4")
+		}
+	default:
+		return unsupported("Snell v%d is not supported; sing-box runs versions 4 and 6", s.Version)
+	}
+	return requiredField(s.PSK, "the Snell PSK")
+}
+
+func (s ShadowTLS) validate(plugin string) error {
+	switch {
+	case s.Version == 0:
+		return nil
+	case s.Version < 1 || s.Version > 3:
+		return unsupported("ShadowTLS v%d is not supported; versions 1 to 3 are", s.Version)
+	case plugin != "":
+		return errors.New("ShadowTLS cannot be combined with a Shadowsocks plugin")
+	case s.Version > 1 && s.Password == "":
+		return errors.New("the ShadowTLS password is missing")
+	case strings.TrimSpace(s.TLS.ServerName) == "":
+		return errors.New("ShadowTLS needs the site of its handshake as the server name")
+	case s.TLS.Reality.Enabled || s.TLS.ECH.Enabled:
+		return unsupported("ShadowTLS runs neither REALITY nor ECH")
+	}
+	return s.TLS.validate("")
 }
 
 func (p Profile) validatePart() error {
@@ -178,6 +339,8 @@ func (p Profile) validatePart() error {
 		{TypeVLESS, p.VLESS != nil}, {TypeVMess, p.VMess != nil}, {TypeTrojan, p.Trojan != nil},
 		{TypeShadowsocks, p.Shadowsocks != nil}, {TypeHysteria2, p.Hysteria2 != nil}, {TypeTUIC, p.TUIC != nil},
 		{TypeSOCKS, p.SOCKS != nil}, {TypeHTTP, p.HTTP != nil}, {TypeAnyTLS, p.AnyTLS != nil},
+		{TypeWireGuard, p.WireGuard != nil}, {TypeHysteria, p.Hysteria != nil}, {TypeNaive, p.Naive != nil},
+		{TypeSSH, p.SSH != nil}, {TypeSnell, p.Snell != nil},
 	}
 	known := false
 	for _, part := range parts {
@@ -212,6 +375,9 @@ func (s *Shadowsocks) validate() error {
 	}
 	if !slices.Contains(shadowsocksPlugins, s.Plugin) {
 		return unsupported("the Shadowsocks plugin %q is not supported; use obfs-local or v2ray-plugin", s.Plugin)
+	}
+	if err := s.ShadowTLS.validate(s.Plugin); err != nil {
+		return err
 	}
 	keySize := 32
 	switch s.Method {

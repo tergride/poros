@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -16,6 +17,78 @@ import (
 // realityFingerprint stands in for a REALITY server without one: sing-box runs REALITY only over uTLS, and chrome
 // is what Xray picks in the same case.
 const realityFingerprint = "chrome"
+
+// boxServer is a server in sing-box: the outbounds and endpoints it takes. The one under the server's tag is first.
+type boxServer struct {
+	outbounds []option.Outbound
+	endpoints []option.Endpoint
+}
+
+// tagShadowTLS is the outbound that carries a Shadowsocks server through ShadowTLS, after the server's own tag.
+const tagShadowTLS = "-shadowtls"
+
+// singBoxServer turns a server into what sing-box runs it with under tag: an endpoint for WireGuard, Shadowsocks and
+// its ShadowTLS outbound, one outbound for the rest.
+func singBoxServer(p profile.Profile, tag string, hardened bool) (boxServer, error) {
+	switch {
+	case p.WireGuard != nil:
+		endpoint, err := wireGuardEndpoint(p, tag)
+		return boxServer{endpoints: []option.Endpoint{endpoint}}, err
+	case p.Shadowsocks != nil && p.Shadowsocks.ShadowTLS.Version > 0:
+		ss, err := singBoxOutbound(p, tag, false)
+		if err != nil {
+			return boxServer{}, err
+		}
+		s := p.Shadowsocks.ShadowTLS
+		tls, err := singBoxTLS(s.TLS, false, false)
+		if err != nil {
+			return boxServer{}, err
+		}
+		ss.Options.(*option.ShadowsocksOutboundOptions).Detour = tag + tagShadowTLS
+		shadowTLS := option.Outbound{Type: C.TypeShadowTLS, Tag: tag + tagShadowTLS, Options: &option.ShadowTLSOutboundOptions{
+			ServerOptions:               option.ServerOptions{Server: ace(p.Server), ServerPort: uint16(p.ServerPort)},
+			Version:                     s.Version,
+			Password:                    s.Password,
+			OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: tls},
+		}}
+		return boxServer{outbounds: []option.Outbound{ss, shadowTLS}}, nil
+	}
+	outbound, err := singBoxOutbound(p, tag, hardened)
+	return boxServer{outbounds: []option.Outbound{outbound}}, err
+}
+
+// Everything goes into the tunnel: the routes are the preset's business, not the peer's.
+var wireGuardAllowedIPs = []netip.Prefix{netip.MustParsePrefix("0.0.0.0/0"), netip.MustParsePrefix("::/0")}
+
+func wireGuardEndpoint(p profile.Profile, tag string) (option.Endpoint, error) {
+	w := p.WireGuard
+	addresses := make(badoption.Listable[netip.Prefix], len(w.Address))
+	for i, address := range w.Address {
+		prefix, err := netip.ParsePrefix(address)
+		if err != nil {
+			return option.Endpoint{}, fmt.Errorf("the WireGuard address %q is not a prefix", address)
+		}
+		addresses[i] = prefix
+	}
+	var reserved []uint8
+	for _, b := range w.Reserved {
+		reserved = append(reserved, uint8(b))
+	}
+	return option.Endpoint{Type: C.TypeWireGuard, Tag: tag, Options: &option.WireGuardEndpointOptions{
+		Address:    addresses,
+		PrivateKey: w.PrivateKey,
+		MTU:        uint32(w.MTU),
+		Peers: []option.WireGuardPeer{{
+			Address:                     ace(p.Server),
+			Port:                        uint16(p.ServerPort),
+			PublicKey:                   w.PeerPublicKey,
+			PreSharedKey:                w.PreSharedKey,
+			AllowedIPs:                  wireGuardAllowedIPs,
+			PersistentKeepaliveInterval: uint16(w.PersistentKeepalive),
+			Reserved:                    reserved,
+		}},
+	}}, nil
+}
 
 // singBoxOutbound turns a server into a sing-box outbound under tag. hardened fragments the TLS handshake.
 func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbound, error) {
@@ -108,7 +181,78 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 		if h.ObfsPassword != "" {
 			hy.Obfs = &option.Hysteria2Obfs{Type: C.Hysteria2ObfsTypeSalamander, Password: h.ObfsPassword}
 		}
+		if r := h.Realm; r.On() {
+			// The realm finds the server; sing-box refuses an address next to it.
+			hy.ServerOptions = option.ServerOptions{}
+			hy.Realm = &option.Hysteria2Realm{ServerURL: r.ServerURL, Token: r.Token, RealmID: r.RealmID, STUNServers: r.STUNServers}
+		}
 		options = hy
+	case profile.TypeHysteria:
+		h := p.Hysteria
+		tls, err := singBoxTLS(h.TLS, true, false)
+		if err != nil {
+			return option.Outbound{}, err
+		}
+		hop, err := duration(h.HopInterval)
+		if err != nil {
+			return option.Outbound{}, err
+		}
+		options = &option.HysteriaOutboundOptions{
+			ServerOptions:               server,
+			ServerPorts:                 h.ServerPorts,
+			HopInterval:                 hop,
+			UpMbps:                      h.UpMbps,
+			DownMbps:                    h.DownMbps,
+			Obfs:                        h.Obfs,
+			AuthString:                  h.Auth,
+			OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: tls},
+		}
+	case profile.TypeNaive:
+		n := p.Naive
+		tls, err := singBoxTLS(n.TLS, n.QUIC, false)
+		if err != nil {
+			return option.Outbound{}, err
+		}
+		naive := &option.NaiveOutboundOptions{
+			ServerOptions:               server,
+			Username:                    n.Username,
+			Password:                    n.Password,
+			InsecureConcurrency:         n.InsecureConcurrency,
+			ExtraHeaders:                httpHeader(n.ExtraHeaders, ""),
+			QUIC:                        n.QUIC,
+			QUICCongestionControl:       n.QUICCongestionControl,
+			OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: tls},
+		}
+		if n.UDPOverTCP {
+			naive.UDPOverTCP = &option.UDPOverTCPOptions{Enabled: true}
+		}
+		options = naive
+	case profile.TypeSSH:
+		s := p.SSH
+		ssh := &option.SSHOutboundOptions{
+			ServerOptions:        server,
+			User:                 s.User,
+			Password:             s.Password,
+			PrivateKeyPassphrase: s.PrivateKeyPassphrase,
+			HostKey:              s.HostKey,
+			HostKeyAlgorithms:    s.HostKeyAlgorithms,
+			ClientVersion:        s.ClientVersion,
+		}
+		if s.PrivateKey != "" {
+			ssh.PrivateKey = badoption.Listable[string]{s.PrivateKey}
+		}
+		options = ssh
+	case profile.TypeSnell:
+		s := p.Snell
+		snell := &option.SnellOutboundOptions{Version: s.Version, AbstractSnellOutboundOptions: option.AbstractSnellOutboundOptions{
+			ServerOptions: server, PSK: s.PSK, UserKey: s.UserKey, Reuse: s.Reuse,
+		}}
+		if s.Version == 4 {
+			snell.ObfsOptions = option.SnellObfsClientOptions{ObfsMode: s.ObfsMode, ObfsHost: ace(s.ObfsHost)}
+		} else {
+			snell.V6Options = option.SnellV6Options{Mode: s.Mode}
+		}
+		options = snell
 	case profile.TypeTUIC:
 		t := p.TUIC
 		tls, err := singBoxTLS(t.TLS, true, false)

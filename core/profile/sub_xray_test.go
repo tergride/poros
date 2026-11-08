@@ -331,8 +331,8 @@ func TestXrayOutboundRejects(t *testing.T) {
 		want        string
 		unsupported bool
 	}{
-		{"wireguard", `{"protocol": "wireguard", "tag": "t", "settings": {"secretKey": "c2VjcmV0", "peers": [{"endpoint": "198.51.100.7:51820"}]}}`,
-			"Xray's wireguard protocol is not supported", true},
+		{"wireguard without a peer", `{"protocol": "wireguard", "tag": "t", "settings": {"secretKey": "c2VjcmV0"}}`, "has no peer", false},
+		{"dokodemo-door", `{"protocol": "dokodemo-door", "tag": "t"}`, "Xray's dokodemo-door protocol is not supported", true},
 		{"no protocol", `{"tag": "t", "settings": {"address": "v.example.com"}}`, "names no protocol", false},
 		{"kcp", vless(`{"network": "kcp"}`), `transport "kcp"`, true},
 		{"h2, which Xray removed", vless(`{"network": "h2", "security": "tls"}`), `transport "h2"`, true},
@@ -463,7 +463,8 @@ const xrayPanelSubscription = `[
   {
     "remarks": "WireGuard",
     "outbounds": [
-      {"tag": "proxy", "protocol": "wireguard", "settings": {"secretKey": "c2VjcmV0", "peers": [{"endpoint": "198.51.100.7:51820"}]}},
+      {"tag": "proxy", "protocol": "wireguard", "settings": {"secretKey": "` + testWGPrivate + `", "address": ["10.0.0.2"],
+       "peers": [{"publicKey": "` + testWGPublic + `", "endpoint": "198.51.100.7:51820", "keepAlive": 25}], "reserved": [1, 2, 3]}},
       {"tag": "direct", "protocol": "freedom"}
     ]
   },
@@ -492,7 +493,7 @@ func TestParseDocumentXrayPanelConfigs(t *testing.T) {
 		t.Fatalf("format %q", d.Format)
 	}
 	// 3x-ui's fragment is a dial through a freedom outbound of the same config: the server is dialled directly.
-	if got, want := names(d.Profiles), []string{"🇩🇪 Germany", "🇳🇱 Netherlands", "Balancer · a", "Balancer · b", "Fragmented"}; !reflect.DeepEqual(got, want) {
+	if got, want := names(d.Profiles), []string{"🇩🇪 Germany", "🇳🇱 Netherlands", "Balancer · a", "Balancer · b", "WireGuard", "Fragmented"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("names %q, want %q", got, want)
 	}
 	germany := Profile{Type: TypeVLESS, Name: "🇩🇪 Germany", Server: "de.example.com", ServerPort: 443, VLESS: &VLESS{
@@ -503,8 +504,14 @@ func TestParseDocumentXrayPanelConfigs(t *testing.T) {
 	if !reflect.DeepEqual(d.Profiles[0], germany) {
 		t.Errorf("\n got %s\nwant %s", dump(d.Profiles[0]), dump(germany))
 	}
+	wireGuard := Profile{Type: TypeWireGuard, Name: "WireGuard", Server: "198.51.100.7", ServerPort: 51820, WireGuard: &WireGuard{
+		PrivateKey: testWGPrivate, PeerPublicKey: testWGPublic, Address: []string{"10.0.0.2/32"}, Reserved: []int{1, 2, 3},
+		PersistentKeepalive: 25,
+	}}
+	if !reflect.DeepEqual(d.Profiles[4], wireGuard) {
+		t.Errorf("Xray's WireGuard\n got %s\nwant %s", dump(d.Profiles[4]), dump(wireGuard))
+	}
 	want := []Skipped{
-		{Index: 4, Name: "WireGuard", Unsupported: true, Reason: "Xray's wireguard protocol is not supported"},
 		{Index: 5, Name: "Broken", Reason: "the server address is missing"},
 	}
 	if !reflect.DeepEqual(d.Skipped, want) {

@@ -211,7 +211,7 @@ func xrayServer(protocol string, raw json.RawMessage, direct []string) (Profile,
 	switch protocol {
 	case "":
 		return Profile{}, errors.New("the Xray outbound names no protocol")
-	case "vless", "vmess", "trojan", "shadowsocks", "socks", "http", "hysteria":
+	case "vless", "vmess", "trojan", "shadowsocks", "socks", "http", "hysteria", "wireguard":
 	default:
 		return Profile{}, unsupported("Xray's %s protocol is not supported", protocol)
 	}
@@ -230,6 +230,10 @@ func xrayServer(protocol string, raw json.RawMessage, direct []string) (Profile,
 		if through := strings.TrimSpace(stream.Sockopt.DialerProxy); through != "" && !slices.Contains(direct, through) {
 			return Profile{}, xrayChainError(through)
 		}
+	}
+
+	if protocol == "wireguard" {
+		return xrayWireGuard(out.Settings)
 	}
 
 	var s xraySettingsJSON

@@ -41,6 +41,26 @@ export const TypeHTTP = "http";
  */
 export const TypeAnyTLS = "anytls";
 /**
+ * Types of servers, as stored.
+ */
+export const TypeWireGuard = "wireguard";
+/**
+ * Types of servers, as stored.
+ */
+export const TypeHysteria = "hysteria";
+/**
+ * Types of servers, as stored.
+ */
+export const TypeNaive = "naive";
+/**
+ * Types of servers, as stored.
+ */
+export const TypeSSH = "ssh";
+/**
+ * Types of servers, as stored.
+ */
+export const TypeSnell = "snell";
+/**
  * Profile is one server. Exactly the part named by Type is set.
  */
 export interface Profile {
@@ -57,6 +77,11 @@ export interface Profile {
   socks?: SOCKS;
   http?: HTTP;
   anytls?: AnyTLS;
+  wireguard?: WireGuard;
+  hysteria?: Hysteria;
+  naive?: Naive;
+  ssh?: SSH;
+  snell?: Snell;
 }
 export interface VLESS {
   uuid: string;
@@ -104,6 +129,24 @@ export interface Shadowsocks {
   plugin_opts?: string;
   udp_over_tcp?: boolean;
   multiplex?: Multiplex;
+  /**
+   * ShadowTLS carries the Shadowsocks connection: the profile's server is the ShadowTLS server then.
+   */
+  shadowtls?: ShadowTLS;
+}
+/**
+ * ShadowTLS hides a connection behind a TLS handshake with a real site, as in Clash and sing-box.
+ */
+export interface ShadowTLS {
+  /**
+   * Version is 1, 2 or 3; 0 is no ShadowTLS.
+   */
+  version?: number /* int */;
+  password?: string;
+  /**
+   * TLS names the site of the handshake; it is always on.
+   */
+  tls?: TLS;
 }
 export interface Hysteria2 {
   password?: string;
@@ -120,6 +163,108 @@ export interface Hysteria2 {
   obfs_type?: string;
   obfs_password?: string;
   tls?: TLS;
+  /**
+   * Realm finds the server through a rendezvous service instead of its address; the profile's server and port are
+   * those of the service then.
+   */
+  realm?: HysteriaRealm;
+}
+export interface HysteriaRealm {
+  /**
+   * ServerURL is the rendezvous service, https://realm.example.com.
+   */
+  server_url?: string;
+  token?: string;
+  realm_id?: string;
+  stun_servers?: string[];
+}
+/**
+ * Hysteria is Hysteria v1.
+ */
+export interface Hysteria {
+  /**
+   * Auth is the password, auth_str.
+   */
+  auth?: string;
+  server_ports?: string[];
+  hop_interval?: string;
+  /**
+   * UpMbps and DownMbps are required: the protocol paces itself by them.
+   */
+  up_mbps?: number /* int */;
+  down_mbps?: number /* int */;
+  obfs?: string;
+  tls?: TLS;
+}
+/**
+ * WireGuard is a WireGuard peer: the profile's server is the peer's endpoint.
+ */
+export interface WireGuard {
+  private_key: string;
+  peer_public_key: string;
+  pre_shared_key?: string;
+  /**
+   * Address are the addresses of this end of the tunnel with their prefixes, 172.16.0.2/32 and fd01::2/128.
+   */
+  address: string[];
+  /**
+   * Reserved are the three bytes Cloudflare WARP expects in each packet.
+   */
+  reserved?: number /* int */[];
+  mtu?: number /* int */;
+  persistent_keepalive?: number /* int */;
+}
+/**
+ * Naive is NaiveProxy, Chromium's network stack over HTTP/2 or HTTP/3; it always runs over TLS.
+ */
+export interface Naive {
+  username?: string;
+  password?: string;
+  /**
+   * QUIC runs over HTTP/3.
+   */
+  quic?: boolean;
+  /**
+   * QUICCongestionControl is "", "bbr", "bbr2", "cubic" or "reno".
+   */
+  quic_congestion_control?: string;
+  insecure_concurrency?: number /* int */;
+  extra_headers?: { [key: string]: string};
+  udp_over_tcp?: boolean;
+  tls?: TLS;
+}
+export interface SSH {
+  user?: string;
+  password?: string;
+  /**
+   * PrivateKey is the key in PEM, from -----BEGIN to PRIVATE KEY-----.
+   */
+  private_key?: string;
+  private_key_passphrase?: string;
+  /**
+   * HostKey are the server keys accepted, "ssh-ed25519 AAAA..."; none accepts any.
+   */
+  host_key?: string[];
+  host_key_algorithms?: string[];
+  client_version?: string;
+}
+export interface Snell {
+  /**
+   * Version is 4 or 6, the versions sing-box runs.
+   */
+  version: number /* int */;
+  psk: string;
+  userkey?: string;
+  reuse?: boolean;
+  /**
+   * ObfsMode is "", "http" or "tls", and ObfsHost its host: version 4 only.
+   */
+  obfs_mode?: string;
+  obfs_host?: string;
+  /**
+   * Mode is "", "default", "unshaped" or "unsafe-raw": version 6 only.
+   */
+  mode?: string;
 }
 export interface TUIC {
   uuid: string;

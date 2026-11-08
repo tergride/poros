@@ -376,6 +376,13 @@ const shareSchemes: Record<string, string> = {
   tuic: 'tuic',
   socks: 'socks',
   anytls: 'anytls',
+  wireguard: 'wireguard',
+  wg: 'wireguard',
+  hysteria: 'hysteria',
+  'naive+https': 'naive',
+  'naive+quic': 'naive',
+  ssh: 'ssh',
+  snell: 'snell',
 }
 
 /** A throne://add/ link holds a sing-box outbound with the name as its tag. */

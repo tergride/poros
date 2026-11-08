@@ -94,8 +94,8 @@ func TestAddSubscription(t *testing.T) {
 	p.serve(http.StatusOK,
 		vless("de.example.com", "🇩🇪 Germany"),
 		vless("nl.example.com", "🇳🇱 Netherlands"),
-		"wg://key@198.51.100.7:51820#WG",
-		"wg://key@198.51.100.8:51820#WG2",
+		"juicity://key@198.51.100.7:443#Juicity",
+		"juicity://key@198.51.100.8:443#Juicity2",
 		"trojan://@t.example.com#Broken",
 	)
 
@@ -113,7 +113,7 @@ func TestAddSubscription(t *testing.T) {
 		t.Fatalf("changes %+v", update)
 	}
 	wantSkips := []SkipReason{
-		{Reason: "wg:// links are not supported", Unsupported: true, Count: 2, Names: []string{"WG", "WG2"}},
+		{Reason: "juicity:// links are not supported", Unsupported: true, Count: 2, Names: []string{"Juicity", "Juicity2"}},
 		{Reason: "the Trojan password is missing", Count: 1, Names: []string{"Broken"}},
 	}
 	if !reflect.DeepEqual(update.Skips, wantSkips) {
@@ -171,7 +171,7 @@ func TestAddSubscriptionFailures(t *testing.T) {
 	}{
 		"error page":       {http.StatusNotFound, "gone", ReasonFetchFailed},
 		"empty":            {http.StatusOK, " \n", ReasonNoServers},
-		"only unsupported": {http.StatusOK, "wg://key@198.51.100.7:51820#WG", ReasonNoServers},
+		"only unsupported": {http.StatusOK, "juicity://key@198.51.100.7:443#Juicity", ReasonNoServers},
 		"no format":        {http.StatusOK, `{"log": {}}`, ReasonInvalidSubscription},
 		"unreachable":      {0, "", ReasonFetchFailed},
 	} {

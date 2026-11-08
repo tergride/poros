@@ -165,6 +165,7 @@ func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) {
 	if len(failed) > 0 {
 		report(failed, false)
 	}
+	probe.LimitWireGuardWorkers(&configs.SingBox)
 	singBox, err := configs.SingBoxJSON()
 	if err != nil || len(tags) == 0 {
 		report(failedAll(nil), true)

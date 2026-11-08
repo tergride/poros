@@ -540,7 +540,7 @@ proxies:
     port: 443
     password: secret
   - {name: SSR, type: ssr, server: s.example.com, port: 443, cipher: aes-256-cfb, password: secret, obfs: plain, protocol: origin}
-  - {name: WG, type: wireguard, server: w.example.com, port: 51820, private-key: secret, public-key: key, ip: 10.0.0.2}
+  - {name: WG, type: wireguard, server: w.example.com, port: 51820, private-key: ` + testWGPrivate + `, public-key: ` + testWGPublic + `, ip: 10.0.0.2}
   - {name: HY1, type: hysteria, server: h.example.com, port: 443, auth-str: secret}
   - {name: Bad port, type: ss, server: s.example.com, port: abc, cipher: aes-128-gcm, password: secret}
   - name: List opts
@@ -577,6 +577,11 @@ rules:
 	d := mustParseDocument(t, body)
 	wantProfiles := []Profile{
 		{Type: TypeTrojan, Name: "Good", Server: "t.example.com", ServerPort: 443, Trojan: &Trojan{Password: "secret", TLS: TLS{Enabled: true}}},
+		{Type: TypeWireGuard, Name: "WG", Server: "w.example.com", ServerPort: 51820, WireGuard: &WireGuard{
+			PrivateKey: testWGPrivate, PeerPublicKey: testWGPublic, Address: []string{"10.0.0.2/32"}}},
+		{Type: TypeShadowsocks, Name: "Shadow-TLS", Server: "st.example.com", ServerPort: 443, Shadowsocks: &Shadowsocks{
+			Method: "aes-128-gcm", Password: "secret",
+			ShadowTLS: ShadowTLS{Version: 2, Password: "secret", TLS: TLS{Enabled: true, ServerName: "cloud.tencent.com"}}}},
 		{Type: TypeShadowsocks, Name: "Last", Server: "192.0.2.30", ServerPort: 8388, Shadowsocks: &Shadowsocks{
 			Method: "chacha20-ietf-poly1305", Password: "secret"}},
 	}
@@ -585,8 +590,7 @@ rules:
 	}
 	want := []Skipped{
 		{Index: 3, Name: "SSR", Unsupported: true, Reason: `Clash proxies of type "ssr" are not supported`},
-		{Index: 4, Name: "WG", Unsupported: true, Reason: `Clash proxies of type "wireguard" are not supported`},
-		{Index: 5, Name: "HY1", Unsupported: true, Reason: `Clash proxies of type "hysteria" are not supported`},
+		{Index: 5, Name: "HY1", Reason: "Hysteria v1 needs the upload and download speeds"},
 		{Index: 6, Name: "Bad port", Reason: "the server port 0 is not from 1 to 65535"},
 		{Index: 7, Name: "List opts", Reason: "ws-opts must be a map"},
 		{Index: 8, Name: "No type", Reason: "the proxy has no type"},
@@ -597,7 +601,6 @@ rules:
 		{Index: 13, Name: "TUIC v4", Unsupported: true, Reason: "TUIC v4 servers, which take a token, are not supported; only TUIC v5 works"},
 		{Index: 14, Name: "TLS SOCKS", Unsupported: true, Reason: "SOCKS5 over TLS is not supported"},
 		{Index: 15, Name: "KCP", Unsupported: true, Reason: `the transport "kcp" is not supported`},
-		{Index: 16, Name: "Shadow-TLS", Unsupported: true, Reason: `the Shadowsocks plugin "shadow-tls" is not supported; only obfs and v2ray-plugin work`},
 		{Index: 17, Name: "Bad host", Reason: `"bad host" is not a host name`},
 	}
 	if !reflect.DeepEqual(d.Skipped, want) {

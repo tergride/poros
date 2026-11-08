@@ -102,10 +102,10 @@ func Build(in Input) (Configs, error) {
 		return Configs{}, errors.New("the mixed port is missing")
 	}
 	var configs Configs
-	var proxy option.Outbound
+	var proxy boxServer
 	switch {
 	case in.Refuse:
-		proxy = option.Outbound{Type: C.TypeBlock, Tag: TagProxy, Options: &option.StubOptions{}}
+		proxy.outbounds = []option.Outbound{{Type: C.TypeBlock, Tag: TagProxy, Options: &option.StubOptions{}}}
 	case RunsOnXray(in.Server, in.RealityOnXray):
 		if in.Bridge.Port == 0 || in.Bridge.Username == "" || in.Bridge.Password == "" {
 			return Configs{}, errors.New("a server on Xray needs the bridge")
@@ -115,14 +115,10 @@ func Build(in Input) (Configs, error) {
 			return Configs{}, err
 		}
 		configs.Xray = xray
-		proxy = option.Outbound{Type: C.TypeSOCKS, Tag: TagProxy, Options: &option.SOCKSOutboundOptions{
-			ServerOptions: option.ServerOptions{Server: "127.0.0.1", ServerPort: in.Bridge.Port},
-			Username:      in.Bridge.Username,
-			Password:      in.Bridge.Password,
-		}}
+		proxy.outbounds = []option.Outbound{bridgeOutbound(TagProxy, in.Bridge)}
 	default:
 		var err error
-		if proxy, err = singBoxOutbound(in.Server, TagProxy, in.Preset.Hardened); err != nil {
+		if proxy, err = singBoxServer(in.Server, TagProxy, in.Preset.Hardened); err != nil {
 			return Configs{}, err
 		}
 	}
@@ -132,16 +128,23 @@ func Build(in Input) (Configs, error) {
 		logLevel = "info"
 	}
 	configs.SingBox = option.Options{
-		Log:      &option.LogOptions{Level: logLevel},
-		DNS:      buildDNS(in.Preset, in.DisableIPv6),
-		Inbounds: buildInbounds(in),
-		Outbounds: []option.Outbound{
-			proxy,
-			{Type: C.TypeDirect, Tag: TagDirect, Options: &option.DirectOutboundOptions{}},
-		},
-		Route: buildRoute(in),
+		Log:       &option.LogOptions{Level: logLevel},
+		DNS:       buildDNS(in.Preset, in.DisableIPv6),
+		Inbounds:  buildInbounds(in),
+		Outbounds: append(proxy.outbounds, option.Outbound{Type: C.TypeDirect, Tag: TagDirect, Options: &option.DirectOutboundOptions{}}),
+		Endpoints: proxy.endpoints,
+		Route:     buildRoute(in),
 	}
 	return configs, nil
+}
+
+// bridgeOutbound reaches a server on Xray through the bridge Xray listens on.
+func bridgeOutbound(tag string, bridge Bridge) option.Outbound {
+	return option.Outbound{Type: C.TypeSOCKS, Tag: tag, Options: &option.SOCKSOutboundOptions{
+		ServerOptions: option.ServerOptions{Server: "127.0.0.1", ServerPort: bridge.Port},
+		Username:      bridge.Username,
+		Password:      bridge.Password,
+	}}
 }
 
 func buildInbounds(in Input) []option.Inbound {

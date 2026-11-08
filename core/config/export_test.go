@@ -36,4 +36,19 @@ func TestExportPicksTheCoreAndKeepsNames(t *testing.T) {
 	if _, _, err = Export(broken, true); err == nil {
 		t.Error("an invalid server is exported")
 	}
+
+	links := sampleLinks(t)
+	_, data, err = Export(mustParse(t, links["wireguard"]), true)
+	var endpoint map[string]any
+	if err != nil || json.Unmarshal(data, &endpoint) != nil || endpoint["type"] != "wireguard" || endpoint["peers"] == nil {
+		t.Errorf("WireGuard is an endpoint: %v, %s", err, data)
+	}
+	_, data, err = Export(mustParse(t, links["ss over shadowtls"]), true)
+	var pair struct {
+		Outbounds []map[string]any `json:"outbounds"`
+	}
+	if err != nil || json.Unmarshal(data, &pair) != nil || len(pair.Outbounds) != 2 ||
+		pair.Outbounds[0]["detour"] != pair.Outbounds[1]["tag"] || pair.Outbounds[1]["type"] != "shadowtls" {
+		t.Errorf("Shadowsocks over ShadowTLS: %v, %s", err, data)
+	}
 }

@@ -42,6 +42,7 @@ type TestConfigs struct {
 func BuildTest(in TestInput) (TestConfigs, error) {
 	configs := TestConfigs{Failed: map[string]error{}}
 	var outbounds []option.Outbound
+	var endpoints []option.Endpoint
 	var entries []xrayEntry
 	for _, server := range in.Servers {
 		if err := server.Server.Validate(); err != nil {
@@ -49,12 +50,13 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 			continue
 		}
 		if !RunsOnXray(server.Server, in.RealityOnXray) {
-			outbound, err := singBoxOutbound(server.Server, server.Tag, false)
+			built, err := singBoxServer(server.Server, server.Tag, false)
 			if err != nil {
 				configs.Failed[server.Tag] = err
 				continue
 			}
-			outbounds = append(outbounds, outbound)
+			outbounds = append(outbounds, built.outbounds...)
+			endpoints = append(endpoints, built.endpoints...)
 			continue
 		}
 		outbound, err := xrayVLESS(server.Server, server.Tag, in.Interface, in.Resolved)
@@ -63,11 +65,7 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 			continue
 		}
 		entries = append(entries, xrayEntry{tag: server.Tag, bridge: server.Bridge, outbound: outbound})
-		outbounds = append(outbounds, option.Outbound{Type: C.TypeSOCKS, Tag: server.Tag, Options: &option.SOCKSOutboundOptions{
-			ServerOptions: option.ServerOptions{Server: "127.0.0.1", ServerPort: server.Bridge.Port},
-			Username:      server.Bridge.Username,
-			Password:      server.Bridge.Password,
-		}})
+		outbounds = append(outbounds, bridgeOutbound(server.Tag, server.Bridge))
 	}
 	if len(entries) > 0 {
 		xray, err := xrayConfig(entries)
@@ -86,6 +84,7 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 		Log:       &option.LogOptions{Level: "error"},
 		DNS:       &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: servers}},
 		Outbounds: append(outbounds, option.Outbound{Type: C.TypeDirect, Tag: TagDirect, Options: &option.DirectOutboundOptions{}}),
+		Endpoints: endpoints,
 		Route: &option.RouteOptions{
 			Final:                 TagDirect,
 			AutoDetectInterface:   true,

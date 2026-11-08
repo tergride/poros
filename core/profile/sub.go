@@ -16,6 +16,8 @@ const (
 	FormatSingBox = "sing-box"
 	FormatXray    = "xray"
 	FormatSIP008  = "sip008"
+	// FormatWireGuard is a wg-quick config of one server.
+	FormatWireGuard = "wireguard"
 )
 
 // Document is what a subscription body held.
@@ -56,6 +58,10 @@ func ParseDocument(body []byte) (Document, error) {
 	jsonLike := len(text) > 0 && (text[0] == '{' || text[0] == '[')
 	if jsonLike && json.Valid(text) {
 		return d, parseJSONDocument(text, &d)
+	}
+	if isWireGuardConfig(text) {
+		parseWireGuardConfig(text, &d)
+		return d, nil
 	}
 	if bytes.Contains(text, []byte("proxies:")) {
 		d.Format = FormatClash
@@ -225,7 +231,8 @@ func parseJSONDocument(text []byte, d *Document) error {
 			}
 		case first["type"] != nil:
 			d.Format = FormatSingBox
-			d.addOutbounds(items, 0, singBoxOutbound)
+			shadowTLS := singBoxShadowTLSTags(items)
+			d.addOutbounds(items, 0, func(raw json.RawMessage) (Profile, string, bool, error) { return singBoxConfigOutbound(raw, shadowTLS) })
 		default:
 			return errors.New("the JSON list holds neither sing-box nor Xray outbounds")
 		}
@@ -249,8 +256,10 @@ func parseJSONDocument(text []byte, d *Document) error {
 		if err := json.Unmarshal(jsonOr(fields["endpoints"], "[]"), &endpoints); err != nil {
 			return fmt.Errorf("the sing-box endpoints are not a list: %w", err)
 		}
-		d.addOutbounds(outbounds, 0, singBoxOutbound)
-		d.addOutbounds(endpoints, len(outbounds), singBoxOutbound)
+		shadowTLS := singBoxShadowTLSTags(outbounds)
+		read := func(raw json.RawMessage) (Profile, string, bool, error) { return singBoxConfigOutbound(raw, shadowTLS) }
+		d.addOutbounds(outbounds, 0, read)
+		d.addOutbounds(endpoints, len(outbounds), read)
 	case fields["type"] != nil:
 		d.Format = FormatSingBox
 		d.addOutbounds([]json.RawMessage{text}, 0, singBoxOutbound)

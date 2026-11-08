@@ -294,6 +294,8 @@ func TestSingBoxOutboundLeavesOutInfra(t *testing.T) {
 		`{"type": "selector", "tag": "proxy", "outbounds": ["auto", "DE"], "default": "auto"}`,
 		`{"type": "urltest", "tag": "auto", "outbounds": ["DE"], "url": "https://www.gstatic.com/generate_204"}`,
 		`{"type": " Block ", "tag": "Germany"}`,
+		// ShadowTLS only carries the Shadowsocks server that goes through it.
+		`{"type": "shadowtls", "tag": "st", "server": "st.example.com", "server_port": 443, "version": 3}`,
 		// The Qt client left out what is not an object.
 		`"direct"`, `5`, `null`, `[]`,
 	} {
@@ -312,20 +314,21 @@ func TestSingBoxOutboundRejects(t *testing.T) {
 		unsupported bool
 		want        string
 	}{
-		{"wireguard endpoint", `{"type": "wireguard", "tag": "x", "address": ["172.16.0.2/32"], "private_key": "s3cret",
-			"peers": [{"address": "engage.cloudflareclient.com", "port": 2408, "public_key": "s3cret"}]}`, true, `type "wireguard"`},
-		{"hysteria v1", `{"type": "hysteria", "tag": "x", "server": "h.example.com", "server_port": 443, "auth_str": "s3cret"}`, true, `type "hysteria"`},
-		{"shadowtls", `{"type": "shadowtls", "tag": "x", "server": "st.example.com", "server_port": 443, "version": 3, "password": "s3cret"}`, true, `type "shadowtls"`},
-		{"naive", `{"type": "naive", "tag": "x", "server": "n.example.com", "server_port": 443, "password": "s3cret"}`, true, `type "naive"`},
-		{"ssh", `{"type": "ssh", "tag": "x", "server": "ssh.example.com", "server_port": 22, "password": "s3cret"}`, true, `type "ssh"`},
+		{"wireguard key not a key", `{"type": "wireguard", "tag": "x", "address": ["172.16.0.2/32"], "private_key": "s3cret",
+			"peers": [{"address": "engage.cloudflareclient.com", "port": 2408, "public_key": "s3cret"}]}`, false, "32 bytes in base64"},
+		{"hysteria v1 without speeds", `{"type": "hysteria", "tag": "x", "server": "h.example.com", "server_port": 443, "auth_str": "s3cret"}`, false, "speeds"},
+		{"naive skipping the certificate check", `{"type": "naive", "tag": "x", "server": "n.example.com", "server_port": 443, "password": "s3cret",
+			"tls": {"enabled": true, "insecure": true}}`, true, "certificate"},
+		{"ssh key from a file", `{"type": "ssh", "tag": "x", "server": "ssh.example.com", "server_port": 22, "private_key_path": "id_s3cret"}`, false, "file path"},
+		{"snell v5", `{"type": "snell", "tag": "x", "server": "sn.example.com", "server_port": 443, "version": 5, "psk": "s3cret"}`, true, "versions 4 and 6"},
 		{"tor", `{"type": "tor", "tag": "x"}`, true, `type "tor"`},
 		{"tailscale endpoint", `{"type": "tailscale", "tag": "x", "auth_key": "s3cret"}`, true, `type "tailscale"`},
 		{"detour", `{"type": "shadowsocks", "tag": "x", "detour": "st", "method": "aes-128-gcm", "password": "s3cret"}`, true, `outbound "st"`},
 		{"xhttp transport", `{` + vless + `, "transport": {"type": "xhttp", "path": "/"}}`, true, `transport "xhttp"`},
 		{"gecko obfs", `{"type": "hysteria2", "tag": "x", "server": "hy.example.com", "server_port": 443,
 			"obfs": {"type": "gecko", "password": "s3cret", "min_packet_size": 512}}`, true, `obfuscation "gecko"`},
-		{"hysteria2 realm", `{"type": "hysteria2", "tag": "x", "password": "s3cret",
-			"realm": {"server_url": "https://realm.example.com", "realm_id": "r", "stun_servers": "stun.example.com:3478"}}`, true, "realm"},
+		{"hysteria2 realm over http", `{"type": "hysteria2", "tag": "x", "password": "s3cret",
+			"realm": {"server_url": "http://realm.example.com", "realm_id": "r", "stun_servers": "stun.example.com:3478"}}`, false, "https://"},
 		{"http/3", `{"type": "http", "tag": "x", "server": "h.example.com", "server_port": 443, "version": 3}`, true, "HTTP/3"},
 
 		{"no type", `{"tag": "x", "server": "v.example.com", "password": "s3cret"}`, false, "has no type"},
@@ -406,8 +409,9 @@ func TestParseDocumentSingBoxConfig(t *testing.T) {
 			{"type": "dns", "tag": "dns-out"}
 		],
 		"endpoints": [
-			{"type": "wireguard", "tag": "WARP", "address": ["172.16.0.2/32"], "private_key": "s3cret",
-				"peers": [{"address": "engage.cloudflareclient.com", "port": 2408, "public_key": "s3cret", "allowed_ips": ["0.0.0.0/0"]}]},
+			{"type": "wireguard", "tag": "WARP", "address": ["172.16.0.2/32", "2606:4700:110:8a36::2/128"], "private_key": "` + testWGPrivate + `",
+				"mtu": 1280, "peers": [{"address": "engage.cloudflareclient.com", "port": 2408, "public_key": "` + testWGPublic + `",
+				"allowed_ips": ["0.0.0.0/0"], "reserved": [1, 2, 3], "persistent_keepalive_interval": 25}]},
 			{"type": "tailscale", "tag": "Tailnet", "auth_key": "s3cret"}
 		],
 		"route": {"final": "proxy", "auto_detect_interface": true}
@@ -425,6 +429,14 @@ func TestParseDocumentSingBoxConfig(t *testing.T) {
 		{Type: TypeHysteria2, Name: "🇳🇱 NL", Server: "nl.example.com", ServerPort: 443, Hysteria2: &Hysteria2{
 			Password: "s3cret", UpMbps: 100, DownMbps: 500, TLS: TLS{Enabled: true, ServerName: "nl.example.com", ALPN: []string{"h3"}},
 		}},
+		{Type: TypeShadowsocks, Name: "SS over ShadowTLS", Server: "st.example.com", ServerPort: 443, Shadowsocks: &Shadowsocks{
+			Method: "2022-blake3-aes-128-gcm", Password: "AAECAwQFBgcICQoLDA0ODw==",
+			ShadowTLS: ShadowTLS{Version: 3, Password: "s3cret", TLS: TLS{Enabled: true, ServerName: "www.apple.com"}},
+		}},
+		{Type: TypeWireGuard, Name: "WARP", Server: "engage.cloudflareclient.com", ServerPort: 2408, WireGuard: &WireGuard{
+			PrivateKey: testWGPrivate, PeerPublicKey: testWGPublic, Address: []string{"172.16.0.2/32", "2606:4700:110:8a36::2/128"},
+			Reserved: []int{1, 2, 3}, MTU: 1280, PersistentKeepalive: 25,
+		}},
 	}
 	if !reflect.DeepEqual(d.Profiles, wantProfiles) {
 		t.Errorf("profiles\n got %q\nwant %q", names(d.Profiles), names(wantProfiles))
@@ -434,10 +446,7 @@ func TestParseDocumentSingBoxConfig(t *testing.T) {
 	}
 	// Endpoints count on from the outbounds.
 	wantSkipped := []Skipped{
-		{Index: 5, Name: "st", Unsupported: true, Reason: `the sing-box type "shadowtls" is not supported`},
-		{Index: 6, Name: "SS over ShadowTLS", Unsupported: true, Reason: `the server is reached through the outbound "st", and chains are not supported`},
 		{Index: 7, Name: "No server", Reason: "the server address is missing"},
-		{Index: 11, Name: "WARP", Unsupported: true, Reason: `the sing-box type "wireguard" is not supported`},
 		{Index: 12, Name: "Tailnet", Unsupported: true, Reason: `the sing-box type "tailscale" is not supported`},
 	}
 	if !reflect.DeepEqual(d.Skipped, wantSkipped) {

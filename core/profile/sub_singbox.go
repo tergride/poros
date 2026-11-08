@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,12 +25,23 @@ var singBoxParsers = map[string]func(json.RawMessage) (Profile, error){
 	TypeSOCKS:       singBoxSOCKSOutbound,
 	TypeHTTP:        singBoxHTTPOutbound,
 	TypeAnyTLS:      singBoxAnyTLSOutbound,
+	TypeWireGuard:   singBoxWireGuardOutbound,
+	TypeHysteria:    singBoxHysteriaOutbound,
+	TypeNaive:       singBoxNaiveOutbound,
+	TypeSSH:         singBoxSSHOutbound,
+	TypeSnell:       singBoxSnellOutbound,
 }
 
 // singBoxOutbound reads one outbound or endpoint of a sing-box config. What is not an object is left out, as in the
 // Qt client. A plain field of the wrong type makes the entry broken, as sing-box would refuse it too; only the
 // shapes sing-box itself lets vary are lenient.
 func singBoxOutbound(raw json.RawMessage) (p Profile, tag string, proxy bool, err error) {
+	return singBoxConfigOutbound(raw, nil)
+}
+
+// singBoxConfigOutbound reads an outbound of a whole config, whose ShadowTLS outbounds shadowTLS holds by tag. A
+// ShadowTLS outbound is part of the Shadowsocks server that goes through it, not a server of its own.
+func singBoxConfigOutbound(raw json.RawMessage, shadowTLS map[string]json.RawMessage) (p Profile, tag string, proxy bool, err error) {
 	var head struct {
 		Type any `json:"type"`
 		Tag  any `json:"tag"`
@@ -47,6 +59,19 @@ func singBoxOutbound(raw json.RawMessage) (p Profile, tag string, proxy bool, er
 	}
 	if kind == "" {
 		return Profile{}, tag, true, errors.New("the sing-box outbound has no type")
+	}
+	if kind == "shadowtls" {
+		return Profile{}, tag, false, nil
+	}
+	if kind == TypeShadowsocks {
+		var detour struct {
+			Detour string `json:"detour"`
+		}
+		_ = json.Unmarshal(raw, &detour)
+		if through, ok := shadowTLS[strings.TrimSpace(detour.Detour)]; ok {
+			p, err = singBoxShadowsocksOverShadowTLS(raw, through)
+			return p, tag, true, err
+		}
 	}
 	parse, ok := singBoxParsers[kind]
 	if !ok {
@@ -501,10 +526,15 @@ type singBoxHysteria2Options struct {
 		Password string `json:"password"`
 	} `json:"obfs"`
 	// Some generators write the obfuscation password here; the Qt client read it.
-	ObfsPassword string             `json:"obfsPassword"`
-	Password     string             `json:"password"`
-	Realm        json.RawMessage    `json:"realm"`
-	TLS          *singBoxTLSOptions `json:"tls"`
+	ObfsPassword string `json:"obfsPassword"`
+	Password     string `json:"password"`
+	Realm        *struct {
+		ServerURL   string      `json:"server_url"`
+		Token       string      `json:"token"`
+		RealmID     string      `json:"realm_id"`
+		STUNServers singBoxList `json:"stun_servers"`
+	} `json:"realm"`
+	TLS *singBoxTLSOptions `json:"tls"`
 }
 
 func singBoxHysteria2Outbound(raw json.RawMessage) (Profile, error) {
@@ -512,8 +542,22 @@ func singBoxHysteria2Outbound(raw json.RawMessage) (Profile, error) {
 	if err := singBoxDecode(raw, &o); err != nil {
 		return Profile{}, err
 	}
-	if len(o.Realm) > 0 && !bytes.Equal(o.Realm, []byte("null")) {
-		return Profile{}, unsupported("Hysteria2 realm, which replaces the server address, is not supported")
+	var realm HysteriaRealm
+	if r := o.Realm; r != nil {
+		realm = HysteriaRealm{
+			ServerURL:   strings.TrimSpace(r.ServerURL),
+			Token:       r.Token,
+			RealmID:     strings.TrimSpace(r.RealmID),
+			STUNServers: linkList(strings.Join(r.STUNServers, ",")),
+		}
+		// The realm takes the place of the address: the profile names the rendezvous service instead.
+		if u, err := url.Parse(realm.ServerURL); err == nil && u.Hostname() != "" {
+			o.Server = u.Hostname()
+			o.ServerPort, _ = strconv.Atoi(u.Port())
+			if o.ServerPort == 0 {
+				o.ServerPort = 443
+			}
+		}
 	}
 	p, err := o.profile(TypeHysteria2)
 	if err != nil {
@@ -553,6 +597,7 @@ func singBoxHysteria2Outbound(raw json.RawMessage) (Profile, error) {
 		return Profile{}, err
 	}
 	h.TLS = quicLinkTLS(tls)
+	h.Realm = realm
 	p.Hysteria2 = h
 	return p, nil
 }
@@ -692,4 +737,288 @@ func singBoxAnyTLSOutbound(raw json.RawMessage) (Profile, error) {
 	}
 	p.AnyTLS = a
 	return p, nil
+}
+
+// singBoxReserved is WireGuard's reserved bytes: a list of numbers, or their base64 as Go writes a byte slice.
+type singBoxReserved []int
+
+func (r *singBoxReserved) UnmarshalJSON(data []byte) error {
+	var numbers []int
+	if json.Unmarshal(data, &numbers) == nil {
+		*r = numbers
+		return nil
+	}
+	var text string
+	if json.Unmarshal(data, &text) == nil {
+		if decoded, ok := decodeLinkBase64(text); ok {
+			for _, b := range decoded {
+				*r = append(*r, int(b))
+			}
+		}
+	}
+	return nil
+}
+
+type singBoxWireGuardPeer struct {
+	Address             string          `json:"address"`
+	Port                int             `json:"port"`
+	PublicKey           string          `json:"public_key"`
+	PreSharedKey        string          `json:"pre_shared_key"`
+	PersistentKeepalive int             `json:"persistent_keepalive_interval"`
+	Reserved            singBoxReserved `json:"reserved"`
+}
+
+// singBoxWireGuardOptions holds the endpoint of sing-box 1.11 and later and the older outbound, which named the
+// peer at the top: server, local_address, peer_public_key.
+type singBoxWireGuardOptions struct {
+	singBoxServerOptions
+	Address       singBoxList            `json:"address"`
+	LocalAddress  singBoxList            `json:"local_address"`
+	PrivateKey    string                 `json:"private_key"`
+	PeerPublicKey string                 `json:"peer_public_key"`
+	PreSharedKey  string                 `json:"pre_shared_key"`
+	Reserved      singBoxReserved        `json:"reserved"`
+	MTU           int                    `json:"mtu"`
+	Peers         []singBoxWireGuardPeer `json:"peers"`
+}
+
+func singBoxWireGuardOutbound(raw json.RawMessage) (Profile, error) {
+	var o singBoxWireGuardOptions
+	if err := singBoxDecode(raw, &o); err != nil {
+		return Profile{}, err
+	}
+	w := &WireGuard{
+		PrivateKey:    strings.TrimSpace(o.PrivateKey),
+		PeerPublicKey: strings.TrimSpace(o.PeerPublicKey),
+		PreSharedKey:  strings.TrimSpace(o.PreSharedKey),
+		Reserved:      o.Reserved,
+		MTU:           singBoxCount(o.MTU),
+	}
+	if len(o.Peers) > 0 {
+		peer := o.Peers[0]
+		o.Server, o.ServerPort = peer.Address, peer.Port
+		w.PeerPublicKey = strings.TrimSpace(peer.PublicKey)
+		w.PreSharedKey = strings.TrimSpace(peer.PreSharedKey)
+		w.PersistentKeepalive = singBoxCount(peer.PersistentKeepalive)
+		w.Reserved = peer.Reserved
+	}
+	p, err := o.profile(TypeWireGuard)
+	if err != nil {
+		return Profile{}, err
+	}
+	if w.Address, err = wireGuardAddresses(append(o.Address, o.LocalAddress...)); err != nil {
+		return Profile{}, err
+	}
+	p.WireGuard = w
+	return p, nil
+}
+
+type singBoxHysteriaOptions struct {
+	singBoxServerOptions
+	ServerPorts singBoxList        `json:"server_ports"`
+	HopInterval string             `json:"hop_interval"`
+	Up          string             `json:"up"`
+	UpMbps      int                `json:"up_mbps"`
+	Down        string             `json:"down"`
+	DownMbps    int                `json:"down_mbps"`
+	Obfs        string             `json:"obfs"`
+	Auth        string             `json:"auth"`
+	AuthString  string             `json:"auth_str"`
+	TLS         *singBoxTLSOptions `json:"tls"`
+}
+
+func singBoxHysteriaOutbound(raw json.RawMessage) (Profile, error) {
+	var o singBoxHysteriaOptions
+	if err := singBoxDecode(raw, &o); err != nil {
+		return Profile{}, err
+	}
+	p, err := o.profile(TypeHysteria)
+	if err != nil {
+		return Profile{}, err
+	}
+	h := &Hysteria{
+		Auth:        o.AuthString,
+		Obfs:        o.Obfs,
+		HopInterval: goDuration(o.HopInterval),
+		UpMbps:      singBoxCount(o.UpMbps),
+		DownMbps:    singBoxCount(o.DownMbps),
+	}
+	if h.Auth == "" {
+		if decoded, ok := decodeLinkBase64(o.Auth); ok {
+			h.Auth = string(decoded)
+		}
+	}
+	if mbps := hysteriaLinkMbps(o.Up); mbps > 0 {
+		h.UpMbps = mbps
+	}
+	if mbps := hysteriaLinkMbps(o.Down); mbps > 0 {
+		h.DownMbps = mbps
+	}
+	if h.ServerPorts, err = hysteriaPortRanges(strings.Join(o.ServerPorts, ",")); err != nil {
+		return Profile{}, err
+	}
+	if p.ServerPort == 0 && len(h.ServerPorts) > 0 {
+		first, _, _ := strings.Cut(h.ServerPorts[0], ":")
+		p.ServerPort, _ = strconv.Atoi(first)
+	}
+	tls, err := singBoxTLS(o.TLS, true)
+	if err != nil {
+		return Profile{}, err
+	}
+	h.TLS = quicLinkTLS(tls)
+	p.Hysteria = h
+	return p, nil
+}
+
+type singBoxNaiveOptions struct {
+	singBoxServerOptions
+	Username              string             `json:"username"`
+	Password              string             `json:"password"`
+	InsecureConcurrency   int                `json:"insecure_concurrency"`
+	ExtraHeaders          singBoxHeaders     `json:"extra_headers"`
+	UDPOverTCP            singBoxUDPOverTCP  `json:"udp_over_tcp"`
+	QUIC                  bool               `json:"quic"`
+	QUICCongestionControl string             `json:"quic_congestion_control"`
+	TLS                   *singBoxTLSOptions `json:"tls"`
+}
+
+func singBoxNaiveOutbound(raw json.RawMessage) (Profile, error) {
+	var o singBoxNaiveOptions
+	if err := singBoxDecode(raw, &o); err != nil {
+		return Profile{}, err
+	}
+	p, err := o.profile(TypeNaive)
+	if err != nil {
+		return Profile{}, err
+	}
+	n := &Naive{
+		Username:              o.Username,
+		Password:              o.Password,
+		QUIC:                  o.QUIC,
+		QUICCongestionControl: strings.ToLower(strings.TrimSpace(o.QUICCongestionControl)),
+		InsecureConcurrency:   singBoxCount(o.InsecureConcurrency),
+		ExtraHeaders:          o.ExtraHeaders.first(),
+		UDPOverTCP:            bool(o.UDPOverTCP),
+	}
+	if n.TLS, err = singBoxTLS(o.TLS, true); err != nil {
+		return Profile{}, err
+	}
+	p.Naive = n
+	return p, nil
+}
+
+type singBoxSSHOptions struct {
+	singBoxServerOptions
+	User                 string      `json:"user"`
+	Password             string      `json:"password"`
+	PrivateKey           singBoxList `json:"private_key"`
+	PrivateKeyPath       string      `json:"private_key_path"`
+	PrivateKeyPassphrase string      `json:"private_key_passphrase"`
+	HostKey              singBoxList `json:"host_key"`
+	HostKeyAlgorithms    singBoxList `json:"host_key_algorithms"`
+	ClientVersion        string      `json:"client_version"`
+}
+
+func singBoxSSHOutbound(raw json.RawMessage) (Profile, error) {
+	var o singBoxSSHOptions
+	if err := singBoxDecode(raw, &o); err != nil {
+		return Profile{}, err
+	}
+	if strings.TrimSpace(o.PrivateKeyPath) != "" && len(o.PrivateKey) == 0 {
+		return Profile{}, errors.New("the SSH private key is a file path, which Poros cannot read from a config")
+	}
+	p, err := o.profile(TypeSSH)
+	if err != nil {
+		return Profile{}, err
+	}
+	p.SSH = &SSH{
+		User:                 o.User,
+		Password:             o.Password,
+		PrivateKey:           strings.TrimSpace(strings.Join(o.PrivateKey, "\n")),
+		PrivateKeyPassphrase: o.PrivateKeyPassphrase,
+		HostKey:              linkList(strings.Join(o.HostKey, ",")),
+		HostKeyAlgorithms:    linkList(strings.Join(o.HostKeyAlgorithms, ",")),
+		ClientVersion:        strings.TrimSpace(o.ClientVersion),
+	}
+	return p, nil
+}
+
+type singBoxSnellOptions struct {
+	singBoxServerOptions
+	Version  int    `json:"version"`
+	PSK      string `json:"psk"`
+	UserKey  string `json:"userkey"`
+	Reuse    bool   `json:"reuse"`
+	ObfsMode string `json:"obfs_mode"`
+	ObfsHost string `json:"obfs_host"`
+	Mode     string `json:"mode"`
+}
+
+func singBoxSnellOutbound(raw json.RawMessage) (Profile, error) {
+	var o singBoxSnellOptions
+	if err := singBoxDecode(raw, &o); err != nil {
+		return Profile{}, err
+	}
+	p, err := o.profile(TypeSnell)
+	if err != nil {
+		return Profile{}, err
+	}
+	s := &Snell{Version: o.Version, PSK: o.PSK, UserKey: o.UserKey, Reuse: o.Reuse, Mode: strings.TrimSpace(o.Mode)}
+	if mode := strings.ToLower(strings.TrimSpace(o.ObfsMode)); mode != "" && mode != "none" {
+		s.ObfsMode, s.ObfsHost = mode, strings.TrimSpace(o.ObfsHost)
+	}
+	p.Snell = s
+	return p, nil
+}
+
+type singBoxShadowTLSOptions struct {
+	singBoxServerOptions
+	Version  int                `json:"version"`
+	Password string             `json:"password"`
+	TLS      *singBoxTLSOptions `json:"tls"`
+}
+
+// singBoxShadowsocksOverShadowTLS reads a Shadowsocks outbound whose detour is a ShadowTLS one: the server is the
+// ShadowTLS server, as in sing-box's own example.
+func singBoxShadowsocksOverShadowTLS(raw, shadowTLS json.RawMessage) (Profile, error) {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return Profile{}, errors.New("the sing-box outbound cannot be read")
+	}
+	var o singBoxShadowTLSOptions
+	if err := singBoxDecode(shadowTLS, &o); err != nil {
+		return Profile{}, err
+	}
+	delete(fields, "detour")
+	fields["server"], _ = json.Marshal(o.Server)
+	fields["server_port"], _ = json.Marshal(o.ServerPort)
+	plain, _ := json.Marshal(fields)
+	p, err := singBoxShadowsocksOutbound(plain)
+	if err != nil {
+		return Profile{}, err
+	}
+	if o.Detour != "" {
+		return Profile{}, unsupported("the server is reached through the outbound %q, and chains are not supported", o.Detour)
+	}
+	tls, err := singBoxTLS(o.TLS, true)
+	if err != nil {
+		return Profile{}, err
+	}
+	p.Shadowsocks.ShadowTLS = ShadowTLS{Version: max(o.Version, 1), Password: o.Password, TLS: tls}
+	return p, nil
+}
+
+// singBoxShadowTLSTags maps the tags of the ShadowTLS outbounds of a config to them.
+func singBoxShadowTLSTags(outbounds []json.RawMessage) map[string]json.RawMessage {
+	tags := map[string]json.RawMessage{}
+	for _, raw := range outbounds {
+		var head struct {
+			Type string `json:"type"`
+			Tag  string `json:"tag"`
+		}
+		if json.Unmarshal(raw, &head) == nil && strings.EqualFold(strings.TrimSpace(head.Type), "shadowtls") && head.Tag != "" {
+			tags[strings.TrimSpace(head.Tag)] = raw
+		}
+	}
+	return tags
 }

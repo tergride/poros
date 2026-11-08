@@ -61,6 +61,16 @@ var roundTripLinks = []string{
 	"http://u:p@px.example.com:8080?path=%2Fp#H",
 	"https://u:p@px.example.com:443?sni=px.example.com#HS",
 	"anytls://pw@at.example.com:443?sni=at.example.com&idle_session_check_interval=20s&idle_session_timeout=40s&min_idle_session=2",
+	"wireguard://" + url.QueryEscape(testWGPrivate) + "@wg.example.com:51820?publickey=" + url.QueryEscape(testWGPublic) +
+		"&address=172.16.0.2/32,fd01::2/128&reserved=1,2,3&mtu=1280&keepalive=25#WG",
+	"hysteria://hy.example.com:443?auth=pw&upmbps=50&downmbps=200&obfs=xplus&obfsParam=ob&mport=20000-30000&hop_interval=30s" +
+		"&sni=hy.example.com&alpn=hysteria#HY1",
+	"naive+https://user:pw@nv.example.com:443?sni=nv.example.com&extra-headers=X-A%3A%201%0D%0AX-B%3A%202&uot=1#NV",
+	"naive+quic://user:pw@nq.example.com:443?congestion_control=bbr2&insecure-concurrency=3&ech=1",
+	"ssh://root:pw@ssh.example.com:22?private_key=" + base64.RawStdEncoding.EncodeToString([]byte(testSSHKey)) +
+		"&host_key=" + base64.RawStdEncoding.EncodeToString([]byte("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5")) + "&client_version=SSH-2.0-OpenSSH_9.6#SSH",
+	"snell://psk@sn.example.com:8443?version=4&obfs=tls&obfs-host=bing.com#SN4",
+	"snell://psk@sn6.example.com:8443?version=6&mode=unshaped&reuse=1",
 }
 
 func TestShareLinkRoundTrip(t *testing.T) {
@@ -105,7 +115,12 @@ func TestShareLinkFallsBackToPorosLink(t *testing.T) {
 	anyPart.IdleSessionCheckInterval, anyPart.IdleSessionTimeout = "", ""
 	anytls.AnyTLS = &anyPart
 
-	for name, p := range map[string]Profile{"a header with a pipe": headers, "settings no link key holds": anytls} {
+	shadowTLS := mustParseLink(t, "ss://"+base64.RawURLEncoding.EncodeToString([]byte("aes-128-gcm:pw"))+"@st.example.com:443")
+	ssPart := *shadowTLS.Shadowsocks
+	ssPart.ShadowTLS = ShadowTLS{Version: 3, Password: "pw", TLS: TLS{Enabled: true, ServerName: "www.apple.com"}}
+	shadowTLS.Shadowsocks = &ssPart
+
+	for name, p := range map[string]Profile{"a header with a pipe": headers, "settings no link key holds": anytls, "ShadowTLS": shadowTLS} {
 		shared := ShareLink(p)
 		if !strings.HasPrefix(shared, "poros://add/") {
 			t.Errorf("%s: %s, want a poros://add/ link", name, shared)

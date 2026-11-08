@@ -140,7 +140,8 @@ type Server struct {
 	ID      string `json:"id"`
 	GroupID string `json:"groupId"`
 	Name    string `json:"name"`
-	// Protocol is the type of its profile: vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http or anytls.
+	// Protocol is the type of its profile: vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http, anytls,
+	// wireguard, hysteria, naive, ssh or snell.
 	Protocol string `json:"protocol"`
 	Host     string `json:"host"`
 	Port     int    `json:"port"`

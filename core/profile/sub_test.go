@@ -29,7 +29,7 @@ func TestParseDocumentLinkList(t *testing.T) {
 		"Срок действия: до 2026-12-01\r\n" +
 		"vless://" + testUUID + "@a.example.com:443?security=tls#A\r\n" +
 		"\r\n" +
-		"wg://key@198.51.100.7:51820#WG\r\n" +
+		"juicity://key@198.51.100.7:443#Juicity\r\n" +
 		"trojan://@t.example.com#Broken\r\n" +
 		"https://t.me/provider\r\n" +
 		"ss://YWVzLTI1Ni1nY206cHc@ss.example.com:8388#SS\u00a0\r\n"
@@ -41,7 +41,7 @@ func TestParseDocumentLinkList(t *testing.T) {
 		t.Fatalf("notes, comments and the provider's site are not servers: got %q", got)
 	}
 	want := []Skipped{
-		{Index: 5, Name: "WG", Unsupported: true, Reason: "wg:// links are not supported"},
+		{Index: 5, Name: "Juicity", Unsupported: true, Reason: "juicity:// links are not supported"},
 		{Index: 6, Name: "Broken", Reason: "the Trojan password is missing"},
 	}
 	if !reflect.DeepEqual(d.Skipped, want) {

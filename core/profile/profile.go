@@ -16,6 +16,11 @@ const (
 	TypeSOCKS       = "socks"
 	TypeHTTP        = "http"
 	TypeAnyTLS      = "anytls"
+	TypeWireGuard   = "wireguard"
+	TypeHysteria    = "hysteria"
+	TypeNaive       = "naive"
+	TypeSSH         = "ssh"
+	TypeSnell       = "snell"
 )
 
 // Profile is one server. Exactly the part named by Type is set.
@@ -34,6 +39,11 @@ type Profile struct {
 	SOCKS       *SOCKS       `json:"socks,omitempty"`
 	HTTP        *HTTP        `json:"http,omitempty"`
 	AnyTLS      *AnyTLS      `json:"anytls,omitempty"`
+	WireGuard   *WireGuard   `json:"wireguard,omitempty"`
+	Hysteria    *Hysteria    `json:"hysteria,omitempty"`
+	Naive       *Naive       `json:"naive,omitempty"`
+	SSH         *SSH         `json:"ssh,omitempty"`
+	Snell       *Snell       `json:"snell,omitempty"`
 }
 
 type VLESS struct {
@@ -75,6 +85,17 @@ type Shadowsocks struct {
 	PluginOpts string    `json:"plugin_opts,omitempty"`
 	UDPOverTCP bool      `json:"udp_over_tcp,omitempty"`
 	Multiplex  Multiplex `json:"multiplex,omitzero"`
+	// ShadowTLS carries the Shadowsocks connection: the profile's server is the ShadowTLS server then.
+	ShadowTLS ShadowTLS `json:"shadowtls,omitzero"`
+}
+
+// ShadowTLS hides a connection behind a TLS handshake with a real site, as in Clash and sing-box.
+type ShadowTLS struct {
+	// Version is 1, 2 or 3; 0 is no ShadowTLS.
+	Version  int    `json:"version,omitempty"`
+	Password string `json:"password,omitempty"`
+	// TLS names the site of the handshake; it is always on.
+	TLS TLS `json:"tls,omitzero"`
 }
 
 type Hysteria2 struct {
@@ -88,6 +109,82 @@ type Hysteria2 struct {
 	ObfsType     string `json:"obfs_type,omitempty"`
 	ObfsPassword string `json:"obfs_password,omitempty"`
 	TLS          TLS    `json:"tls,omitzero"`
+	// Realm finds the server through a rendezvous service instead of its address; the profile's server and port are
+	// those of the service then.
+	Realm HysteriaRealm `json:"realm,omitzero"`
+}
+
+type HysteriaRealm struct {
+	// ServerURL is the rendezvous service, https://realm.example.com.
+	ServerURL   string   `json:"server_url,omitempty"`
+	Token       string   `json:"token,omitempty"`
+	RealmID     string   `json:"realm_id,omitempty"`
+	STUNServers []string `json:"stun_servers,omitempty"`
+}
+
+// Hysteria is Hysteria v1.
+type Hysteria struct {
+	// Auth is the password, auth_str.
+	Auth        string   `json:"auth,omitempty"`
+	ServerPorts []string `json:"server_ports,omitempty"`
+	HopInterval string   `json:"hop_interval,omitempty"`
+	// UpMbps and DownMbps are required: the protocol paces itself by them.
+	UpMbps   int    `json:"up_mbps,omitempty"`
+	DownMbps int    `json:"down_mbps,omitempty"`
+	Obfs     string `json:"obfs,omitempty"`
+	TLS      TLS    `json:"tls,omitzero"`
+}
+
+// WireGuard is a WireGuard peer: the profile's server is the peer's endpoint.
+type WireGuard struct {
+	PrivateKey    string `json:"private_key"`
+	PeerPublicKey string `json:"peer_public_key"`
+	PreSharedKey  string `json:"pre_shared_key,omitempty"`
+	// Address are the addresses of this end of the tunnel with their prefixes, 172.16.0.2/32 and fd01::2/128.
+	Address []string `json:"address"`
+	// Reserved are the three bytes Cloudflare WARP expects in each packet.
+	Reserved            []int `json:"reserved,omitempty"`
+	MTU                 int   `json:"mtu,omitempty"`
+	PersistentKeepalive int   `json:"persistent_keepalive,omitempty"`
+}
+
+// Naive is NaiveProxy, Chromium's network stack over HTTP/2 or HTTP/3; it always runs over TLS.
+type Naive struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	// QUIC runs over HTTP/3.
+	QUIC bool `json:"quic,omitempty"`
+	// QUICCongestionControl is "", "bbr", "bbr2", "cubic" or "reno".
+	QUICCongestionControl string            `json:"quic_congestion_control,omitempty"`
+	InsecureConcurrency   int               `json:"insecure_concurrency,omitempty"`
+	ExtraHeaders          map[string]string `json:"extra_headers,omitempty"`
+	UDPOverTCP            bool              `json:"udp_over_tcp,omitempty"`
+	TLS                   TLS               `json:"tls,omitzero"`
+}
+
+type SSH struct {
+	User     string `json:"user,omitempty"`
+	Password string `json:"password,omitempty"`
+	// PrivateKey is the key in PEM, from -----BEGIN to PRIVATE KEY-----.
+	PrivateKey           string `json:"private_key,omitempty"`
+	PrivateKeyPassphrase string `json:"private_key_passphrase,omitempty"`
+	// HostKey are the server keys accepted, "ssh-ed25519 AAAA..."; none accepts any.
+	HostKey           []string `json:"host_key,omitempty"`
+	HostKeyAlgorithms []string `json:"host_key_algorithms,omitempty"`
+	ClientVersion     string   `json:"client_version,omitempty"`
+}
+
+type Snell struct {
+	// Version is 4 or 6, the versions sing-box runs.
+	Version int    `json:"version"`
+	PSK     string `json:"psk"`
+	UserKey string `json:"userkey,omitempty"`
+	Reuse   bool   `json:"reuse,omitempty"`
+	// ObfsMode is "", "http" or "tls", and ObfsHost its host: version 4 only.
+	ObfsMode string `json:"obfs_mode,omitempty"`
+	ObfsHost string `json:"obfs_host,omitempty"`
+	// Mode is "", "default", "unshaped" or "unsafe-raw": version 6 only.
+	Mode string `json:"mode,omitempty"`
 }
 
 type TUIC struct {

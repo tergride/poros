@@ -53,6 +53,16 @@ func writeLink(p Profile) (string, bool) {
 		return writeHTTPLink(p), true
 	case p.AnyTLS != nil:
 		return writeAnyTLSLink(p), true
+	case p.WireGuard != nil:
+		return writeWireGuardLink(p), true
+	case p.Hysteria != nil:
+		return writeHysteriaLink(p), true
+	case p.Naive != nil:
+		return writeNaiveLink(p), true
+	case p.SSH != nil:
+		return writeSSHLink(p), true
+	case p.Snell != nil:
+		return writeSnellLink(p), true
 	}
 	return "", false
 }
@@ -407,14 +417,7 @@ func writeHysteria2Link(p Profile) string {
 	h := p.Hysteria2
 	w := newLinkWriter("hysteria2", p)
 	w.user(h.Password, "")
-	if len(h.ServerPorts) > 0 {
-		ranges := make([]string, len(h.ServerPorts))
-		for i, r := range h.ServerPorts {
-			ranges[i] = strings.Replace(r, ":", "-", 1)
-		}
-		w.set("mport", strings.Join(ranges, ","))
-	}
-	w.setIf("hop_interval", h.HopInterval)
+	w.writePortHopping(h.ServerPorts, h.HopInterval)
 	if h.UpMbps > 0 {
 		w.set("upmbps", strconv.Itoa(h.UpMbps))
 	}
@@ -483,5 +486,122 @@ func writeAnyTLSLink(p Profile) string {
 	w.setIf("idle_session_timeout", a.IdleSessionTimeout)
 	w.set("min_idle_session", strconv.Itoa(a.MinIdleSession))
 	w.writeTLS(a.TLS, true)
+	return w.String()
+}
+
+func writeWireGuardLink(p Profile) string {
+	g := p.WireGuard
+	w := newLinkWriter("wireguard", p)
+	w.user(g.PrivateKey, "")
+	w.set("publickey", g.PeerPublicKey)
+	w.setIf("presharedkey", g.PreSharedKey)
+	w.set("address", strings.Join(g.Address, ","))
+	if len(g.Reserved) > 0 {
+		bytes := make([]string, len(g.Reserved))
+		for i, b := range g.Reserved {
+			bytes[i] = strconv.Itoa(b)
+		}
+		w.set("reserved", strings.Join(bytes, ","))
+	}
+	if g.MTU > 0 {
+		w.set("mtu", strconv.Itoa(g.MTU))
+	}
+	if g.PersistentKeepalive > 0 {
+		w.set("keepalive", strconv.Itoa(g.PersistentKeepalive))
+	}
+	return w.String()
+}
+
+func writeHysteriaLink(p Profile) string {
+	h := p.Hysteria
+	w := newLinkWriter("hysteria", p)
+	w.setIf("auth", h.Auth)
+	w.writePortHopping(h.ServerPorts, h.HopInterval)
+	w.set("upmbps", strconv.Itoa(h.UpMbps))
+	w.set("downmbps", strconv.Itoa(h.DownMbps))
+	if h.Obfs != "" {
+		w.set("obfs", "xplus")
+		w.set("obfsParam", h.Obfs)
+	}
+	w.writeTLS(h.TLS, true)
+	return w.String()
+}
+
+// writePortHopping writes Hysteria's mport, with dashes as links write ranges, and the hop interval.
+func (w *linkWriter) writePortHopping(ports []string, hopInterval string) {
+	if len(ports) > 0 {
+		ranges := make([]string, len(ports))
+		for i, r := range ports {
+			ranges[i] = strings.Replace(r, ":", "-", 1)
+		}
+		w.set("mport", strings.Join(ranges, ","))
+	}
+	w.setIf("hop_interval", hopInterval)
+}
+
+func writeNaiveLink(p Profile) string {
+	n := p.Naive
+	scheme := "naive+https"
+	if n.QUIC {
+		scheme = "naive+quic"
+	}
+	w := newLinkWriter(scheme, p)
+	w.user(n.Username, n.Password)
+	w.setIf("sni", n.TLS.ServerName)
+	if len(n.ExtraHeaders) > 0 {
+		names := make([]string, 0, len(n.ExtraHeaders))
+		for name := range n.ExtraHeaders {
+			names = append(names, name)
+		}
+		slices.Sort(names)
+		lines := make([]string, len(names))
+		for i, name := range names {
+			lines[i] = name + ": " + n.ExtraHeaders[name]
+		}
+		w.set("extra-headers", strings.Join(lines, "\r\n"))
+	}
+	if n.InsecureConcurrency > 0 {
+		w.set("insecure-concurrency", strconv.Itoa(n.InsecureConcurrency))
+	}
+	w.setIf("uot", linkBool(n.UDPOverTCP))
+	if n.QUIC {
+		w.setIf("congestion_control", n.QUICCongestionControl)
+	}
+	w.writeECH(n.TLS.ECH)
+	return w.String()
+}
+
+// writeSSHLink writes the keys in base64, as Throne does: a PEM block and host keys hold spaces and line breaks.
+func writeSSHLink(p Profile) string {
+	s := p.SSH
+	w := newLinkWriter("ssh", p)
+	w.user(s.User, s.Password)
+	encode := func(items []string) string {
+		encoded := make([]string, len(items))
+		for i, item := range items {
+			encoded[i] = base64.RawStdEncoding.EncodeToString([]byte(item))
+		}
+		return strings.Join(encoded, ",")
+	}
+	if s.PrivateKey != "" {
+		w.set("private_key", encode([]string{s.PrivateKey}))
+	}
+	w.setIf("private_key_passphrase", s.PrivateKeyPassphrase)
+	w.setIf("host_key", encode(s.HostKey))
+	w.setIf("host_key_algorithms", encode(s.HostKeyAlgorithms))
+	w.setIf("client_version", s.ClientVersion)
+	return w.String()
+}
+
+func writeSnellLink(p Profile) string {
+	s := p.Snell
+	w := newLinkWriter("snell", p)
+	w.user(s.PSK, "")
+	w.set("version", strconv.Itoa(s.Version))
+	w.setIf("userkey", s.UserKey)
+	w.setIf("reuse", linkBool(s.Reuse))
+	w.setIf("obfs", s.ObfsMode)
+	w.setIf("obfs-host", s.ObfsHost)
+	w.setIf("mode", s.Mode)
 	return w.String()
 }

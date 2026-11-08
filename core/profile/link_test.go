@@ -14,6 +14,9 @@ const (
 	testPBK  = "Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw"
 	// A 2022-blake3-aes-256-gcm key: 32 bytes in padded base64.
 	testSS2022Key = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+	// WireGuard keys from its documentation: 32 bytes in padded base64.
+	testWGPrivate = "yAnz5TF+lXXJte14tji3zlMNq+hd2rYUIgJBgB3fBmk="
+	testWGPublic  = "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg="
 )
 
 func vmessJSONLink(json string) string {
@@ -454,7 +457,7 @@ func TestPorosLink(t *testing.T) {
 }
 
 func TestParseLinkNotALink(t *testing.T) {
-	for _, text := range []string{"", "just text", "foo://bar", "hysteria://h.example.com:443", "wg://key@198.51.100.7:51820",
+	for _, text := range []string{"", "just text", "foo://bar", "juicity://key@198.51.100.7:443", "mieru://user@m.example.com:2999",
 		"poros://addsub/aHR0cHM6Ly9leGFtcGxlLmNvbQ", "poros://route/x"} {
 		if _, err := ParseLink(text); !errors.Is(err, ErrNotLink) {
 			t.Errorf("ParseLink(%q) error %v, want ErrNotLink", text, err)
@@ -472,7 +475,7 @@ func TestValidateParts(t *testing.T) {
 		p    Profile
 		want string
 	}{
-		{"unknown type", Profile{Type: "wireguard", Server: "w.example.com", ServerPort: 51820}, `unknown server type "wireguard"`},
+		{"unknown type", Profile{Type: "juicity", Server: "j.example.com", ServerPort: 443}, `unknown server type "juicity"`},
 		{"missing part", Profile{Type: TypeVLESS, Server: "v.example.com", ServerPort: 443}, "vless settings are missing"},
 		{"second part", Profile{Type: TypeTrojan, Server: "t.example.com", ServerPort: 443, Trojan: &Trojan{Password: "pw"},
 			VLESS: &VLESS{UUID: testUUID}}, "carries vless settings"},
