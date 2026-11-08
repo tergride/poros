@@ -1,6 +1,7 @@
 import type {
   LinkInfo,
   ConnectionState,
+  Group,
   InheritedRule,
   KillSwitchState,
   NetworkState,
@@ -12,7 +13,7 @@ import type {
   PresetListsRead,
   Server,
   Settings,
-  Subscription,
+  SkipReason,
   SubscriptionUpdate,
   UpdateState,
 } from './core-types'
@@ -31,14 +32,21 @@ import {
   EventPresetsChanged,
   EventServersChanged,
   EventServersTested,
+  EventGroupsChanged,
   EventSettingsChanged,
-  EventSubscriptionsChanged,
   EventUpdatesChanged,
+  GroupManual,
+  GroupSubscription,
   LeakNone,
+  LinkServer,
   MethodAppInfo,
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodGroupsAdd,
+  MethodGroupsList,
+  MethodGroupsRemove,
+  MethodGroupsRename,
   MethodKillSwitchState,
   MethodLogsGet,
   MethodNetworkCheck,
@@ -52,14 +60,17 @@ import {
   MethodPresetsRemove,
   MethodPresetsSave,
   MethodPresetsWriteLists,
+  MethodServersAdd,
+  MethodServersClone,
+  MethodServersGet,
   MethodServersList,
+  MethodServersMove,
+  MethodServersRemove,
+  MethodServersSave,
   MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsAdd,
-  MethodSubscriptionsList,
-  MethodSubscriptionsRemove,
-  MethodSubscriptionsRename,
   MethodSubscriptionsUpdate,
   MethodUpdatesCheck,
   MethodUpdatesInstall,
@@ -79,8 +90,12 @@ import {
   ReasonLogonTaskNeedsElevation,
   ReasonNeedsElevation,
   ReasonNoServer,
+  ReasonNoServers,
   ReasonNotFound,
+  ReasonNotManual,
+  ReasonServerUnsupported,
   ReasonSingleServer,
+  ReasonSubscriptionURL,
   ReasonPresetNameTaken,
   ReasonUnknownPreset,
   ReasonUpdateNotReady,
@@ -91,6 +106,7 @@ import {
   UpdateReady,
 } from './core-types'
 import type { CoreClient, CoreError, CoreEvent, CoreEvents, CoreMethod, CoreMethods, CoreStatus } from './core'
+import type { Profile } from './profile-types'
 
 const defaultSettings: Settings = {
   uiMode: 'simple',
@@ -122,7 +138,7 @@ const defaultSettings: Settings = {
 }
 
 /** The servers every subscription of the stub core holds, with the delay a test gives them. */
-const stubServers: (Omit<Server, 'id' | 'subscriptionId' | 'latency'> & { measured: number })[] = [
+const stubServers: (Omit<Server, 'id' | 'groupId' | 'latency'> & { measured: number })[] = [
   { name: '🇩🇪 Germany', protocol: 'vless', host: 'de.example.com', port: 443, country: 'DE', measured: 42 },
   { name: '🇳🇱 Netherlands', protocol: 'vless', host: 'nl.example.com', port: 443, country: 'NL', measured: 48 },
   { name: '🇫🇮 Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI', measured: -1 },
@@ -326,6 +342,58 @@ function decodeBase64(data: string): string {
   return new TextDecoder().decode(bytes)
 }
 
+/** A poros://add/ link holds the profile as JSON in base64url; null for anything else. */
+function readPorosLink(data: string): Profile | null {
+  try {
+    const profile = JSON.parse(decodeBase64(data.trim())) as Profile
+    return validProfile(profile) ? profile : null
+  } catch {
+    return null
+  }
+}
+
+/** Enough of profile.Validate for the screens: a type with its part, an address and a port. */
+function validProfile(p: Profile): boolean {
+  const part = (p as unknown as Record<string, unknown>)[p.type]
+  return typeof part === 'object' && part !== null && !!p.server?.trim() && p.server_port >= 1 && p.server_port <= 65535
+}
+
+const shareSchemes: Record<string, string> = {
+  vless: 'vless',
+  vmess: 'vmess',
+  trojan: 'trojan',
+  ss: 'shadowsocks',
+  hysteria2: 'hysteria2',
+  hy2: 'hysteria2',
+  tuic: 'tuic',
+  socks: 'socks',
+  anytls: 'anytls',
+}
+
+/** A share link read as far as the stub needs: the scheme gives the protocol, the fragment the name. */
+function readShareLink(line: string): Profile | null {
+  if (line.toLowerCase().startsWith('poros://add/')) return readPorosLink(line.slice('poros://add/'.length))
+  try {
+    const url = new URL(line)
+    const type = shareSchemes[url.protocol.slice(0, -1).toLowerCase()]
+    if (!type || !url.hostname || !url.port) return null
+    const name = decodeURIComponent(url.hash.slice(1))
+    return { type, name, server: url.hostname, server_port: Number(url.port), [type]: {} } as Profile
+  } catch {
+    return null
+  }
+}
+
+const regional = (c: string | undefined) => c !== undefined && c.codePointAt(0)! >= 0x1f1e6 && c.codePointAt(0)! <= 0x1f1ff
+
+/** The view of a server, as serverRecord.view in core/engine/servers.go. */
+function serverOf(p: Profile, id: string, groupId: string): Server {
+  const name = p.name?.trim() || p.server + ':' + p.server_port
+  const flag = [...name].slice(0, 2)
+  const country = regional(flag[0]) && regional(flag[1]) ? flag.map((c) => String.fromCharCode(c.codePointAt(0)! - 0x1f1e6 + 65)).join('') : ''
+  return { id, groupId, name, protocol: p.type, host: p.server, port: p.server_port, country, latency: 0 }
+}
+
 /** The rules of core/engine/links.go: nothing is added, the link is only read. */
 function parseOutsideLink(link: string): LinkInfo {
   const match = /^(poros|throne):\/\/([^/]*)\/?(.*)$/i.exec(link.trim())
@@ -355,8 +423,12 @@ function parseOutsideLink(link: string): LinkInfo {
       }
       return { kind: LinkSubscription, url, name: name.trim() }
     }
-    case 'add':
-      throw failed(ReasonSingleServer, 'this is a link to one server, not a subscription')
+    case 'add': {
+      if (scheme.toLowerCase() !== 'poros') throw failed(ReasonSingleServer, 'this is a link to one server, not a subscription')
+      const profile = readPorosLink(data)
+      if (!profile) throw failed(ReasonInvalidLink, 'the poros://add/ link is damaged')
+      return { kind: LinkServer, url: '', name: '', server: serverOf(profile, '', '') }
+    }
     case 'route':
       if (scheme.toLowerCase() !== 'poros') throw failed(ReasonInvalidLink, 'Throne routing profiles are not Poros presets')
       return { kind: LinkPreset, url: '', name: '', preset: decodeLink(presetLinkPrefix + data) }
@@ -370,8 +442,10 @@ function parseOutsideLink(link: string): LinkInfo {
  */
 export function createStubCore(): CoreClient {
   let settings = { ...defaultSettings }
-  let subscriptions: Subscription[] = []
+  let groups: Group[] = []
   let servers: Server[] = []
+  // The whole profile of each server, for servers.get; subscriptions bring theirs from stubServers.
+  const profiles = new Map<string, Profile>()
   let copies: PresetCopy[] = []
   let connection = { ...idle }
   let network = { ...noCheck }
@@ -385,15 +459,57 @@ export function createStubCore(): CoreClient {
   const statusHandlers = new Set<(status: CoreStatus) => void>()
   const emit = <E extends CoreEvent>(event: E, params: CoreEvents[E]) =>
     handlers.get(event)?.forEach((handler) => handler(params as never))
-  const changed = (subscriptionId: string) => {
-    emit(EventSubscriptionsChanged, [...subscriptions])
-    if (subscriptionId) emit(EventServersChanged, { subscriptionId })
+  // As core/engine/groups.go: subscriptions first, each kind in the order it was added; each counts its servers.
+  const groupList = (): Group[] =>
+    [...groups]
+      .sort((a, b) => Number(a.kind === GroupManual) - Number(b.kind === GroupManual) || a.addedAt - b.addedAt)
+      .map((g) => ({ ...g, servers: servers.filter((s) => s.groupId === g.id).length }))
+  const changed = (...ids: string[]) => {
+    emit(EventGroupsChanged, groupList())
+    for (const groupId of ids) emit(EventServersChanged, { groupId })
   }
   const find = (id: string) => {
-    const sub = subscriptions.find((s) => s.id === id)
-    if (!sub) throw failed(ReasonNotFound, `there is no subscription "${id}"`)
-    return sub
+    const group = groups.find((g) => g.id === id)
+    if (!group) throw failed(ReasonNotFound, `there is no group "${id}"`)
+    return group
   }
+  const manual = (id: string) => {
+    const group = find(id)
+    if (group.kind !== GroupManual) throw failed(ReasonNotManual, `servers go only to a group of the user's, and "${id}" is a subscription`)
+    return group
+  }
+  const newGroup = (name: string): Group => ({
+    id: String(nextId++),
+    kind: GroupManual,
+    name,
+    url: '',
+    addedAt: Date.now(),
+    updatedAt: 0,
+    servers: 0,
+    skipped: 0,
+    upload: 0,
+    download: 0,
+    total: 0,
+    expire: 0,
+    webPageUrl: '',
+    supportUrl: '',
+    announce: '',
+    error: '',
+    errorText: '',
+  })
+  const addServer = (p: Profile, groupId: string, after = -1): Server => {
+    const server = serverOf(p, String(nextId++), groupId)
+    profiles.set(server.id, p)
+    servers = after < 0 ? [...servers, server] : [...servers.slice(0, after + 1), server, ...servers.slice(after + 1)]
+    return server
+  }
+  const findServer = (id: string) => {
+    const server = servers.find((s) => s.id === id)
+    if (!server) throw failed(ReasonNotFound, `there is no server "${id}"`)
+    return server
+  }
+  // The group of the chosen server before a change, so that a choice that went away stays in that group.
+  const chosenGroup = () => servers.find((s) => s.id === settings.server)?.groupId ?? ''
   const presetList = (): Preset[] => [
     ...builtins.map(({ inherited: _, ...preset }) => preset),
     ...copies.map((c) => ({ id: c.id, name: c.name, builtin: false, basedOn: c.basedOn, sites: c.sites.length, apps: c.apps.length })),
@@ -491,8 +607,8 @@ export function createStubCore(): CoreClient {
       if (settings.checkIp) checkNetwork()
     }, 0)
   }
-  const noChanges = (sub: Subscription): SubscriptionUpdate => ({
-    subscription: { ...sub },
+  const noChanges = (group: Group): SubscriptionUpdate => ({
+    group: groupList().find((g) => g.id === group.id) ?? { ...group },
     added: 0,
     removed: 0,
     changed: 0,
@@ -509,10 +625,11 @@ export function createStubCore(): CoreClient {
     for (let n = 2; free && nameTaken(free, ''); n++) free = `${name.trim()} ${n}`
     return free
   }
-  // As in the core: the chosen server moves on when it goes away, to its subscription first, else to the first left.
-  const keepServerChosen = (subscriptionId: string): void => {
+  // As in the core: the chosen server moves on when it goes away, to its group first, else to the first left.
+  const keepServerChosen = (groupId: string): void => {
     if (!settings.server || servers.some((s) => s.id === settings.server)) return
-    const next = servers.find((s) => s.subscriptionId === subscriptionId) ?? servers[0]
+    const order = groupList().map((g) => g.id)
+    const next = servers.find((s) => s.groupId === groupId) ?? [...servers].sort((a, b) => order.indexOf(a.groupId) - order.indexOf(b.groupId))[0]
     settings = { ...settings, server: next?.id ?? '' }
     emit(EventSettingsChanged, { ...settings })
   }
@@ -561,7 +678,30 @@ export function createStubCore(): CoreClient {
       if (settings.killSwitch !== previous) setTimeout(() => syncBlock(previous), 0)
       return { ...settings }
     },
-    [MethodSubscriptionsList]: () => [...subscriptions],
+    [MethodGroupsList]: () => groupList(),
+    [MethodGroupsAdd]: ({ name }) => {
+      if (!name.trim()) throw failed(ReasonInvalidValue, 'a group needs a name')
+      const group = newGroup(name.trim())
+      groups = [...groups, group]
+      changed()
+      return groupList().find((g) => g.id === group.id)!
+    },
+    [MethodGroupsRename]: ({ id, name }) => {
+      const group = find(id)
+      if (!name.trim() && group.kind === GroupManual) throw failed(ReasonInvalidValue, 'a group needs a name')
+      const renamed = { ...group, name: name.trim() || new URL(group.url).hostname }
+      groups = groups.map((g) => (g.id === id ? renamed : g))
+      changed()
+      return groupList().find((g) => g.id === id)!
+    },
+    [MethodGroupsRemove]: ({ id }) => {
+      find(id)
+      groups = groups.filter((g) => g.id !== id)
+      servers = servers.filter((s) => s.groupId !== id)
+      changed(id)
+      keepServerChosen('')
+      return null
+    },
     [MethodSubscriptionsAdd]: ({ url, name }) => {
       const link = url.trim()
       let host: string
@@ -575,56 +715,118 @@ export function createStubCore(): CoreClient {
         }
         throw failed(ReasonInvalidURL, 'a subscription link starts with http:// or https://')
       }
-      if (subscriptions.some((s) => s.url === link)) throw failed(ReasonDuplicate, 'this subscription is already added')
+      if (groups.some((g) => g.url === link)) throw failed(ReasonDuplicate, 'this subscription is already added')
       const now = Date.now()
-      const sub: Subscription = {
-        id: String(nextId++),
-        name: name.trim() || host,
+      const sub: Group = {
+        ...newGroup(name.trim() || host),
+        kind: GroupSubscription,
         url: link,
         addedAt: now,
         updatedAt: now,
-        servers: stubServers.length,
-        skipped: 0,
         upload: 20_000_000_000,
         download: 18_200_000_000,
         total: 100_000_000_000,
         expire: now + 35 * 24 * 3600 * 1000,
-        webPageUrl: '',
-        supportUrl: '',
-        announce: '',
-        error: '',
-        errorText: '',
       }
-      const added = stubServers.map(({ measured: _, ...server }) => ({ ...server, id: String(nextId++), subscriptionId: sub.id, latency: 0 }))
-      subscriptions = [...subscriptions, sub]
-      servers = [...servers, ...added]
+      groups = [...groups, sub]
+      const added = stubServers.map(({ measured: _, ...s }) =>
+        addServer({ type: s.protocol, name: s.name, server: s.host, server_port: s.port, [s.protocol]: {} } as Profile, sub.id),
+      )
       changed(sub.id)
       return { ...noChanges(sub), added: added.length, addedNames: added.map((s) => s.name) }
     },
     [MethodSubscriptionsUpdate]: ({ id }) => {
-      const sub = { ...find(id), updatedAt: Date.now() }
-      subscriptions = subscriptions.map((s) => (s.id === id ? sub : s))
+      const group = find(id)
+      if (group.kind === GroupManual) throw failed(ReasonInvalidValue, `the group "${id}" is no subscription`)
+      const sub = { ...group, updatedAt: Date.now() }
+      groups = groups.map((g) => (g.id === id ? sub : g))
       changed(id)
       return noChanges(sub)
     },
-    [MethodSubscriptionsRemove]: ({ id }) => {
-      find(id)
-      subscriptions = subscriptions.filter((s) => s.id !== id)
-      servers = servers.filter((s) => s.subscriptionId !== id)
-      changed(id)
-      keepServerChosen('')
+    [MethodServersList]: ({ groupId }) => {
+      const order = groupList().map((g) => g.id)
+      return servers
+        .filter((s) => groupId === '' || s.groupId === groupId)
+        .sort((a, b) => order.indexOf(a.groupId) - order.indexOf(b.groupId))
+        .map((s) => ({ ...s }))
+    },
+    [MethodServersAdd]: ({ groupId, newGroup: newName, text }) => {
+      const body = text.trim()
+      if (/^https?:\/\/[^\s:@/]+(\/\S*)?$/i.test(body)) throw failed(ReasonSubscriptionURL, "this is a subscription's link: add it as a subscription")
+      const lines = body.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'))
+      const read = lines.map(readShareLink)
+      const found = read.filter((p): p is Profile => p !== null)
+      if (found.length === 0) throw failed(ReasonNoServers, 'the text holds no servers')
+      if (!groupId && !newName.trim()) throw failed(ReasonInvalidValue, 'a group needs a name')
+      let group: Group
+      if (groupId) group = manual(groupId)
+      else {
+        group = newGroup(newName.trim())
+        groups = [...groups, group]
+      }
+      const ids = found.map((p) => addServer(p, group.id).id)
+      const broken = read.length - found.length
+      const skips: SkipReason[] = broken ? [{ reason: 'the link could not be read', unsupported: false, count: broken, names: [] }] : []
+      changed(group.id)
+      return { group: groupList().find((g) => g.id === group.id)!, ids, skips }
+    },
+    [MethodServersGet]: ({ id }) => {
+      const server = findServer(id)
+      return { server: { ...server }, profile: structuredClone(profiles.get(id)!) }
+    },
+    [MethodServersSave]: ({ id, groupId, profile }) => {
+      if (!validProfile(profile)) throw failed(ReasonInvalidValue, 'the server settings are not valid')
+      if (!shareSchemes[profile.type] && !Object.values(shareSchemes).includes(profile.type)) {
+        throw failed(ReasonServerUnsupported, `unknown server type "${profile.type}"`)
+      }
+      const before = chosenGroup()
+      let saved: Server
+      if (id) {
+        const old = findServer(id)
+        saved = { ...serverOf(profile, id, old.groupId), latency: old.latency }
+        profiles.set(id, profile)
+        servers = servers.map((s) => (s.id === id ? saved : s))
+      } else saved = addServer(profile, manual(groupId).id)
+      changed(saved.groupId)
+      keepServerChosen(before)
+      return { ...saved }
+    },
+    [MethodServersRemove]: ({ ids }) => {
+      const before = chosenGroup()
+      const touched = [...new Set(servers.filter((s) => ids.includes(s.id)).map((s) => s.groupId))]
+      servers = servers.filter((s) => !ids.includes(s.id))
+      if (touched.length) {
+        changed(...touched)
+        keepServerChosen(before)
+      }
       return null
     },
-    [MethodSubscriptionsRename]: ({ id, name }) => {
-      const sub = { ...find(id), name: name.trim() || new URL(find(id).url).hostname }
-      subscriptions = subscriptions.map((s) => (s.id === id ? sub : s))
-      changed('')
-      return { ...sub }
+    [MethodServersClone]: ({ ids }) => {
+      const copies = ids.map((id) => {
+        const server = findServer(id)
+        return addServer(structuredClone(profiles.get(id)!), server.groupId, servers.indexOf(server)).id
+      })
+      changed(...new Set(copies.map((id) => findServer(id).groupId)))
+      return { ids: copies }
     },
-    [MethodServersList]: ({ subscriptionId }) =>
-      servers.filter((s) => subscriptionId === '' || s.subscriptionId === subscriptionId).map((s) => ({ ...s })),
-    [MethodServersTest]: ({ subscriptionId }) => {
-      const tested = servers.filter((s) => subscriptionId === '' || s.subscriptionId === subscriptionId)
+    [MethodServersMove]: ({ ids, groupId }) => {
+      const target = manual(groupId)
+      const touched = new Set([target.id])
+      const moved = ids.map((id) => {
+        const server = findServer(id)
+        if (server.groupId === target.id) return id
+        if (find(server.groupId).kind === GroupManual) {
+          touched.add(server.groupId)
+          servers = [...servers.filter((s) => s.id !== id), { ...server, groupId: target.id }]
+          return id
+        }
+        return addServer(structuredClone(profiles.get(id)!), target.id).id
+      })
+      changed(...touched)
+      return { ids: moved }
+    },
+    [MethodServersTest]: ({ groupId }) => {
+      const tested = servers.filter((s) => groupId === '' || s.groupId === groupId)
       tested.forEach((server, i) => {
         setTimeout(() => {
           const measured = stubServers.find((s) => s.host === server.host)?.measured ?? -1

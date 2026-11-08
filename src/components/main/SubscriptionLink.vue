@@ -26,7 +26,7 @@ const failure = ref('')
 let last = ''
 let lastFailed = false
 
-const servers = computed(() => (added.value ? t('servers.count', added.value.subscription.servers) : ''))
+const servers = computed(() => (added.value ? t('servers.count', added.value.group.servers) : ''))
 
 async function add(again = true): Promise<void> {
   const text = link.value.trim()
@@ -40,7 +40,7 @@ async function add(again = true): Promise<void> {
     const update = await core.core().call(MethodSubscriptionsAdd, { url: text, name: props.name ?? '' })
     added.value = update
     if (!core.server) {
-      const first = (await core.core().call(MethodServersList, { subscriptionId: update.subscription.id }))[0]
+      const first = (await core.core().call(MethodServersList, { groupId: update.group.id }))[0]
       if (first) await core.updateSettings({ server: first.id })
     }
     emit('added', update)
@@ -84,7 +84,7 @@ defineExpose({ add, fill, busy, added })
     </div>
     <div v-else-if="added" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3" data-testid="link-found">
       <Check class="size-4 text-ok" />
-      <span>{{ t('wizard.subscription.found', { servers, name: added.subscription.name }) }}</span>
+      <span>{{ t('wizard.subscription.found', { servers, name: added.group.name }) }}</span>
     </div>
     <div v-else-if="failure" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3" data-testid="link-failure">
       <Info class="size-4 flex-none text-warn" /><span>{{ failure }}</span>

@@ -1,6 +1,9 @@
 package engine
 
-// The types below are the contract with the interface: tygo turns them into src/platform/core-types.ts.
+import "PorosCore/profile"
+
+// The types below are the contract with the interface: tygo turns them into src/platform/core-types.ts, and the
+// server model of core/profile into src/platform/profile-types.ts.
 
 // AppInfo describes the running core.
 type AppInfo struct {
@@ -70,19 +73,31 @@ type Settings struct {
 	DebugLog bool `json:"debugLog"`
 }
 
-// Subscription is a link from a provider and what its last update brought.
-type Subscription struct {
+// Kinds of groups.
+const (
+	GroupSubscription = "subscription"
+	GroupManual       = "manual"
+)
+
+// Group holds servers: a subscription brings them from a provider's link, a group of the user's holds those added by
+// hand. Subscriptions come first, each kind in the order it was added.
+type Group struct {
 	ID string `json:"id"`
-	// Name is the user's name for it, else the provider's title, else the host of the URL.
+	// Kind is subscription or manual.
+	Kind string `json:"kind"`
+	// Name is the user's name for it; a subscription without one has the provider's title, else the host of the URL.
 	Name string `json:"name"`
-	URL  string `json:"url"`
-	// AddedAt, UpdatedAt and Expire are Unix milliseconds. UpdatedAt is the last update that worked, Expire 0 is no
-	// end date.
+	// URL is a subscription's link, "" for a group of the user's.
+	URL string `json:"url"`
+	// AddedAt, UpdatedAt and Expire are Unix milliseconds. UpdatedAt is the last update of a subscription that
+	// worked, Expire 0 is no end date.
 	AddedAt   int64 `json:"addedAt"`
 	UpdatedAt int64 `json:"updatedAt"`
-	// Servers counts the servers it holds; Skipped the items of the last update that did not become servers.
+	// Servers counts the servers it holds; Skipped the items of a subscription's last update that did not become
+	// servers.
 	Servers int `json:"servers"`
 	Skipped int `json:"skipped"`
+	// The rest is a subscription's, from its provider.
 	// Upload and Download are the bytes used, Total the quota; Total 0 is no quota.
 	Upload     int64  `json:"upload"`
 	Download   int64  `json:"download"`
@@ -98,7 +113,7 @@ type Subscription struct {
 
 // SubscriptionUpdate is what adding or updating a subscription did.
 type SubscriptionUpdate struct {
-	Subscription Subscription `json:"subscription"`
+	Group Group `json:"group"`
 	// Added and Removed count the servers that came and went, and name up to 50 of each; Changed counts servers
 	// that stayed with new settings.
 	Added        int      `json:"added"`
@@ -120,12 +135,12 @@ type SkipReason struct {
 	Names []string `json:"names"`
 }
 
-// Server is one server of a subscription.
+// Server is one server of a group.
 type Server struct {
-	ID             string `json:"id"`
-	SubscriptionID string `json:"subscriptionId"`
-	Name           string `json:"name"`
-	// Protocol is vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http or anytls.
+	ID      string `json:"id"`
+	GroupID string `json:"groupId"`
+	Name    string `json:"name"`
+	// Protocol is the type of its profile: vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http or anytls.
 	Protocol string `json:"protocol"`
 	Host     string `json:"host"`
 	Port     int    `json:"port"`
@@ -383,25 +398,79 @@ type OutsideLink struct {
 
 // LinkInfo is what a poros:// link from outside asks to add; nothing is added until the user agrees.
 type LinkInfo struct {
-	// Kind is subscription or preset.
+	// Kind is subscription, preset or server.
 	Kind string `json:"kind"`
 	// URL and Name are the subscription a subscription link adds; Name may be empty.
 	URL  string `json:"url"`
 	Name string `json:"name"`
 	// Preset is the copy a preset link adds.
 	Preset *PresetCopy `json:"preset,omitempty"`
+	// Server is the server a server link adds, without an ID or a group yet; servers.add takes the link itself.
+	Server *Server `json:"server,omitempty"`
 }
 
 // Kinds of LinkInfo.
 const (
 	LinkSubscription = "subscription"
 	LinkPreset       = "preset"
+	LinkServer       = "server"
 )
 
-// RenameSubscription gives a subscription the user's name; an empty one goes back to the provider's title.
-type RenameSubscription struct {
+// RenameGroup gives a group the user's name. An empty one takes a subscription back to the provider's title; a group
+// of the user's needs a name.
+type RenameGroup struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+}
+
+// AddGroup creates a group of the user's.
+type AddGroup struct {
+	Name string `json:"name"`
+}
+
+// AddServers adds the servers of a text to a group of the user's: share links one per line, base64 of them, Clash
+// YAML, sing-box or Xray JSON, poros://add/ links.
+type AddServers struct {
+	// GroupID is the group to add to; empty, NewGroup names a group of the user's to create for them.
+	GroupID  string `json:"groupId"`
+	NewGroup string `json:"newGroup"`
+	Text     string `json:"text"`
+}
+
+// ServersAdded is what adding servers did.
+type ServersAdded struct {
+	Group Group `json:"group"`
+	// IDs are the added servers in the order of the text.
+	IDs []string `json:"ids"`
+	// Skips groups the items of the text that did not become servers by reason.
+	Skips []SkipReason `json:"skips"`
+}
+
+// ServerProfile is a server with all of its settings.
+type ServerProfile struct {
+	Server  Server          `json:"server"`
+	Profile profile.Profile `json:"profile"`
+}
+
+// SaveServer stores the settings of a server. With an ID they replace those of that server, which a subscription's
+// next update replaces in turn with the provider's; without one the server is new and goes to GroupID, a group of
+// the user's.
+type SaveServer struct {
+	ID      string          `json:"id"`
+	GroupID string          `json:"groupId"`
+	Profile profile.Profile `json:"profile"`
+}
+
+// ServerIDs names servers, in the order given.
+type ServerIDs struct {
+	IDs []string `json:"ids"`
+}
+
+// MoveServers moves servers to a group of the user's, after those it holds. Servers of a subscription are copied
+// instead, as its next update would bring them back.
+type MoveServers struct {
+	IDs     []string `json:"ids"`
+	GroupID string   `json:"groupId"`
 }
 
 // AddSubscription asks to add a subscription. An empty name takes the provider's title or the host of the URL.
@@ -415,14 +484,14 @@ type ByID struct {
 	ID string `json:"id"`
 }
 
-// ServersQuery picks the servers of one subscription, or of all with an empty ID.
+// ServersQuery picks the servers of one group, or of all with an empty ID.
 type ServersQuery struct {
-	SubscriptionID string `json:"subscriptionId"`
+	GroupID string `json:"groupId"`
 }
 
-// ServersChanged tells which subscription's servers changed.
+// ServersChanged tells which group's servers changed.
 type ServersChanged struct {
-	SubscriptionID string `json:"subscriptionId"`
+	GroupID string `json:"groupId"`
 }
 
 // Methods the core answers.
@@ -433,12 +502,24 @@ const (
 	MethodAppHandOver         = "app.handOver"
 	MethodSettingsGet         = "settings.get"
 	MethodSettingsSet         = "settings.set"
-	MethodSubscriptionsList   = "subscriptions.list"
+	MethodGroupsList          = "groups.list"
+	MethodGroupsAdd           = "groups.add"
+	MethodGroupsRename        = "groups.rename"
+	MethodGroupsRemove        = "groups.remove"
 	MethodSubscriptionsAdd    = "subscriptions.add"
 	MethodSubscriptionsUpdate = "subscriptions.update"
-	MethodSubscriptionsRemove = "subscriptions.remove"
 	MethodServersList         = "servers.list"
-	MethodPresetsList         = "presets.list"
+	// MethodServersAdd adds the servers of a text to a group of the user's.
+	MethodServersAdd = "servers.add"
+	// MethodServersGet gives a server with its whole profile, MethodServersSave stores a changed or new one.
+	MethodServersGet    = "servers.get"
+	MethodServersSave   = "servers.save"
+	MethodServersRemove = "servers.remove"
+	// MethodServersClone puts a copy of each server right after it and answers with the IDs of the copies.
+	MethodServersClone = "servers.clone"
+	// MethodServersMove answers with the IDs the servers have in the group they went to.
+	MethodServersMove = "servers.move"
+	MethodPresetsList = "presets.list"
 	// MethodConnectionStart connects with the settings, or reconnects with them: it answers at once with the
 	// starting state, and connection.changed tells how it went.
 	MethodConnectionStart = "connection.start"
@@ -447,10 +528,8 @@ const (
 	// MethodNetworkCheck starts a check of the addresses and DNS at once; network.changed brings the result.
 	MethodNetworkCheck = "network.check"
 	MethodNetworkState = "network.state"
-	// MethodServersTest measures the delay of the servers of a subscription, or of all; servers.tested brings the
-	// results.
-	MethodServersTest         = "servers.test"
-	MethodSubscriptionsRename = "subscriptions.rename"
+	// MethodServersTest measures the delay of the servers of a group, or of all; servers.tested brings the results.
+	MethodServersTest = "servers.test"
 	// MethodPresetsGet gives a user's preset for the editor; for a built-in preset, a new copy of it, and for "" a
 	// new preset from scratch.
 	MethodPresetsGet    = "presets.get"
@@ -478,12 +557,12 @@ const (
 
 // Events the core sends without a request.
 const (
-	EventSettingsChanged      = "settings.changed"
-	EventSubscriptionsChanged = "subscriptions.changed"
-	EventServersChanged       = "servers.changed"
-	EventConnectionChanged    = "connection.changed"
-	EventNetworkChanged       = "network.changed"
-	EventServersTested        = "servers.tested"
+	EventSettingsChanged   = "settings.changed"
+	EventGroupsChanged     = "groups.changed"
+	EventServersChanged    = "servers.changed"
+	EventConnectionChanged = "connection.changed"
+	EventNetworkChanged    = "network.changed"
+	EventServersTested     = "servers.tested"
 	// EventConnectionTraffic comes every second while the connection runs.
 	EventConnectionTraffic = "connection.traffic"
 	EventPresetsChanged    = "presets.changed"
@@ -491,7 +570,7 @@ const (
 	EventUpdatesChanged    = "updates.changed"
 )
 
-// Reasons in the data of a failed request, and in Subscription.Error, for the interface to translate.
+// Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
 const (
 	ReasonInvalidURL    = "invalid_url"
 	ReasonDuplicate     = "duplicate"
@@ -504,9 +583,14 @@ const (
 	ReasonFetchFailed = "fetch_failed"
 	// ReasonInvalidSubscription is a download that is no subscription format Poros reads.
 	ReasonInvalidSubscription = "invalid_subscription"
-	// ReasonNoServers is a subscription without a server Poros can run.
+	// ReasonNoServers is a subscription, or a text to add servers from, without a server Poros can run.
 	ReasonNoServers = "no_servers"
-	// ReasonNoServer is a start before a server is chosen, or after it left its subscription.
+	// ReasonSubscriptionURL is a subscription's link where servers were to be added: it is added as a subscription.
+	ReasonSubscriptionURL = "subscription_url"
+	// ReasonNotManual is a subscription where a group of the user's was asked for: servers are added and moved only
+	// there.
+	ReasonNotManual = "not_manual"
+	// ReasonNoServer is a start before a server is chosen, or after it left its group.
 	ReasonNoServer = "no_server"
 	// ReasonServerUnsupported is a server neither core runs.
 	ReasonServerUnsupported = "server_unsupported"

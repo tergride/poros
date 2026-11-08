@@ -10,17 +10,22 @@ import {
   EventKillSwitchChanged,
   EventNetworkChanged,
   EventServersChanged,
+  EventGroupsChanged,
   EventServersTested,
-  EventSubscriptionsChanged,
   EventUpdatesChanged,
+  GroupManual,
   KillSwitchAlways,
   KillSwitchConnected,
   KillSwitchOff,
   LinkPreset,
+  LinkServer,
   LinkSubscription,
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodGroupsAdd,
+  MethodGroupsList,
+  MethodGroupsRemove,
   MethodKillSwitchState,
   MethodLinksParse,
   MethodNetworkCheck,
@@ -32,13 +37,17 @@ import {
   MethodPresetsRemove,
   MethodPresetsSave,
   MethodPresetsWriteLists,
+  MethodServersAdd,
+  MethodServersClone,
+  MethodServersGet,
   MethodServersList,
+  MethodServersMove,
+  MethodServersRemove,
+  MethodServersSave,
   MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsAdd,
-  MethodSubscriptionsList,
-  MethodSubscriptionsRemove,
   MethodUpdatesCheck,
   MethodUpdatesInstall,
   MethodUpdatesState,
@@ -51,9 +60,12 @@ import {
   ReasonNeedsElevation,
   ReasonInvalidURL,
   ReasonNoServer,
+  ReasonNoServers,
   ReasonNotFound,
+  ReasonNotManual,
   ReasonPresetNameTaken,
   ReasonSingleServer,
+  ReasonSubscriptionURL,
   ReasonUpdateNotReady,
   UpdateChecking,
   UpdateReady,
@@ -79,30 +91,82 @@ describe('the stub core', () => {
     const core = createStubCore()
     const changes = vi.fn()
     const serverChanges = vi.fn()
-    core.on(EventSubscriptionsChanged, changes)
+    core.on(EventGroupsChanged, changes)
     core.on(EventServersChanged, serverChanges)
 
     expect(await reasonOf(core.call(MethodSubscriptionsAdd, { url: 'sub.example.com/u/1', name: '' }))).toBe(ReasonInvalidURL)
     expect(await reasonOf(core.call(MethodSubscriptionsAdd, { url: 'vless://id@example.com:443', name: '' }))).toBe(ReasonSingleServer)
-    const { subscription: sub, added } = await core.call(MethodSubscriptionsAdd, { url: ' https://sub.example.com/u/1 ', name: '' })
+    const { group: sub, added } = await core.call(MethodSubscriptionsAdd, { url: ' https://sub.example.com/u/1 ', name: '' })
     expect(sub.name).toBe('sub.example.com')
     expect(await reasonOf(core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' }))).toBe(ReasonDuplicate)
-    expect(await core.call(MethodSubscriptionsList)).toEqual([sub])
-    const servers = await core.call(MethodServersList, { subscriptionId: sub.id })
+    expect(await core.call(MethodGroupsList)).toEqual([sub])
+    const servers = await core.call(MethodServersList, { groupId: sub.id })
     expect(servers).toHaveLength(added)
     expect(sub.servers).toBe(added)
 
-    expect(await reasonOf(core.call(MethodSubscriptionsRemove, { id: 'nope' }))).toBe(ReasonNotFound)
+    expect(await reasonOf(core.call(MethodGroupsRemove, { id: 'nope' }))).toBe(ReasonNotFound)
     // The chosen server goes with its subscription, and a server that is not there cannot be chosen.
     const settings = await core.call(MethodSettingsGet)
     expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, server: 'nope' }))).toBe(ReasonNotFound)
     await core.call(MethodSettingsSet, { ...settings, server: servers[0]!.id })
-    await core.call(MethodSubscriptionsRemove, { id: sub.id })
+    await core.call(MethodGroupsRemove, { id: sub.id })
     expect((await core.call(MethodSettingsGet)).server).toBe('')
     expect(changes).toHaveBeenCalledTimes(2)
     expect(changes).toHaveBeenLastCalledWith([])
-    expect(serverChanges).toHaveBeenLastCalledWith({ subscriptionId: sub.id })
-    expect(await core.call(MethodServersList, { subscriptionId: '' })).toEqual([])
+    expect(serverChanges).toHaveBeenLastCalledWith({ groupId: sub.id })
+    expect(await core.call(MethodServersList, { groupId: '' })).toEqual([])
+  })
+
+  it('keeps groups of the user and their servers by the rules of the engine', async () => {
+    const core = createStubCore()
+    const vless = (host: string, name: string) => `vless://b831381d-6324-4d53-ad4f-8cda48b30811@${host}:443?security=tls#${encodeURIComponent(name)}`
+    const mine = await core.call(MethodGroupsAdd, { name: ' Mine ' })
+    expect(mine).toEqual(expect.objectContaining({ kind: GroupManual, name: 'Mine', servers: 0 }))
+    const { group: sub } = await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
+    expect((await core.call(MethodGroupsList)).map((g) => g.id)).toEqual([sub.id, mine.id])
+
+    expect(await reasonOf(core.call(MethodServersAdd, { groupId: mine.id, newGroup: '', text: 'https://sub.example.com/u/2' }))).toBe(ReasonSubscriptionURL)
+    expect(await reasonOf(core.call(MethodServersAdd, { groupId: mine.id, newGroup: '', text: 'a note' }))).toBe(ReasonNoServers)
+    expect(await reasonOf(core.call(MethodServersAdd, { groupId: sub.id, newGroup: '', text: vless('de.example.com', 'DE') }))).toBe(ReasonNotManual)
+    const added = await core.call(MethodServersAdd, { groupId: mine.id, newGroup: '', text: `${vless('fi.example.com', '🇫🇮 Finland')}
+vless://broken
+${vless('se.example.com', 'Sweden')}` })
+    expect(added.ids).toHaveLength(2)
+    expect(added.group.servers).toBe(2)
+    expect(added.skips).toEqual([expect.objectContaining({ count: 1 })])
+    const listed = await core.call(MethodServersList, { groupId: mine.id })
+    expect(listed.map((s) => [s.name, s.country])).toEqual([['🇫🇮 Finland', 'FI'], ['Sweden', '']])
+
+    const { profile } = await core.call(MethodServersGet, { id: added.ids[0]! })
+    expect(profile.server).toBe('fi.example.com')
+    expect((await core.call(MethodServersSave, { id: added.ids[0]!, groupId: '', profile: { ...profile, name: 'Finland 2' } })).name).toBe('Finland 2')
+    expect(await reasonOf(core.call(MethodServersSave, { id: '', groupId: mine.id, profile: { ...profile, server: '' } }))).toBe(ReasonInvalidValue)
+
+    const { ids: [copy] } = await core.call(MethodServersClone, { ids: [added.ids[0]!] })
+    expect((await core.call(MethodServersList, { groupId: mine.id })).map((s) => s.id)).toEqual([added.ids[0], copy, added.ids[1]])
+    const other = await core.call(MethodGroupsAdd, { name: 'Other' })
+    const [fromSub] = await core.call(MethodServersList, { groupId: sub.id })
+    const moved = await core.call(MethodServersMove, { ids: [added.ids[1]!, fromSub!.id], groupId: other.id })
+    expect(moved.ids[0]).toBe(added.ids[1])
+    expect(moved.ids[1]).not.toBe(fromSub!.id)
+    expect(await core.call(MethodServersList, { groupId: sub.id })).toHaveLength(3)
+
+    // A removed choice stays in its group.
+    const settings = await core.call(MethodSettingsGet)
+    await core.call(MethodSettingsSet, { ...settings, server: added.ids[0]! })
+    await core.call(MethodServersRemove, { ids: [added.ids[0]!] })
+    expect((await core.call(MethodSettingsGet)).server).toBe(copy)
+  })
+
+  it('reads a poros://add/ link without adding the server', async () => {
+    const core = createStubCore()
+    const json = JSON.stringify({ type: 'trojan', name: '🇩🇪 Home', server: 'de.example.com', server_port: 443, trojan: { password: 'p' } })
+    const link = 'poros://add/' + btoa(String.fromCharCode(...new TextEncoder().encode(json))).replaceAll('+', '-').replaceAll('/', '_')
+    const info = await core.call(MethodLinksParse, { link })
+    expect(info.kind).toBe(LinkServer)
+    expect(info.server).toEqual(expect.objectContaining({ name: '🇩🇪 Home', protocol: 'trojan', host: 'de.example.com', country: 'DE' }))
+    expect(await core.call(MethodGroupsList)).toEqual([])
+    expect(await reasonOf(core.call(MethodLinksParse, { link: 'poros://add/%%%' }))).toBe(ReasonInvalidLink)
   })
 
   it('stops delivering events to a handler once it unsubscribes', async () => {
@@ -134,7 +198,7 @@ describe('the stub core', () => {
     core.on(EventKillSwitchChanged, blocks)
     const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
     await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
-    const [server] = await core.call(MethodServersList, { subscriptionId: '' })
+    const [server] = await core.call(MethodServersList, { groupId: '' })
     let settings = await core.call(MethodSettingsGet)
     expect(settings.killSwitch).toBe(KillSwitchOff)
     expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, killSwitch: 'on' }))).toBe(ReasonInvalidValue)
@@ -180,7 +244,7 @@ describe('the stub core', () => {
     expect(states).toHaveBeenLastCalledWith(expect.objectContaining({ state: ConnectionIdle, error: ReasonNoServer }))
 
     await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
-    const [server] = await core.call(MethodServersList, { subscriptionId: '' })
+    const [server] = await core.call(MethodServersList, { groupId: '' })
     const settings = await core.call(MethodSettingsGet)
     await core.call(MethodSettingsSet, { ...settings, server: server!.id, tun: true })
     await core.call(MethodConnectionStart)
@@ -223,10 +287,10 @@ describe('the stub core', () => {
     const tested = vi.fn()
     core.on(EventServersTested, tested)
     await core.call(MethodSubscriptionsAdd, { url: 'https://sub.example.com/u/1', name: '' })
-    await core.call(MethodServersTest, { subscriptionId: '' })
+    await core.call(MethodServersTest, { groupId: '' })
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(tested).toHaveBeenLastCalledWith(expect.objectContaining({ done: true }))
-    const latencies = (await core.call(MethodServersList, { subscriptionId: '' })).map((s) => s.latency)
+    const latencies = (await core.call(MethodServersList, { groupId: '' })).map((s) => s.latency)
     expect(latencies).toEqual([42, 48, -1])
   })
 
@@ -330,7 +394,8 @@ describe('the stub core', () => {
     expect(info).toMatchObject({ kind: LinkPreset, preset: { name: 'Home', basedOn: 'all', dns: 'tls://1.1.1.1' } })
     expect(await core.call(MethodPresetsList)).toHaveLength(3)
 
-    expect(await reasonOf(core.call(MethodLinksParse, { link: `poros://add/${encode('{}')}` }))).toBe(ReasonSingleServer)
+    expect(await reasonOf(core.call(MethodLinksParse, { link: `poros://add/${encode('{}')}` }))).toBe(ReasonInvalidLink)
+    expect(await reasonOf(core.call(MethodLinksParse, { link: `throne://add/${encode('{}')}` }))).toBe(ReasonSingleServer)
     expect(await reasonOf(core.call(MethodLinksParse, { link: `throne://route/${encode('{}')}` }))).toBe(ReasonInvalidLink)
     expect(await reasonOf(core.call(MethodLinksParse, { link: 'https://sub.example.com/u/8f3a' }))).toBe(ReasonInvalidLink)
   })

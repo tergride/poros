@@ -2,10 +2,13 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
 import type {
+  AddGroup,
+  AddServers,
   AddSubscription,
   AppInfo,
   ByID,
   ConnectionState,
+  Group,
   KillSwitchState,
   LinkInfo,
   NetworkState,
@@ -16,13 +19,17 @@ import type {
   PresetLink,
   PresetLists,
   PresetListsRead,
-  RenameSubscription,
+  MoveServers,
+  RenameGroup,
+  SaveServer,
   Server,
+  ServerIDs,
+  ServerProfile,
+  ServersAdded,
   ServersChanged,
   ServersQuery,
   ServersTested,
   Settings,
-  Subscription,
   SubscriptionUpdate,
   Traffic,
   UpdateInstall,
@@ -36,13 +43,17 @@ import {
   EventPresetsChanged,
   EventServersChanged,
   EventServersTested,
+  EventGroupsChanged,
   EventSettingsChanged,
-  EventSubscriptionsChanged,
   EventUpdatesChanged,
   MethodAppInfo,
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodGroupsAdd,
+  MethodGroupsList,
+  MethodGroupsRemove,
+  MethodGroupsRename,
   MethodKillSwitchState,
   MethodLinksParse,
   MethodLogsGet,
@@ -56,14 +67,17 @@ import {
   MethodPresetsRemove,
   MethodPresetsSave,
   MethodPresetsWriteLists,
+  MethodServersAdd,
+  MethodServersClone,
+  MethodServersGet,
   MethodServersList,
+  MethodServersMove,
+  MethodServersRemove,
+  MethodServersSave,
   MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
   MethodSubscriptionsAdd,
-  MethodSubscriptionsList,
-  MethodSubscriptionsRemove,
-  MethodSubscriptionsRename,
   MethodSubscriptionsUpdate,
   MethodUpdatesCheck,
   MethodUpdatesInstall,
@@ -75,12 +89,19 @@ export interface CoreMethods {
   [MethodAppInfo]: { params: undefined; result: AppInfo }
   [MethodSettingsGet]: { params: undefined; result: Settings }
   [MethodSettingsSet]: { params: Settings; result: Settings }
-  [MethodSubscriptionsList]: { params: undefined; result: Subscription[] }
+  [MethodGroupsList]: { params: undefined; result: Group[] }
+  [MethodGroupsAdd]: { params: AddGroup; result: Group }
+  [MethodGroupsRename]: { params: RenameGroup; result: Group }
+  [MethodGroupsRemove]: { params: ByID; result: null }
   [MethodSubscriptionsAdd]: { params: AddSubscription; result: SubscriptionUpdate }
   [MethodSubscriptionsUpdate]: { params: ByID; result: SubscriptionUpdate }
-  [MethodSubscriptionsRemove]: { params: ByID; result: null }
-  [MethodSubscriptionsRename]: { params: RenameSubscription; result: Subscription }
   [MethodServersList]: { params: ServersQuery; result: Server[] }
+  [MethodServersAdd]: { params: AddServers; result: ServersAdded }
+  [MethodServersGet]: { params: ByID; result: ServerProfile }
+  [MethodServersSave]: { params: SaveServer; result: Server }
+  [MethodServersRemove]: { params: ServerIDs; result: null }
+  [MethodServersClone]: { params: ServerIDs; result: ServerIDs }
+  [MethodServersMove]: { params: MoveServers; result: ServerIDs }
   [MethodServersTest]: { params: ServersQuery; result: null }
   [MethodPresetsList]: { params: undefined; result: Preset[] }
   [MethodPresetsGet]: { params: ByID; result: PresetCopy }
@@ -105,7 +126,7 @@ export interface CoreMethods {
 
 export interface CoreEvents {
   [EventSettingsChanged]: Settings
-  [EventSubscriptionsChanged]: Subscription[]
+  [EventGroupsChanged]: Group[]
   [EventServersChanged]: ServersChanged
   [EventServersTested]: ServersTested
   [EventPresetsChanged]: Preset[]

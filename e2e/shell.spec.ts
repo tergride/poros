@@ -247,7 +247,8 @@ test('poros:// links open a dialog and add only after a yes', async ({ page }) =
   await ask.getByTestId('link-preset-add').click()
   await expect(ask).toBeHidden()
 
-  await send(`poros://add/${encode('{}')}`)
+  const server = { type: 'trojan', name: 'Home', server: 'de.example.com', server_port: 443, trojan: { password: 'p' } }
+  await send(`poros://add/${encode(JSON.stringify(server))}`)
   await expect(add.getByTestId('link-failure')).toContainText('Это ссылка на один сервер')
   await page.keyboard.press('Escape')
   await page.getByRole('link', { name: /Пресет:/ }).click()
@@ -263,10 +264,21 @@ test('settings of a running connection offer a restart', async ({ page }) => {
   await page.getByRole('menuitem', { name: 'Настройки' }).click()
   await page.getByRole('link', { name: 'Подключение', exact: true }).click()
   await page.getByRole('switch').first().click()
-  await expect(page.getByTestId('restart-banner')).toBeVisible()
+  // The setting is saved, and the connection keeps running until the user restarts it from the chip.
+  const chip = page.getByTestId('restart-chip')
+  await expect(chip).toBeVisible()
+  await expect(chip).toHaveAttribute('title', /не применены/)
+  await chip.click()
+  const dialog = page.getByRole('dialog', { name: 'Настройки не применены' })
+  await expect(dialog).toContainText('подключение нужно перезапустить')
   await shot(page, 'settings-restart')
-  await page.getByRole('button', { name: 'Перезапустить подключение' }).click()
-  await expect(page.getByTestId('restart-banner')).toBeHidden()
+  await dialog.getByRole('button', { name: 'Отмена' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(chip).toBeVisible()
+  await chip.click()
+  await dialog.getByTestId('restart-apply').click()
+  await expect(chip).toBeHidden()
+  await expect(page.getByTestId('restart-text')).toBeHidden()
 })
 
 test('the kill switch guards System without rights and asks for them only for TUN in Always', async ({ page }) => {
@@ -288,6 +300,10 @@ test('the kill switch guards System without rights and asks for them only for TU
   await page.getByTestId('start').click()
   await expect(page.getByTestId('portal-state')).toContainText('Подключено')
   await expect(page.getByTestId('stop').getByTestId('kill-switch-lock')).toBeVisible()
+  // The chip of the title bar shows the mode, guarding and not blocking yet.
+  const chip = page.getByTestId('kill-switch-chip')
+  await expect(chip).toHaveAttribute('title', /^Kill switch при подключении/)
+  await expect(chip).not.toHaveAttribute('data-blocking')
   await shot(page, 'main-ks-on')
   await page.getByTestId('stop').click()
   await expect(page.getByTestId('portal-state')).toHaveText('Не подключено')
@@ -310,7 +326,13 @@ test('the kill switch guards System without rights and asks for them only for TU
   await page.getByRole('link', { name: 'К серверам' }).click()
   await expect(page.getByTestId('kill-switch-failed')).toContainText('Kill switch не включился без прав администратора.')
   await expect(page.getByTestId('portal-state')).toHaveText('Трафик VPN закрыт до подключения')
+  // Blocking, the chip is red and says so; it opens the setting.
+  await expect(chip).toHaveAttribute('data-blocking', 'always')
+  await expect(chip).toHaveAttribute('title', /^Kill switch сейчас блокирует трафик VPN/)
   await shot(page, 'main-ks-failed')
+  await chip.click()
+  await expect(page.getByTestId('kill-switch')).toBeVisible()
+  await page.getByRole('link', { name: 'К серверам' }).click()
 
   await page.getByTestId('kill-switch-failed').getByRole('button', { name: 'Перезапустить с правами' }).click()
   await expect(page.getByTestId('admin-chip')).toBeVisible()

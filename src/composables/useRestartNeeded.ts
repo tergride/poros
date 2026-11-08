@@ -11,16 +11,16 @@ import { useCoreStore } from '@/stores/core'
 const builtWith = (s: Settings) => JSON.stringify([s.tun, s.preset, s.allowLan, s.ipv6, s.realityOnXray])
 
 /**
- * Note 6: after a setting of the running connection changes, the window offers to apply it. Nothing restarts on its
- * own; "Later" hides the offer until the next change.
+ * Note 6: a saved setting the running connection depends on waits for a restart instead of breaking the connection.
+ * A chip in the title bar says so and opens a dialog to restart; it stays until the connection restarts or stops.
  */
 export const useRestartNeeded = defineStore('restartNeeded', () => {
   const core = useCoreStore()
   const connect = useConnect()
   const applied = ref('')
-  const dismissed = ref('')
-  // A preset copy saved while it runs changes the connection without changing the settings.
+  // A preset saved while it runs changes the connection without changing the settings.
   const presetEdited = ref(false)
+  const dialogOpen = ref(false)
 
   watch(
     () => core.connection.state === ConnectionRunning,
@@ -33,19 +33,22 @@ export const useRestartNeeded = defineStore('restartNeeded', () => {
     { immediate: true },
   )
 
-  const needed = computed(() => {
-    if (!core.running || !core.settings) return false
-    const current = builtWith(core.settings)
-    return (current !== applied.value || presetEdited.value) && current + presetEdited.value !== dismissed.value
-  })
+  const needed = computed(() => core.running && !!core.settings && (builtWith(core.settings) !== applied.value || presetEdited.value))
 
-  function later(): void {
-    if (core.settings) dismissed.value = builtWith(core.settings) + presetEdited.value
-  }
+  // The dialog has nothing to ask about once the connection stopped or took the settings. Synchronously: a change
+  // and its undoing within one tick must not leave the dialog open.
+  watch(
+    needed,
+    (now) => {
+      if (!now) dialogOpen.value = false
+    },
+    { flush: 'sync' },
+  )
 
   async function apply(): Promise<void> {
+    dialogOpen.value = false
     await connect.connect()
   }
 
-  return { needed, presetEdited, later, apply }
+  return { needed, presetEdited, dialogOpen, apply }
 })

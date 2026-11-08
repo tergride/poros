@@ -10,7 +10,7 @@ import { useCoreStore } from '@/stores/core'
 import Portal from './Portal.vue'
 
 const settings = { tun: false, systemProxy: true, server: 's1', preset: 'all' } as Settings
-const server = { id: 's1', subscriptionId: '', name: 'Germany', protocol: 'vless', host: '', port: 443, country: 'DE', latency: 0 }
+const server = { id: 's1', groupId: '', name: 'Germany', protocol: 'vless', host: '', port: 443, country: 'DE', latency: 0 }
 const idle = { state: ConnectionIdle, serverId: '', tun: false, systemProxy: false, since: 0, error: '', errorText: '' }
 const blocked = { on: true, full: false, error: '', errorText: '' }
 

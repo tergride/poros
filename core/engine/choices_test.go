@@ -30,8 +30,8 @@ func TestChosenServerFollowsWhatGoes(t *testing.T) {
 	second.serve(http.StatusOK, vless("nl.example.com", "NL"))
 	a, _ := e.AddSubscription(t.Context(), AddSubscription{URL: first.url})
 	b, _ := e.AddSubscription(t.Context(), AddSubscription{URL: second.url})
-	inA, _ := e.Servers(ServersQuery{SubscriptionID: a.Subscription.ID})
-	inB, _ := e.Servers(ServersQuery{SubscriptionID: b.Subscription.ID})
+	inA, _ := e.Servers(ServersQuery{GroupID: a.Group.ID})
+	inB, _ := e.Servers(ServersQuery{GroupID: b.Group.ID})
 
 	settings, _ := e.Settings()
 	settings.Server = "missing"
@@ -42,20 +42,20 @@ func TestChosenServerFollowsWhatGoes(t *testing.T) {
 	// An update that drops the chosen server moves the choice to the first one left in that subscription.
 	choose(t, e, inA[1].ID)
 	first.serve(http.StatusOK, vless("de.example.com", "DE"))
-	if _, err := e.UpdateSubscription(t.Context(), a.Subscription.ID); err != nil {
+	if _, err := e.UpdateSubscription(t.Context(), a.Group.ID); err != nil {
 		t.Fatal(err)
 	}
 	if got := chosenServer(t, e); got != inA[0].ID {
 		t.Fatalf("after the update the choice is %q, not the server left (%q)", got, inA[0].ID)
 	}
 	// Removing the subscription moves it to the first server of another, and removing that one clears it.
-	if err := e.RemoveSubscription(a.Subscription.ID); err != nil {
+	if err := e.RemoveGroup(a.Group.ID); err != nil {
 		t.Fatal(err)
 	}
 	if got := chosenServer(t, e); got != inB[0].ID {
 		t.Fatalf("after the removal the choice is %q, not %q", got, inB[0].ID)
 	}
-	if err := e.RemoveSubscription(b.Subscription.ID); err != nil {
+	if err := e.RemoveGroup(b.Group.ID); err != nil {
 		t.Fatal(err)
 	}
 	if got := chosenServer(t, e); got != "" {

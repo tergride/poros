@@ -6,18 +6,27 @@ import { useRoute, useRouter } from 'vue-router'
 import AddSubscriptionDialog from '@/components/main/AddSubscriptionDialog.vue'
 import LinkPresetDialog from '@/components/main/LinkPresetDialog.vue'
 import LogsDialog from '@/components/shell/LogsDialog.vue'
+import RestartDialog from '@/components/shell/RestartDialog.vue'
 import TitleBar from '@/components/shell/TitleBar.vue'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useLinks } from '@/composables/useLinks'
+import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import { useTray } from '@/composables/useTray'
 import { useUpdates } from '@/composables/useUpdates'
 import { resolveLocale } from '@/i18n/locale'
+import { ConnectionIdle, KillSwitchConnected } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 const core = useCoreStore()
 const ui = useUiStore()
+const restart = useRestartNeeded()
+// The kill switch blocks while there is no connection: held after a lost one, or always without one.
+const killSwitchBlocking = computed(() => {
+  if (!core.killSwitch.on || core.connection.state !== ConnectionIdle) return ''
+  return core.settings?.killSwitch === KillSwitchConnected ? 'held' : 'always'
+})
 const route = useRoute()
 const router = useRouter()
 const attempt = useAttempt()
@@ -80,6 +89,12 @@ async function addSubscription(): Promise<void> {
     <TitleBar
       :menu="withMenu"
       :elevated="core.status.elevated"
+      :kill-switch="core.settings?.killSwitch"
+      :kill-switch-blocking="killSwitchBlocking"
+      :kill-switch-full="core.killSwitch.full"
+      :restart-needed="restart.needed"
+      @restart="restart.dialogOpen = true"
+      @kill-switch="router.push('/settings/conn')"
       @add-subscription="addSubscription"
       @logs="ui.logs = true"
       @check-updates="checkUpdates"
@@ -90,5 +105,6 @@ async function addSubscription(): Promise<void> {
     <LogsDialog v-model:open="ui.logs" />
     <AddSubscriptionDialog v-model:open="ui.addSubscription" />
     <LinkPresetDialog />
+    <RestartDialog />
   </div>
 </template>

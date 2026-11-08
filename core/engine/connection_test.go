@@ -79,7 +79,7 @@ func useServer(t *testing.T, e *Engine, link string) {
 	if err != nil {
 		t.Fatalf("AddSubscription: %v", err)
 	}
-	servers, err := e.Servers(ServersQuery{SubscriptionID: update.Subscription.ID})
+	servers, err := e.Servers(ServersQuery{GroupID: update.Group.ID})
 	if err != nil || len(servers) != 1 {
 		t.Fatalf("servers: %v, %v", servers, err)
 	}

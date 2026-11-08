@@ -18,7 +18,19 @@
     "minimize": "Minimize",
     "maximize": "Maximize",
     "close": "Close",
-    "administrator": "Administrator"
+    "administrator": "Administrator",
+    "administratorHint": "The Poros core runs with administrator rights: TUN and the kill switch with TUN turn on without asking for rights. The Poros window runs without them.",
+    "killSwitch": "Kill switch",
+    "killSwitchHint": {
+      "connected": "Kill switch on connection: if the connection to the server drops, VPN traffic does not go directly until you press Stop. Click to open its setting.",
+      "always": "Kill switch always: while Poros runs, VPN traffic goes only through the server and is closed without a connection. Click to open its setting."
+    },
+    "killSwitchBlocking": {
+      "held": "The kill switch blocks VPN traffic now: the connection to the server dropped. Poros refuses in place of the server, and what the preset sends directly works. Stop opens all traffic without the VPN. Click to open the kill switch setting.",
+      "heldFull": "The kill switch blocks the whole internet now: the Poros core restarted without rights, and TUN is down. Until it is back, Windows lets only Poros and the local network out. Connect again with rights or press Stop to open the internet without the VPN. Click to open the kill switch setting.",
+      "always": "The kill switch blocks VPN traffic now: there is no connection, and in Always VPN traffic goes only through the server. Poros refuses in place of the server, and what the preset sends directly works. Connect so that the traffic goes through the server. Click to open the kill switch setting.",
+      "alwaysFull": "The kill switch blocks the whole internet now: the Poros core restarted without rights, and TUN is down. Until it is back, Windows lets only Poros and the local network out. Connect again with rights. Click to open the kill switch setting."
+    }
   },
   "menu": {
     "open": "Menu",
@@ -172,9 +184,15 @@
     "copyLink": "Copy link",
     "rename": "Rename",
     "removeSubscription": "Remove subscription",
+    "manualGroup": "{servers} · your group",
+    "groupActions": "Group actions",
+    "removeGroup": "Remove group",
     "renameTitle": "Rename subscription",
     "renamePlaceholder": "The provider's name",
+    "renameGroupTitle": "Rename group",
+    "groupNamePlaceholder": "Group name",
     "removeTitle": "Remove the subscription?",
+    "removeGroupTitle": "Remove the group?",
     "removeText": "“{name}” and its servers will be gone from Poros.",
     "updated": "Added: {added}, gone: {removed}, changed: {changed}.",
     "failed": "Updating “{name}” failed: {reason}",
@@ -251,9 +269,12 @@
     "recheck": "Check again",
     "off": "The IP and DNS check is off in the settings."
   },
-  "restartBanner": {
-    "text": "The settings changed. Apply them to the connection? It breaks for a couple of seconds.",
-    "apply": "Restart the connection"
+  "restart": {
+    "chip": "Restart needed",
+    "chipHint": "The settings are saved but not applied to the connection. Click to restart it.",
+    "title": "Settings not applied",
+    "text": "The settings are saved, but the running connection still uses the old ones. To apply them, the connection has to restart: it drops for a couple of seconds.",
+    "apply": "Restart"
   },
   "settings": {
     "back": "To the servers",
@@ -372,8 +393,8 @@
     "dns": "Its own DNS.",
     "add": "Add",
     "default": {
-      "direct": "Other traffic goes directly.",
-      "block": "Other traffic is blocked."
+      "direct": "By default, traffic goes directly.",
+      "block": "By default, traffic is blocked."
     }
   },
   "presetEdit": {
@@ -395,8 +416,8 @@
     "save": "Save and apply",
     "copyName": "{name} — copy",
     "duplicate": "“{value}” is in the list already.",
-    "default": "Other traffic",
-    "defaultHint": "Where everything goes that the lists and rules above do not take.",
+    "default": "By default, traffic goes",
+    "defaultHint": "Where everything goes that the lists below do not take.",
     "defaultBlocked": "Only the listed sites and apps will work. Poros blocks the rest."
   },
   "presetLists": {
@@ -432,6 +453,8 @@
     "invalid_url": "a subscription link starts with http:// or https://",
     "duplicate": "this subscription is already added",
     "single_server": "This is a link to one server, not a subscription. Poros adds subscriptions only for now.",
+    "subscription_url": "this is a subscription link: add it as a subscription",
+    "not_manual": "servers go only to a group of your own, not to a subscription",
     "check_failed": "a part of the check failed",
     "invalid_entry": "this is no site, address, subnet or program",
     "invalid_link": "this is no Poros preset link",

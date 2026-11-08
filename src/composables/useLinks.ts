@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 
 import { reasonOf } from '@/composables/useReason'
 import { onLinks } from '@/platform'
-import { LinkPreset, MethodLinksParse, ReasonInvalidLink } from '@/platform/core-types'
+import { LinkPreset, LinkServer, MethodLinksParse, ReasonInvalidLink } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
@@ -29,6 +29,12 @@ export function useLinks(): void {
       const info = await core.core().call(MethodLinksParse, { link })
       if (info.kind === LinkPreset && info.preset) {
         ui.linkPreset = { link, preset: info.preset }
+        return
+      }
+      // The simple mode adds no server by hand: the add dialog tries the link and says so.
+      if (info.kind === LinkServer) {
+        ui.addPrefill = { url: link, name: '', check: true }
+        ui.addSubscription = true
         return
       }
       ui.addPrefill = { url: info.url, name: info.name, check: false }

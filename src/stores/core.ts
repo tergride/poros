@@ -4,12 +4,12 @@ import { computed, ref, shallowRef } from 'vue'
 import { type CoreClient, type CoreStatus, useCore } from '@/platform'
 import type {
   ConnectionState,
+  Group,
   KillSwitchState,
   NetworkState,
   Preset,
   Server,
   Settings,
-  Subscription,
   Traffic,
   UpdateState,
 } from '@/platform/core-types'
@@ -18,15 +18,16 @@ import {
   ConnectionRunning,
   EventConnectionChanged,
   EventConnectionTraffic,
+  EventGroupsChanged,
   EventKillSwitchChanged,
   EventNetworkChanged,
   EventPresetsChanged,
   EventServersChanged,
   EventServersTested,
   EventSettingsChanged,
-  EventSubscriptionsChanged,
   EventUpdatesChanged,
   MethodConnectionState,
+  MethodGroupsList,
   MethodKillSwitchState,
   MethodNetworkState,
   MethodPresetsList,
@@ -34,7 +35,6 @@ import {
   MethodServersTest,
   MethodSettingsGet,
   MethodSettingsSet,
-  MethodSubscriptionsList,
   MethodUpdatesState,
   UpdateIdle,
 } from '@/platform/core-types'
@@ -84,7 +84,7 @@ export const useCoreStore = defineStore('core', () => {
   const client = shallowRef<CoreClient | null>(null)
   const status = ref<CoreStatus>({ state: 'starting', elevated: false })
   const settings = ref<Settings | null>(null)
-  const subscriptions = ref<Subscription[]>([])
+  const groups = ref<Group[]>([])
   const servers = ref<Server[]>([])
   const presets = ref<Preset[]>([])
   const connection = ref<ConnectionState>({ ...idle })
@@ -107,7 +107,7 @@ export const useCoreStore = defineStore('core', () => {
   }
 
   async function loadServers(): Promise<void> {
-    servers.value = await core().call(MethodServersList, { subscriptionId: '' })
+    servers.value = await core().call(MethodServersList, { groupId: '' })
   }
 
   // Reads everything again: at the start and whenever a new core takes over. A new core knows no delays and no
@@ -116,10 +116,10 @@ export const useCoreStore = defineStore('core', () => {
   async function load(): Promise<void> {
     const c = core()
     testing.value = false
-    const [s, subs, list, presetList, conn, net, block, upd] = await Promise.all([
+    const [s, groupList, list, presetList, conn, net, block, upd] = await Promise.all([
       c.call(MethodSettingsGet),
-      c.call(MethodSubscriptionsList),
-      c.call(MethodServersList, { subscriptionId: '' }),
+      c.call(MethodGroupsList),
+      c.call(MethodServersList, { groupId: '' }),
       c.call(MethodPresetsList),
       c.call(MethodConnectionState),
       c.call(MethodNetworkState),
@@ -128,7 +128,7 @@ export const useCoreStore = defineStore('core', () => {
     ])
     const known = new Map(servers.value.map((server) => [server.id, server.latency]))
     settings.value = s
-    subscriptions.value = subs
+    groups.value = groupList
     servers.value = list.map((server) => (server.latency === 0 && known.get(server.id) ? { ...server, latency: known.get(server.id)! } : server))
     presets.value = presetList
     connection.value = conn
@@ -146,7 +146,7 @@ export const useCoreStore = defineStore('core', () => {
       const c = await useCore()
       client.value = c
       c.on(EventSettingsChanged, (next) => (settings.value = next))
-      c.on(EventSubscriptionsChanged, (next) => (subscriptions.value = next))
+      c.on(EventGroupsChanged, (next) => (groups.value = next))
       c.on(EventServersChanged, () => void loadServers())
       c.on(EventPresetsChanged, (next) => (presets.value = next))
       c.on(EventConnectionChanged, (next) => {
@@ -181,10 +181,10 @@ export const useCoreStore = defineStore('core', () => {
     return settings.value
   }
 
-  async function testServers(subscriptionId = ''): Promise<void> {
+  async function testServers(groupId = ''): Promise<void> {
     testing.value = true
     try {
-      await core().call(MethodServersTest, { subscriptionId })
+      await core().call(MethodServersTest, { groupId })
     } catch (error) {
       testing.value = false
       throw error
@@ -195,7 +195,7 @@ export const useCoreStore = defineStore('core', () => {
     client,
     status,
     settings,
-    subscriptions,
+    groups,
     servers,
     presets,
     connection,

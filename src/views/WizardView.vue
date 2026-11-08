@@ -10,7 +10,7 @@ import SubscriptionLink from '@/components/main/SubscriptionLink.vue'
 import { Button, Checkbox, RadioGroup, RadioItem } from '@/components/ui'
 import { urlScheme } from '@/platform'
 import type { SubscriptionUpdate } from '@/platform/core-types'
-import { MethodSubscriptionsRemove } from '@/platform/core-types'
+import { MethodGroupsRemove } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 const core = useCoreStore()
@@ -41,8 +41,8 @@ const preset = computed({
 // link does not stay behind unseen.
 let earlier = ''
 async function replaceEarlier(update: SubscriptionUpdate): Promise<void> {
-  const id = update.subscription.id
-  if (earlier && earlier !== id) await core.core().call(MethodSubscriptionsRemove, { id: earlier }).catch(() => undefined)
+  const id = update.group.id
+  if (earlier && earlier !== id) await core.core().call(MethodGroupsRemove, { id: earlier }).catch(() => undefined)
   earlier = id
 }
 

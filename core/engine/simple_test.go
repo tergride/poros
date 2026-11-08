@@ -239,7 +239,7 @@ func TestPresetDefault(t *testing.T) {
 	}
 }
 
-func TestRenameSubscription(t *testing.T) {
+func TestRenameGroup(t *testing.T) {
 	e, _ := openTest(t, t.TempDir())
 	p := newProvider(t)
 	p.serve(http.StatusOK, vless("de.example.com", "DE"))
@@ -248,13 +248,13 @@ func TestRenameSubscription(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sub, err := e.RenameSubscription(RenameSubscription{ID: update.Subscription.ID, Name: " Mine "}); err != nil || sub.Name != "Mine" {
+	if sub, err := e.RenameGroup(RenameGroup{ID: update.Group.ID, Name: " Mine "}); err != nil || sub.Name != "Mine" {
 		t.Fatalf("rename: %+v, %v", sub, err)
 	}
-	if sub, err := e.RenameSubscription(RenameSubscription{ID: update.Subscription.ID}); err != nil || sub.Name != "Provider" {
+	if sub, err := e.RenameGroup(RenameGroup{ID: update.Group.ID}); err != nil || sub.Name != "Provider" {
 		t.Fatalf("an empty name goes back to the provider's: %+v, %v", sub, err)
 	}
-	if _, err = e.RenameSubscription(RenameSubscription{ID: "nope", Name: "x"}); reason(err) != ReasonNotFound {
+	if _, err = e.RenameGroup(RenameGroup{ID: "nope", Name: "x"}); reason(err) != ReasonNotFound {
 		t.Errorf("unknown subscription: %v", err)
 	}
 }
@@ -273,7 +273,7 @@ func TestDeviceInfoOnlyWhenAllowed(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		if _, err = e.UpdateSubscription(t.Context(), update.Subscription.ID); err != nil {
+		if _, err = e.UpdateSubscription(t.Context(), update.Group.ID); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -359,7 +359,7 @@ func TestLatencyAndTraffic(t *testing.T) {
 	case <-time.After(30 * time.Second):
 		t.Fatal("the delay test did not finish")
 	}
-	servers, _ := e.Servers(ServersQuery{SubscriptionID: update.Subscription.ID})
+	servers, _ := e.Servers(ServersQuery{GroupID: update.Group.ID})
 	if len(servers) != 2 || servers[0].Latency <= 0 || servers[1].Latency != -1 {
 		t.Fatalf("latency: %+v, reported %+v", servers, tested)
 	}
@@ -404,12 +404,12 @@ func TestSubscriptionThroughTheConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 	connectAndFetch(t, e, states, webPage(t))
-	if _, err = e.UpdateSubscription(t.Context(), update.Subscription.ID); err != nil {
+	if _, err = e.UpdateSubscription(t.Context(), update.Group.ID); err != nil {
 		t.Fatalf("an update through the connection: %v", err)
 	}
 	// With the server gone the update fails: it went through the connection, not around it.
 	stop()
-	if _, err = e.UpdateSubscription(t.Context(), update.Subscription.ID); reason(err) != ReasonFetchFailed {
+	if _, err = e.UpdateSubscription(t.Context(), update.Group.ID); reason(err) != ReasonFetchFailed {
 		t.Fatalf("the update went around the connection: %v", err)
 	}
 }

@@ -23,7 +23,7 @@ const now = useClock(1000)
 const state = computed(() => core.connection.state)
 const on = computed(() => state.value === ConnectionRunning)
 const busy = computed(() => state.value === ConnectionStarting || state.value === ConnectionStopping)
-const subscription = computed(() => core.subscriptions.find((s) => s.id === core.server?.subscriptionId))
+const group = computed(() => core.groups.find((g) => g.id === core.server?.groupId))
 const empty = computed(() => core.servers.length === 0)
 // The kill switch keeps the traffic of the server from going out directly; after a lost connection it holds until
 // Stop. Full is Windows blocking everything while Poros's TUN is down.
@@ -156,7 +156,7 @@ const serverName = computed(() => (core.server ? serverTitle(core.server.name, c
           <template v-if="ipText && shownIp && address.countryCode">
             · <Flag :code="address.countryCode" class="text-[13px]" />
           </template>
-          <template v-if="!on && subscription"><template v-if="ipText"> · </template>{{ subscription.name }}</template>
+          <template v-if="!on && group"><template v-if="ipText"> · </template>{{ group.name }}</template>
           <template v-if="core.server && latencyText(core.server.latency)">
             ·
             <span :class="{ 'text-ok': latencyTone(core.server.latency) === 'good' }">{{ latencyText(core.server.latency) }}</span>

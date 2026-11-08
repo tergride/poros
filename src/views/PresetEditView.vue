@@ -8,7 +8,6 @@ import OptionRow from '@/components/settings/OptionRow.vue'
 import PresetListsDialog from '@/components/settings/PresetListsDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Banner, Button, Input, Segmented, Select } from '@/components/ui'
-import { useConnect } from '@/composables/useConnect'
 import { sentence, useFailure } from '@/composables/useReason'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import type { PresetCopy, PresetEntries } from '@/platform/core-types'
@@ -26,7 +25,6 @@ import { useCoreStore } from '@/stores/core'
 // The editor works on its own draft: leaving without saving drops it (note 5), and the next visit starts from what
 // the core holds.
 const core = useCoreStore()
-const connect = useConnect()
 const restart = useRestartNeeded()
 const route = useRoute()
 const router = useRouter()
@@ -152,12 +150,9 @@ async function save(): Promise<void> {
   try {
     const dns = dnsChoice.value === 'custom' ? customDns.value.trim() : dnsChoice.value
     const saved = await core.core().call(MethodPresetsSave, { ...draft.value, dns })
-    // Saving applies: the copy becomes the preset in use, and a running connection takes it at once.
+    // Saving makes the copy the preset in use; a running connection takes it when the user restarts it from the chip.
     await core.updateSettings({ preset: saved.id })
-    if (core.running) {
-      await connect.connect()
-      restart.presetEdited = false
-    }
+    if (core.running) restart.presetEdited = true
     await router.push('/settings/presets')
   } catch (error) {
     failure.value = reason(error)
@@ -190,6 +185,12 @@ async function save(): Promise<void> {
           <Input v-model="draft.name" :placeholder="t('presetEdit.namePlaceholder')" data-testid="preset-name" />
         </label>
         <div class="grid grid-cols-2 items-start gap-3">
+          <!-- First: it decides where most of the traffic goes. -->
+          <SettingsCard :title="t('presetEdit.default')" class="col-span-2" data-testid="preset-default">
+            <p class="mb-2 text-xs text-t3">{{ t('presetEdit.defaultHint') }}</p>
+            <Segmented v-model="draft.default" :options="actions" :aria-label="t('presetEdit.default')" />
+            <p v-if="draft.default === ActionBlock" class="mt-2 text-xs text-warn">{{ t('presetEdit.defaultBlocked') }}</p>
+          </SettingsCard>
           <SettingsCard :title="t('presetEdit.sites')">
             <div class="mt-1.5 mb-2 flex gap-2">
               <Input
@@ -244,11 +245,6 @@ async function save(): Promise<void> {
                 <Select v-model="entry.action" :options="actions" class="h-8 w-full" :aria-label="t('presetEdit.action')" />
                 <Button variant="ghost" size="icon-sm" :aria-label="t('common.remove')" @click="draft.apps.splice(i, 1)"><X /></Button>
               </div>
-            </SettingsCard>
-            <SettingsCard :title="t('presetEdit.default')" data-testid="preset-default">
-              <p class="mb-2 text-xs text-t3">{{ t('presetEdit.defaultHint') }}</p>
-              <Segmented v-model="draft.default" :options="actions" :aria-label="t('presetEdit.default')" />
-              <p v-if="draft.default === ActionBlock" class="mt-2 text-xs text-warn">{{ t('presetEdit.defaultBlocked') }}</p>
             </SettingsCard>
             <SettingsCard :title="t('presetEdit.dns')">
               <OptionRow :title="t('presetEdit.dnsServers')">

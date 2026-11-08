@@ -39,8 +39,16 @@ func TestOutsideLinks(t *testing.T) {
 		t.Fatalf("reading a link added a preset: %d presets", len(presets))
 	}
 
+	server := `{"type":"trojan","name":"🇩🇪 Home","server":"de.example.com","server_port":443,"trojan":{"password":"p","tls":{"enabled":true}}}`
+	info, err = e.ParseLink(OutsideLink{Link: "poros://add/" + encode(server)})
+	if err != nil || info.Kind != LinkServer || info.Server == nil ||
+		*info.Server != (Server{Name: "🇩🇪 Home", Protocol: "trojan", Host: "de.example.com", Port: 443, Country: "DE"}) {
+		t.Fatalf("server link: %+v, %v", info, err)
+	}
+
 	for link, want := range map[string]string{
-		"poros://add/" + encode(`{"type":"vless"}`):       ReasonSingleServer,
+		"poros://add/" + encode(`{"type":"vless"}`): ReasonInvalidLink,
+		"poros://add/%%%": ReasonInvalidLink,
 		"throne://add/" + encode(`{"type":"vless"}`):      ReasonSingleServer,
 		"poros://addsub/" + encode("vless://id@host:443"): ReasonSingleServer,
 		"poros://addsub/" + encode("ftp://example.com/x"): ReasonInvalidURL,

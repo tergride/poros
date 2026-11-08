@@ -11,55 +11,55 @@ import (
 	"PorosCore/profile"
 )
 
-// serverRecord is a server as stored, in the list of its subscription.
+// serverRecord is a server as stored, in the list of its group.
 type serverRecord struct {
 	ID      string          `json:"id"`
 	Profile profile.Profile `json:"profile"`
 }
 
-func (r serverRecord) view(subscriptionID string) Server {
+func (r serverRecord) view(groupID string) Server {
 	p := r.Profile
 	name := strings.TrimSpace(p.Name)
 	if name == "" {
 		name = net.JoinHostPort(p.Server, strconv.Itoa(p.ServerPort))
 	}
 	return Server{
-		ID:             r.ID,
-		SubscriptionID: subscriptionID,
-		Name:           name,
-		Protocol:       p.Type,
-		Host:           p.Server,
-		Port:           p.ServerPort,
-		Country:        flagCountry(name),
+		ID:       r.ID,
+		GroupID:  groupID,
+		Name:     name,
+		Protocol: p.Type,
+		Host:     p.Server,
+		Port:     p.ServerPort,
+		Country:  flagCountry(name),
 	}
 }
 
-func (e *Engine) serverRecords(subscriptionID string) (list []serverRecord, err error) {
+func (e *Engine) serverRecords(groupID string) (list []serverRecord, err error) {
 	err = e.db.View(func(tx *bbolt.Tx) error {
-		_, err = getJSON(tx, bucketServers, []byte(subscriptionID), &list)
+		_, err = getJSON(tx, bucketServers, []byte(groupID), &list)
 		return err
 	})
 	return list, err
 }
 
-// Servers lists the servers of one subscription, or of all in the order of the subscriptions.
+// Servers lists the servers of one group, or of all in the order of the groups.
 func (e *Engine) Servers(query ServersQuery) ([]Server, error) {
 	servers := []Server{}
 	err := e.db.View(func(tx *bbolt.Tx) error {
-		subs, err := records(tx)
+		list, err := groups(tx)
 		if err != nil {
 			return err
 		}
-		for _, sub := range subs {
-			if query.SubscriptionID != "" && sub.ID != query.SubscriptionID {
+		for _, group := range list {
+			if query.GroupID != "" && group.ID != query.GroupID {
 				continue
 			}
-			var list []serverRecord
-			if _, err = getJSON(tx, bucketServers, []byte(sub.ID), &list); err != nil {
+			var records []serverRecord
+			if _, err = getJSON(tx, bucketServers, []byte(group.ID), &records); err != nil {
 				return err
 			}
-			for _, r := range list {
-				view := r.view(sub.ID)
+			for _, r := range records {
+				view := r.view(group.ID)
 				view.Latency = e.latencyOf(r.ID)
 				servers = append(servers, view)
 			}

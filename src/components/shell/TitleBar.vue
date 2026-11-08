@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Download, EyeOff, Menu as MenuIcon, Minus, Plus, ScrollText, Settings, ShieldCheck, Square, X, Zap } from '@lucide/vue'
+import { Download, EyeOff, Lock, Menu as MenuIcon, Minus, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, Square, X, Zap } from '@lucide/vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -7,13 +8,32 @@ import mark from '@/assets/img/mark.png'
 import wordmark from '@/assets/img/wordmark.png'
 import { Button, Menu, MenuItem, MenuSeparator } from '@/components/ui'
 import { appControls, windowControls } from '@/platform'
+import { KillSwitchAlways, KillSwitchConnected } from '@/platform/core-types'
 
-// The wizard has no menu: it leads through its own steps.
-defineProps<{ menu?: boolean; elevated?: boolean }>()
-const emit = defineEmits<{ addSubscription: []; logs: []; checkUpdates: [] }>()
+// The wizard has no menu: it leads through its own steps. Each chip tells what it means when the pointer rests on it.
+// killSwitch is the mode of the setting: its chip shows while it is on, turns red while it blocks (killSwitchBlocking:
+// held after a lost connection, or always without one; killSwitchFull: the whole internet) and opens its setting.
+// restartNeeded: saved settings wait for a restart of the running connection, and their chip asks for it.
+const props = defineProps<{
+  menu?: boolean
+  elevated?: boolean
+  killSwitch?: string
+  killSwitchBlocking?: '' | 'held' | 'always'
+  killSwitchFull?: boolean
+  restartNeeded?: boolean
+}>()
+const emit = defineEmits<{ addSubscription: []; logs: []; checkUpdates: []; restart: []; killSwitch: [] }>()
 
 const { t } = useI18n()
 const router = useRouter()
+
+const killSwitchOn = computed(() => props.killSwitch === KillSwitchConnected || props.killSwitch === KillSwitchAlways)
+const killSwitchHint = computed(() =>
+  props.killSwitchBlocking
+    ? t(`window.killSwitchBlocking.${props.killSwitchBlocking}${props.killSwitchFull ? 'Full' : ''}`)
+    : t(`window.killSwitchHint.${props.killSwitch}`),
+)
+const chip = 'inline-flex h-[26px] cursor-default items-center gap-1.5 rounded-full bg-s3 px-2.5 text-xs'
 
 const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 hover:text-t1 [&_svg]:stroke-[1.8]'
 </script>
@@ -40,13 +60,32 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
       <MenuItem @select="appControls.exit()"><X />{{ t('menu.exit') }}</MenuItem>
     </Menu>
     <div data-tauri-drag-region class="ml-auto flex h-full items-center gap-1">
-      <span
-        v-if="elevated"
-        class="mr-2 inline-flex h-[26px] items-center gap-1.5 rounded-full bg-s3 px-2.5 text-xs text-warn"
-        data-testid="admin-chip"
-      >
-        <ShieldCheck class="size-3.5" />{{ t('window.administrator') }}
-      </span>
+      <div v-if="restartNeeded || killSwitchOn || elevated" data-tauri-drag-region class="mr-2 flex items-center gap-1.5">
+        <button
+          v-if="restartNeeded"
+          type="button"
+          :class="[chip, 'cursor-pointer text-blue hover:bg-s4']"
+          :title="t('restart.chipHint')"
+          data-testid="restart-chip"
+          @click="emit('restart')"
+        >
+          <RefreshCw class="size-3.5" />{{ t('restart.chip') }}
+        </button>
+        <button
+          v-if="killSwitchOn"
+          type="button"
+          :class="[chip, 'cursor-pointer', killSwitchBlocking ? 'bg-bad/15 text-bad hover:bg-bad/25' : 'text-t2 hover:bg-s4']"
+          :title="killSwitchHint"
+          :data-blocking="killSwitchBlocking || undefined"
+          data-testid="kill-switch-chip"
+          @click="emit('killSwitch')"
+        >
+          <Lock class="size-3.5" />{{ t('window.killSwitch') }}
+        </button>
+        <span v-if="elevated" :class="[chip, 'text-warn']" :title="t('window.administratorHint')" data-testid="admin-chip">
+          <ShieldCheck class="size-3.5" />{{ t('window.administrator') }}
+        </span>
+      </div>
       <Button variant="ghost" :class="windowButton" :aria-label="t('window.minimize')" @click="windowControls.minimize()">
         <Minus />
       </Button>

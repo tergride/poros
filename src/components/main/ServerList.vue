@@ -12,10 +12,11 @@ import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useFailure, useReason } from '@/composables/useReason'
 import { useUpdates } from '@/composables/useUpdates'
-import type { Subscription } from '@/platform/core-types'
+import type { Group } from '@/platform/core-types'
 import {
-  MethodSubscriptionsRemove,
-  MethodSubscriptionsRename,
+  GroupManual,
+  MethodGroupsRemove,
+  MethodGroupsRename,
   MethodSubscriptionsUpdate,
   ReasonKillSwitchFailed,
   ReasonKillSwitchNeedsElevation,
@@ -76,17 +77,15 @@ function closeConnectionError(): void {
 
 const groups = computed(() => {
   const needle = query.value.trim().toLowerCase()
-  return core.subscriptions
-    .map((subscription) => ({
-      subscription,
-      servers: core.servers.filter(
-        (s) => s.subscriptionId === subscription.id && (!needle || s.name.toLowerCase().includes(needle)),
-      ),
+  return core.groups
+    .map((group) => ({
+      group,
+      servers: core.servers.filter((s) => s.groupId === group.id && (!needle || s.name.toLowerCase().includes(needle))),
     }))
     .filter((group) => !needle || group.servers.length > 0)
 })
 
-async function update(subscription: Subscription): Promise<void> {
+async function update(subscription: Group): Promise<void> {
   updating.add(subscription.id)
   ui.notice = null
   try {
@@ -101,32 +100,34 @@ async function update(subscription: Subscription): Promise<void> {
   }
 }
 
-function copyLink(subscription: Subscription): Promise<void> {
+function copyLink(subscription: Group): Promise<void> {
   return attempt(async () => {
     await navigator.clipboard.writeText(subscription.url)
     ui.notice = { tone: 'info', text: t('list.copied') }
   })
 }
 
-const renaming = ref<Subscription | null>(null)
+const renaming = ref<Group | null>(null)
 const newName = ref('')
-function startRename(subscription: Subscription): void {
-  renaming.value = subscription
-  newName.value = subscription.name
+// An empty name takes a subscription back to the provider's title; a group of the user's needs one.
+const renamingManual = computed(() => renaming.value?.kind === GroupManual)
+function startRename(group: Group): void {
+  renaming.value = group
+  newName.value = group.name
 }
 function rename(): Promise<void> {
-  const subscription = renaming.value
+  const group = renaming.value
+  if (!group || (renamingManual.value && !newName.value.trim())) return Promise.resolve()
   renaming.value = null
-  if (!subscription) return Promise.resolve()
-  return attempt(() => core.core().call(MethodSubscriptionsRename, { id: subscription.id, name: newName.value }))
+  return attempt(() => core.core().call(MethodGroupsRename, { id: group.id, name: newName.value }))
 }
 
-const removing = ref<Subscription | null>(null)
+const removing = ref<Group | null>(null)
 function remove(): Promise<void> {
-  const subscription = removing.value
+  const group = removing.value
   removing.value = null
-  if (!subscription) return Promise.resolve()
-  return attempt(() => core.core().call(MethodSubscriptionsRemove, { id: subscription.id }))
+  if (!group) return Promise.resolve()
+  return attempt(() => core.core().call(MethodGroupsRemove, { id: group.id }))
 }
 
 function toggle(id: string): void {
@@ -137,7 +138,7 @@ function toggle(id: string): void {
 
 <template>
   <main class="flex min-w-0 flex-1 flex-col bg-s1">
-    <div v-if="core.subscriptions.length === 0" class="flex flex-1 flex-col items-center justify-center gap-3.5 p-10 text-center">
+    <div v-if="core.groups.length === 0" class="flex flex-1 flex-col items-center justify-center gap-3.5 p-10 text-center">
       <div class="w-full max-w-[520px] text-left empty:hidden"><CoreBanner /></div>
       <img :src="mark" alt="" class="h-16 w-auto opacity-90" />
       <h2 class="font-disp text-xl font-normal">{{ t('list.emptyTitle') }}</h2>
@@ -215,19 +216,19 @@ function toggle(id: string): void {
         </Banner>
         <ServerGroup
           v-for="group in groups"
-          :key="group.subscription.id"
-          :subscription="group.subscription"
+          :key="group.group.id"
+          :group="group.group"
           :servers="group.servers"
           :selected="core.settings?.server ?? ''"
-          :open="!closed.has(group.subscription.id) || query !== ''"
-          :updating="updating.has(group.subscription.id)"
-          @toggle="toggle(group.subscription.id)"
+          :open="!closed.has(group.group.id) || query !== ''"
+          :updating="updating.has(group.group.id)"
+          @toggle="toggle(group.group.id)"
           @pick="(id) => attempt(() => connect.chooseServer(id))"
-          @update="update(group.subscription)"
-          @test="attempt(() => core.testServers(group.subscription.id))"
-          @copy-link="copyLink(group.subscription)"
-          @rename="startRename(group.subscription)"
-          @remove="removing = group.subscription"
+          @update="update(group.group)"
+          @test="attempt(() => core.testServers(group.group.id))"
+          @copy-link="copyLink(group.group)"
+          @rename="startRename(group.group)"
+          @remove="removing = group.group"
         />
         <p v-if="groups.length === 0" class="py-6 text-center text-t3">{{ t('list.nothingFound') }}</p>
         <button
@@ -240,15 +241,27 @@ function toggle(id: string): void {
       </div>
     </template>
 
-    <Dialog :open="renaming !== null" :title="t('list.renameTitle')" @update:open="(o) => !o && (renaming = null)">
-      <Input v-model="newName" :placeholder="t('list.renamePlaceholder')" @keydown.enter="rename" />
+    <Dialog
+      :open="renaming !== null"
+      :title="t(renamingManual ? 'list.renameGroupTitle' : 'list.renameTitle')"
+      @update:open="(o) => !o && (renaming = null)"
+    >
+      <Input
+        v-model="newName"
+        :placeholder="t(renamingManual ? 'list.groupNamePlaceholder' : 'list.renamePlaceholder')"
+        @keydown.enter="rename"
+      />
       <template #footer>
         <Button variant="ghost" class="sp" @click="renaming = null">{{ t('common.cancel') }}</Button>
-        <Button variant="primary" @click="rename">{{ t('common.save') }}</Button>
+        <Button variant="primary" :disabled="renamingManual && !newName.trim()" @click="rename">{{ t('common.save') }}</Button>
       </template>
     </Dialog>
 
-    <Dialog :open="removing !== null" :title="t('list.removeTitle')" @update:open="(o) => !o && (removing = null)">
+    <Dialog
+      :open="removing !== null"
+      :title="t(removing?.kind === GroupManual ? 'list.removeGroupTitle' : 'list.removeTitle')"
+      @update:open="(o) => !o && (removing = null)"
+    >
       <p class="text-t2">{{ t('list.removeText', { name: removing?.name ?? '' }) }}</p>
       <template #footer>
         <Button variant="ghost" class="sp" @click="removing = null">{{ t('common.cancel') }}</Button>

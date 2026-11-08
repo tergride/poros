@@ -380,11 +380,11 @@ func startTestServer(t *testing.T) (*counter, string) {
 func (s *shell) useServer(providerURL string) {
 	s.t.Helper()
 	var update struct {
-		Subscription struct{ ID string } `json:"subscription"`
+		Group struct{ ID string } `json:"group"`
 	}
 	json.Unmarshal(s.call("subscriptions.add", map[string]string{"url": providerURL, "name": ""}), &update)
 	var servers []struct{ ID string }
-	json.Unmarshal(s.call("servers.list", map[string]string{"subscriptionId": update.Subscription.ID}), &servers)
+	json.Unmarshal(s.call("servers.list", map[string]string{"groupId": update.Group.ID}), &servers)
 	if len(servers) != 1 {
 		s.t.Fatalf("servers: %v", servers)
 	}

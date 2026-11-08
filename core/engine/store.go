@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	bucketSettings      = []byte("settings")
-	bucketSubscriptions = []byte("subscriptions")
-	// bucketServers holds the servers of each subscription under its ID, in the order the provider gave them.
+	bucketSettings = []byte("settings")
+	bucketGroups   = []byte("groups")
+	// bucketServers holds the servers of each group under its ID: a subscription's in the order the provider gave them.
 	bucketServers = []byte("servers")
 	// bucketPresets holds the user's copies of the built-in presets under their IDs.
 	bucketPresets = []byte("presets")
@@ -20,7 +20,7 @@ var (
 
 func createBuckets(db *bbolt.DB) error {
 	return db.Update(func(tx *bbolt.Tx) error {
-		for _, name := range [][]byte{bucketSettings, bucketSubscriptions, bucketServers, bucketPresets} {
+		for _, name := range [][]byte{bucketSettings, bucketGroups, bucketServers, bucketPresets} {
 			if _, err := tx.CreateBucketIfNotExists(name); err != nil {
 				return fmt.Errorf("create bucket %s: %w", name, err)
 			}

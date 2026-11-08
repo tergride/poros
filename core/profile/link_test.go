@@ -432,8 +432,30 @@ func TestParseLinkRejects(t *testing.T) {
 	}
 }
 
+func TestPorosLink(t *testing.T) {
+	want, err := ParseLink("trojan://secret@de.example.com:443?sni=cdn.example.com&type=ws&path=%2Fws#Germany")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(want)
+	for _, link := range []string{
+		"poros://add/" + base64.RawURLEncoding.EncodeToString(data),
+		"POROS://Add/" + base64.StdEncoding.EncodeToString(data),
+	} {
+		if got, err := ParseLink(link); err != nil || !reflect.DeepEqual(got, want) {
+			t.Errorf("ParseLink(%.30q) = %+v, %v", link, got, err)
+		}
+	}
+	for _, link := range []string{"poros://add/%%%", "poros://add/" + base64.RawURLEncoding.EncodeToString([]byte(`{"type":"trojan"}`))} {
+		if _, err := ParseLink(link); err == nil || errors.Is(err, ErrNotLink) {
+			t.Errorf("ParseLink(%q) error %v, want a damaged link", link, err)
+		}
+	}
+}
+
 func TestParseLinkNotALink(t *testing.T) {
-	for _, text := range []string{"", "just text", "foo://bar", "hysteria://h.example.com:443", "wg://key@198.51.100.7:51820"} {
+	for _, text := range []string{"", "just text", "foo://bar", "hysteria://h.example.com:443", "wg://key@198.51.100.7:51820",
+		"poros://addsub/aHR0cHM6Ly9leGFtcGxlLmNvbQ", "poros://route/x"} {
 		if _, err := ParseLink(text); !errors.Is(err, ErrNotLink) {
 			t.Errorf("ParseLink(%q) error %v, want ErrNotLink", text, err)
 		}

@@ -41,23 +41,23 @@ func (e *Engine) latencyOf(id string) int {
 	return e.latency.results[id]
 }
 
-// TestServers measures the servers of a subscription, or of all, in the background; a newer test replaces one
-// that runs. Each result comes with servers.tested.
+// TestServers measures the servers of a group, or of all, in the background; a newer test replaces one that runs.
+// Each result comes with servers.tested.
 func (e *Engine) TestServers(query ServersQuery) (any, error) {
 	type target struct {
 		id     string
 		server profile.Profile
 	}
 	var targets []target
-	subs, err := e.records()
+	groups, err := e.groups()
 	if err != nil {
 		return nil, err
 	}
-	for _, sub := range subs {
-		if query.SubscriptionID != "" && sub.ID != query.SubscriptionID {
+	for _, group := range groups {
+		if query.GroupID != "" && group.ID != query.GroupID {
 			continue
 		}
-		list, err := e.serverRecords(sub.ID)
+		list, err := e.serverRecords(group.ID)
 		if err != nil {
 			return nil, err
 		}

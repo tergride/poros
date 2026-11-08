@@ -531,23 +531,11 @@ func (e *Engine) closeConnection() error {
 
 func (e *Engine) serverProfile(id string) (p profile.Profile, found bool, err error) {
 	err = e.db.View(func(tx *bbolt.Tx) error {
-		subs, err := records(tx)
-		if err != nil {
-			return err
+		place, err := findServer(tx, id)
+		if place.found() {
+			p, found = place.servers[place.index].Profile, true
 		}
-		for _, sub := range subs {
-			var list []serverRecord
-			if _, err = getJSON(tx, bucketServers, []byte(sub.ID), &list); err != nil {
-				return err
-			}
-			for _, r := range list {
-				if r.ID == id {
-					p, found = r.Profile, true
-					return nil
-				}
-			}
-		}
-		return nil
+		return err
 	})
 	return p, found, err
 }

@@ -111,11 +111,11 @@ func (s *shell) addTestSubscription(link string) []testServer {
 		s.t.Fatal("the test subscription did not load")
 	}
 	var update struct {
-		Subscription struct{ ID string } `json:"subscription"`
+		Group struct{ ID string } `json:"group"`
 	}
 	json.Unmarshal(result, &update)
 	var servers []testServer
-	json.Unmarshal(s.call("servers.list", map[string]string{"subscriptionId": update.Subscription.ID}), &servers)
+	json.Unmarshal(s.call("servers.list", map[string]string{"groupId": update.Group.ID}), &servers)
 	if len(servers) == 0 {
 		s.t.Fatal("the test subscription has no servers")
 	}

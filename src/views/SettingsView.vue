@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Globe, Info, Layers, Link, Palette, Power, RefreshCw, X } from '@lucide/vue'
+import { ArrowLeft, Globe, Info, Layers, Link, Palette, Power, X } from '@lucide/vue'
 import { type Component, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -12,13 +12,11 @@ import PresetsPage from '@/components/settings/PresetsPage.vue'
 import StartPage from '@/components/settings/StartPage.vue'
 import SubsPage from '@/components/settings/SubsPage.vue'
 import { Banner, Button } from '@/components/ui'
-import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 const core = useCoreStore()
 const ui = useUiStore()
-const restart = useRestartNeeded()
 const route = useRoute()
 const { t } = useI18n()
 
@@ -58,13 +56,6 @@ const current = computed(() => pages.find((p) => p.id === route.params.page) ?? 
         {{ ui.notice.text }}
         <template #actions>
           <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="ui.notice = null"><X /></Button>
-        </template>
-      </Banner>
-      <Banner v-if="restart.needed" tone="info" class="mb-3" data-testid="restart-banner">
-        {{ t('restartBanner.text') }}
-        <template #actions>
-          <Button size="sm" variant="primary" @click="restart.apply()"><RefreshCw />{{ t('restartBanner.apply') }}</Button>
-          <Button size="sm" variant="ghost" @click="restart.later()">{{ t('common.later') }}</Button>
         </template>
       </Banner>
       <component :is="current.page" v-if="core.settings" />

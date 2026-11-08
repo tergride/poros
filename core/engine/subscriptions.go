@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"log"
@@ -10,59 +9,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sagernet/bbolt"
-
 	"PorosCore/internal/jsonrpc"
 	"PorosCore/internal/subfetch"
 	"PorosCore/profile"
 )
-
-// subscriptionRecord is a subscription as stored.
-type subscriptionRecord struct {
-	ID  string `json:"id"`
-	URL string `json:"url"`
-	// Name is the user's name for it, "" for none.
-	Name      string `json:"name,omitempty"`
-	AddedAt   int64  `json:"addedAt"`
-	UpdatedAt int64  `json:"updatedAt"`
-	// CheckedAt is the last attempt to update, whether it worked or not.
-	CheckedAt int64         `json:"checkedAt"`
-	Servers   int           `json:"servers"`
-	Skipped   int           `json:"skipped"`
-	Info      subfetch.Info `json:"info"`
-	Error     string        `json:"error,omitempty"`
-	ErrorText string        `json:"errorText,omitempty"`
-}
-
-func (r subscriptionRecord) view() Subscription {
-	name := r.Name
-	if name == "" {
-		name = r.Info.Title
-	}
-	if name == "" {
-		if parsed, err := url.Parse(r.URL); err == nil {
-			name = parsed.Hostname()
-		}
-	}
-	return Subscription{
-		ID:         r.ID,
-		Name:       name,
-		URL:        r.URL,
-		AddedAt:    r.AddedAt,
-		UpdatedAt:  r.UpdatedAt,
-		Servers:    r.Servers,
-		Skipped:    r.Skipped,
-		Upload:     r.Info.Upload,
-		Download:   r.Info.Download,
-		Total:      r.Info.Total,
-		Expire:     r.Info.Expire * 1000,
-		WebPageURL: r.Info.WebPageURL,
-		SupportURL: r.Info.SupportURL,
-		Announce:   r.Info.Announce,
-		Error:      r.Error,
-		ErrorText:  r.ErrorText,
-	}
-}
 
 // updateFailure is an update that did not work, with the reason the interface translates.
 type updateFailure struct {
@@ -73,84 +23,6 @@ type updateFailure struct {
 func (f *updateFailure) Error() string { return f.text }
 
 func (f *updateFailure) rpc() error { return jsonrpc.Failed(f.reason, "%s", f.text) }
-
-// records lists the stored subscriptions in the order they were added.
-func records(tx *bbolt.Tx) ([]subscriptionRecord, error) {
-	list := []subscriptionRecord{}
-	err := tx.Bucket(bucketSubscriptions).ForEach(func(key, _ []byte) error {
-		var rec subscriptionRecord
-		if _, err := getJSON(tx, bucketSubscriptions, key, &rec); err != nil {
-			return err
-		}
-		list = append(list, rec)
-		return nil
-	})
-	slices.SortStableFunc(list, func(a, b subscriptionRecord) int { return cmp.Compare(a.AddedAt, b.AddedAt) })
-	return list, err
-}
-
-func (e *Engine) records() (list []subscriptionRecord, err error) {
-	err = e.db.View(func(tx *bbolt.Tx) error {
-		list, err = records(tx)
-		return err
-	})
-	return list, err
-}
-
-func (e *Engine) record(id string) (rec subscriptionRecord, found bool, err error) {
-	err = e.db.View(func(tx *bbolt.Tx) error {
-		found, err = getJSON(tx, bucketSubscriptions, []byte(id), &rec)
-		return err
-	})
-	return rec, found, err
-}
-
-// Subscriptions are listed in the order they were added.
-func (e *Engine) Subscriptions() ([]Subscription, error) {
-	list, err := e.records()
-	if err != nil {
-		return nil, err
-	}
-	views := make([]Subscription, len(list))
-	for i, rec := range list {
-		views[i] = rec.view()
-	}
-	return views, nil
-}
-
-// announce tells the interface about the subscriptions and, for id, about its servers. It runs under writeMu.
-func (e *Engine) announce(id string) {
-	if list, err := e.Subscriptions(); err == nil {
-		e.notify(EventSubscriptionsChanged, list)
-	}
-	if id != "" {
-		e.notify(EventServersChanged, ServersChanged{SubscriptionID: id})
-	}
-}
-
-// RenameSubscription gives a subscription the user's name; an empty one goes back to the provider's title.
-func (e *Engine) RenameSubscription(req RenameSubscription) (Subscription, error) {
-	e.writeMu.Lock()
-	var rec subscriptionRecord
-	var found bool
-	err := e.db.Update(func(tx *bbolt.Tx) error {
-		var err error
-		if found, err = getJSON(tx, bucketSubscriptions, []byte(req.ID), &rec); err != nil || !found {
-			return err
-		}
-		rec.Name = strings.TrimSpace(req.Name)
-		return putJSON(tx, bucketSubscriptions, []byte(req.ID), rec)
-	})
-	e.writeMu.Unlock()
-	if err != nil {
-		return Subscription{}, err
-	}
-	if !found {
-		return Subscription{}, jsonrpc.Failed(ReasonNotFound, "there is no subscription %q", req.ID)
-	}
-	e.announce("")
-	return rec.view(), nil
-}
 
 // AddSubscription downloads the subscription and stores it with its servers; one that does not download, or holds
 // no server Poros can run, is not added.
@@ -174,9 +46,9 @@ func (e *Engine) AddSubscription(ctx context.Context, req AddSubscription) (Subs
 		return SubscriptionUpdate{}, jsonrpc.Failed(ReasonDuplicate, "this subscription is already added")
 	}
 	now := e.now().UnixMilli()
-	rec := subscriptionRecord{ID: newID(), URL: link, Name: strings.TrimSpace(req.Name), AddedAt: now}
+	rec := groupRecord{ID: newID(), Kind: GroupSubscription, URL: link, Name: strings.TrimSpace(req.Name), AddedAt: now}
 	servers, update := rec.apply(doc, info, nil, now)
-	if err := e.store(rec, servers); err != nil {
+	if err := e.storeGroup(rec, servers); err != nil {
 		return SubscriptionUpdate{}, err
 	}
 	e.announce(rec.ID)
@@ -204,8 +76,8 @@ func checkSubscriptionURL(link string) error {
 }
 
 func (e *Engine) hasURL(link string) bool {
-	list, err := e.records()
-	return err == nil && slices.ContainsFunc(list, func(r subscriptionRecord) bool { return r.URL == link })
+	list, err := e.groups()
+	return err == nil && slices.ContainsFunc(list, func(r groupRecord) bool { return r.URL == link })
 }
 
 // download fetches and reads a subscription. Its errors leave out the URL, which carries the user's token.
@@ -238,27 +110,29 @@ func (e *Engine) download(ctx context.Context, link string) (profile.Document, s
 }
 
 // apply takes a downloaded subscription into the record and returns the servers to store and what changed.
-func (r *subscriptionRecord) apply(doc profile.Document, info subfetch.Info, old []serverRecord, now int64) ([]serverRecord, SubscriptionUpdate) {
+func (r *groupRecord) apply(doc profile.Document, info subfetch.Info, old []serverRecord, now int64) ([]serverRecord, SubscriptionUpdate) {
 	servers, update := reconcile(old, doc.Profiles)
 	r.Info = info
 	r.UpdatedAt, r.CheckedAt = now, now
 	r.Servers, r.Skipped = len(servers), doc.SkippedCount
 	r.Error, r.ErrorText = "", ""
 	update.Skips = skipReasons(doc.Skipped)
-	update.Subscription = r.view()
+	update.Group = r.view()
 	return servers, update
 }
 
-func (e *Engine) store(rec subscriptionRecord, servers []serverRecord) error {
-	return e.db.Update(func(tx *bbolt.Tx) error {
-		if err := putJSON(tx, bucketSubscriptions, []byte(rec.ID), rec); err != nil {
-			return err
-		}
-		if servers == nil {
-			return nil
-		}
-		return putJSON(tx, bucketServers, []byte(rec.ID), servers)
-	})
+// subscription is the stored subscription id; a group of the user's is none.
+func (e *Engine) subscription(id string) (groupRecord, error) {
+	rec, found, err := e.group(id)
+	switch {
+	case err != nil:
+		return rec, err
+	case !found:
+		return rec, groupNotFound(id)
+	case rec.manual():
+		return rec, jsonrpc.Failed(ReasonInvalidValue, "the group %q is no subscription", id)
+	}
+	return rec, nil
 }
 
 // subscriptionLock serializes the updates of one subscription.
@@ -278,12 +152,9 @@ func (e *Engine) UpdateSubscription(ctx context.Context, id string) (Subscriptio
 	lock := e.subscriptionLock(id)
 	lock.Lock()
 	defer lock.Unlock()
-	rec, found, err := e.record(id)
+	rec, err := e.subscription(id)
 	if err != nil {
 		return SubscriptionUpdate{}, err
-	}
-	if !found {
-		return SubscriptionUpdate{}, jsonrpc.Failed(ReasonNotFound, "there is no subscription %q", id)
 	}
 	doc, info, failure := e.download(ctx, rec.URL)
 	// Poros is closing: that is no failure of the provider's.
@@ -294,20 +165,17 @@ func (e *Engine) UpdateSubscription(ctx context.Context, id string) (Subscriptio
 	e.writeMu.Lock()
 	defer e.writeMu.Unlock()
 	// The subscription may have been removed or renamed while it downloaded.
-	if rec, found, err = e.record(id); err != nil {
+	if rec, err = e.subscription(id); err != nil {
 		return SubscriptionUpdate{}, err
-	}
-	if !found {
-		return SubscriptionUpdate{}, jsonrpc.Failed(ReasonNotFound, "there is no subscription %q", id)
 	}
 	now := e.now().UnixMilli()
 	if failure != nil {
 		log.Printf("subscription %s: the update failed (%s): %s", rec.ID, failure.reason, failure.text)
 		rec.CheckedAt, rec.Error, rec.ErrorText = now, failure.reason, failure.text
-		if err = e.store(rec, nil); err != nil {
+		if err = e.storeGroup(rec, nil); err != nil {
 			return SubscriptionUpdate{}, err
 		}
-		e.announce("")
+		e.announce()
 		return SubscriptionUpdate{}, failure.rpc()
 	}
 	old, err := e.serverRecords(id)
@@ -315,7 +183,7 @@ func (e *Engine) UpdateSubscription(ctx context.Context, id string) (Subscriptio
 		return SubscriptionUpdate{}, err
 	}
 	servers, update := rec.apply(doc, info, old, now)
-	if err = e.store(rec, servers); err != nil {
+	if err = e.storeGroup(rec, servers); err != nil {
 		return SubscriptionUpdate{}, err
 	}
 	e.announce(id)
@@ -323,69 +191,7 @@ func (e *Engine) UpdateSubscription(ctx context.Context, id string) (Subscriptio
 	return update, nil
 }
 
-func (e *Engine) RemoveSubscription(id string) error {
-	e.writeMu.Lock()
-	defer e.writeMu.Unlock()
-	found := false
-	if err := e.db.Update(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket(bucketSubscriptions)
-		if bucket.Get([]byte(id)) == nil {
-			return nil
-		}
-		found = true
-		if err := tx.Bucket(bucketServers).Delete([]byte(id)); err != nil {
-			return err
-		}
-		return bucket.Delete([]byte(id))
-	}); err != nil {
-		return err
-	}
-	if !found {
-		return jsonrpc.Failed(ReasonNotFound, "there is no subscription %q", id)
-	}
-	e.announce(id)
-	e.keepServerChosen("")
-	return nil
-}
-
-// keepServerChosen moves the choice on when the chosen server went away with its subscription or an update: to the
-// first server left in that subscription, else to the first of all, else to none. It runs under writeMu.
-func (e *Engine) keepServerChosen(subscriptionID string) {
-	settings, err := e.Settings()
-	if err != nil || settings.Server == "" {
-		return
-	}
-	if _, found, err := e.serverProfile(settings.Server); err != nil || found {
-		return
-	}
-	subs, err := e.records()
-	if err != nil {
-		return
-	}
-	slices.SortStableFunc(subs, func(a, b subscriptionRecord) int {
-		return cmp.Compare(boolRank(a.ID != subscriptionID), boolRank(b.ID != subscriptionID))
-	})
-	settings.Server = ""
-	for _, sub := range subs {
-		if list, err := e.serverRecords(sub.ID); err == nil && len(list) > 0 {
-			settings.Server = list[0].ID
-			break
-		}
-	}
-	if err = e.db.Update(func(tx *bbolt.Tx) error { return putJSON(tx, bucketSettings, keySettings, settings) }); err != nil {
-		return
-	}
-	e.notify(EventSettingsChanged, settings)
-}
-
-func boolRank(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-// maxSkipGroups bounds the reasons an update reports; the items beyond still count in Subscription.Skipped.
+// maxSkipGroups bounds the reasons an update reports; the items beyond still count in Group.Skipped.
 const maxSkipGroups = 20
 
 // skipReasons groups skipped items by reason, in the order the reasons first came.

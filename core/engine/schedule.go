@@ -35,13 +35,13 @@ func (e *Engine) StartSchedule() {
 	}()
 }
 
-// updateDue updates, one at a time, each subscription whose time has come.
+// updateDue updates, one at a time, each subscription whose time has come; groups of the user's have no updates.
 func (e *Engine) updateDue(ctx context.Context) {
 	settings, err := e.Settings()
 	if err != nil || !settings.SubscriptionAutoUpdate {
 		return
 	}
-	list, err := e.records()
+	list, err := e.groups()
 	if err != nil {
 		return
 	}
@@ -50,7 +50,7 @@ func (e *Engine) updateDue(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		if now.Before(dueAt(rec, settings)) {
+		if rec.manual() || now.Before(dueAt(rec, settings)) {
 			continue
 		}
 		// A failure is kept on the subscription for the interface to show.
@@ -61,7 +61,7 @@ func (e *Engine) updateDue(ctx context.Context) {
 }
 
 // dueAt is when a subscription is updated next: an interval after the last update, or sooner after a failure.
-func dueAt(rec subscriptionRecord, settings Settings) time.Time {
+func dueAt(rec groupRecord, settings Settings) time.Time {
 	interval := defaultUpdateInterval
 	switch {
 	case settings.SubscriptionUpdateHours > 0:

@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"PorosCore/internal/jsonrpc"
+	"PorosCore/profile"
 )
 
 // Links from a browser or a messenger: poros://addsub/<base64 of the URL, with the name as its fragment>,
-// poros://route/<preset>, and poros://add/<server>, which the simple mode does not add. Throne's throne:// links
+// poros://route/<preset>, and poros://add/<server>, which only the advanced mode adds. Throne's throne:// links
 // of a subscription and a server look the same. Nothing is added here: the interface asks the user first.
 
 // ParseLink tells what a link asks to add.
@@ -25,7 +26,15 @@ func (e *Engine) ParseLink(p OutsideLink) (LinkInfo, error) {
 	case "addsub":
 		return parseSubscriptionLink(data)
 	case "add":
-		return LinkInfo{}, jsonrpc.Failed(ReasonSingleServer, "this is a link to one server, not a subscription")
+		if scheme != "poros" {
+			return LinkInfo{}, jsonrpc.Failed(ReasonSingleServer, "this is a link to one server, not a subscription")
+		}
+		p, err := profile.ParseLink(text)
+		if err != nil {
+			return LinkInfo{}, jsonrpc.Failed(ReasonInvalidLink, "%s", err.Error())
+		}
+		server := serverRecord{Profile: p}.view("")
+		return LinkInfo{Kind: LinkServer, Server: &server}, nil
 	case "route":
 		if scheme != "poros" {
 			return LinkInfo{}, jsonrpc.Failed(ReasonInvalidLink, "Throne routing profiles are not Poros presets")

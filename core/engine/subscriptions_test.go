@@ -103,7 +103,7 @@ func TestAddSubscription(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddSubscription: %v", err)
 	}
-	sub := update.Subscription
+	sub := update.Group
 	if sub.Name != "Основная подписка" || sub.URL != p.url || sub.Servers != 2 || sub.Skipped != 3 || sub.UpdatedAt == 0 ||
 		sub.Upload != 100 || sub.Download != 200 || sub.Total != 1000 || sub.Expire != 1765497600000 || sub.Error != "" {
 		t.Fatalf("subscription %+v", sub)
@@ -122,14 +122,14 @@ func TestAddSubscription(t *testing.T) {
 	if !reflect.DeepEqual(p.agents, []string{"Poros/0.1.0"}) {
 		t.Fatalf("user agents %q", p.agents)
 	}
-	if len(*events) != 2 || (*events)[0].method != EventSubscriptionsChanged || (*events)[1].params != (ServersChanged{sub.ID}) {
+	if len(*events) != 2 || (*events)[0].method != EventGroupsChanged || (*events)[1].params != (ServersChanged{sub.ID}) {
 		t.Fatalf("adding must announce the subscriptions and the servers: %+v", *events)
 	}
 
 	servers, _ := e.Servers(ServersQuery{})
 	want := []Server{
-		{SubscriptionID: sub.ID, Name: "🇩🇪 Germany", Protocol: "vless", Host: "de.example.com", Port: 443, Country: "DE"},
-		{SubscriptionID: sub.ID, Name: "🇳🇱 Netherlands", Protocol: "vless", Host: "nl.example.com", Port: 443, Country: "NL"},
+		{GroupID: sub.ID, Name: "🇩🇪 Germany", Protocol: "vless", Host: "de.example.com", Port: 443, Country: "DE"},
+		{GroupID: sub.ID, Name: "🇳🇱 Netherlands", Protocol: "vless", Host: "nl.example.com", Port: 443, Country: "NL"},
 	}
 	for i := range servers {
 		if servers[i].ID == "" {
@@ -147,14 +147,14 @@ func TestAddSubscription(t *testing.T) {
 	other := newProvider(t)
 	other.serve(http.StatusOK, vless("fi.example.com", ""))
 	named, err := e.AddSubscription(t.Context(), AddSubscription{URL: other.url, Name: " Work "})
-	if err != nil || named.Subscription.Name != "Work" {
-		t.Fatalf("the user's name wins over the host: %+v, %v", named.Subscription, err)
+	if err != nil || named.Group.Name != "Work" {
+		t.Fatalf("the user's name wins over the host: %+v, %v", named.Group, err)
 	}
-	if servers, _ = e.Servers(ServersQuery{SubscriptionID: named.Subscription.ID}); len(servers) != 1 || servers[0].Name != "fi.example.com:443" {
+	if servers, _ = e.Servers(ServersQuery{GroupID: named.Group.ID}); len(servers) != 1 || servers[0].Name != "fi.example.com:443" {
 		t.Fatalf("a server without a name is named by its address: %+v", servers)
 	}
-	list, _ := e.Subscriptions()
-	if len(list) != 2 || list[0].ID != sub.ID || list[1].ID != named.Subscription.ID {
+	list, _ := e.Groups()
+	if len(list) != 2 || list[0].ID != sub.ID || list[1].ID != named.Group.ID {
 		t.Fatalf("subscriptions keep the order they were added in: %+v", list)
 	}
 }
@@ -190,7 +190,7 @@ func TestAddSubscriptionFailures(t *testing.T) {
 			if strings.Contains(err.Error(), "secret-token") {
 				t.Errorf("the error %q gives away the subscription's token", err)
 			}
-			if list, _ := e.Subscriptions(); len(list) != 0 || len(*events) != 0 {
+			if list, _ := e.Groups(); len(list) != 0 || len(*events) != 0 {
 				t.Fatalf("a subscription that failed is not added: %+v, %+v", list, *events)
 			}
 		})
@@ -210,7 +210,7 @@ func TestUpdateSubscriptionKeepsServerIDs(t *testing.T) {
 	// DE stays as it was, NL gets a new path, FI goes and SE comes.
 	p.serve(http.StatusOK, vless("de.example.com", "DE"), vlessPath("nl.example.com", "NL", "/new"), vless("se.example.com", "SE"))
 	*events = nil
-	update, err := e.UpdateSubscription(t.Context(), added.Subscription.ID)
+	update, err := e.UpdateSubscription(t.Context(), added.Group.ID)
 	if err != nil {
 		t.Fatalf("UpdateSubscription: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestUpdateSubscriptionKeepsServerIDs(t *testing.T) {
 		after[2].ID == before[2].ID {
 		t.Fatalf("servers that continue keep their IDs\nbefore %+v\n after %+v", before, after)
 	}
-	if len(*events) != 2 || (*events)[1].params != (ServersChanged{added.Subscription.ID}) {
+	if len(*events) != 2 || (*events)[1].params != (ServersChanged{added.Group.ID}) {
 		t.Fatalf("an update announces the subscriptions and the servers: %+v", *events)
 	}
 	if _, err = e.UpdateSubscription(t.Context(), "missing"); reason(err) != ReasonNotFound {
@@ -241,12 +241,12 @@ func TestFailedUpdateKeepsServers(t *testing.T) {
 
 	clock = clock.Add(time.Hour)
 	p.serve(http.StatusInternalServerError, "down")
-	if _, err := e.UpdateSubscription(t.Context(), added.Subscription.ID); reason(err) != ReasonFetchFailed {
+	if _, err := e.UpdateSubscription(t.Context(), added.Group.ID); reason(err) != ReasonFetchFailed {
 		t.Fatalf("expected %s, got %v", ReasonFetchFailed, err)
 	}
-	list, _ := e.Subscriptions()
+	list, _ := e.Groups()
 	if sub := list[0]; sub.Error != ReasonFetchFailed || !strings.Contains(sub.ErrorText, "500") || sub.Servers != 1 ||
-		sub.UpdatedAt != added.Subscription.UpdatedAt {
+		sub.UpdatedAt != added.Group.UpdatedAt {
 		t.Fatalf("a failed update keeps the servers and says why: %+v", sub)
 	}
 	if servers, _ := e.Servers(ServersQuery{}); len(servers) != 1 {
@@ -254,13 +254,13 @@ func TestFailedUpdateKeepsServers(t *testing.T) {
 	}
 
 	p.serve(http.StatusOK, vless("de.example.com", "DE"))
-	update, err := e.UpdateSubscription(t.Context(), added.Subscription.ID)
-	if err != nil || update.Subscription.Error != "" || update.Subscription.ErrorText != "" {
-		t.Fatalf("an update that works clears the error: %+v, %v", update.Subscription, err)
+	update, err := e.UpdateSubscription(t.Context(), added.Group.ID)
+	if err != nil || update.Group.Error != "" || update.Group.ErrorText != "" {
+		t.Fatalf("an update that works clears the error: %+v, %v", update.Group, err)
 	}
 }
 
-func TestRemoveSubscriptionAndRestart(t *testing.T) {
+func TestRemoveGroupAndRestart(t *testing.T) {
 	dir := t.TempDir()
 	e, _ := openTest(t, dir)
 	first, second := newProvider(t), newProvider(t)
@@ -269,19 +269,19 @@ func TestRemoveSubscriptionAndRestart(t *testing.T) {
 	a, _ := e.AddSubscription(t.Context(), AddSubscription{URL: first.url})
 	b, _ := e.AddSubscription(t.Context(), AddSubscription{URL: second.url})
 
-	if err := e.RemoveSubscription("missing"); reason(err) != ReasonNotFound {
+	if err := e.RemoveGroup("missing"); reason(err) != ReasonNotFound {
 		t.Fatalf("removing an unknown id: %v", err)
 	}
-	if err := e.RemoveSubscription(a.Subscription.ID); err != nil {
-		t.Fatalf("RemoveSubscription: %v", err)
+	if err := e.RemoveGroup(a.Group.ID); err != nil {
+		t.Fatalf("RemoveGroup: %v", err)
 	}
 	kept, _ := e.Servers(ServersQuery{})
 
 	e.Close()
 	reopened, _ := openTest(t, dir)
-	list, _ := reopened.Subscriptions()
+	list, _ := reopened.Groups()
 	servers, _ := reopened.Servers(ServersQuery{})
-	if len(list) != 1 || list[0].ID != b.Subscription.ID || !reflect.DeepEqual(servers, kept) || len(servers) != 1 {
+	if len(list) != 1 || list[0].ID != b.Group.ID || !reflect.DeepEqual(servers, kept) || len(servers) != 1 {
 		t.Fatalf("after a restart\nsubscriptions %+v\nservers %+v", list, servers)
 	}
 }
@@ -292,14 +292,14 @@ func TestDueAt(t *testing.T) {
 	every24 := defaults
 	every24.SubscriptionUpdateHours = 24
 	for name, tt := range map[string]struct {
-		rec      subscriptionRecord
+		rec      groupRecord
 		settings Settings
 		want     time.Duration
 	}{
-		"no advice":           {subscriptionRecord{UpdatedAt: updated.UnixMilli()}, defaults, 6 * time.Hour},
+		"no advice":           {groupRecord{UpdatedAt: updated.UnixMilli()}, defaults, 6 * time.Hour},
 		"provider's advice":   {withInterval(updated, 12*time.Hour), defaults, 12 * time.Hour},
 		"the user's interval": {withInterval(updated, 12*time.Hour), every24, 24 * time.Hour},
-		"retry after failure": {subscriptionRecord{UpdatedAt: updated.UnixMilli(), CheckedAt: updated.Add(time.Minute).UnixMilli()}, defaults, time.Hour + time.Minute},
+		"retry after failure": {groupRecord{UpdatedAt: updated.UnixMilli(), CheckedAt: updated.Add(time.Minute).UnixMilli()}, defaults, time.Hour + time.Minute},
 	} {
 		if got := dueAt(tt.rec, tt.settings).Sub(updated); got != tt.want {
 			t.Errorf("%s: due after %v, want %v", name, got, tt.want)
@@ -307,8 +307,8 @@ func TestDueAt(t *testing.T) {
 	}
 }
 
-func withInterval(updated time.Time, interval time.Duration) subscriptionRecord {
-	rec := subscriptionRecord{UpdatedAt: updated.UnixMilli()}
+func withInterval(updated time.Time, interval time.Duration) groupRecord {
+	rec := groupRecord{UpdatedAt: updated.UnixMilli()}
 	rec.Info.UpdateInterval = interval
 	return rec
 }
