@@ -4,6 +4,7 @@ package host
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -79,4 +80,15 @@ func RedirectOutput(f *os.File) error {
 	}
 	os.Stdout, os.Stderr = f, f
 	return nil
+}
+
+// Elevated tells whether this process has administrator rights.
+func Elevated() bool {
+	return windows.GetCurrentProcessToken().IsElevated()
+}
+
+// SystemVersion names the system for the log.
+func SystemVersion() string {
+	major, minor, build := windows.RtlGetNtVersionNumbers()
+	return fmt.Sprintf("Windows %d.%d.%d", major, minor, build)
 }

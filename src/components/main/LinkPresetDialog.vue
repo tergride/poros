@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 
 import { Button, Dialog } from '@/components/ui'
 import { useFailure } from '@/composables/useReason'
-import { MethodPresetsImport } from '@/platform/core-types'
+import { ActionProxy, MethodPresetsImport } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
@@ -33,6 +33,8 @@ const summary = computed(() => {
   const added = { sites: p.sites.length, apps: p.apps.length }
   const base = te(`presets.name.${p.basedOn}`) ? t(`presets.name.${p.basedOn}`) : p.basedOn
   const parts = [p.basedOn ? `${t('presets.copyOf', { base })}: ${t('presets.added', added)}.` : `${t('presets.addedAlone', added)}.`]
+  // A link that sends the rest past the server or blocks it says so: the user should know before adding it.
+  if (p.default && p.default !== ActionProxy) parts.push(t(`linkPreset.default.${p.default}`))
   if (p.dns) parts.push(t('linkPreset.dns'))
   return parts.join(' ')
 })

@@ -25,6 +25,22 @@ var dohServers = []string{"https://1.1.1.1/dns-query", "https://8.8.8.8/resolve"
 
 const dohTimeout = 4 * time.Second
 
+// systemLookupTimeout bounds the system's answer, so that DoH keeps its own time when the system's DNS hangs; a
+// test shortens it.
+var systemLookupTimeout = 3 * time.Second
+
+// processResolver asks the system's DNS servers from the core itself. Behind the kill switch the DNS client of
+// Windows, a service of its own, cannot reach them, while the block lets Poros through.
+var processResolver = &net.Resolver{PreferGo: true}
+
+// systemResolver is how the core asks the system's DNS: through Windows, or by itself while the kill switch blocks.
+func (e *Engine) systemResolver() *net.Resolver {
+	if e.KillSwitchState().On {
+		return processResolver
+	}
+	return net.DefaultResolver
+}
+
 // dohClient makes the client of the DoH queries; a test replaces it.
 var dohClient = adapterClient
 
@@ -40,7 +56,7 @@ func isFake(addr netip.Addr) bool {
 // lookupPast finds the address of a server the way Poros dials it: out of the network adapter, past the TUN of
 // another client. The system's answer serves unless it fails or is fake; another client's TUN may hold the system's
 // DNS and let no plain DNS past it, so then DoH over the adapter answers.
-func lookupPast(ctx context.Context, host string, ipv4Only bool) (netip.Addr, error) {
+func lookupPast(ctx context.Context, resolver *net.Resolver, host string, ipv4Only bool) (netip.Addr, error) {
 	if addr, err := netip.ParseAddr(host); err == nil {
 		return addr.Unmap(), nil
 	}
@@ -48,7 +64,9 @@ func lookupPast(ctx context.Context, host string, ipv4Only bool) (netip.Addr, er
 	if ipv4Only {
 		network = "ip4"
 	}
-	addrs, systemErr := net.DefaultResolver.LookupNetIP(ctx, network, host)
+	systemCtx, cancel := context.WithTimeout(ctx, systemLookupTimeout)
+	addrs, systemErr := resolver.LookupNetIP(systemCtx, network, host)
+	cancel()
 	if addr, ok := preferIPv4(addrs); ok && !isFake(addr) {
 		return addr, nil
 	}
@@ -138,6 +156,12 @@ func askDoH(ctx context.Context, client *http.Client, server, host string, kind 
 		}
 	}
 	return dohAnswer{err: fmt.Errorf("%s has no address for %s", server, host)}
+}
+
+// dialDirect dials past any proxy, asking the system's DNS the way the kill switch lets the core.
+func (e *Engine) dialDirect(ctx context.Context, network, address string) (net.Conn, error) {
+	dialer := net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second, Resolver: e.systemResolver()}
+	return dialer.DialContext(ctx, network, address)
 }
 
 // adapterClient dials out of the default network adapter, so that no TUN, Poros's own or another client's, takes

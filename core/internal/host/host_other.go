@@ -5,6 +5,7 @@ package host
 import (
 	"errors"
 	"os"
+	"runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -60,4 +61,14 @@ func RedirectOutput(f *os.File) error {
 	}
 	os.Stdout, os.Stderr = f, f
 	return nil
+}
+
+// Elevated tells whether this process runs as root.
+func Elevated() bool {
+	return os.Geteuid() == 0
+}
+
+// SystemVersion names the system for the log.
+func SystemVersion() string {
+	return runtime.GOOS
 }

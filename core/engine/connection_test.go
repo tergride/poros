@@ -182,6 +182,42 @@ func TestConnectionThroughXray(t *testing.T) {
 	}
 }
 
+// Stop during a start that hangs, here on the lookup of the server, ends it at once instead of after the timeout.
+func TestStopCancelsAStart(t *testing.T) {
+	e, states := openConnectionTest(t)
+	asked := make(chan struct{}, 4)
+	doh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked <- struct{}{}
+		<-r.Context().Done()
+	}))
+	defer doh.Close()
+	servers, client := dohServers, dohClient
+	t.Cleanup(func() { dohServers, dohClient = servers, client })
+	dohServers, dohClient = []string{doh.URL}, doh.Client
+	useServer(t, e, fmt.Sprintf("vless://%s@slow.poros-test.invalid:443?type=xhttp&path=%%2Fx&security=none#slow", testUUID))
+
+	began := time.Now()
+	e.StartConnection()
+	select {
+	case <-asked:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the start did not get to the lookup")
+	}
+	e.StopConnection()
+	if state := waitState(t, states); state.State != ConnectionIdle || state.Error != "" {
+		t.Fatalf("a cancelled start ends idle without an error: %+v", state)
+	}
+	if took := time.Since(began); took > resolveTimeout {
+		t.Errorf("the start was not cancelled: it took %s", took)
+	}
+	e.conn.lifecycle.Lock()
+	running := e.conn.running
+	e.conn.lifecycle.Unlock()
+	if running != nil {
+		t.Error("a cancelled start left a connection")
+	}
+}
+
 func TestConnectionRefusals(t *testing.T) {
 	e, states := openConnectionTest(t)
 	e.StartConnection()

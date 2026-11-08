@@ -49,7 +49,7 @@ const idle: ConnectionState = {
   errorText: '',
 }
 
-const noAddress = { ip: '', countryCode: '', city: '', isp: '', asn: 0 }
+const noAddress = { ip: '', ipv6: '', countryCode: '', city: '', isp: '', asn: 0 }
 
 const noBlock: KillSwitchState = { on: false, error: '', errorText: '' }
 

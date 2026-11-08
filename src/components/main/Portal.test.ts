@@ -1,10 +1,10 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createAppI18n } from '@/i18n'
 import type { Settings } from '@/platform/core-types'
-import { ConnectionIdle, ConnectionRunning, KillSwitchAlways, KillSwitchConnected } from '@/platform/core-types'
+import { ConnectionIdle, ConnectionRunning, ConnectionStarting, KillSwitchAlways, KillSwitchConnected, KillSwitchOff } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 import Portal from './Portal.vue'
@@ -31,7 +31,7 @@ describe('Portal and the kill switch', () => {
     core.connection = { ...idle }
     core.killSwitch = { ...blocked }
     const wrapper = mountPortal()
-    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Интернет заблокирован до «Стопа»')
+    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Соединение прервано — интернет закрыт')
     expect(wrapper.find('[data-testid="start"]').exists()).toBe(false)
     expect(wrapper.get('[data-testid="stop"]').find('[data-testid="kill-switch-lock"]').exists()).toBe(true)
 
@@ -49,10 +49,55 @@ describe('Portal and the kill switch', () => {
     const wrapper = mountPortal()
     expect(wrapper.get('[data-testid="start"]').find('[data-testid="kill-switch-lock"]').exists()).toBe(true)
     // Without a connection the internet is off, and the window says so.
-    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Интернет заблокирован Kill switch')
+    expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Интернет закрыт до подключения')
 
     core.connection = { ...idle, state: ConnectionRunning, since: Date.now() }
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="stop"]').find('[data-testid="kill-switch-lock"]').exists()).toBe(true)
+  })
+})
+
+describe('Portal while it connects', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    setActivePinia(createPinia())
+    const core = useCoreStore()
+    core.servers = [server]
+    core.settings = { ...settings, killSwitch: KillSwitchOff }
+    core.status = { state: 'ready', elevated: false }
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('offers Cancel once a start takes longer than 3 seconds', async () => {
+    const core = useCoreStore()
+    core.connection = { ...idle, state: ConnectionStarting }
+    const wrapper = mountPortal()
+    expect(wrapper.get('[data-testid="start"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="cancel"]').exists()).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(3100)
+    expect(wrapper.find('[data-testid="start"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="cancel"]').text()).toBe('Отменить')
+
+    core.connection = { ...idle, state: ConnectionRunning, since: Date.now() }
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="cancel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="stop"]').exists()).toBe(true)
+  })
+
+  it('shows the exit country as a flag named in its hint', async () => {
+    const core = useCoreStore()
+    core.connection = { ...idle, state: ConnectionRunning, since: Date.now() }
+    core.network = {
+      ...core.network,
+      proxy: { ip: '198.51.100.24', ipv6: '2001:db8::24', countryCode: 'DE', city: '', isp: '', asn: 0 },
+    }
+    const wrapper = mountPortal()
+    // IPv4 first: it is the shorter one.
+    expect(wrapper.get('[data-testid="portal-ip"]').text()).toBe('IP 198.51.100.24')
+    const flags = wrapper.findAll('[data-testid="flag"]')
+    expect(flags.length).toBe(2)
+    expect(flags[0]!.text()).toBe('🇩🇪')
+    expect(flags[0]!.attributes('title')).toBe('DE — Германия')
   })
 })

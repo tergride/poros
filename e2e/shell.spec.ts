@@ -76,6 +76,32 @@ test('the first Start asks what to turn on, and TUN asks for rights', async ({ p
   await expect(page.getByTestId('portal-state')).toHaveText('Не подключено')
 })
 
+test('the settings open from the portal, and a list of choices picks a value', async ({ page }) => {
+  await throughWizard(page)
+  await page.getByTestId('portal-settings').click()
+  await expect(page.getByRole('heading', { name: 'Подключение', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Внешний вид', exact: true }).click()
+  await page.getByRole('combobox', { name: 'Язык' }).click()
+  await expect(page.getByRole('option', { name: 'English' })).toBeVisible()
+  await shot(page, 'select-open')
+  await page.getByRole('option', { name: 'English' }).click()
+  await expect(page.getByRole('heading', { name: 'Appearance', exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Language' })).toHaveText('English')
+
+  // With large text the list still opens under its button, as the menus do.
+  await page.getByRole('combobox', { name: 'Text size' }).click()
+  await page.getByRole('option', { name: 'Large' }).click()
+  const language = page.getByRole('combobox', { name: 'Language' })
+  const button = await language.boundingBox()
+  await language.click()
+  const list = page.getByRole('listbox')
+  await expect(list).toBeVisible()
+  const opened = await list.boundingBox()
+  expect(Math.abs(opened!.y - (button!.y + button!.height))).toBeLessThan(16)
+  expect(Math.abs(opened!.x - button!.x)).toBeLessThan(16)
+  await shot(page, 'select-open-large')
+})
+
 test('the first Start can connect without TUN and System', async ({ page }) => {
   await throughWizard(page)
   await page.getByTestId('start').click()
@@ -98,6 +124,8 @@ test('a preset copy is made, saved and chosen', async ({ page }) => {
   await page.getByLabel('Сайт, IP или подсеть').fill('example.org')
   await page.getByLabel('Сайт, IP или подсеть').press('Enter')
   await expect(page.getByTestId('site')).toHaveCount(1)
+  await page.getByTestId('preset-default').getByTestId('segment-direct').click()
+  await expect(page.getByTestId('preset-default').getByTestId('segment-direct')).toHaveAttribute('data-state', 'checked')
   await shot(page, 'preset-edit')
   await page.getByTestId('preset-save').click()
   await expect(page.getByText('Дом', { exact: true })).toBeVisible()

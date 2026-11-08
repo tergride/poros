@@ -40,8 +40,8 @@
     "presets": "Presets…",
     "show": "Show window",
     "exit": "Exit",
-    "blocked": "Internet blocked until Stop",
-    "blockedAlways": "Internet blocked by the kill switch",
+    "blocked": "Connection lost — internet blocked",
+    "blockedAlways": "Internet blocked until you connect",
     "coreDown": "The Poros core has stopped",
     "stop": "Stop"
   },
@@ -121,7 +121,7 @@
     "off": "Not connected",
     "starting": "Connecting…",
     "stopping": "Disconnecting…",
-    "blocked": "Internet blocked until Stop",
+    "blocked": "Connection lost — internet blocked",
     "on": "Connected · {time}",
     "noServer": "No server chosen",
     "addFirst": "Add a subscription to begin",
@@ -132,7 +132,7 @@
     "download": "Download",
     "upload": "Upload",
     "exit": "Exit",
-    "ip": "IP {ip} · {country}",
+    "ip": "IP {ip}",
     "ipChecking": "Checking the IP…",
     "preset": "Preset:",
     "hint": {
@@ -141,7 +141,11 @@
       "system": "Browsers and programs that use the system proxy go through the server.",
       "none": "Without TUN and System only programs set to the proxy {address} go through the server."
     },
-    "blockedAlways": "Internet blocked by the kill switch"
+    "blockedAlways": "Internet blocked until you connect",
+    "heldTitle": "The kill switch keeps traffic from going around the VPN until the connection is back. Stop opens the internet without the VPN.",
+    "cancel": "Cancel",
+    "disconnecting": "Disconnecting",
+    "settings": "Settings"
   },
   "list": {
     "search": "Find a server",
@@ -330,7 +334,7 @@
       "wizardHint": "Go through the first-start steps again.",
       "run": "Run",
       "logs": "Log",
-      "logsHint": "Useful when writing to support.",
+      "logsHint": "What Poros did and what went wrong. The files are in the config\\logs folder next to the program.",
       "open": "Open",
       "reset": "Reset the connection",
       "resetHint": "Restarts the core if TUN stopped working.",
@@ -347,14 +351,21 @@
       "noUpdater": "Current version: {version}. Without updater.exe next to it this build does not update itself.",
       "check": "Check",
       "autoCheck": "Check for updates automatically",
-      "autoCheckHint": "At launch and every 4 hours. An update installs only when you press the button."
+      "autoCheckHint": "At launch and every 4 hours. An update installs only when you press the button.",
+      "logsFolder": "Folder",
+      "debugLog": "Detailed log",
+      "debugLogHint": "Records every connection through Poros. Errors are always recorded. Takes effect with the next connection."
     }
   },
   "linkPreset": {
     "title": "Add the preset from the link?",
     "text": "The preset “{name}” goes to “My presets”. The preset in use does not change.",
     "dns": "Its own DNS.",
-    "add": "Add"
+    "add": "Add",
+    "default": {
+      "direct": "Other traffic goes directly.",
+      "block": "Other traffic is blocked."
+    }
   },
   "presetEdit": {
     "back": "Presets",
@@ -374,7 +385,10 @@
     "dnsCustomPlaceholder": "https://dns.example/dns-query",
     "save": "Save and apply",
     "copyName": "{name} — copy",
-    "duplicate": "“{value}” is in the list already."
+    "duplicate": "“{value}” is in the list already.",
+    "default": "Other traffic",
+    "defaultHint": "Where everything goes that the lists and rules above do not take.",
+    "defaultBlocked": "Only the listed sites and apps will work. Poros blocks the rest."
   },
   "presetLists": {
     "open": "Edit as lists",

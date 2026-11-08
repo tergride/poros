@@ -1,6 +1,13 @@
 package engine
 
 import (
+	"context"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"PorosCore/internal/netcheck"
@@ -53,5 +60,56 @@ func TestNetworkCheckWaitsForTheUser(t *testing.T) {
 	}
 	if state := e.NetworkState(); state.Checking || state.CheckedAt != 0 || state.DNS == nil {
 		t.Errorf("state before any check: %+v", state)
+	}
+}
+
+// fakeFamilies answers every service with an address per family; a family without one cannot connect.
+func fakeFamilies(t *testing.T, v4, v6 string) familyClient {
+	t.Helper()
+	servers := map[int]*httptest.Server{}
+	for family, ip := range map[int]string{4: v4, 6: v6} {
+		if ip == "" {
+			continue
+		}
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, `{"ip":%q,"country_code":"de","city_name":"Nuremberg","isp_name":"Example","as_number":64501}`, ip)
+		}))
+		t.Cleanup(server.Close)
+		servers[family] = server
+	}
+	return func(family int) (*http.Client, func()) {
+		server := servers[family]
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				if server == nil {
+					return nil, errors.New("no route")
+				}
+				return (&net.Dialer{}).DialContext(ctx, network, server.Listener.Addr().String())
+			},
+		}
+		return &http.Client{Transport: transport}, transport.CloseIdleConnections
+	}
+}
+
+func TestBothAddressesShow(t *testing.T) {
+	ctx := t.Context()
+	info, home, err := lookupAddresses(ctx, fakeFamilies(t, "203.0.113.4", "2001:db8::4"), true)
+	if err != nil || info.IP != "203.0.113.4" || info.IPv6 != "2001:db8::4" || info.CountryCode != "DE" || home.ASN != 64501 {
+		t.Errorf("both families: %+v, %v", info, err)
+	}
+	// Without IPv6 the check does not ask for it.
+	if info, _, err = lookupAddresses(ctx, fakeFamilies(t, "203.0.113.4", "2001:db8::4"), false); err != nil || info.IPv6 != "" {
+		t.Errorf("IPv6 off: %+v, %v", info, err)
+	}
+	// A network with one family is no error.
+	if info, _, err = lookupAddresses(ctx, fakeFamilies(t, "203.0.113.4", ""), true); err != nil || info.IP != "203.0.113.4" || info.IPv6 != "" {
+		t.Errorf("IPv4 only: %+v, %v", info, err)
+	}
+	if info, _, err = lookupAddresses(ctx, fakeFamilies(t, "", "2001:db8::4"), true); err != nil || info.IP != "" || info.IPv6 != "2001:db8::4" {
+		t.Errorf("IPv6 only: %+v, %v", info, err)
+	}
+	if _, _, err = lookupAddresses(ctx, fakeFamilies(t, "", ""), true); err == nil {
+		t.Error("no answer at all is an error")
 	}
 }

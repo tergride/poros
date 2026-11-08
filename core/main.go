@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"flag"
@@ -122,19 +123,14 @@ const (
 	// exitDeadline bounds the way out once the shell is gone: a connection that does not close goes with the process.
 	exitDeadline = 15 * time.Second
 	logFile      = "core.log"
-	oldLogFile   = "core.1.log"
 	// exitDataDamaged tells the shell that the data file cannot be read: no restart helps, the user decides.
 	exitDataDamaged = 4
 )
 
-// openLog keeps this run's log and the previous one in the logs folder of the data folder.
+// openLog appends to the log in the logs folder of the data folder: a core after a crash or a UAC prompt keeps what
+// the one before it wrote.
 func openLog(dataDir string) (*os.File, error) {
-	dir := filepath.Join(dataDir, "logs")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, err
-	}
-	_ = os.Rename(filepath.Join(dir, logFile), filepath.Join(dir, oldLogFile))
-	return os.OpenFile(filepath.Join(dir, logFile), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	return host.OpenLog(filepath.Join(dataDir, "logs", logFile))
 }
 
 // runCore serves the shell over its channel and exits when the shell goes away: the channel is the core's lifetime.
@@ -155,7 +151,8 @@ func runCore() {
 		log.SetOutput(logOutput)
 		_ = runtimeDebug.SetCrashOutput(logOutput, runtimeDebug.CrashOptions{})
 	}
-	log.Printf("sing-box %s, Xray %s", C.Version, core.Version())
+	log.Printf("Poros core %s, sing-box %s, Xray %s, %s, administrator %t", cmp.Or(opts.version, "without a version"),
+		C.Version, core.Version(), host.SystemVersion(), host.Elevated())
 
 	boxmain.DisableColor()
 

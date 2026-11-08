@@ -4,7 +4,7 @@ import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { useClock } from '@/composables/useClock'
-import { Button, Dialog } from '@/components/ui'
+import { Button, Dialog, Flag } from '@/components/ui'
 import { countryName, formatAgo } from '@/lib/format'
 import type { IPInfo } from '@/platform/core-types'
 import { LeakFound, LeakNone, MethodNetworkCheck } from '@/platform/core-types'
@@ -28,11 +28,17 @@ watch(open, (shown) => {
 })
 
 const place = (info: IPInfo) => [countryName(info.countryCode, locale.value), info.city].filter(Boolean).join(', ')
+const addresses = (info: IPInfo) => [info.ip, info.ipv6].filter(Boolean)
+const sides = computed(() => [
+  { id: 'without' as const, info: core.network.direct },
+  { id: 'through' as const, info: core.network.proxy },
+])
 
 async function copy(): Promise<void> {
   const n = core.network
-  const lines = [`${t('ip.without')}: ${n.direct.ip} ${place(n.direct)} ${n.direct.isp}`]
-  if (n.proxy.ip) lines.push(`${t('ip.through')}: ${n.proxy.ip} ${place(n.proxy)} ${n.proxy.isp}`)
+  const line = (side: string, info: IPInfo) => `${side}: ${addresses(info).join(' ')} ${place(info)} ${info.isp}`
+  const lines = [line(t('ip.without'), n.direct)]
+  if (addresses(n.proxy).length) lines.push(line(t('ip.through'), n.proxy))
   for (const server of n.dns) lines.push(`DNS: ${server.ip} ${server.countryCode} ${server.isp}`)
   await navigator.clipboard.writeText(lines.join('\n'))
 }
@@ -48,23 +54,34 @@ async function copy(): Promise<void> {
       <p v-if="!checkOn" class="text-t2">{{ t('ip.off') }}</p>
       <div class="grid grid-cols-2 gap-2.5">
         <section
-          v-for="side in ['without', 'through'] as const"
-          :key="side"
-          class="grid content-start gap-[5px] rounded-xl border border-line bg-s3 px-3.5 py-3"
+          v-for="side in sides"
+          :key="side.id"
+          class="grid min-w-0 content-start gap-[5px] rounded-xl border border-line bg-s3 px-3.5 py-3"
+          :data-testid="`ip-${side.id}`"
         >
-          <h3 class="text-xs font-medium text-t3">{{ t(`ip.${side}`) }}</h3>
-          <template v-if="side === 'through' && !connected">
+          <h3 class="text-xs font-medium text-t3">{{ t(`ip.${side.id}`) }}</h3>
+          <template v-if="side.id === 'through' && !connected">
             <span class="text-xs text-t3">{{ t('ip.connectFirst') }}</span>
           </template>
-          <template v-else-if="(side === 'without' ? core.network.direct : core.network.proxy).ip">
-            <b class="font-mono text-[17px] leading-snug font-medium select-text">{{ (side === 'without' ? core.network.direct : core.network.proxy).ip }}</b>
+          <template v-else-if="addresses(side.info).length">
+            <!-- An IPv6 address is long: it wraps inside the card after a colon, and the second address is smaller. -->
+            <b
+              v-for="(address, index) in addresses(side.info)"
+              :key="address"
+              :class="[
+                'font-mono leading-snug font-medium [overflow-wrap:anywhere] select-text',
+                index === 0 ? 'text-[17px]' : 'text-[12.5px] text-t2',
+              ]"
+              data-testid="ip-address"
+              ><template v-for="(part, i) in address.split(':')" :key="i"
+                ><template v-if="i > 0">:<wbr /></template>{{ part }}</template
+              ></b
+            >
             <span class="flex items-center gap-2 text-[13px]">
-              <span class="inline-grid h-[22px] w-[30px] place-items-center rounded-[5px] bg-s4 font-mono text-[11px]">
-                {{ (side === 'without' ? core.network.direct : core.network.proxy).countryCode }}
-              </span>
-              {{ place(side === 'without' ? core.network.direct : core.network.proxy) }}
+              <Flag :code="side.info.countryCode" class="text-[17px]" />
+              {{ place(side.info) }}
             </span>
-            <span class="text-xs text-t3">{{ (side === 'without' ? core.network.direct : core.network.proxy).isp }}</span>
+            <span class="text-xs text-t3">{{ side.info.isp }}</span>
           </template>
           <span v-else class="text-xs text-t3">{{ core.network.checking ? t('ip.checking') : t('ip.unknown') }}</span>
         </section>
@@ -75,11 +92,11 @@ async function copy(): Promise<void> {
           <div
             v-for="server in core.network.dns"
             :key="server.ip"
-            class="grid h-[38px] grid-cols-[150px_34px_1fr_auto] items-center gap-2.5 border-t border-line px-3 text-[13px] first:border-t-0"
+            class="grid min-h-[38px] grid-cols-[minmax(0,1.2fr)_22px_minmax(0,1fr)_auto] items-center gap-2.5 border-t border-line px-3 py-1.5 text-[13px] first:border-t-0"
           >
-            <span class="font-mono text-[12.5px] select-text">{{ server.ip }}</span>
-            <span class="inline-grid h-[22px] w-[30px] place-items-center rounded-[5px] bg-s4 font-mono text-[11px]">{{ server.countryCode }}</span>
-            <span class="truncate">{{ server.isp }}</span>
+            <span class="font-mono text-[12.5px] [overflow-wrap:anywhere] select-text">{{ server.ip }}</span>
+            <Flag :code="server.countryCode" class="text-[16px]" />
+            <span class="truncate" :title="server.isp">{{ server.isp }}</span>
             <span v-if="server.home" class="rounded-md bg-s4 px-2 text-[11.5px] leading-[22px] text-warn">{{ t('ip.home') }}</span>
             <span v-else />
           </div>
@@ -104,7 +121,7 @@ async function copy(): Promise<void> {
       </p>
     </div>
     <template #footer>
-      <Button class="sp" :disabled="!core.network.direct.ip" @click="copy">
+      <Button class="sp" :disabled="!addresses(core.network.direct).length" @click="copy">
         <Copy />{{ t('common.copy') }}
       </Button>
       <Button :disabled="!checkOn || core.network.checking" @click="check"><RefreshCw />{{ t('ip.recheck') }}</Button>

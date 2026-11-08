@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { russianPlural } from '@/i18n'
 
-import { formatBytes, formatDate, formatDuration, latencyTone, serverTitle } from './format'
+import { countryHint, flagOf, formatBytes, formatDate, formatDuration, latencyTone, serverTitle } from './format'
 
 describe('the formats of the screens', () => {
   it('drops the flag a name starts with only when the country is shown beside it', () => {
@@ -30,6 +30,16 @@ describe('the formats of the screens', () => {
     expect(formatDate(new Date(2026, 11, 7).getTime(), 'ru', now)).toBe('7 декабря')
     expect(formatDate(new Date(2027, 11, 7).getTime(), 'ru', now)).toBe('7 декабря 2027 г.')
     expect(formatDate(new Date(2025, 10, 2).getTime(), 'en', now)).toBe('November 2, 2025')
+  })
+
+  it('shows a country as its flag and names it in the hint', () => {
+    expect(flagOf('de')).toBe('🇩🇪')
+    expect(flagOf('BY')).toBe('🇧🇾')
+    expect(flagOf('')).toBe('')
+    expect(flagOf('DEU')).toBe('')
+    expect(countryHint('de', 'ru')).toBe('DE — Германия')
+    expect(countryHint('DE', 'en')).toBe('DE — Germany')
+    expect(countryHint('XX', 'en')).toBe('XX')
   })
 
   it('colours a delay', () => {

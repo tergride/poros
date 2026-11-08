@@ -206,6 +206,39 @@ func TestPresetFromScratch(t *testing.T) {
 	}
 }
 
+// The traffic no entry takes goes where the user says, and the choice travels with the preset's link.
+func TestPresetDefault(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	draft, err := e.PresetCopy("all")
+	if err != nil || draft.Default != ActionProxy {
+		t.Fatalf("a copy of all starts through the server: %+v, %v", draft, err)
+	}
+	draft.Name, draft.Default = "Direct but", ActionDirect
+	draft.Sites = []PresetEntry{{Value: "example.org", Action: ActionProxy}}
+	saved, err := e.SavePreset(draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preset, _, _ := e.preset(saved.ID); preset.DefaultOutbound != config.OutboundDirect {
+		t.Errorf("composed default %q", preset.DefaultOutbound)
+	}
+	if edited, _ := e.PresetCopy(saved.ID); edited.Default != ActionDirect {
+		t.Errorf("the editor shows %q", edited.Default)
+	}
+	link, _ := e.ExportPreset(saved.ID)
+	imported, err := e.ImportPreset(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preset, _, _ := e.preset(imported.ID); preset.DefaultOutbound != config.OutboundDirect {
+		t.Errorf("the link lost the default: %q", preset.DefaultOutbound)
+	}
+	draft.Default = "elsewhere"
+	if _, err = e.SavePreset(draft); reason(err) != ReasonInvalidValue {
+		t.Errorf("an unknown default: %v", err)
+	}
+}
+
 func TestRenameSubscription(t *testing.T) {
 	e, _ := openTest(t, t.TempDir())
 	p := newProvider(t)

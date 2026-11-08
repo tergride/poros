@@ -19,7 +19,7 @@ func (e *Engine) fetchClient() (*http.Client, func()) {
 	if err != nil || !settings.SubscriptionViaProxy || box == nil {
 		return e.client, func() {}
 	}
-	client, done := outboundClient(box, config.TagProxy)
+	client, done := outboundClient(box, config.TagProxy, "", 0)
 	client.Timeout = fetchTimeout
 	return client, done
 }

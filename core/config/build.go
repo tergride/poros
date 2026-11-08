@@ -18,12 +18,12 @@ import (
 
 // Tags of the config.
 const (
-	TagProxy  = "proxy"
-	TagDirect = "direct"
-	tagMixed  = "mixed-in"
-	tagTun    = "tun-in"
-	dnsRemote = "dns-remote"
-	dnsDirect = "dns-direct"
+	TagProxy     = "proxy"
+	TagDirect    = "direct"
+	tagMixed     = "mixed-in"
+	tagTun       = "tun-in"
+	TagDNSRemote = "dns-remote"
+	TagDNSDirect = "dns-direct"
 )
 
 // The TUN of Poros. Throne, which may run alongside, keeps 172.19.0.1/24.
@@ -59,8 +59,9 @@ type Input struct {
 	Tun bool
 	// AllowLAN opens the mixed inbound to other devices.
 	AllowLAN bool
-	// DisableIPv6 answers names with IPv4 only and refuses IPv6 connections other than DNS. The TUN still takes
-	// IPv6, so that it never goes around the tunnel.
+	// DisableIPv6 answers names with IPv4 only and refuses IPv6 connections other than DNS. Names of connections
+	// are resolved here, so that the server too reaches sites over IPv4. The TUN still takes IPv6, so that it never
+	// goes around the tunnel.
 	DisableIPv6   bool
 	MixedPort     uint16
 	RealityOnXray bool
@@ -188,7 +189,10 @@ func tunExcluded(preset Preset) badoption.Listable[netip.Prefix] {
 func buildRoute(in Input) *option.RouteOptions {
 	rules := []option.Rule{actionRule(option.RawDefaultRule{}, option.RuleAction{Action: C.RuleActionTypeSniff})}
 	if in.DisableIPv6 {
-		rules = append(rules, ipv6Block())
+		rules = append(rules, ipv6Block(), actionRule(option.RawDefaultRule{}, option.RuleAction{
+			Action:         C.RuleActionTypeResolve,
+			ResolveOptions: option.RouteActionResolve{Strategy: option.DomainStrategy(C.DomainStrategyIPv4Only)},
+		}))
 	}
 	if in.AllowLAN {
 		rules = append(rules, lanGuard())
@@ -204,7 +208,7 @@ func buildRoute(in Input) *option.RouteOptions {
 		final = TagDirect
 		rules = append(rules, actionRule(option.RawDefaultRule{}, option.RuleAction{Action: C.RuleActionTypeReject}))
 	}
-	resolver := &option.DomainResolveOptions{Server: dnsDirect}
+	resolver := &option.DomainResolveOptions{Server: TagDNSDirect}
 	if in.DisableIPv6 {
 		resolver.Strategy = option.DomainStrategy(C.DomainStrategyIPv4Only)
 	}
@@ -292,7 +296,7 @@ func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
 	}
 	// Validate has read it already.
 	remote, _ := remoteDNS(text)
-	servers := []option.DNSServerOptions{remote, {Type: C.DNSTypeLocal, Tag: dnsDirect, Options: &option.LocalDNSServerOptions{}}}
+	servers := []option.DNSServerOptions{remote, {Type: C.DNSTypeLocal, Tag: TagDNSDirect, Options: &option.LocalDNSServerOptions{}}}
 	var rules []option.DNSRule
 	for _, rule := range preset.Rules {
 		if rule.Action != ActionRoute {
@@ -309,18 +313,18 @@ func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
 		if len(raw.Domain)+len(raw.DomainSuffix)+len(raw.DomainKeyword)+len(raw.DomainRegex)+len(raw.ProcessName)+len(raw.ProcessPath) == 0 {
 			continue
 		}
-		server := dnsRemote
+		server := TagDNSRemote
 		if rule.Outbound == OutboundDirect {
-			server = dnsDirect
+			server = TagDNSDirect
 		}
 		rules = append(rules, option.DNSRule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{
 			RawDefaultDNSRule: raw,
 			DNSRuleAction:     option.DNSRuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.DNSRouteActionOptions{Server: server}},
 		}})
 	}
-	final := dnsRemote
+	final := TagDNSRemote
 	if preset.DefaultOutbound == OutboundDirect {
-		final = dnsDirect
+		final = TagDNSDirect
 	}
 	options := &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: servers, Rules: rules, Final: final}}
 	if disableIPv6 {

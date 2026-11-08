@@ -76,8 +76,8 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 		}
 		configs.Xray = xray
 	}
-	servers := []option.DNSServerOptions{{Type: C.DNSTypeLocal, Tag: dnsDirect, Options: &option.LocalDNSServerOptions{}}}
-	resolver := dnsDirect
+	servers := []option.DNSServerOptions{{Type: C.DNSTypeLocal, Tag: TagDNSDirect, Options: &option.LocalDNSServerOptions{}}}
+	resolver := TagDNSDirect
 	if len(in.Resolved) > 0 {
 		servers = append(servers, testHosts(in.Resolved))
 		resolver = dnsTestHosts

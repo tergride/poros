@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ChevronRight, Layers, Lock, Play, ShieldAlert, Square } from '@lucide/vue'
-import { computed } from 'vue'
+import { ChevronRight, Layers, Lock, Play, Settings, ShieldAlert, Square, X } from '@lucide/vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import portalArt from '@/assets/img/portal.jpg'
 import { useClock } from '@/composables/useClock'
-import { Button, Switch } from '@/components/ui'
+import { Button, Flag, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { formatBytes, formatDuration, latencyTone, serverTitle } from '@/lib/format'
@@ -34,6 +34,16 @@ const held = computed(
 // The kill switch in Always blocks without a connection too: the internet is off, not merely disconnected.
 const blockedIdle = computed(() => blocked.value && !on.value && !busy.value && !held.value)
 
+// A start that takes long may be cancelled; a quick one has no time to show the choice.
+const cancelAfter = 3000
+const startingSince = ref(0)
+watch(
+  state,
+  (next) => (startingSince.value = next === ConnectionStarting ? Date.now() : 0),
+  { immediate: true },
+)
+const cancellable = computed(() => startingSince.value > 0 && now.value - startingSince.value >= cancelAfter)
+
 const stateText = computed(() => {
   if (on.value) return t('portal.on', { time: formatDuration(now.value - core.connection.since) })
   if (held.value) return t('portal.blocked')
@@ -43,14 +53,15 @@ const stateText = computed(() => {
   return t('portal.off')
 })
 
-// The address the services see: through the VPN while connected, the user's own otherwise. Behind the block the
-// services cannot be reached, so no address is waited for.
+// The address the services see: through the VPN while connected, the user's own otherwise; IPv4 first, as the
+// shorter one. Behind the block the services cannot be reached, so no address is waited for.
 const address = computed(() => (on.value ? core.network.proxy : core.network.direct))
+const shownIp = computed(() => address.value.ip || address.value.ipv6)
 const ipText = computed(() => {
   if (blocked.value && !on.value) return ''
-  if (core.network.checking && !address.value.ip) return t('portal.ipChecking')
-  if (!address.value.ip) return ''
-  return t('portal.ip', { ip: address.value.ip, country: address.value.countryCode || '—' })
+  if (core.network.checking && !shownIp.value) return t('portal.ipChecking')
+  if (!shownIp.value) return ''
+  return t('portal.ip', { ip: shownIp.value })
 })
 
 function latencyText(latency: number): string {
@@ -84,6 +95,7 @@ const system = computed({
   get: () => core.settings?.systemProxy ?? false,
   set: (value: boolean) => void attempt(() => connect.setSystemProxy(value)),
 })
+const exitCountry = computed(() => core.network.proxy.countryCode || core.server?.country || '')
 const serverName = computed(() => (core.server ? serverTitle(core.server.name, core.server.country) : t('portal.noServer')))
 </script>
 
@@ -133,12 +145,15 @@ const serverName = computed(() => (core.server ? serverTitle(core.server.name, c
           <button
             v-if="ipText"
             type="button"
-            class="cursor-pointer text-t2 underline decoration-t3 decoration-dotted underline-offset-[3px] hover:text-t1"
+            class="cursor-pointer break-all text-t2 underline decoration-t3 decoration-dotted underline-offset-[3px] hover:text-t1"
             data-testid="portal-ip"
             @click="$emit('ip')"
           >
             {{ ipText }}
           </button>
+          <template v-if="ipText && shownIp && address.countryCode">
+            · <Flag :code="address.countryCode" class="text-[13px]" />
+          </template>
           <template v-if="!on && subscription"><template v-if="ipText"> · </template>{{ subscription.name }}</template>
           <template v-if="core.server && latencyText(core.server.latency)">
             ·
@@ -159,11 +174,12 @@ const serverName = computed(() => (core.server ? serverTitle(core.server.name, c
       </div>
       <div class="rounded-[10px] border border-line bg-s2 px-2.5 py-[9px]">
         <span class="mb-0.5 block text-[11.5px] text-t3">{{ t('portal.exit') }}</span>
-        <b class="font-mono text-[13px] font-medium">{{ core.network.proxy.countryCode || core.server?.country || '—' }}</b>
+        <Flag v-if="exitCountry" :code="exitCountry" class="text-[17px] leading-[20px]" />
+        <b v-else class="font-mono text-[13px] font-medium">—</b>
       </div>
     </div>
 
-    <div class="relative flex gap-2.5" :title="blocked ? t('portal.lockTitle') : undefined">
+    <div class="relative flex gap-2.5" :title="held ? t('portal.heldTitle') : blocked ? t('portal.lockTitle') : undefined">
       <Button
         v-if="on || held"
         size="start"
@@ -176,6 +192,16 @@ const serverName = computed(() => (core.server ? serverTitle(core.server.name, c
         <Lock v-if="blocked" class="size-3.5 opacity-75" data-testid="kill-switch-lock" />
       </Button>
       <Button
+        v-else-if="cancellable"
+        size="start"
+        class="flex-1"
+        :disabled="!core.ready"
+        data-testid="cancel"
+        @click="attempt(() => connect.stop())"
+      >
+        <X class="size-4" />{{ t('portal.cancel') }}
+      </Button>
+      <Button
         v-else
         variant="primary"
         size="start"
@@ -184,7 +210,9 @@ const serverName = computed(() => (core.server ? serverTitle(core.server.name, c
         data-testid="start"
         @click="attempt(() => connect.start())"
       >
-        <Play class="size-4 fill-current" />{{ busy ? t('portal.connecting') : t('portal.start') }}
+        <Play class="size-4 fill-current" />{{
+          state === ConnectionStopping ? t('portal.disconnecting') : busy ? t('portal.connecting') : t('portal.start')
+        }}
         <Lock v-if="blocked" class="size-3.5 opacity-75" data-testid="kill-switch-lock" />
       </Button>
     </div>
@@ -213,12 +241,23 @@ const serverName = computed(() => (core.server ? serverTitle(core.server.name, c
     </div>
     <p class="relative text-xs text-t3">{{ hint }}</p>
 
-    <RouterLink
-      to="/settings/presets"
-      class="relative flex h-[42px] w-full items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3 text-[13px] text-t2 hover:border-line2"
-    >
-      <Layers class="size-4" /><span>{{ t('portal.preset') }} <b class="font-medium text-t1">{{ presetName }}</b></span>
-      <ChevronRight class="ml-auto size-4" />
-    </RouterLink>
+    <div class="relative flex gap-2">
+      <RouterLink
+        to="/settings/presets"
+        class="flex h-[42px] min-w-0 flex-1 items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3 text-[13px] text-t2 hover:border-line2"
+      >
+        <Layers class="size-4 flex-none" /><span class="truncate">{{ t('portal.preset') }} <b class="font-medium text-t1">{{ presetName }}</b></span>
+        <ChevronRight class="ml-auto size-4 flex-none" />
+      </RouterLink>
+      <RouterLink
+        to="/settings/conn"
+        class="grid size-[42px] flex-none place-items-center rounded-[10px] border border-line bg-s2 text-t2 hover:border-line2 hover:text-t1"
+        :title="t('portal.settings')"
+        :aria-label="t('portal.settings')"
+        data-testid="portal-settings"
+      >
+        <Settings class="size-4" />
+      </RouterLink>
+    </div>
   </aside>
 </template>

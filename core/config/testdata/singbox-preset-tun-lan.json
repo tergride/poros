@@ -101,6 +101,10 @@
         "action": "reject"
       },
       {
+        "action": "resolve",
+        "strategy": "ipv4_only"
+      },
+      {
         "type": "logical",
         "mode": "and",
         "rules": [

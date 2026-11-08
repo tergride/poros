@@ -32,17 +32,18 @@ const schemeHint = computed(() =>
   <h2 class="mb-1 font-disp text-[19px] font-normal">{{ t('settings.nav.start') }}</h2>
   <p class="mb-4 max-w-[640px] text-t2">{{ t('settings.start.lead') }}</p>
   <SettingsCard>
+    <!-- What happens at launch stays together: the start with Windows, how it shows, the connection. -->
     <OptionRow :title="t('wizard.start.autostart')"><Switch v-model="autostart" /></OptionRow>
-    <OptionRow :title="t('wizard.start.autoConnect')"><Switch v-model="autoConnect" /></OptionRow>
-    <OptionRow :title="t('wizard.start.urlScheme')" :hint="schemeHint">
-      <Switch v-model="schemeOn" :disabled="!scheme" data-testid="url-scheme" />
-    </OptionRow>
     <!-- Only the start with Windows comes minimized: a start by hand always shows the window. -->
     <OptionRow
       :title="t('settings.start.startMinimized')"
       :hint="autostart ? t('settings.start.startMinimizedHint') : t('settings.start.startMinimizedOff')"
     >
       <Switch v-model="startMinimized" :disabled="!autostart" />
+    </OptionRow>
+    <OptionRow :title="t('wizard.start.autoConnect')"><Switch v-model="autoConnect" /></OptionRow>
+    <OptionRow :title="t('wizard.start.urlScheme')" :hint="schemeHint">
+      <Switch v-model="schemeOn" :disabled="!scheme" data-testid="url-scheme" />
     </OptionRow>
     <OptionRow :title="t('settings.start.closeToTray')" :hint="t('settings.start.closeToTrayHint')">
       <Switch v-model="closeToTray" />

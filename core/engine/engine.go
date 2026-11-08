@@ -144,6 +144,7 @@ func Open(cfg Config) (*Engine, error) {
 		guard:       cfg.Guard,
 		sysProxy:    sysproxy.New(filepath.Join(cfg.DataDir, "system-proxy.json")),
 	}
+	transport.DialContext = e.dialDirect
 	e.conn.state = ConnectionState{State: ConnectionIdle}
 	e.openUpdates(cfg)
 	e.latency.results = map[string]int{}

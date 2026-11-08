@@ -53,6 +53,20 @@ export function countryName(code: string, locale: string): string {
   }
 }
 
+/** The flag of an ISO 3166 code, as its two regional indicator letters; "" for anything else. */
+export function flagOf(code: string): string {
+  const upper = code.toUpperCase()
+  if (!/^[A-Z]{2}$/.test(upper)) return ''
+  return String.fromCodePoint(...[...upper].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65))
+}
+
+/** A country for a hint beside its flag: «DE — Германия», the code alone when the system has no name. */
+export function countryHint(code: string, locale: string): string {
+  const upper = code.toUpperCase()
+  const name = countryName(upper, locale)
+  return name && name !== upper ? `${upper} — ${name}` : upper
+}
+
 /** The colour of a delay: good under 80 ms, middling under 180, bad above, none when untested or silent. */
 export function latencyTone(latency: number): 'good' | 'mid' | 'bad' | 'none' {
   if (latency <= 0) return 'none'

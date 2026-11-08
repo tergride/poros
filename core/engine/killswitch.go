@@ -92,6 +92,7 @@ func (e *Engine) armKillSwitch() error {
 
 // holdLink makes link the block of this core and follows it; the caller holds ks.mu.
 func (e *Engine) holdLink(link GuardLink) {
+	log.Print("kill switch: the block is on")
 	e.ks.link = link
 	e.setKillSwitch(KillSwitchState{On: true})
 	go e.watchLink(link)
@@ -141,6 +142,7 @@ func (e *Engine) disarmKillSwitch() {
 	e.ks.mu.Unlock()
 	state := KillSwitchState{}
 	if link != nil {
+		log.Print("kill switch: turning the block off")
 		if err := link.Disarm(); err != nil {
 			log.Printf("kill switch: %v", err)
 			state = KillSwitchState{Error: ReasonKillSwitchFailed, ErrorText: err.Error()}

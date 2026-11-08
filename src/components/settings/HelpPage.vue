@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, RefreshCw, ScrollText, Zap } from '@lucide/vue'
+import { Download, FolderOpen, RefreshCw, ScrollText, Zap } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -14,6 +14,7 @@ import { useReason } from '@/composables/useReason'
 import { useSetting } from '@/composables/useSetting'
 import { useUpdates } from '@/composables/useUpdates'
 import { formatAgo } from '@/lib/format'
+import { appControls } from '@/platform'
 import { UpdateChecking, UpdateDownloading, UpdateReady } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
@@ -26,9 +27,11 @@ const router = useRouter()
 const { t, locale } = useI18n()
 const resetting = ref(false)
 const updateCheck = useSetting('updateCheck')
+const debugLog = useSetting('debugLog')
 const now = useClock(60_000)
 const reason = useReason()
 const attempt = useAttempt()
+const openLogs = () => attempt(() => appControls.openLogs())
 // Why "Restart and update" did not hand over to the updater; Poros runs on.
 const installFailure = ref('')
 
@@ -93,6 +96,10 @@ async function reset(): Promise<void> {
     </OptionRow>
     <OptionRow :title="t('settings.help.logs')" :hint="t('settings.help.logsHint')">
       <Button @click="ui.logs = true"><ScrollText />{{ t('settings.help.open') }}</Button>
+      <Button @click="openLogs"><FolderOpen />{{ t('settings.help.logsFolder') }}</Button>
+    </OptionRow>
+    <OptionRow :title="t('settings.help.debugLog')" :hint="t('settings.help.debugLogHint')">
+      <Switch v-model="debugLog" data-testid="debug-log" />
     </OptionRow>
     <OptionRow :title="t('settings.help.reset')" :hint="t('settings.help.resetHint')">
       <Button :disabled="resetting" @click="attempt(reset)"><RefreshCw :class="resetting && 'animate-spin'" />{{ t('settings.help.resetButton') }}</Button>

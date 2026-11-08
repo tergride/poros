@@ -2,11 +2,13 @@ package engine
 
 import (
 	"context"
+	"net"
 	"net/netip"
 	"sync"
 	"time"
 
 	"PorosCore/config"
+	"PorosCore/internal/boxbox"
 	"PorosCore/internal/boxmain"
 	"PorosCore/internal/netmon"
 	"PorosCore/internal/probe"
@@ -21,6 +23,9 @@ const (
 	latencyConcurrency = 10
 	// latencyBudget bounds a whole test of many servers.
 	latencyBudget = 3 * time.Minute
+	// pingFirst lets a new connection settle before its delay is measured, and pingInterval spaces the measures.
+	pingFirst    = 2 * time.Second
+	pingInterval = 30 * time.Second
 )
 
 type latencyTest struct {
@@ -98,14 +103,14 @@ func (e *Engine) TestServers(query ServersQuery) (any, error) {
 			}
 			in.Servers = append(in.Servers, server)
 		}
-		in.Resolved = resolveEach(ctx, hosts, !settings.IPv6)
+		in.Resolved = resolveEach(ctx, e.systemResolver(), hosts, !settings.IPv6)
 		e.runLatencyTest(ctx, in)
 	}()
 	return nil, nil
 }
 
 // resolveEach looks up what it can; a server whose name does not resolve fails its own test.
-func resolveEach(ctx context.Context, hosts []string, ipv4Only bool) map[string]netip.Addr {
+func resolveEach(ctx context.Context, resolver *net.Resolver, hosts []string, ipv4Only bool) map[string]netip.Addr {
 	resolved := map[string]netip.Addr{}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -123,7 +128,7 @@ func resolveEach(ctx context.Context, hosts []string, ipv4Only bool) map[string]
 			defer func() { <-slots }()
 			lookupCtx, cancel := context.WithTimeout(ctx, latencyTimeout+dohTimeout)
 			defer cancel()
-			if addr, err := lookupPast(lookupCtx, host, ipv4Only); err == nil {
+			if addr, err := lookupPast(lookupCtx, resolver, host, ipv4Only); err == nil {
 				mu.Lock()
 				resolved[host] = addr
 				mu.Unlock()
@@ -193,6 +198,34 @@ func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) {
 		report([]ServerLatency{{ServerID: result.Tag, Latency: latency}}, false)
 	})
 	report([]ServerLatency{}, true)
+}
+
+// pingConnection keeps the delay of the server in use current: now and then it measures through the running
+// connection, the way a delay test measures through each server, until ctx ends with the connection.
+func (e *Engine) pingConnection(ctx context.Context, box *boxbox.Box, serverID string) {
+	timer := time.NewTimer(pingFirst)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
+		latency := -1
+		probe.BatchURLTestTo(ctx, box, []string{config.TagProxy}, e.latencyURL, 1, false, latencyTimeout, func(result *probe.URLTestResult) {
+			if result.Error == nil {
+				latency = max(1, int(result.Duration.Milliseconds()))
+			}
+		})
+		if ctx.Err() != nil {
+			return
+		}
+		e.latency.mu.Lock()
+		e.latency.results[serverID] = latency
+		e.latency.mu.Unlock()
+		e.notify(EventServersTested, ServersTested{Results: []ServerLatency{{ServerID: serverID, Latency: latency}}})
+		timer.Reset(pingInterval)
+	}
 }
 
 func failedTags(tags []string) []ServerLatency {

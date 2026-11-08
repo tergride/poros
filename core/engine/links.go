@@ -34,7 +34,7 @@ func (e *Engine) ParseLink(p OutsideLink) (LinkInfo, error) {
 		if err != nil {
 			return LinkInfo{}, err
 		}
-		preset := PresetCopy{BasedOn: link.BasedOn, Name: link.Name, Sites: link.Sites, Apps: link.Apps, DNS: link.DNS}
+		preset := link.copy(link.Name)
 		return LinkInfo{Kind: LinkPreset, Preset: &preset}, nil
 	}
 	return LinkInfo{}, jsonrpc.Failed(ReasonInvalidLink, "unknown poros:// link")

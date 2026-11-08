@@ -96,6 +96,10 @@ export interface Settings {
    * user asks.
    */
   updateCheck: boolean;
+  /**
+   * DebugLog adds every connection and more of what the core does to the log; errors are always there.
+   */
+  debugLog: boolean;
 }
 /**
  * Subscription is a link from a provider and what its last update brought.
@@ -198,7 +202,8 @@ export interface ServerLatency {
   latency: number /* int */;
 }
 /**
- * ServersTested brings delay test results as they come; Done is the last report of a test.
+ * ServersTested brings delay test results as they come; Done is the last report of a test. The delay of the server
+ * in use comes now and then too while the connection runs, without Done.
  */
 export interface ServersTested {
   results: ServerLatency[];
@@ -346,10 +351,12 @@ export interface UpdateInstall {
   archive: string;
 }
 /**
- * IPInfo is what an outside service knows about an address.
+ * IPInfo is what outside services know about the addresses of a way out: IP is the IPv4 address, IPv6 the IPv6 one,
+ * either empty when the way out has none. The place and the provider are those of the IPv4 address when there is one.
  */
 export interface IPInfo {
   ip: string;
+  ipv6: string;
   /**
    * CountryCode is ISO 3166; the interface names the country.
    */
@@ -393,7 +400,7 @@ export const LeakFound = "leak";
 export interface NetworkState {
   checking: boolean;
   /**
-   * Direct is the address without the VPN; Proxy the one through it, empty without a connection.
+   * Direct are the addresses without the VPN; Proxy the ones through it, empty without a connection.
    */
   direct: IPInfo;
   proxy: IPInfo;
@@ -474,6 +481,11 @@ export interface PresetCopy {
    * DNS is the remote DNS server: "" keeps the preset's, otherwise https://, tls:// or a plain address.
    */
   dns: string;
+  /**
+   * Default is where the traffic goes that no entry and no inherited rule takes: proxy, direct or block. ""
+   * keeps the one of the built-in preset.
+   */
+  default: string;
   inherited: InheritedRule[];
 }
 /**

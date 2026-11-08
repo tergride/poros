@@ -7,7 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import PresetListsDialog from '@/components/settings/PresetListsDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
-import { Banner, Button, Input, Select } from '@/components/ui'
+import { Banner, Button, Input, Segmented, Select } from '@/components/ui'
 import { useConnect } from '@/composables/useConnect'
 import { sentence, useFailure } from '@/composables/useReason'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
@@ -244,6 +244,11 @@ async function save(): Promise<void> {
                 <Select v-model="entry.action" :options="actions" class="h-8 w-full" :aria-label="t('presetEdit.action')" />
                 <Button variant="ghost" size="icon-sm" :aria-label="t('common.remove')" @click="draft.apps.splice(i, 1)"><X /></Button>
               </div>
+            </SettingsCard>
+            <SettingsCard :title="t('presetEdit.default')" data-testid="preset-default">
+              <p class="mb-2 text-xs text-t3">{{ t('presetEdit.defaultHint') }}</p>
+              <Segmented v-model="draft.default" :options="actions" :aria-label="t('presetEdit.default')" />
+              <p v-if="draft.default === ActionBlock" class="mt-2 text-xs text-warn">{{ t('presetEdit.defaultBlocked') }}</p>
             </SettingsCard>
             <SettingsCard :title="t('presetEdit.dns')">
               <OptionRow :title="t('presetEdit.dnsServers')">

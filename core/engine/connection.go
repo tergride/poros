@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/netip"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,16 +35,24 @@ const (
 	// stopTimeout bounds the close of a connection; a TUN that does not let go in this time needs the core to exit.
 	stopTimeout = 10 * time.Second
 	// resolveTimeout bounds the lookup of the addresses Xray dials.
-	resolveTimeout  = 10 * time.Second
-	singBoxLogLevel = "warn"
+	resolveTimeout = 10 * time.Second
 )
 
+// singBoxLogLevel keeps the log to warnings and errors; the debug log adds every connection.
+func singBoxLogLevel(debug bool) string {
+	if debug {
+		return "info"
+	}
+	return "warn"
+}
+
 type connection struct {
-	// mu guards state and serial. A newer start or a stop raises serial, and a request that is no longer the last
-	// one leaves the state to the one that is.
-	mu     sync.Mutex
-	state  ConnectionState
-	serial uint64
+	// mu guards state, serial and cancelStart. A newer start or a stop raises serial and cancels the start that
+	// runs, and a request that is no longer the last one leaves the state to the one that is.
+	mu          sync.Mutex
+	state       ConnectionState
+	serial      uint64
+	cancelStart context.CancelFunc
 	// lifecycle runs one start or stop at a time and guards running.
 	lifecycle sync.Mutex
 	running   *runningConnection
@@ -58,7 +68,7 @@ type runningConnection struct {
 	iface       string
 	tun         bool
 	systemProxy bool
-	// stopTraffic ends the speed reports.
+	// stopTraffic ends the speed and delay reports.
 	stopTraffic context.CancelFunc
 }
 
@@ -89,20 +99,30 @@ func (e *Engine) setState(state ConnectionState) {
 // StartConnection connects with the current settings in the background; a running connection is replaced.
 func (e *Engine) StartConnection() (ConnectionState, error) {
 	e.conn.mu.Lock()
-	e.conn.serial++
-	serial := e.conn.serial
+	serial := e.nextRequest()
+	ctx, cancel := context.WithCancel(context.Background())
+	e.conn.cancelStart = cancel
 	e.setState(ConnectionState{State: ConnectionStarting})
 	state := e.conn.state
 	e.conn.mu.Unlock()
-	go e.runStart(serial)
+	go e.runStart(ctx, serial)
 	return state, nil
 }
 
-// StopConnection disconnects in the background.
+// nextRequest makes a request the last one and cancels a start that runs; the caller holds conn.mu.
+func (e *Engine) nextRequest() uint64 {
+	e.conn.serial++
+	if e.conn.cancelStart != nil {
+		e.conn.cancelStart()
+		e.conn.cancelStart = nil
+	}
+	return e.conn.serial
+}
+
+// StopConnection disconnects in the background; a start that runs is cancelled where it can be.
 func (e *Engine) StopConnection() (ConnectionState, error) {
 	e.conn.mu.Lock()
-	e.conn.serial++
-	serial := e.conn.serial
+	serial := e.nextRequest()
 	active := e.conn.state.State != ConnectionIdle
 	if active {
 		state := e.conn.state
@@ -116,7 +136,7 @@ func (e *Engine) StopConnection() (ConnectionState, error) {
 	return state, nil
 }
 
-func (e *Engine) runStart(serial uint64) {
+func (e *Engine) runStart(ctx context.Context, serial uint64) {
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
 	if !e.isLatest(serial) {
@@ -124,9 +144,19 @@ func (e *Engine) runStart(serial uint64) {
 	}
 	wasOn := e.KillSwitchState().On
 	stopErr := e.stopRunning()
-	state, err := e.startRunning()
+	began := time.Now()
+	state, err := e.startRunning(ctx)
 	if err == nil && stopErr != nil {
 		state.Error, state.ErrorText = ReasonStopTimeout, stopErr.Error()
+	}
+	took := time.Since(began).Round(time.Millisecond)
+	switch {
+	case err == nil:
+		log.Printf("connection: running in %s", took)
+	case ctx.Err() != nil:
+		log.Printf("connection: the start was cancelled after %s", took)
+	default:
+		log.Printf("connection: the start failed after %s: %v", took, err)
 	}
 	if err != nil {
 		state = ConnectionState{State: ConnectionIdle, Error: ReasonStartFailed, ErrorText: err.Error()}
@@ -154,6 +184,7 @@ func (e *Engine) runStop(serial uint64, changesNetwork bool) {
 	state := ConnectionState{State: ConnectionIdle}
 	if err := e.stopRunning(); err != nil {
 		state.Error, state.ErrorText = ReasonStopTimeout, err.Error()
+		log.Printf("connection: stop: %v", err)
 	}
 	e.afterStop()
 	e.conn.mu.Lock()
@@ -172,8 +203,9 @@ func (e *Engine) isLatest(serial uint64) bool {
 	return serial == e.conn.serial
 }
 
-// startRunning brings a connection up; the caller holds the lifecycle and nothing runs.
-func (e *Engine) startRunning() (ConnectionState, error) {
+// startRunning brings a connection up; the caller holds the lifecycle and nothing runs. Cancelling ctx stops it at
+// the next step: sing-box opening the TUN cannot be interrupted, so what it opened is closed again.
+func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	settings, err := e.Settings()
 	if err != nil {
 		return ConnectionState{}, err
@@ -198,6 +230,9 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 	if settings.Tun && !elevated() {
 		return ConnectionState{}, failure(ReasonNeedsElevation, "TUN needs administrator rights")
 	}
+	onXray := config.RunsOnXray(server, settings.RealityOnXray)
+	log.Printf("connection: starting %s on %s, TUN %t, System %t, kill switch %s, IPv6 %t, preset %s",
+		server.Type, coreName(onXray), settings.Tun, settings.SystemProxy, settings.KillSwitch, settings.IPv6, settings.Preset)
 	listen := "127.0.0.1"
 	if settings.AllowLAN {
 		listen = "0.0.0.0"
@@ -205,8 +240,18 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(e.mixedPort)))) {
 		return ConnectionState{}, failure(ReasonPortBusy, "port %d is taken by another program", e.mixedPort)
 	}
-	if settings.Tun && !waitTunGone(tunGoneTimeout) {
+	if settings.Tun && !waitTunGone(ctx, tunGoneTimeout) {
+		if ctx.Err() != nil {
+			return ConnectionState{}, ctx.Err()
+		}
 		return ConnectionState{}, failure(ReasonTunBusy, "Windows still holds the TUN adapter of an earlier start; try again, or restart Windows if it stays")
+	}
+	if settings.Tun {
+		if removed, err := removeStaleTun(); err != nil {
+			log.Printf("connection: the TUN adapter an earlier run left behind could not be removed: %v", err)
+		} else if removed {
+			log.Print("connection: removed the TUN adapter an earlier run left behind")
+		}
 	}
 	// The block comes first: nothing may go out past the connection while it comes up.
 	if settings.KillSwitch != KillSwitchOff {
@@ -223,9 +268,8 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 		DisableIPv6:   !settings.IPv6,
 		MixedPort:     e.mixedPort,
 		RealityOnXray: settings.RealityOnXray,
-		LogLevel:      singBoxLogLevel,
+		LogLevel:      singBoxLogLevel(settings.DebugLog),
 	}
-	onXray := config.RunsOnXray(server, settings.RealityOnXray)
 	if onXray {
 		if in.Bridge, err = newBridge(); err != nil {
 			return ConnectionState{}, err
@@ -234,9 +278,12 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 		if iface := netmon.DefaultInterface(); iface != nil && settings.Tun {
 			in.Interface = iface.Name
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
-		in.Resolved, err = resolveHosts(ctx, config.XrayHosts(server, settings.RealityOnXray), !settings.IPv6)
+		resolveCtx, cancel := context.WithTimeout(ctx, resolveTimeout)
+		in.Resolved, err = resolveHosts(resolveCtx, e.systemResolver(), config.XrayHosts(server, settings.RealityOnXray), !settings.IPv6)
 		cancel()
+		if ctx.Err() != nil {
+			return ConnectionState{}, ctx.Err()
+		}
 		if err != nil {
 			return ConnectionState{}, failure(ReasonStartFailed, "%v", err)
 		}
@@ -253,6 +300,9 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 		return ConnectionState{}, err
 	}
 
+	if ctx.Err() != nil {
+		return ConnectionState{}, ctx.Err()
+	}
 	running := &runningConnection{iface: in.Interface, tun: settings.Tun}
 	// Xray listens first: sing-box dials its bridge.
 	if configs.Xray != nil {
@@ -267,9 +317,21 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 	counter := &trafficCounter{}
 	// The counter joins before the box starts, so that it sees the first connection too.
 	trackTraffic := func(box *boxbox.Box) { box.Router().AppendTracker(counter) }
-	if running.box, running.cancel, err = boxmain.Create(singBox, trackTraffic); err != nil {
+	running.box, running.cancel, err = boxmain.Create(singBox, trackTraffic)
+	if err != nil && settings.Tun && tunFailed(err) && ctx.Err() == nil {
+		// Windows may have stalled on the adapter, as on bringing back one left behind: Wintun removes it on the
+		// failure, and a second try makes a new one.
+		log.Printf("connection: the TUN did not open, trying once more: %v", err)
+		if waitTunGone(ctx, tunGoneTimeout) {
+			running.box, running.cancel, err = boxmain.Create(singBox, trackTraffic)
+		}
+	}
+	if err != nil {
 		if running.xray != nil {
 			running.xray.Close()
+		}
+		if ctx.Err() != nil {
+			return ConnectionState{}, ctx.Err()
 		}
 		return ConnectionState{}, failure(ReasonStartFailed, "sing-box: %v", err)
 	}
@@ -278,11 +340,17 @@ func (e *Engine) startRunning() (ConnectionState, error) {
 	trafficCtx, stopTraffic := context.WithCancel(context.Background())
 	running.stopTraffic = stopTraffic
 	go e.reportTraffic(trafficCtx, counter)
+	go e.pingConnection(trafficCtx, running.box, settings.Server)
 
+	if ctx.Err() != nil {
+		_ = e.stopRunning()
+		return ConnectionState{}, ctx.Err()
+	}
 	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Since: e.now().UnixMilli()}
 	if settings.SystemProxy {
 		if err = e.applySystemProxy(); err != nil {
 			state.Error, state.ErrorText = ReasonSystemProxyFailed, err.Error()
+			log.Printf("connection: system proxy: %v", err)
 		}
 		// Apply may have set some connections before failing on others: Clear must still see them.
 		running.systemProxy = true
@@ -385,7 +453,7 @@ const tunGoneTimeout = 10 * time.Second
 
 // waitTunGone waits until no adapter has the name of Poros's TUN: sing-box would otherwise take over an adapter
 // that is about to disappear, with its routes still pointing into it.
-func waitTunGone(timeout time.Duration) bool {
+func waitTunGone(ctx context.Context, timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for {
 		if _, err := net.InterfaceByName(config.TunName); err != nil {
@@ -394,13 +462,30 @@ func waitTunGone(timeout time.Duration) bool {
 		if time.Now().After(deadline) {
 			return false
 		}
-		time.Sleep(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(250 * time.Millisecond):
+		}
 	}
+}
+
+// tunFailed tells a start that failed on the TUN, in the words of sing-box's tun inbound.
+func tunFailed(err error) bool {
+	text := strings.ToLower(err.Error())
+	return strings.Contains(text, "tun interface") || strings.Contains(text, "tun stack")
+}
+
+func coreName(onXray bool) string {
+	if onXray {
+		return "Xray"
+	}
+	return "sing-box"
 }
 
 func (e *Engine) closeConnection() error {
 	e.conn.mu.Lock()
-	e.conn.serial++
+	e.nextRequest()
 	e.conn.mu.Unlock()
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
@@ -450,10 +535,10 @@ func newBridge() (config.Bridge, error) {
 }
 
 // resolveHosts looks up the addresses Xray dials, preferring IPv4.
-func resolveHosts(ctx context.Context, hosts []string, ipv4Only bool) (map[string]netip.Addr, error) {
+func resolveHosts(ctx context.Context, resolver *net.Resolver, hosts []string, ipv4Only bool) (map[string]netip.Addr, error) {
 	resolved := make(map[string]netip.Addr, len(hosts))
 	for _, host := range hosts {
-		addr, err := lookupPast(ctx, host, ipv4Only)
+		addr, err := lookupPast(ctx, resolver, host, ipv4Only)
 		if err != nil {
 			return nil, err
 		}

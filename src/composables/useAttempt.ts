@@ -1,4 +1,5 @@
 import { useFailure } from '@/composables/useReason'
+import { logError } from '@/lib/logError'
 import { useUiStore } from '@/stores/ui'
 
 /**
@@ -12,6 +13,7 @@ export function useAttempt() {
     try {
       await action()
     } catch (error) {
+      logError('action failed', error)
       ui.notice = { tone: 'warn', text: failure(error) }
     }
   }

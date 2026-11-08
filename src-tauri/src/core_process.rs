@@ -141,9 +141,38 @@ impl Shared {
     }
 
     fn report(&self, status: CoreStatus) {
-        *self.status.lock().unwrap() = status.clone();
+        {
+            let mut current = self.status.lock().unwrap();
+            if current.state != status.state
+                || current.error != status.error
+                || current.reason != status.reason
+            {
+                crate::applog::write(&describe(&status));
+            }
+            *current = status.clone();
+        }
         self.sink.status(&status);
     }
+}
+
+/// A line of the log for a change of the core's state.
+fn describe(status: &CoreStatus) -> String {
+    let state = match status.state {
+        CoreState::Starting => "starting",
+        CoreState::Ready => "ready",
+        CoreState::Down => "stopped",
+    };
+    let mut line = format!("shell: the core is {state}");
+    if status.elevated {
+        line.push_str(", with administrator rights");
+    }
+    if let Some(reason) = status.reason {
+        line.push_str(&format!(" ({reason})"));
+    }
+    if let Some(error) = &status.error {
+        line.push_str(&format!(": {error}"));
+    }
+    line
 }
 
 #[derive(Clone)]

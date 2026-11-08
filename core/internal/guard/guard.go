@@ -15,7 +15,6 @@ import (
 	"net/netip"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"strings"
@@ -25,6 +24,8 @@ import (
 
 	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/logger"
+
+	corehost "PorosCore/internal/host"
 )
 
 const (
@@ -163,13 +164,12 @@ func clean(text string) string {
 	return strings.NewReplacer("\r", " ", "\n", " ").Replace(text)
 }
 
-// openLog keeps this guard's log and the previous one's.
+// openLog appends to the guards' log, so that a guard keeps what the ones before it wrote.
 func openLog(path string) *os.File {
 	if path == "" {
 		return nil
 	}
-	_ = os.Rename(path, strings.TrimSuffix(path, filepath.Ext(path))+".1"+filepath.Ext(path))
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	f, err := corehost.OpenLog(path)
 	if err != nil {
 		return nil
 	}

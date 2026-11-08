@@ -115,6 +115,7 @@ const defaultSettings: Settings = {
   killSwitch: KillSwitchOff,
   textSize: 'normal',
   updateCheck: true,
+  debugLog: false,
 }
 
 /** The servers every subscription of the stub core holds, with the delay a test gives them. */
@@ -143,7 +144,7 @@ const idle: ConnectionState = {
   errorText: '',
 }
 
-const noAddress = { ip: '', countryCode: '', city: '', isp: '', asn: 0 }
+const noAddress = { ip: '', ipv6: '', countryCode: '', city: '', isp: '', asn: 0 }
 
 const noBlock: KillSwitchState = { on: false, error: '', errorText: '' }
 
@@ -286,6 +287,7 @@ function encodeLink(copy: PresetCopy): string {
     sites: copy.sites,
     apps: copy.apps,
     dns: copy.dns,
+    default: copy.default,
   })
   const base64 = btoa(String.fromCharCode(...new TextEncoder().encode(data)))
   return presetLinkPrefix + base64.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
@@ -308,6 +310,7 @@ function decodeLink(link: string): PresetCopy {
       sites: (data.sites as PresetEntry[] | undefined) ?? [],
       apps: (data.apps as PresetEntry[] | undefined) ?? [],
       dns: String(data.dns ?? ''),
+      default: String(data.default ?? ''),
       inherited: [],
     }
   } catch {
@@ -420,9 +423,16 @@ export function createStubCore(): CoreClient {
       // Documentation addresses: the stub asks no outside service.
       network = {
         ...noCheck,
-        direct: { ip: '203.0.113.5', countryCode: 'RU', city: 'Moscow', isp: 'Home Telecom', asn: 64500 },
+        direct: { ip: '203.0.113.5', ipv6: '', countryCode: 'RU', city: 'Moscow', isp: 'Home Telecom', asn: 64500 },
         proxy: connected
-          ? { ip: '198.51.100.24', countryCode: 'DE', city: 'Frankfurt am Main', isp: 'Example Hosting', asn: 64501 }
+          ? {
+              ip: '198.51.100.24',
+              ipv6: settings.ipv6 ? '2001:db8:4000:5f:580:44c1:19ff:fe43' : '',
+              countryCode: 'DE',
+              city: 'Frankfurt am Main',
+              isp: 'Example Hosting',
+              asn: 64501,
+            }
           : noAddress,
         dns: connected ? [{ ip: '192.0.2.53', countryCode: 'DE', city: '', isp: 'Example DNS', asn: 64510, home: false }] : [],
         leak: connected ? LeakNone : '',
@@ -506,6 +516,9 @@ export function createStubCore(): CoreClient {
     if (!base) throw failed(ReasonUnknownPreset, `there is no built-in preset "${draft.basedOn}"`)
     checkEntries(draft.sites, looksLikeSite)
     checkEntries(draft.apps, looksLikeApp)
+    if (!['', ActionProxy, ActionDirect, ActionBlock].includes(draft.default)) {
+      throw failed(ReasonInvalidValue, `the default must be proxy, direct or block, not "${draft.default}"`)
+    }
     const copy = { ...draft, name, id: draft.id || String(nextId++), inherited: base.inherited }
     if (draft.id && !copies.some((c) => c.id === draft.id)) throw failed(ReasonNotFound, `there is no preset "${draft.id}"`)
     copies = draft.id ? copies.map((c) => (c.id === draft.id ? copy : c)) : [...copies, copy]
@@ -513,9 +526,9 @@ export function createStubCore(): CoreClient {
     return presetList().find((p) => p.id === copy.id)!
   }
   const copyOf = (id: string): PresetCopy => {
-    if (!id) return { id: '', basedOn: '', name: '', sites: [], apps: [], dns: '', inherited: foundation('')!.inherited }
+    if (!id) return { id: '', basedOn: '', name: '', sites: [], apps: [], dns: '', default: ActionProxy, inherited: foundation('')!.inherited }
     const base = builtins.find((b) => b.id === id)
-    if (base) return { id: '', basedOn: id, name: base.name, sites: [], apps: [], dns: '', inherited: base.inherited }
+    if (base) return { id: '', basedOn: id, name: base.name, sites: [], apps: [], dns: '', default: ActionProxy, inherited: base.inherited }
     const copy = copies.find((c) => c.id === id)
     if (!copy) throw failed(ReasonNotFound, `there is no preset "${id}"`)
     return structuredClone(copy)

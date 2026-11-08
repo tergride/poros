@@ -57,6 +57,8 @@ type Settings struct {
 	// UpdateCheck looks for a new Poros at launch and every 4 hours and downloads it; it installs only when the
 	// user asks.
 	UpdateCheck bool `json:"updateCheck"`
+	// DebugLog adds every connection and more of what the core does to the log; errors are always there.
+	DebugLog bool `json:"debugLog"`
 }
 
 // Subscription is a link from a provider and what its last update brought.
@@ -130,7 +132,8 @@ type ServerLatency struct {
 	Latency  int    `json:"latency"`
 }
 
-// ServersTested brings delay test results as they come; Done is the last report of a test.
+// ServersTested brings delay test results as they come; Done is the last report of a test. The delay of the server
+// in use comes now and then too while the connection runs, without Done.
 type ServersTested struct {
 	Results []ServerLatency `json:"results"`
 	Done    bool            `json:"done"`
@@ -226,9 +229,11 @@ type UpdateInstall struct {
 	Archive string `json:"archive"`
 }
 
-// IPInfo is what an outside service knows about an address.
+// IPInfo is what outside services know about the addresses of a way out: IP is the IPv4 address, IPv6 the IPv6 one,
+// either empty when the way out has none. The place and the provider are those of the IPv4 address when there is one.
 type IPInfo struct {
-	IP string `json:"ip"`
+	IP   string `json:"ip"`
+	IPv6 string `json:"ipv6"`
 	// CountryCode is ISO 3166; the interface names the country.
 	CountryCode string `json:"countryCode"`
 	City        string `json:"city"`
@@ -259,7 +264,7 @@ const (
 // NetworkState is what outside services saw at the last check.
 type NetworkState struct {
 	Checking bool `json:"checking"`
-	// Direct is the address without the VPN; Proxy the one through it, empty without a connection.
+	// Direct are the addresses without the VPN; Proxy the ones through it, empty without a connection.
 	Direct IPInfo      `json:"direct"`
 	Proxy  IPInfo      `json:"proxy"`
 	DNS    []DNSServer `json:"dns"`
@@ -315,7 +320,10 @@ type PresetCopy struct {
 	Sites   []PresetEntry `json:"sites"`
 	Apps    []PresetEntry `json:"apps"`
 	// DNS is the remote DNS server: "" keeps the preset's, otherwise https://, tls:// or a plain address.
-	DNS       string          `json:"dns"`
+	DNS string `json:"dns"`
+	// Default is where the traffic goes that no entry and no inherited rule takes: proxy, direct or block. ""
+	// keeps the one of the built-in preset.
+	Default   string          `json:"default"`
 	Inherited []InheritedRule `json:"inherited"`
 }
 

@@ -18,7 +18,7 @@ describe('the core store over a new core', () => {
     expect(core.servers.length).toBeGreaterThan(0)
     // What the old core measured, and a test it never finished.
     core.servers = core.servers.map((server, i) => ({ ...server, latency: 40 + i }))
-    core.network = { ...core.network, checkedAt: 1, direct: { ip: '192.0.2.1', countryCode: 'DE', city: '', isp: '', asn: 0 } }
+    core.network = { ...core.network, checkedAt: 1, direct: { ip: '192.0.2.1', ipv6: '', countryCode: 'DE', city: '', isp: '', asn: 0 } }
     core.testing = true
 
     await core.core().restart()

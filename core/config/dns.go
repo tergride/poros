@@ -35,7 +35,7 @@ func remoteDNS(text string) (option.DNSServerOptions, error) {
 	}
 	dialer := option.DialerOptions{Detour: TagProxy}
 	if net.ParseIP(host) == nil {
-		dialer.DomainResolver = &option.DomainResolveOptions{Server: dnsDirect}
+		dialer.DomainResolver = &option.DomainResolveOptions{Server: TagDNSDirect}
 	}
 	remote := option.RemoteDNSServerOptions{
 		RawLocalDNSServerOptions: option.RawLocalDNSServerOptions{DialerOptions: dialer},
@@ -47,7 +47,7 @@ func remoteDNS(text string) (option.DNSServerOptions, error) {
 		if path == "" || path == "/" {
 			path = remoteDNSPath
 		}
-		return option.DNSServerOptions{Type: C.DNSTypeHTTPS, Tag: dnsRemote, Options: &option.RemoteHTTPSDNSServerOptions{
+		return option.DNSServerOptions{Type: C.DNSTypeHTTPS, Tag: TagDNSRemote, Options: &option.RemoteHTTPSDNSServerOptions{
 			RemoteTLSDNSServerOptions: option.RemoteTLSDNSServerOptions{RemoteDNSServerOptions: remote},
 			Path:                      path,
 		}}, nil
@@ -55,12 +55,12 @@ func remoteDNS(text string) (option.DNSServerOptions, error) {
 		if parsed.Path != "" {
 			return option.DNSServerOptions{}, invalid
 		}
-		return option.DNSServerOptions{Type: C.DNSTypeTLS, Tag: dnsRemote, Options: &option.RemoteTLSDNSServerOptions{RemoteDNSServerOptions: remote}}, nil
+		return option.DNSServerOptions{Type: C.DNSTypeTLS, Tag: TagDNSRemote, Options: &option.RemoteTLSDNSServerOptions{RemoteDNSServerOptions: remote}}, nil
 	case "udp":
 		if parsed.Path != "" || net.ParseIP(host) == nil {
 			return option.DNSServerOptions{}, invalid
 		}
-		return option.DNSServerOptions{Type: C.DNSTypeUDP, Tag: dnsRemote, Options: &remote}, nil
+		return option.DNSServerOptions{Type: C.DNSTypeUDP, Tag: TagDNSRemote, Options: &remote}, nil
 	}
 	return option.DNSServerOptions{}, invalid
 }

@@ -56,6 +56,12 @@ export const appControls = {
     inTauri ? invoke('app_update', { reconnect }) : Promise.resolve(),
   /** Whether this start follows an update of a connected Poros; true once. */
   takeReconnect: (): Promise<boolean> => (inTauri ? invoke<boolean>('app_take_reconnect') : Promise.resolve(false)),
+  /** Writes a line to the log of the shell and the interface, next to the core's; nothing waits for it. */
+  log: (text: string): void => {
+    if (inTauri) void invoke('app_log', { text }).catch(() => undefined)
+  },
+  /** Opens the folder of the logs in Explorer. */
+  openLogs: (): Promise<void> => (inTauri ? invoke('app_open_logs') : Promise.resolve()),
 }
 
 export async function setTray(items: TrayItem[], tooltip: string): Promise<void> {

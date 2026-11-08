@@ -59,6 +59,7 @@ type copyRecord struct {
 	Sites   []PresetEntry `json:"sites"`
 	Apps    []PresetEntry `json:"apps"`
 	DNS     string        `json:"dns"`
+	Default string        `json:"default,omitempty"`
 	AddedAt int64         `json:"addedAt"`
 }
 
@@ -142,6 +143,9 @@ func (e *Engine) compose(record copyRecord) (config.Preset, error) {
 	}
 	preset := base.Preset
 	preset.Name, preset.DNS = record.Name, record.DNS
+	if record.Default != "" {
+		preset.DefaultOutbound = record.Default
+	}
 	head := 0
 	for head < len(base.Preset.Rules) && base.Preset.Rules[head].Action == config.ActionHijackDNS {
 		head++
@@ -286,10 +290,13 @@ func inherited(base config.Preset) []InheritedRule {
 func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
 	if id == "" {
 		base, _ := e.foundation("")
-		return PresetCopy{Sites: []PresetEntry{}, Apps: []PresetEntry{}, Inherited: inherited(base.Preset)}, nil
+		return PresetCopy{Sites: []PresetEntry{}, Apps: []PresetEntry{}, Default: base.Preset.DefaultOutbound, Inherited: inherited(base.Preset)}, nil
 	}
 	if base, ok := e.builtin(id); ok {
-		return PresetCopy{BasedOn: id, Name: base.Preset.Name, Sites: []PresetEntry{}, Apps: []PresetEntry{}, Inherited: inherited(base.Preset)}, nil
+		return PresetCopy{
+			BasedOn: id, Name: base.Preset.Name, Sites: []PresetEntry{}, Apps: []PresetEntry{},
+			Default: base.Preset.DefaultOutbound, Inherited: inherited(base.Preset),
+		}, nil
 	}
 	var record copyRecord
 	var found bool
@@ -309,7 +316,8 @@ func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
 	}
 	return PresetCopy{
 		ID: record.ID, BasedOn: record.BasedOn, Name: record.Name,
-		Sites: nonNil(record.Sites), Apps: nonNil(record.Apps), DNS: record.DNS, Inherited: inherited(base.Preset),
+		Sites: nonNil(record.Sites), Apps: nonNil(record.Apps), DNS: record.DNS,
+		Default: cmp.Or(record.Default, base.Preset.DefaultOutbound), Inherited: inherited(base.Preset),
 	}, nil
 }
 
@@ -324,10 +332,13 @@ func nonNil(entries []PresetEntry) []PresetEntry {
 func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	record := copyRecord{
 		ID: c.ID, BasedOn: c.BasedOn, Name: strings.TrimSpace(c.Name),
-		Sites: nonNil(c.Sites), Apps: nonNil(c.Apps), DNS: strings.TrimSpace(c.DNS),
+		Sites: nonNil(c.Sites), Apps: nonNil(c.Apps), DNS: strings.TrimSpace(c.DNS), Default: c.Default,
 	}
 	if record.Name == "" {
 		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "the preset needs a name")
+	}
+	if !slices.Contains([]string{"", ActionProxy, ActionDirect, ActionBlock}, record.Default) {
+		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "the default must be proxy, direct or block, not %q", record.Default)
 	}
 	if _, ok := e.foundation(record.BasedOn); !ok {
 		return Preset{}, jsonrpc.Failed(ReasonUnknownPreset, "there is no built-in preset %q", record.BasedOn)
@@ -414,6 +425,7 @@ type presetLink struct {
 	Sites   []PresetEntry `json:"sites,omitempty"`
 	Apps    []PresetEntry `json:"apps,omitempty"`
 	DNS     string        `json:"dns,omitempty"`
+	Default string        `json:"default,omitempty"`
 }
 
 const presetLinkKind = "poros-preset"
@@ -426,6 +438,7 @@ func (e *Engine) ExportPreset(id string) (PresetLink, error) {
 	}
 	data, err := json.Marshal(presetLink{
 		Kind: presetLinkKind, Version: 1, BasedOn: c.BasedOn, Name: c.Name, Sites: c.Sites, Apps: c.Apps, DNS: c.DNS,
+		Default: c.Default,
 	})
 	if err != nil {
 		return PresetLink{}, err
@@ -469,7 +482,12 @@ func (e *Engine) ImportPreset(p PresetLink) (Preset, error) {
 		}
 		name = fmt.Sprintf("%s %d", strings.TrimSpace(link.Name), n)
 	}
-	return e.SavePreset(PresetCopy{BasedOn: link.BasedOn, Name: name, Sites: link.Sites, Apps: link.Apps, DNS: link.DNS})
+	return e.SavePreset(link.copy(name))
+}
+
+// copy is the preset a link brings, under name.
+func (l presetLink) copy(name string) PresetCopy {
+	return PresetCopy{BasedOn: l.BasedOn, Name: name, Sites: l.Sites, Apps: l.Apps, DNS: l.DNS, Default: l.Default}
 }
 
 func decodePresetLink(text string) (presetLink, error) {

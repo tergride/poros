@@ -14,6 +14,9 @@ import (
 	"strings"
 	"testing"
 
+	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/option"
+
 	"PorosCore/internal/boxmain"
 	"PorosCore/internal/xray"
 	"PorosCore/profile"
@@ -265,12 +268,17 @@ func TestPresetRules(t *testing.T) {
 	}
 	golden(t, "singbox-preset-tun-lan.json", data)
 
+	if rule := configs.SingBox.Route.Rules[2]; rule.DefaultOptions.Action != C.RuleActionTypeResolve ||
+		rule.DefaultOptions.ResolveOptions.Strategy != option.DomainStrategy(C.DomainStrategyIPv4Only) {
+		t.Errorf("without IPv6 the names of connections resolve to IPv4 here, so that the server does not pick IPv6: %+v", rule)
+	}
+
 	excluded := tunExcluded(preset)
 	if slices.Contains(excluded, netip.MustParsePrefix("10.0.0.0/8")) || !slices.Contains(excluded, netip.MustParsePrefix("192.168.0.0/16")) {
 		t.Errorf("a range a rule sends to the server must reach the TUN, the rest stays out: %v", excluded)
 	}
 	dns := configs.SingBox.DNS.Rules
-	if len(dns) != 2 || dns[0].DefaultOptions.RouteOptions.Server != dnsDirect || dns[0].DefaultOptions.DomainSuffix[1] != ".xn--p1ai" ||
+	if len(dns) != 2 || dns[0].DefaultOptions.RouteOptions.Server != TagDNSDirect || dns[0].DefaultOptions.DomainSuffix[1] != ".xn--p1ai" ||
 		dns[1].DefaultOptions.ProcessName[0] != "steam.exe" {
 		t.Errorf("direct names and programs resolve with the system DNS, in rule order: %+v", dns)
 	}

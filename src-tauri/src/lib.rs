@@ -1,3 +1,4 @@
+mod applog;
 mod core_launch;
 mod core_process;
 mod data_dir;
@@ -135,6 +136,18 @@ fn updater_arguments(
 }
 
 /// Who opens `poros://` links now: this copy, another one or nobody.
+/// A line from the interface for the log: an error it showed the user.
+#[tauri::command]
+fn app_log(text: String) {
+    applog::write(&format!("interface: {text}"));
+}
+
+/// Opens the folder of the logs in Explorer.
+#[tauri::command]
+fn app_open_logs() -> Result<(), String> {
+    applog::open_dir()
+}
+
 #[tauri::command]
 fn url_scheme_get() -> Result<UrlScheme, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -181,7 +194,15 @@ async fn core_elevate(
         let _ = window;
         None
     };
-    core.elevate(handle).await
+    applog::write("shell: asking for administrator rights");
+    let result = core.elevate(handle).await;
+    if let Err(error) = &result {
+        applog::write(&format!(
+            "shell: the core did not get the rights: {}",
+            error.message
+        ));
+    }
+    result
 }
 
 /// Restarts the core without rights; it also brings back a core that gave up.
@@ -239,6 +260,7 @@ fn watch_page(app: AppHandle) {
             silent += 1;
             if silent >= 2 && !app.state::<Shell>().exiting.load(Ordering::Relaxed) {
                 eprintln!("poros: the window shows no working Poros page; loading it again");
+                applog::write("shell: the window shows no working Poros page; loading it again");
                 let _ = window.reload();
                 silent = 0;
             }
@@ -294,7 +316,10 @@ fn apply_settings(app: &AppHandle, settings: &Value) {
     };
     match system::apply(&exe, integration) {
         Ok(()) => *applied = Some(integration),
-        Err(error) => eprintln!("poros: autostart: {error}"),
+        Err(error) => {
+            eprintln!("poros: autostart: {error}");
+            applog::write(&format!("shell: autostart: {error}"));
+        }
     }
 }
 
@@ -380,6 +405,8 @@ pub fn run() {
             app_exit,
             app_take_reconnect,
             app_update,
+            app_log,
+            app_open_logs,
             take_links,
             url_scheme_get,
             url_scheme_set,
@@ -406,6 +433,16 @@ pub fn run() {
                 Ok(dir) => dir,
                 Err(dir) => fatal::data_dir_unwritable(&dir),
             };
+            applog::init(&data_dir);
+            applog::write(&format!(
+                "shell: Poros {} started{}",
+                if VERSION.is_empty() {
+                    "without a version"
+                } else {
+                    VERSION
+                },
+                if minimized { ", minimized" } else { "" }
+            ));
             app.manage(Shell {
                 close_to_tray: AtomicBool::new(false),
                 links: Mutex::new(Vec::new()),

@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"log"
 	"net/url"
 	"slices"
 	"strings"
@@ -301,6 +302,7 @@ func (e *Engine) UpdateSubscription(ctx context.Context, id string) (Subscriptio
 	}
 	now := e.now().UnixMilli()
 	if failure != nil {
+		log.Printf("subscription %s: the update failed (%s): %s", rec.ID, failure.reason, failure.text)
 		rec.CheckedAt, rec.Error, rec.ErrorText = now, failure.reason, failure.text
 		if err = e.store(rec, nil); err != nil {
 			return SubscriptionUpdate{}, err

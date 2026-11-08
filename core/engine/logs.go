@@ -16,7 +16,7 @@ const (
 	logTail = 256 << 10
 )
 
-// Logs gives the last lines of the core's log of this run.
+// Logs gives the last lines of the core's log, which goes on across runs.
 func (e *Engine) Logs() ([]string, error) {
 	file, err := os.Open(filepath.Join(e.dataDir, "logs", "core.log"))
 	if errors.Is(err, os.ErrNotExist) {
