@@ -596,7 +596,7 @@ export interface NetworkState {
   errorText: string;
 }
 /**
- * Preset is a routing preset: which traffic goes through the server.
+ * / Preset is a routing preset: which traffic goes through the server.
  */
 export interface Preset {
   id: string;
@@ -604,82 +604,202 @@ export interface Preset {
   builtin: boolean;
   /**
    * BasedOn is the built-in preset a copy started from, "" for a preset made from scratch, which runs on the
-   * standard rules: all traffic through the server. Sites and Apps count what the user's preset adds.
+   * standard rules: all traffic through the server.
    */
   basedOn: string;
-  sites: number /* int */;
-  apps: number /* int */;
+  /**
+   * Advanced is a preset of the advanced kind: more kinds of conditions, rules of several conditions, a direct DNS.
+   */
+  advanced: boolean;
+  /**
+   * Rules counts the user's rules of a copy, and all the rules of a built-in preset.
+   */
+  rules: number /* int */;
 }
 /**
- * Where the traffic of a preset entry goes.
+ * Where the traffic of a preset rule goes.
  */
 export const ActionProxy = "proxy";
 /**
- * Where the traffic of a preset entry goes.
+ * Where the traffic of a preset rule goes.
  */
 export const ActionDirect = "direct";
 /**
- * Where the traffic of a preset entry goes.
+ * Where the traffic of a preset rule goes.
  */
 export const ActionBlock = "block";
 /**
- * PresetEntry is a site, address or subnet, or a program, of a preset copy and where its traffic goes.
+ * CondSuffix is a domain with its subdomains.
  */
-export interface PresetEntry {
+export const CondSuffix = "suffix";
+/**
+ * CondIP is an address or a subnet of the destination.
+ */
+export const CondIP = "ip";
+/**
+ * CondProcessName is the file name of a program, CondProcessPath its full path.
+ */
+export const CondProcessName = "processName";
+/**
+ * Kinds of a condition of a preset rule. They are the prefixes of the lists window too, spelled as in Throne.
+ */
+export const CondProcessPath = "processPath";
+/**
+ * CondDomain and the kinds below belong to the advanced preset. CondDomain is a domain without its subdomains.
+ */
+export const CondDomain = "domain";
+/**
+ * Kinds of a condition of a preset rule. They are the prefixes of the lists window too, spelled as in Throne.
+ */
+export const CondKeyword = "keyword";
+/**
+ * Kinds of a condition of a preset rule. They are the prefixes of the lists window too, spelled as in Throne.
+ */
+export const CondRegex = "regex";
+/**
+ * Kinds of a condition of a preset rule. They are the prefixes of the lists window too, spelled as in Throne.
+ */
+export const CondProcessPathRegex = "processPathRegex";
+/**
+ * CondPort is a port or a range, 8000-8080.
+ */
+export const CondPort = "port";
+/**
+ * CondProtocol is a protocol sing-box recognizes: tls, http, quic, dns, stun, bittorrent, dtls, ssh, rdp, ntp.
+ */
+export const CondProtocol = "protocol";
+/**
+ * CondNetwork is tcp or udp, CondIPVersion 4 or 6.
+ */
+export const CondNetwork = "network";
+/**
+ * Kinds of a condition of a preset rule. They are the prefixes of the lists window too, spelled as in Throne.
+ */
+export const CondIPVersion = "ipVersion";
+/**
+ * CondSourceIP is an address or a subnet of the source, as of a device in the local network.
+ */
+export const CondSourceIP = "sourceIP";
+/**
+ * CondPrivate is the private networks; it takes no values and has no line in the lists window.
+ */
+export const CondPrivate = "private";
+/**
+ * RuleCondition is a condition of a preset rule: it matches by any of its values.
+ */
+export interface RuleCondition {
+  kind: string;
+  values: string[];
+}
+/**
+ * PresetRule is a rule of a user's preset: it matches when every condition does. A rule of a simple preset has one
+ * condition of a simple kind with one value.
+ */
+export interface PresetRule {
   /**
-   * Value is a domain (it takes its subdomains too), an address, a subnet, a program's file name or its full path.
+   * Name is the rule's own name in an advanced preset, "" for none.
    */
-  value: string;
+  name: string;
+  conditions: RuleCondition[];
+  /**
+   * Invert takes what the conditions do not match; Off keeps the rule out of the connection. Both are advanced.
+   */
+  invert: boolean;
+  off: boolean;
   action: string;
 }
 /**
- * InheritedRule is a rule a user's preset keeps from its built-in preset or the standard rules; the user's entries
- * come first.
+ * RuleProblem is the data of an error about a rule of a preset: which rule, condition and value.
+ */
+export interface RuleProblem {
+  /**
+   * Reason is invalid_entry for a value that is not of its kind, invalid_value for an unknown kind or action,
+   * no_condition, empty_condition for a condition without values, advanced_only for what a simple preset cannot
+   * have, and duplicate for a rule that repeats the rule Other.
+   */
+  reason: string;
+  /**
+   * Rule counts the rules from 0, Line the values of the condition of Kind from 1.
+   */
+  rule: number /* int */;
+  kind: string;
+  line: number /* int */;
+  value: string;
+  other: number /* int */;
+}
+/**
+ * InheritedRule is a rule a user's preset keeps from its built-in preset or the standard rules.
  */
 export interface InheritedRule {
   /**
    * Name is in English; the interface translates the names it knows.
    */
   name: string;
+  /**
+   * Action is proxy, direct or block, and dns for the rule of DNS queries, which Poros answers.
+   */
   action: string;
+  /**
+   * First is a rule before the user's rules; the others come after them.
+   */
+  first: boolean;
 }
 /**
- * PresetCopy is a user's preset as the editor shows it. An empty ID is a new preset, an empty BasedOn one made from
- * scratch.
+ * PresetCopy is a preset as the editor shows it. An empty ID is a new preset, an empty BasedOn one made from
+ * scratch. A built-in preset comes with Builtin set and no rules of its own; it is never saved.
  */
 export interface PresetCopy {
   id: string;
+  builtin: boolean;
   basedOn: string;
   name: string;
-  sites: PresetEntry[];
-  apps: PresetEntry[];
+  advanced: boolean;
+  rules: PresetRule[];
   /**
-   * DNS is the remote DNS server: "" keeps the preset's, otherwise https://, tls:// or a plain address.
+   * DNS is the remote DNS server: "" is the default one, otherwise https://, tls:// or a plain address.
    */
   dns: string;
   /**
-   * Default is where the traffic goes that no entry and no inherited rule takes: proxy, direct or block. ""
-   * keeps the one of the built-in preset.
+   * DirectDNS is the DNS server of direct traffic of an advanced preset: "" is the default one, local the
+   * system's, otherwise https://, tls:// or a plain address.
+   */
+  directDns: string;
+  /**
+   * Default is where the traffic goes that no rule takes: proxy, direct or block. "" keeps the one of the
+   * built-in preset.
    */
   default: string;
   inherited: InheritedRule[];
 }
 /**
- * PresetEntries are the sites and programs of a user's preset.
+ * DNSLocal is the system's DNS as the direct DNS of a preset.
  */
-export interface PresetEntries {
-  sites: PresetEntry[];
-  apps: PresetEntry[];
+export const DNSLocal = "local";
+/**
+ * PresetRules are the rules of a preset of a kind: presets.check gives them back checked, with every value as the
+ * core reads it and narrower rules over wider ones.
+ */
+export interface PresetRules {
+  advanced: boolean;
+  rules: PresetRule[];
 }
 /**
- * PresetLists are the entries of a preset as the lists window shows them: a text per action (proxy, direct, block)
- * with a line per site, address, subnet or program.
+ * PresetLists are the rules of a preset as the lists window shows them: a text per action (proxy, direct, block)
+ * with a line per rule, each starting with the prefix of its kind.
  */
 export interface PresetLists {
   lists: { [key: string]: string};
 }
 /**
- * PresetListProblem is a line of the lists window that became no entry.
+ * PresetListsInput is the text of the lists window and the rules it was written from.
+ */
+export interface PresetListsInput {
+  advanced: boolean;
+  rules: PresetRule[];
+  lists: { [key: string]: string};
+}
+/**
+ * PresetListProblem is a line of the lists window that became no rule.
  */
 export interface PresetListProblem {
   /**
@@ -689,18 +809,19 @@ export interface PresetListProblem {
   line: number /* int */;
   text: string;
   /**
-   * Reason is invalid_entry for a line that is no site, address, subnet or program, and duplicate for one already
-   * on the tab Other.
+   * Reason is no_prefix, advanced_only for a kind of the advanced preset in a simple one, invalid_entry for a value
+   * that is not of its kind, and duplicate for a line already on the tab Other.
    */
   reason: string;
   other: string;
 }
 /**
- * PresetListsRead is what the lists window holds: the entries of its lines, and the lines that are none.
+ * PresetListsRead is what the lists window holds: the rules with its lines, and the lines that are none. The rules
+ * the window has a line for keep their places, those without one stay, and new lines come last; then narrower rules
+ * rise over wider ones.
  */
 export interface PresetListsRead {
-  sites: PresetEntry[];
-  apps: PresetEntry[];
+  rules: PresetRule[];
   problems: PresetListProblem[];
 }
 /**
@@ -1105,12 +1226,12 @@ export const MethodServersResetTraffic = "servers.resetTraffic";
  */
 export const MethodServersClean = "servers.clean";
 /**
- * MethodPresetsGet gives a user's preset for the editor; for a built-in preset, a new copy of it, and for "" a
- * new preset from scratch.
+ * MethodPresetsGet gives a preset for the editor; a built-in one comes with Builtin set, to show and to copy.
  */
 export const MethodPresetsGet = "presets.get";
 /**
- * Methods the core answers.
+ * MethodPresetsSave stores a user's preset, a new one when it has no ID; its rules are checked as by
+ * MethodPresetsCheck.
  */
 export const MethodPresetsSave = "presets.save";
 /**
@@ -1126,8 +1247,13 @@ export const MethodPresetsExport = "presets.export";
  */
 export const MethodPresetsImport = "presets.import";
 /**
- * MethodPresetsWriteLists gives the entries of a preset as the text of the lists window, MethodPresetsReadLists
- * the entries of that text and the lines it could not read; neither saves anything.
+ * MethodPresetsCheck checks the rules of a preset without saving them; a wrong one fails with a RuleProblem as
+ * the data of the error.
+ */
+export const MethodPresetsCheck = "presets.check";
+/**
+ * MethodPresetsWriteLists gives the rules of a preset as the text of the lists window, MethodPresetsReadLists
+ * the rules with that text and the lines it could not read; neither saves anything.
  */
 export const MethodPresetsWriteLists = "presets.writeLists";
 /**
@@ -1323,9 +1449,26 @@ export const ReasonCheckOff = "check_off";
  */
 export const ReasonCheckFailed = "check_failed";
 /**
- * ReasonInvalidEntry is a preset entry that is no domain, address, subnet or program.
+ * ReasonInvalidEntry is a value of a preset rule that is not of its kind: no site, address, port or program.
  */
 export const ReasonInvalidEntry = "invalid_entry";
+/**
+ * ReasonNoPrefix is a line of the lists window without the prefix of its kind.
+ */
+export const ReasonNoPrefix = "no_prefix";
+/**
+ * ReasonAdvancedOnly is what only an advanced preset has, found in a simple one: a kind, several conditions or
+ * values, an inverted or switched-off rule, a direct DNS.
+ */
+export const ReasonAdvancedOnly = "advanced_only";
+/**
+ * ReasonNoCondition is a preset rule without conditions, ReasonEmptyCondition a condition without values.
+ */
+export const ReasonNoCondition = "no_condition";
+/**
+ * Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
+ */
+export const ReasonEmptyCondition = "empty_condition";
 /**
  * ReasonInvalidLink is a preset or poros:// link Poros cannot read.
  */

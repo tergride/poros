@@ -8,10 +8,6 @@ import type {
   NetworkState,
   Preset,
   PresetCopy,
-  PresetEntries,
-  PresetEntry,
-  PresetLists,
-  PresetListsRead,
   Server,
   ServerCheck,
   ServerForms,
@@ -59,6 +55,7 @@ import {
   MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
+  MethodPresetsCheck,
   MethodPresetsExport,
   MethodPresetsGet,
   MethodLinksParse,
@@ -98,7 +95,6 @@ import {
   ReasonCheckOff,
   SpeedTestFull,
   ReasonDuplicate,
-  ReasonInvalidEntry,
   LinkPreset,
   LinkSubscription,
   ReasonInvalidLink,
@@ -118,6 +114,7 @@ import {
   ReasonSingleServer,
   ReasonSubscriptionURL,
   ReasonPresetNameTaken,
+  ReasonAdvancedOnly,
   ReasonUnknownPreset,
   ReasonUpdateNotReady,
   ReasonUpdateUnavailable,
@@ -129,6 +126,7 @@ import {
 import type { CoreClient, CoreError, CoreEvent, CoreEvents, CoreMethod, CoreMethods, CoreStatus } from './core'
 import type { Profile } from './profile-types'
 import stubForms from './stubForms.json'
+import { checkRules, readLists, writeLists } from './stubPresets'
 
 const defaultSettings: Settings = {
   uiMode: 'simple',
@@ -194,9 +192,13 @@ const stubServers: (Omit<Server, 'id' | 'groupId' | 'latency'> & { measured: num
   { name: '🇫🇮 Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI', security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '', measured: -1 },
 ]
 
+const builtinRules: InheritedRule[] = [
+  { name: 'Route DNS', action: 'dns', first: true },
+  { name: 'Local networks', action: ActionDirect, first: false },
+]
 const builtins: (Preset & { inherited: InheritedRule[] })[] = [
-  { id: 'all', name: 'All traffic', builtin: true, basedOn: '', sites: 0, apps: 0, inherited: [{ name: 'Local networks', action: ActionDirect }] },
-  { id: 'hardened', name: 'Hardened bypass', builtin: true, basedOn: '', sites: 0, apps: 0, inherited: [{ name: 'Local networks', action: ActionDirect }] },
+  { id: 'all', name: 'All traffic', builtin: true, basedOn: '', advanced: false, rules: 2, inherited: builtinRules },
+  { id: 'hardened', name: 'Hardened bypass', builtin: true, basedOn: '', advanced: false, rules: 2, inherited: builtinRules },
 ]
 
 /** The standard rules of a preset made from scratch, as in core/engine/presets.go. */
@@ -254,108 +256,16 @@ function failed(reason: string, message: string): CoreError {
   return { code: 1, message, data: { reason } }
 }
 
-const actions: string[] = [ActionProxy, ActionDirect, ActionBlock]
-
-function checkEntries(entries: PresetEntry[], valid: (value: string) => boolean) {
-  for (const entry of entries) {
-    if (!actions.includes(entry.action)) throw failed(ReasonInvalidEntry, `"${entry.value}": unknown action`)
-    if (!valid(entry.value.trim())) throw failed(ReasonInvalidEntry, `"${entry.value}" is not valid here`)
-  }
-}
-
-const isAddress = (value: string) =>
-  /^[\d.]+(\/\d+)?$/.test(value) || /^\[?[0-9a-f]*:[0-9a-f]*:[0-9a-f:.]*\]?(\/\d+)?$/i.test(value)
-
-/** What a site entry matches, null for no site, address or subnet. */
-function siteKey(value: string): string | null {
-  const host = value
-    .trim()
-    .replace(/^\w+:\/\/([^/]+).*$/, '$1')
-    .toLowerCase()
-    .replace(/^\*\./, '')
-    .replace(/^\./, '')
-  return isAddress(host) || /^([\p{L}\p{N}_-]+\.)+[\p{L}\p{N}_-]+$/u.test(host) ? host : null
-}
-
-const looksLikeSite = (value: string) => siteKey(value) !== null
-
-const looksLikeApp = (value: string) => value !== '' && !/[*?"<>|]/.test(value)
-
-/** The prefixes of the lines of the lists window, as in core/engine/presetlists.go; its tabs are `actions`. */
-const sitePrefixes = ['domain', 'full', 'suffix', 'ip']
-const appPrefixes = ['processname', 'processpath']
-const unreadablePrefixes = ['keyword', 'regex', 'regexp', 'ruleset', 'geosite', 'geoip']
-
-function readListLine(text: string): { site: boolean; value: string; key: string } | null {
-  let value = text
-  let site: boolean | undefined
-  const colon = text.indexOf(':')
-  if (colon >= 0) {
-    const prefix = text.slice(0, colon).trim().toLowerCase()
-    if (unreadablePrefixes.includes(prefix)) return null
-    if (sitePrefixes.includes(prefix)) site = true
-    if (appPrefixes.includes(prefix)) site = false
-    if (site !== undefined) value = text.slice(colon + 1).trim()
-  }
-  site ??= value.includes('://') || isAddress(value) || !(/\.exe$/i.test(value) || value.includes('\\') || value.startsWith('/'))
-  if (site) {
-    const key = siteKey(value)
-    return key === null ? null : { site, value, key: `site ${key}` }
-  }
-  return looksLikeApp(value) ? { site, value, key: `app ${value.toLowerCase()}` } : null
-}
-
-function readLists(lists: Record<string, string> | null): PresetListsRead {
-  const read: PresetListsRead = { sites: [], apps: [], problems: [] }
-  for (const action of Object.keys(lists ?? {})) {
-    if (!actions.includes(action)) throw failed(ReasonInvalidValue, `there is no list "${action}"`)
-  }
-  const tabOf = new Map<string, string>()
-  for (const action of actions) {
-    for (const [i, line] of (lists?.[action] ?? '').split('\n').entries()) {
-      const text = line.trim()
-      if (text === '' || text.startsWith('#')) continue
-      const entry = readListLine(text)
-      if (!entry) {
-        read.problems.push({ action, line: i + 1, text, reason: ReasonInvalidEntry, other: '' })
-        continue
-      }
-      const other = tabOf.get(entry.key)
-      if (other === undefined) {
-        tabOf.set(entry.key, action)
-        const list = entry.site ? read.sites : read.apps
-        list.push({ value: entry.value, action })
-      } else if (other !== action) read.problems.push({ action, line: i + 1, text, reason: ReasonDuplicate, other })
-    }
-  }
-  return read
-}
-
-function writeLists({ sites, apps }: PresetEntries): PresetLists {
-  const lines = new Map<string, string[]>()
-  const write = (entries: PresetEntry[], site: boolean, prefix: string) => {
-    for (const entry of entries) {
-      if (!actions.includes(entry.action)) throw failed(ReasonInvalidEntry, `"${entry.value}": unknown action`)
-      let value = entry.value.trim()
-      const bare = readListLine(value)
-      if ((!bare || bare.site !== site || bare.value !== value) && readListLine(prefix + value)) value = prefix + value
-      lines.set(entry.action, [...(lines.get(entry.action) ?? []), value])
-    }
-  }
-  write(sites, true, 'domain:')
-  write(apps, false, 'processName:')
-  return { lists: Object.fromEntries(actions.map((action) => [action, (lines.get(action) ?? []).join('\n')])) }
-}
-
 function encodeLink(copy: PresetCopy): string {
   const data = JSON.stringify({
     kind: 'poros-preset',
     v: 1,
     based_on: copy.basedOn,
     name: copy.name,
-    sites: copy.sites,
-    apps: copy.apps,
+    advanced: copy.advanced,
+    rules: copy.rules,
     dns: copy.dns,
+    direct_dns: copy.directDns,
     default: copy.default,
   })
   return presetLinkPrefix + encodeBase64(data)
@@ -375,14 +285,17 @@ function decodeLink(link: string): PresetCopy {
     const base64 = text.slice(presetLinkPrefix.length).replaceAll('-', '+').replaceAll('_', '/')
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
     const data = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>
-    if (data.kind !== 'poros-preset' || data.v !== 1) throw new Error()
+    const known = ['kind', 'v', 'based_on', 'name', 'advanced', 'rules', 'dns', 'direct_dns', 'default']
+    if (data.kind !== 'poros-preset' || data.v !== 1 || Object.keys(data).some((key) => !known.includes(key))) throw new Error()
     return {
       id: '',
+      builtin: false,
       basedOn: String(data.based_on ?? ''),
       name: String(data.name ?? ''),
-      sites: (data.sites as PresetEntry[] | undefined) ?? [],
-      apps: (data.apps as PresetEntry[] | undefined) ?? [],
+      advanced: data.advanced === true,
+      rules: (data.rules as PresetCopy['rules'] | undefined) ?? [],
       dns: String(data.dns ?? ''),
+      directDns: String(data.direct_dns ?? ''),
       default: String(data.default ?? ''),
       inherited: [],
     }
@@ -614,7 +527,7 @@ export function createStubCore(): CoreClient {
   const chosenGroup = () => servers.find((s) => s.id === settings.server)?.groupId ?? ''
   const presetList = (): Preset[] => [
     ...builtins.map(({ inherited: _, ...preset }) => preset),
-    ...copies.map((c) => ({ id: c.id, name: c.name, builtin: false, basedOn: c.basedOn, sites: c.sites.length, apps: c.apps.length })),
+    ...copies.map((c) => ({ id: c.id, name: c.name, builtin: false, basedOn: c.basedOn, advanced: c.advanced, rules: c.rules.length })),
   ]
   const setStatus = (next: CoreStatus) => {
     status = next
@@ -736,29 +649,41 @@ export function createStubCore(): CoreClient {
     emit(EventSettingsChanged, { ...settings })
   }
   const saveCopy = (draft: PresetCopy): Preset => {
+    if (draft.builtin) throw failed(ReasonInvalidValue, 'a built-in preset does not change')
     const name = draft.name.trim()
     if (!name) throw failed(ReasonInvalidValue, 'the preset needs a name')
-    if (nameTaken(name, draft.id)) throw failed(ReasonPresetNameTaken, `there is a preset named "${name}" already`)
-    const base = foundation(draft.basedOn)
-    if (!base) throw failed(ReasonUnknownPreset, `there is no built-in preset "${draft.basedOn}"`)
-    checkEntries(draft.sites, looksLikeSite)
-    checkEntries(draft.apps, looksLikeApp)
     if (!['', ActionProxy, ActionDirect, ActionBlock].includes(draft.default)) {
       throw failed(ReasonInvalidValue, `the default must be proxy, direct or block, not "${draft.default}"`)
     }
-    const copy = { ...draft, name, id: draft.id || String(nextId++), inherited: base.inherited }
-    if (draft.id && !copies.some((c) => c.id === draft.id)) throw failed(ReasonNotFound, `there is no preset "${draft.id}"`)
+    if (!draft.advanced && draft.directDns.trim()) throw failed(ReasonAdvancedOnly, 'a simple preset has no direct DNS')
+    const base = foundation(draft.basedOn)
+    if (!base) throw failed(ReasonUnknownPreset, `there is no built-in preset "${draft.basedOn}"`)
+    const rules = checkRules({ advanced: draft.advanced, rules: draft.rules })
+    if (nameTaken(name, draft.id)) throw failed(ReasonPresetNameTaken, `there is a preset named "${name}" already`)
+    const old = copies.find((c) => c.id === draft.id)
+    if (draft.id && !old) throw failed(ReasonNotFound, `there is no preset "${draft.id}"`)
+    if (old?.advanced && !draft.advanced) throw failed(ReasonInvalidValue, 'an advanced preset does not become simple')
+    const copy: PresetCopy = {
+      ...draft,
+      name,
+      rules,
+      dns: draft.dns.trim(),
+      directDns: draft.directDns.trim(),
+      id: draft.id || String(nextId++),
+      inherited: base.inherited,
+    }
     copies = draft.id ? copies.map((c) => (c.id === draft.id ? copy : c)) : [...copies, copy]
     emit(EventPresetsChanged, presetList())
     return presetList().find((p) => p.id === copy.id)!
   }
   const copyOf = (id: string): PresetCopy => {
-    if (!id) return { id: '', basedOn: '', name: '', sites: [], apps: [], dns: '', default: ActionProxy, inherited: foundation('')!.inherited }
     const base = builtins.find((b) => b.id === id)
-    if (base) return { id: '', basedOn: id, name: base.name, sites: [], apps: [], dns: '', default: ActionProxy, inherited: base.inherited }
+    if (base) {
+      return { id, builtin: true, basedOn: '', name: base.name, advanced: false, rules: [], dns: '', directDns: '', default: ActionProxy, inherited: base.inherited }
+    }
     const copy = copies.find((c) => c.id === id)
     if (!copy) throw failed(ReasonNotFound, `there is no preset "${id}"`)
-    return structuredClone(copy)
+    return structuredClone({ ...copy, default: copy.default || ActionProxy })
   }
 
   const methods: { [M in CoreMethod]: (params: CoreMethods[M]['params']) => CoreMethods[M]['result'] } = {
@@ -1021,13 +946,18 @@ export function createStubCore(): CoreClient {
       }
       return null
     },
-    [MethodPresetsExport]: ({ id }) => ({ link: encodeLink(copyOf(id)) }),
+    [MethodPresetsExport]: ({ id }) => {
+      const copy = copyOf(id)
+      if (copy.builtin) throw failed(ReasonInvalidValue, 'a built-in preset is in every Poros already')
+      return { link: encodeLink(copy) }
+    },
     [MethodPresetsImport]: ({ link }) => {
       const copy = decodeLink(link)
       return saveCopy({ ...copy, name: freeName(copy.name) })
     },
-    [MethodPresetsWriteLists]: (entries) => writeLists(entries),
-    [MethodPresetsReadLists]: ({ lists }) => readLists(lists),
+    [MethodPresetsCheck]: (rules) => ({ advanced: rules.advanced, rules: checkRules(rules) }),
+    [MethodPresetsWriteLists]: (rules) => writeLists(rules),
+    [MethodPresetsReadLists]: (input) => readLists(input),
     [MethodLinksParse]: ({ link }) => parseOutsideLink(link),
     [MethodConnectionStart]: () => {
       setConnection({ ...idle, state: ConnectionStarting })

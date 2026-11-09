@@ -32,6 +32,7 @@ import {
   MethodKillSwitchState,
   MethodLinksParse,
   MethodNetworkCheck,
+  MethodPresetsCheck,
   MethodPresetsExport,
   MethodPresetsGet,
   MethodPresetsImport,
@@ -59,6 +60,7 @@ import {
   MethodUpdatesCheck,
   MethodUpdatesInstall,
   MethodUpdatesState,
+  ReasonAdvancedOnly,
   ReasonCheckOff,
   ReasonDuplicate,
   ReasonInvalidEntry,
@@ -66,6 +68,7 @@ import {
   ReasonInvalidValue,
   ReasonKillSwitchNeedsElevation,
   ReasonNeedsElevation,
+  ReasonNoPrefix,
   ReasonInvalidURL,
   ReasonNoServer,
   ReasonNoServers,
@@ -78,6 +81,10 @@ import {
   UpdateChecking,
   UpdateReady,
 } from './core-types'
+import type { PresetCopy, PresetRule } from './core-types'
+
+const rule = (kind: string, value: string, action: string): PresetRule => ({ name: '', conditions: [{ kind, values: [value] }], invert: false, off: false, action })
+const emptyCopy: PresetCopy = { id: '', builtin: false, basedOn: '', name: '', advanced: false, rules: [], dns: '', directDns: '', default: '', inherited: [] }
 
 async function reasonOf(promise: Promise<unknown>): Promise<string | undefined> {
   try {
@@ -354,27 +361,35 @@ ${vless('se.example.com', 'Sweden')}` })
 
   it('keeps preset copies by the rules of the engine', async () => {
     const core = createStubCore()
-    const draft = await core.call(MethodPresetsGet, { id: 'all' })
-    expect(draft).toMatchObject({ id: '', basedOn: 'all', inherited: [{ action: 'direct' }] })
-    expect(
-      await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'Home', sites: [{ value: 'not a site', action: 'proxy' }] })),
-    ).toBe(ReasonInvalidEntry)
+    const shown = await core.call(MethodPresetsGet, { id: 'all' })
+    expect(shown).toMatchObject({ id: 'all', builtin: true, rules: [], inherited: [{ action: 'dns', first: true }, { action: 'direct' }] })
+    expect(await reasonOf(core.call(MethodPresetsSave, { ...shown, name: 'Mine' }))).toBe(ReasonInvalidValue)
+    const draft = { ...shown, id: '', builtin: false, basedOn: 'all', name: 'Home' }
+    const bad = await core.call(MethodPresetsSave, { ...draft, rules: [rule('ip', '10.8.0.0/33', 'direct')] }).catch((error: unknown) => error)
+    expect(isCoreError(bad) && bad.data).toMatchObject({ reason: ReasonInvalidEntry, rule: 0, kind: 'ip', line: 1, value: '10.8.0.0/33' })
+    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, rules: [rule('port', '443', 'direct')] }))).toBe(ReasonAdvancedOnly)
     const saved = await core.call(MethodPresetsSave, {
       ...draft,
-      name: 'Home',
-      sites: [{ value: 'example.org', action: 'block' }],
-      apps: [{ value: 'steam.exe', action: 'direct' }],
+      rules: [rule('suffix', 'example.org', 'block'), rule('suffix', 'https://Ads.Example.org/x', 'block'), rule('processName', 'steam', 'direct')],
     })
-    expect(saved).toMatchObject({ builtin: false, basedOn: 'all', sites: 1, apps: 1 })
+    expect(saved).toMatchObject({ builtin: false, basedOn: 'all', advanced: false, rules: 3 })
+    // As in the engine: values as the core reads them, and a narrower rule over a wider one.
+    const stored = await core.call(MethodPresetsGet, { id: saved.id })
+    expect(stored.rules.map((r) => r.conditions[0]!.values[0])).toEqual(['ads.example.org', 'example.org', 'steam.exe'])
 
     const settings = await core.call(MethodSettingsGet)
     await core.call(MethodSettingsSet, { ...settings, preset: saved.id })
     const { link } = await core.call(MethodPresetsExport, { id: saved.id })
     const imported = await core.call(MethodPresetsImport, { link })
     // As in the engine, a name is taken once: the imported copy gets a number, a second save is refused.
-    expect(imported).toMatchObject({ name: 'Home 2', sites: 1, apps: 1 })
+    expect(imported).toMatchObject({ name: 'Home 2', rules: 3 })
     expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: ' home ' }))).toBe(ReasonPresetNameTaken)
     expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'All traffic' }))).toBe(ReasonPresetNameTaken)
+
+    // An advanced preset never becomes simple again.
+    const advanced = await core.call(MethodPresetsSave, { ...stored, advanced: true })
+    expect(advanced.advanced).toBe(true)
+    expect(await reasonOf(core.call(MethodPresetsSave, { ...stored, advanced: false }))).toBe(ReasonInvalidValue)
 
     await core.call(MethodPresetsRemove, { id: saved.id })
     expect((await core.call(MethodSettingsGet)).preset).toBe('all')
@@ -383,9 +398,7 @@ ${vless('se.example.com', 'Sweden')}` })
 
   it('makes a preset from scratch that has no base and falls back to the standard one', async () => {
     const core = createStubCore()
-    const draft = await core.call(MethodPresetsGet, { id: '' })
-    expect(draft).toMatchObject({ basedOn: '', name: '', inherited: [{ action: 'direct' }] })
-    const saved = await core.call(MethodPresetsSave, { ...draft, name: 'Work' })
+    const saved = await core.call(MethodPresetsSave, { ...emptyCopy, name: 'Work' })
     expect(saved).toMatchObject({ builtin: false, basedOn: '' })
     const settings = await core.call(MethodSettingsGet)
     await core.call(MethodSettingsSet, { ...settings, preset: saved.id })
@@ -393,49 +406,52 @@ ${vless('se.example.com', 'Sweden')}` })
     expect((await core.call(MethodSettingsGet)).preset).toBe('all')
   })
 
-  it('reads the lists window as the engine does', async () => {
+  it('checks rules and reads the lists window as the engine does', async () => {
     const core = createStubCore()
+    const checked = await core.call(MethodPresetsCheck, {
+      advanced: true,
+      rules: [rule('suffix', 'example.com', 'proxy'), rule('ip', '10.0.0.0/8', 'direct'), rule('ip', '10.1.2.3', 'block'), rule('port', '8000:9000', 'direct')],
+    })
+    expect(checked.rules.map((r) => r.conditions[0]!.values[0])).toEqual(['example.com', '10.1.2.3', '10.0.0.0/8', '8000-9000'])
+    const repeated = await core.call(MethodPresetsCheck, { advanced: false, rules: [rule('suffix', 'example.com', 'proxy'), rule('suffix', 'Example.com', 'block')] }).catch((error: unknown) => error)
+    expect(isCoreError(repeated) && repeated.data).toMatchObject({ reason: ReasonDuplicate, rule: 1, other: 0 })
+
     const read = await core.call(MethodPresetsReadLists, {
+      advanced: false,
+      rules: [],
       lists: {
-        proxy: 'video.example.com\r\n# work\n\nhttps://Mail.example.org/inbox\nnot a site\nDOMAIN:media.example.net\nvideo.example.com',
-        direct: '192.168.50.0/24\nip:203.0.113.7\nsteam.exe\nC:\\Games\\game.exe\nprocessName:steam\n*.video.example.com',
-        block: '*.ads.example\ngeosite:category-ads\n*.\nSTEAM.EXE',
+        proxy: 'suffix:video.example.com\r\n# work\n\nsuffix:https://Mail.example.org/inbox\nmedia.example.net\ndomain:exact.example',
+        direct: 'ip:192.168.50.0/24\nprocessName:steam\nprocessPath:C:\\Games\\game.exe\nsuffix:*.video.example.com',
+        block: 'suffix:*.ads.example\ngeosite:category-ads\nsuffix:*.\nprocessName:STEAM.EXE',
       },
     })
-    expect(read.sites.map((e) => `${e.action} ${e.value}`)).toEqual([
-      'proxy video.example.com',
-      'proxy https://Mail.example.org/inbox',
-      'proxy media.example.net',
-      'direct 192.168.50.0/24',
-      'direct 203.0.113.7',
-      'block *.ads.example',
+    expect(read.rules.map((r) => `${r.action} ${r.conditions[0]!.kind}:${r.conditions[0]!.values[0]}`)).toEqual([
+      'proxy suffix:video.example.com',
+      'proxy suffix:mail.example.org',
+      'direct ip:192.168.50.0/24',
+      'direct processName:steam.exe',
+      'direct processPath:C:\\Games\\game.exe',
+      'block suffix:ads.example',
     ])
-    expect(read.apps.map((e) => `${e.action} ${e.value}`)).toEqual(['direct steam.exe', 'direct C:\\Games\\game.exe', 'direct steam'])
     expect(read.problems).toEqual([
-      { action: 'proxy', line: 5, text: 'not a site', reason: ReasonInvalidEntry, other: '' },
-      { action: 'direct', line: 6, text: '*.video.example.com', reason: ReasonDuplicate, other: 'proxy' },
-      { action: 'block', line: 2, text: 'geosite:category-ads', reason: ReasonInvalidEntry, other: '' },
-      { action: 'block', line: 3, text: '*.', reason: ReasonInvalidEntry, other: '' },
-      { action: 'block', line: 4, text: 'STEAM.EXE', reason: ReasonDuplicate, other: 'direct' },
+      { action: 'proxy', line: 5, text: 'media.example.net', reason: ReasonNoPrefix, other: '' },
+      { action: 'proxy', line: 6, text: 'domain:exact.example', reason: ReasonAdvancedOnly, other: '' },
+      { action: 'direct', line: 4, text: 'suffix:*.video.example.com', reason: ReasonDuplicate, other: 'proxy' },
+      { action: 'block', line: 2, text: 'geosite:category-ads', reason: ReasonNoPrefix, other: '' },
+      { action: 'block', line: 3, text: 'suffix:*.', reason: ReasonInvalidEntry, other: '' },
+      { action: 'block', line: 4, text: 'processName:STEAM.EXE', reason: ReasonDuplicate, other: 'direct' },
     ])
-    expect(await reasonOf(core.call(MethodPresetsReadLists, { lists: { warp: '' } }))).toBe(ReasonInvalidValue)
+    expect(await reasonOf(core.call(MethodPresetsReadLists, { advanced: false, rules: [], lists: { warp: '' } }))).toBe(ReasonInvalidValue)
 
-    const entries = {
-      sites: [
-        { value: 'example.org', action: 'block' },
-        { value: 'setup.exe', action: 'proxy' },
-      ],
-      apps: [
-        { value: 'steam', action: 'direct' },
-        { value: 'steam.exe', action: 'direct' },
-      ],
-    }
-    const lists = await core.call(MethodPresetsWriteLists, entries)
-    expect(lists.lists).toEqual({ proxy: 'domain:setup.exe', direct: 'processName:steam\nsteam.exe', block: 'example.org' })
-    const back = await core.call(MethodPresetsReadLists, lists)
-    expect(back).toEqual({ sites: [entries.sites[1], entries.sites[0]], apps: entries.apps, problems: [] })
+    // A rule with a line keeps its place; one of several conditions stays out of the window and in place.
+    const games = { ...rule('processName', 'game.exe', 'direct'), name: 'Games' }
+    games.conditions.push({ kind: 'network', values: ['udp'] })
+    const rules = [rule('suffix', 'example.org', 'block'), games, rule('ip', '10.0.0.0/8', 'direct')]
+    const lists = await core.call(MethodPresetsWriteLists, { advanced: true, rules })
+    expect(lists.lists).toEqual({ proxy: '', direct: 'ip:10.0.0.0/8', block: 'suffix:example.org' })
+    const back = await core.call(MethodPresetsReadLists, { advanced: true, rules, lists: { ...lists.lists, proxy: 'suffix:x.example.org' } })
+    expect(back.rules.map((r) => r.conditions[0]!.values[0])).toEqual(['x.example.org', 'example.org', 'game.exe', '10.0.0.0/8'])
   })
-
   it('reads poros:// links as the engine does and adds nothing', async () => {
     const core = createStubCore()
     const encode = (text: string) => btoa(text).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
@@ -445,8 +461,7 @@ ${vless('se.example.com', 'Sweden')}` })
       name: 'My VPN',
     })
 
-    const draft = await core.call(MethodPresetsGet, { id: 'all' })
-    const saved = await core.call(MethodPresetsSave, { ...draft, name: 'Home', dns: 'tls://1.1.1.1' })
+    const saved = await core.call(MethodPresetsSave, { ...emptyCopy, basedOn: 'all', name: 'Home', dns: 'tls://1.1.1.1' })
     const { link } = await core.call(MethodPresetsExport, { id: saved.id })
     const info = await core.call(MethodLinksParse, { link })
     expect(info).toMatchObject({ kind: LinkPreset, preset: { name: 'Home', basedOn: 'all', dns: 'tls://1.1.1.1' } })

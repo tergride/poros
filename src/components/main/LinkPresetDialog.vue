@@ -30,12 +30,13 @@ const preset = computed(() => ui.linkPreset?.preset)
 const summary = computed(() => {
   const p = preset.value
   if (!p) return ''
-  const added = { sites: p.sites.length, apps: p.apps.length }
+  const rules = t('presets.rules', { n: p.rules.length }, p.rules.length)
   const base = te(`presets.name.${p.basedOn}`) ? t(`presets.name.${p.basedOn}`) : p.basedOn
-  const parts = [p.basedOn ? `${t('presets.copyOf', { base })}: ${t('presets.added', added)}.` : `${t('presets.addedAlone', added)}.`]
+  const parts = [`${p.basedOn ? t('presets.copyOf', { base }) : t('presets.alone')}: ${rules}.`]
+  if (p.advanced) parts.push(t('linkPreset.advanced'))
   // A link that sends the rest past the server or blocks it says so: the user should know before adding it.
   if (p.default && p.default !== ActionProxy) parts.push(t(`linkPreset.default.${p.default}`))
-  if (p.dns) parts.push(t('linkPreset.dns'))
+  if (p.dns || p.directDns) parts.push(t('linkPreset.dns'))
   return parts.join(' ')
 })
 

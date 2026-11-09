@@ -1,14 +1,13 @@
 package engine
 
 import (
+	"bytes"
 	"cmp"
 	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/netip"
-	"net/url"
 	"slices"
 	"strings"
 
@@ -50,21 +49,22 @@ func builtinPresets() ([]presetRecord, error) {
 // and local networks direct.
 const standardPreset = "all"
 
-// copyRecord is a user's preset as stored: the entries the user added, in order. BasedOn is the built-in preset it
-// is a copy of, "" for one made from scratch.
+// copyRecord is a user's preset as stored: its own rules in the order they are checked. BasedOn is the built-in
+// preset it is a copy of, "" for one made from scratch.
 type copyRecord struct {
-	ID      string        `json:"id"`
-	BasedOn string        `json:"basedOn"`
-	Name    string        `json:"name"`
-	Sites   []PresetEntry `json:"sites"`
-	Apps    []PresetEntry `json:"apps"`
-	DNS     string        `json:"dns"`
-	Default string        `json:"default,omitempty"`
-	AddedAt int64         `json:"addedAt"`
+	ID        string       `json:"id"`
+	BasedOn   string       `json:"basedOn"`
+	Name      string       `json:"name"`
+	Advanced  bool         `json:"advanced"`
+	Rules     []PresetRule `json:"rules"`
+	DNS       string       `json:"dns"`
+	DirectDNS string       `json:"directDns"`
+	Default   string       `json:"default,omitempty"`
+	AddedAt   int64        `json:"addedAt"`
 }
 
 func (r copyRecord) view() Preset {
-	return Preset{ID: r.ID, Name: r.Name, BasedOn: r.BasedOn, Sites: len(r.Sites), Apps: len(r.Apps)}
+	return Preset{ID: r.ID, Name: r.Name, BasedOn: r.BasedOn, Advanced: r.Advanced, Rules: len(r.Rules)}
 }
 
 // foundation is the built-in preset whose rules a user's preset adds to.
@@ -99,6 +99,17 @@ func (e *Engine) copies() (list []copyRecord, err error) {
 	return list, err
 }
 
+func (e *Engine) copyRecord(id string) (copyRecord, bool, error) {
+	var record copyRecord
+	var found bool
+	err := e.db.View(func(tx *bbolt.Tx) error {
+		var err error
+		found, err = getJSON(tx, bucketPresets, []byte(id), &record)
+		return err
+	})
+	return record, found, err
+}
+
 // Presets lists the built-in presets, then the user's copies in the order they were made.
 func (e *Engine) Presets() ([]Preset, error) {
 	copies, err := e.copies()
@@ -107,7 +118,7 @@ func (e *Engine) Presets() ([]Preset, error) {
 	}
 	views := make([]Preset, 0, len(e.presets)+len(copies))
 	for _, record := range e.presets {
-		views = append(views, Preset{ID: record.ID, Name: record.Preset.Name, Builtin: true})
+		views = append(views, Preset{ID: record.ID, Name: record.Preset.Name, Builtin: true, Rules: len(record.Preset.Rules)})
 	}
 	for _, record := range copies {
 		views = append(views, record.view())
@@ -120,13 +131,7 @@ func (e *Engine) preset(id string) (config.Preset, bool, error) {
 	if record, ok := e.builtin(id); ok {
 		return record.Preset, true, nil
 	}
-	var record copyRecord
-	var found bool
-	err := e.db.View(func(tx *bbolt.Tx) error {
-		var err error
-		found, err = getJSON(tx, bucketPresets, []byte(id), &record)
-		return err
-	})
+	record, found, err := e.copyRecord(id)
 	if err != nil || !found {
 		return config.Preset{}, false, err
 	}
@@ -134,8 +139,17 @@ func (e *Engine) preset(id string) (config.Preset, bool, error) {
 	return preset, err == nil, err
 }
 
-// compose puts a copy together: the DNS rules of its base first, then the user's entries, narrower ones first, then
-// the rest of the base. The first rule that matches decides, so the user's entries win over the base.
+// head counts the rules of a built-in preset that come before the user's: those of DNS queries.
+func head(base config.Preset) int {
+	n := 0
+	for n < len(base.Rules) && base.Rules[n].Action == config.ActionHijackDNS {
+		n++
+	}
+	return n
+}
+
+// compose puts a copy together: the DNS rules of its base first, then the user's rules that are on, then the rest of
+// the base. The first rule that matches decides, so the user's rules win over the base.
 func (e *Engine) compose(record copyRecord) (config.Preset, error) {
 	base, ok := e.foundation(record.BasedOn)
 	if !ok {
@@ -143,168 +157,56 @@ func (e *Engine) compose(record copyRecord) (config.Preset, error) {
 	}
 	preset := base.Preset
 	preset.Name, preset.DNS = record.Name, record.DNS
+	if record.Advanced && record.DirectDNS != DNSLocal {
+		preset.DirectDNS = record.DirectDNS
+	}
 	if record.Default != "" {
 		preset.DefaultOutbound = record.Default
 	}
-	head := 0
-	for head < len(base.Preset.Rules) && base.Preset.Rules[head].Action == config.ActionHijackDNS {
-		head++
-	}
 	var own []config.Rule
-	for _, entry := range record.Sites {
-		rule, err := siteRule(entry)
-		if err != nil {
-			return config.Preset{}, err
+	for _, rule := range record.Rules {
+		if !rule.Off {
+			own = append(own, configRule(rule))
 		}
-		own = append(own, rule)
 	}
-	for _, entry := range record.Apps {
-		rule, err := appRule(entry)
-		if err != nil {
-			return config.Preset{}, err
-		}
-		own = append(own, rule)
-	}
-	slices.SortStableFunc(own, func(a, b config.Rule) int {
-		groupA, widthA := ruleWidth(a)
-		groupB, widthB := ruleWidth(b)
-		return cmp.Or(cmp.Compare(groupA, groupB), cmp.Compare(widthA, widthB))
-	})
-	preset.Rules = slices.Concat(base.Preset.Rules[:head], own, base.Preset.Rules[head:])
+	n := head(base.Preset)
+	preset.Rules = slices.Concat(base.Preset.Rules[:n], own, base.Preset.Rules[n:])
 	return preset, preset.Validate()
 }
 
-// ruleWidth orders the user's entries so that the narrower one decides wherever two match: a subdomain before its
-// domain, an address or a smaller subnet before a larger one, a program's path before its name. Domains, addresses
-// and programs keep their groups, and entries alike keep the user's order.
-func ruleWidth(rule config.Rule) (group, width int) {
-	switch {
-	case len(rule.DomainSuffix) > 0:
-		return 0, -strings.Count(rule.DomainSuffix[0], ".")
-	case len(rule.IPCIDR) > 0:
-		if prefix, err := netip.ParsePrefix(rule.IPCIDR[0]); err == nil {
-			return 1, -prefix.Bits()
-		}
-		if addr, err := netip.ParseAddr(rule.IPCIDR[0]); err == nil {
-			return 1, -addr.BitLen()
-		}
-		return 1, 0
-	case len(rule.ProcessPath) > 0:
-		return 2, 0
-	default:
-		return 3, 0
-	}
-}
-
-func entryAction(entry PresetEntry, rule *config.Rule) error {
-	switch entry.Action {
-	case ActionProxy, ActionDirect:
-		rule.Action, rule.Outbound = config.ActionRoute, entry.Action
-	case ActionBlock:
-		rule.Action = config.ActionReject
-	default:
-		return jsonrpc.Failed(ReasonInvalidEntry, "%q: the action must be proxy, direct or block, not %q", entry.Value, entry.Action)
-	}
-	return nil
-}
-
-// siteRule reads what a user types for a site: a domain with its subdomains, a link to it, an address or a subnet.
-func siteRule(entry PresetEntry) (config.Rule, error) {
-	rule := config.Rule{Name: entry.Value}
-	if err := entryAction(entry, &rule); err != nil {
-		return rule, err
-	}
-	value := strings.TrimSpace(entry.Value)
-	if strings.Contains(value, "://") {
-		if parsed, err := url.Parse(value); err == nil {
-			value = parsed.Hostname()
-		}
-	}
-	value = strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(value), "*."), ".")
-	if prefix, err := netip.ParsePrefix(value); err == nil {
-		rule.IPCIDR = []string{prefix.Masked().String()}
-		return rule, nil
-	}
-	if addr, err := netip.ParseAddr(strings.Trim(value, "[]")); err == nil {
-		rule.IPCIDR = []string{addr.Unmap().String()}
-		return rule, nil
-	}
-	if !isDomain(value) {
-		return rule, jsonrpc.Failed(ReasonInvalidEntry, "%q is no site, address or subnet", entry.Value)
-	}
-	rule.DomainSuffix = []string{value}
-	return rule, nil
-}
-
-func isDomain(value string) bool {
-	if value == "" || len(value) > 253 || !strings.Contains(value, ".") {
-		return false
-	}
-	for label := range strings.SplitSeq(value, ".") {
-		if label == "" || len(label) > 63 || strings.HasPrefix(label, "-") || strings.HasSuffix(label, "-") {
-			return false
-		}
-		for _, r := range label {
-			if !(r == '-' || r == '_' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r > 0x7f) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// appRule reads a program: a file name such as steam.exe, or a full path.
-func appRule(entry PresetEntry) (config.Rule, error) {
-	rule := config.Rule{Name: entry.Value}
-	if err := entryAction(entry, &rule); err != nil {
-		return rule, err
-	}
-	value := strings.TrimSpace(entry.Value)
-	switch {
-	case value == "" || strings.ContainsAny(value, `*?"<>|`):
-		return rule, jsonrpc.Failed(ReasonInvalidEntry, "%q is no program", entry.Value)
-	case strings.ContainsAny(value, `\/`):
-		rule.ProcessPath = []string{value}
-	default:
-		rule.ProcessName = []string{value}
-	}
-	return rule, nil
-}
-
-func inherited(base config.Preset) []InheritedRule {
-	rules := []InheritedRule{}
-	for _, rule := range base.Rules {
-		switch {
-		case rule.Action == config.ActionHijackDNS:
-		case rule.Action == config.ActionReject:
-			rules = append(rules, InheritedRule{Name: rule.Name, Action: ActionBlock})
-		default:
-			rules = append(rules, InheritedRule{Name: rule.Name, Action: rule.Outbound})
-		}
+func nonNil(rules []PresetRule) []PresetRule {
+	if rules == nil {
+		return []PresetRule{}
 	}
 	return rules
 }
 
-// PresetCopy gives a user's preset for the editor; a built-in ID gives a new copy of that preset, and "" a new
-// preset from scratch.
-func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
-	if id == "" {
-		base, _ := e.foundation("")
-		return PresetCopy{Sites: []PresetEntry{}, Apps: []PresetEntry{}, Default: base.Preset.DefaultOutbound, Inherited: inherited(base.Preset)}, nil
+func inherited(base config.Preset) []InheritedRule {
+	n := head(base)
+	rules := []InheritedRule{}
+	for i, rule := range base.Rules {
+		inherited := InheritedRule{Name: rule.Name, Action: rule.Outbound, First: i < n}
+		switch rule.Action {
+		case config.ActionHijackDNS:
+			inherited.Action = "dns"
+		case config.ActionReject:
+			inherited.Action = ActionBlock
+		}
+		rules = append(rules, inherited)
 	}
+	return rules
+}
+
+// PresetCopy gives a preset for the editor: a user's one, or a built-in one to show, with Builtin set.
+func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
 	if base, ok := e.builtin(id); ok {
 		return PresetCopy{
-			BasedOn: id, Name: base.Preset.Name, Sites: []PresetEntry{}, Apps: []PresetEntry{},
-			Default: base.Preset.DefaultOutbound, Inherited: inherited(base.Preset),
+			ID: id, Builtin: true, Name: base.Preset.Name, Rules: []PresetRule{}, Default: base.Preset.DefaultOutbound,
+			Inherited: inherited(base.Preset),
 		}, nil
 	}
-	var record copyRecord
-	var found bool
-	if err := e.db.View(func(tx *bbolt.Tx) error {
-		var err error
-		found, err = getJSON(tx, bucketPresets, []byte(id), &record)
-		return err
-	}); err != nil {
+	record, found, err := e.copyRecord(id)
+	if err != nil {
 		return PresetCopy{}, err
 	}
 	if !found {
@@ -315,24 +217,20 @@ func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
 		return PresetCopy{}, jsonrpc.Failed(ReasonUnknownPreset, "the copy is based on %q, which is no built-in preset", record.BasedOn)
 	}
 	return PresetCopy{
-		ID: record.ID, BasedOn: record.BasedOn, Name: record.Name,
-		Sites: nonNil(record.Sites), Apps: nonNil(record.Apps), DNS: record.DNS,
+		ID: record.ID, BasedOn: record.BasedOn, Name: record.Name, Advanced: record.Advanced,
+		Rules: nonNil(record.Rules), DNS: record.DNS, DirectDNS: record.DirectDNS,
 		Default: cmp.Or(record.Default, base.Preset.DefaultOutbound), Inherited: inherited(base.Preset),
 	}, nil
 }
 
-func nonNil(entries []PresetEntry) []PresetEntry {
-	if entries == nil {
-		return []PresetEntry{}
-	}
-	return entries
-}
-
-// SavePreset stores a user's preset, a new one when it has no ID.
+// SavePreset stores a user's preset, a new one when it has no ID. An advanced preset stays advanced.
 func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
+	if c.Builtin {
+		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "a built-in preset does not change")
+	}
 	record := copyRecord{
-		ID: c.ID, BasedOn: c.BasedOn, Name: strings.TrimSpace(c.Name),
-		Sites: nonNil(c.Sites), Apps: nonNil(c.Apps), DNS: strings.TrimSpace(c.DNS), Default: c.Default,
+		ID: c.ID, BasedOn: c.BasedOn, Name: strings.TrimSpace(c.Name), Advanced: c.Advanced,
+		DNS: strings.TrimSpace(c.DNS), DirectDNS: strings.TrimSpace(c.DirectDNS), Default: c.Default,
 	}
 	if record.Name == "" {
 		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "the preset needs a name")
@@ -340,9 +238,17 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	if !slices.Contains([]string{"", ActionProxy, ActionDirect, ActionBlock}, record.Default) {
 		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "the default must be proxy, direct or block, not %q", record.Default)
 	}
+	if !record.Advanced && record.DirectDNS != "" {
+		return Preset{}, jsonrpc.Failed(ReasonAdvancedOnly, "a simple preset has no direct DNS")
+	}
 	if _, ok := e.foundation(record.BasedOn); !ok {
 		return Preset{}, jsonrpc.Failed(ReasonUnknownPreset, "there is no built-in preset %q", record.BasedOn)
 	}
+	rules, err := checkRules(record.Advanced, c.Rules)
+	if err != nil {
+		return Preset{}, err
+	}
+	record.Rules = rules
 	if _, err := e.compose(record); err != nil {
 		var rpcErr *jsonrpc.Error
 		if !errors.As(err, &rpcErr) {
@@ -360,17 +266,20 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	if err := e.db.Update(func(tx *bbolt.Tx) error {
 		if record.ID == "" {
 			record.ID, record.AddedAt = newID(), e.now().UnixMilli()
-		} else {
-			var old copyRecord
-			found, err := getJSON(tx, bucketPresets, []byte(record.ID), &old)
-			if err != nil {
-				return err
-			}
-			if !found {
-				return jsonrpc.Failed(ReasonNotFound, "there is no preset %q", record.ID)
-			}
-			record.AddedAt = old.AddedAt
+			return putJSON(tx, bucketPresets, []byte(record.ID), record)
 		}
+		var old copyRecord
+		found, err := getJSON(tx, bucketPresets, []byte(record.ID), &old)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return jsonrpc.Failed(ReasonNotFound, "there is no preset %q", record.ID)
+		}
+		if old.Advanced && !record.Advanced {
+			return jsonrpc.Failed(ReasonInvalidValue, "an advanced preset does not become simple")
+		}
+		record.AddedAt = old.AddedAt
 		return putJSON(tx, bucketPresets, []byte(record.ID), record)
 	}); err != nil {
 		return Preset{}, err
@@ -418,14 +327,15 @@ const presetLinkPrefix = "poros://route/"
 
 // presetLink is what a poros://route/ link carries: the copy without its ID.
 type presetLink struct {
-	Kind    string        `json:"kind"`
-	Version int           `json:"v"`
-	BasedOn string        `json:"based_on"`
-	Name    string        `json:"name"`
-	Sites   []PresetEntry `json:"sites,omitempty"`
-	Apps    []PresetEntry `json:"apps,omitempty"`
-	DNS     string        `json:"dns,omitempty"`
-	Default string        `json:"default,omitempty"`
+	Kind      string       `json:"kind"`
+	Version   int          `json:"v"`
+	BasedOn   string       `json:"based_on"`
+	Name      string       `json:"name"`
+	Advanced  bool         `json:"advanced,omitempty"`
+	Rules     []PresetRule `json:"rules,omitempty"`
+	DNS       string       `json:"dns,omitempty"`
+	DirectDNS string       `json:"direct_dns,omitempty"`
+	Default   string       `json:"default,omitempty"`
 }
 
 const presetLinkKind = "poros-preset"
@@ -436,9 +346,12 @@ func (e *Engine) ExportPreset(id string) (PresetLink, error) {
 	if err != nil {
 		return PresetLink{}, err
 	}
+	if c.Builtin {
+		return PresetLink{}, jsonrpc.Failed(ReasonInvalidValue, "a built-in preset is in every Poros already")
+	}
 	data, err := json.Marshal(presetLink{
-		Kind: presetLinkKind, Version: 1, BasedOn: c.BasedOn, Name: c.Name, Sites: c.Sites, Apps: c.Apps, DNS: c.DNS,
-		Default: c.Default,
+		Kind: presetLinkKind, Version: 1, BasedOn: c.BasedOn, Name: c.Name, Advanced: c.Advanced, Rules: c.Rules,
+		DNS: c.DNS, DirectDNS: c.DirectDNS, Default: c.Default,
 	})
 	if err != nil {
 		return PresetLink{}, err
@@ -487,7 +400,10 @@ func (e *Engine) ImportPreset(p PresetLink) (Preset, error) {
 
 // copy is the preset a link brings, under name.
 func (l presetLink) copy(name string) PresetCopy {
-	return PresetCopy{BasedOn: l.BasedOn, Name: name, Sites: l.Sites, Apps: l.Apps, DNS: l.DNS, Default: l.Default}
+	return PresetCopy{
+		BasedOn: l.BasedOn, Name: name, Advanced: l.Advanced, Rules: nonNil(l.Rules), DNS: l.DNS,
+		DirectDNS: l.DirectDNS, Default: l.Default,
+	}
 }
 
 func decodePresetLink(text string) (presetLink, error) {
@@ -500,8 +416,11 @@ func decodePresetLink(text string) (presetLink, error) {
 	if err != nil {
 		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "the preset link is damaged")
 	}
+	// Unknown keys are refused: a rule that lost a condition would match more.
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
 	var link presetLink
-	if err = json.Unmarshal(data, &link); err != nil || link.Kind != presetLinkKind || link.Version != 1 {
+	if err = decoder.Decode(&link); err != nil || link.Kind != presetLinkKind || link.Version != 1 {
 		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "the link holds no Poros preset")
 	}
 	return link, nil

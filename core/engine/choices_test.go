@@ -65,8 +65,7 @@ func TestChosenServerFollowsWhatGoes(t *testing.T) {
 
 func TestPresetNamesStayApart(t *testing.T) {
 	e, _ := openTest(t, t.TempDir())
-	draft, _ := e.PresetCopy("all")
-	draft.Name = "Games"
+	draft := PresetCopy{BasedOn: "all", Name: "Games"}
 	games, err := e.SavePreset(draft)
 	if err != nil {
 		t.Fatal(err)

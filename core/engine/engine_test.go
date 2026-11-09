@@ -36,7 +36,13 @@ func reason(err error) string {
 	if !errors.As(err, &rpcErr) || rpcErr.Code != jsonrpc.CodeFailed {
 		return ""
 	}
-	return rpcErr.Data.(map[string]string)["reason"]
+	switch data := rpcErr.Data.(type) {
+	case map[string]string:
+		return data["reason"]
+	case RuleProblem:
+		return data.Reason
+	}
+	return ""
 }
 
 func TestSettingsStartFromDefaultsAndPersist(t *testing.T) {

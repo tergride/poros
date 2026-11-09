@@ -24,6 +24,8 @@ const (
 	tagTun       = "tun-in"
 	TagDNSRemote = "dns-remote"
 	TagDNSDirect = "dns-direct"
+	// tagDNSSystem resolves the name of a direct DNS server of the user's.
+	tagDNSSystem = "dns-system"
 )
 
 // The TUN of Poros. Throne, which may run alongside, keeps 172.19.0.1/24.
@@ -183,8 +185,12 @@ func tunExcluded(preset Preset) badoption.Listable[netip.Prefix] {
 		if rule.Action == ActionHijackDNS || (rule.Action == ActionRoute && rule.Outbound == OutboundDirect) {
 			continue
 		}
-		if rule.IPIsPrivate {
+		// An inverted rule on addresses takes every address but its own, the private ones among them.
+		if (rule.IPIsPrivate && !rule.Invert) || (rule.Invert && len(rule.IPCIDR) > 0) {
 			return excluded
+		}
+		if rule.Invert {
+			continue
 		}
 		for _, cidr := range rule.IPCIDR {
 			prefix, _ := parsePrefix(cidr)
@@ -271,25 +277,29 @@ func lanGuard() option.Rule {
 }
 
 func routeRule(rule Rule) option.Rule {
-	raw := option.RawDefaultRule{
-		Protocol:      rule.Protocol,
-		Domain:        aceList(rule.Domain),
-		DomainSuffix:  aceList(rule.DomainSuffix),
-		DomainKeyword: rule.DomainKeyword,
-		DomainRegex:   rule.DomainRegex,
-		IPIsPrivate:   rule.IPIsPrivate,
-		ProcessName:   rule.ProcessName,
-		ProcessPath:   rule.ProcessPath,
-	}
-	for _, cidr := range rule.IPCIDR {
-		prefix, _ := parsePrefix(cidr)
-		raw.IPCIDR = append(raw.IPCIDR, (*badoption.Prefixable)(&prefix))
-	}
 	action := option.RuleAction{Action: rule.Action}
 	if rule.Action == ActionRoute {
 		action.RouteOptions.Outbound = rule.Outbound
 	}
-	return actionRule(raw, action)
+	conditions := rule.conditions()
+	if rule.destinations() <= 1 {
+		var raw option.RawDefaultRule
+		for _, fill := range conditions {
+			fill(&raw)
+		}
+		raw.Invert = rule.Invert
+		return actionRule(raw, action)
+	}
+	parts := make([]option.Rule, len(conditions))
+	for i, fill := range conditions {
+		var raw option.RawDefaultRule
+		fill(&raw)
+		parts[i] = option.Rule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultRule{RawDefaultRule: raw}}
+	}
+	return option.Rule{Type: C.RuleTypeLogical, LogicalOptions: option.LogicalRule{
+		RawLogicalRule: option.RawLogicalRule{Mode: C.LogicalTypeAnd, Rules: parts, Invert: rule.Invert},
+		RuleAction:     action,
+	}}
 }
 
 func actionRule(raw option.RawDefaultRule, action option.RuleAction) option.Rule {
@@ -304,40 +314,35 @@ func prefixables(prefixes []netip.Prefix) badoption.Listable[*badoption.Prefixab
 	return result
 }
 
-// buildDNS resolves the names of direct traffic with the system's DNS and the rest with DoH through the server, in
-// the order of the rules, so that a name follows the same rule as its connection.
+// buildDNS resolves the names of direct traffic with the direct DNS, the system's unless the preset has its own,
+// and the rest with the remote DNS through the server, in the order of the rules, so that a name follows the same
+// rule as its connection.
 func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
 	text := preset.DNS
 	if text == "" {
 		text = "https://" + remoteDNSServer + remoteDNSPath
 	}
-	// Validate has read it already.
+	// Validate has read both already.
 	remote, _ := remoteDNS(text)
-	servers := []option.DNSServerOptions{remote, {Type: C.DNSTypeLocal, Tag: TagDNSDirect, Options: &option.LocalDNSServerOptions{}}}
+	servers := []option.DNSServerOptions{remote}
+	if preset.DirectDNS == "" {
+		servers = append(servers, option.DNSServerOptions{Type: C.DNSTypeLocal, Tag: TagDNSDirect, Options: &option.LocalDNSServerOptions{}})
+	} else {
+		direct, _ := directDNS(preset.DirectDNS)
+		servers = append(servers, direct, option.DNSServerOptions{Type: C.DNSTypeLocal, Tag: tagDNSSystem, Options: &option.LocalDNSServerOptions{}})
+	}
 	var rules []option.DNSRule
 	for _, rule := range preset.Rules {
 		if rule.Action != ActionRoute {
-			continue
-		}
-		raw := option.RawDefaultDNSRule{
-			Domain:        aceList(rule.Domain),
-			DomainSuffix:  aceList(rule.DomainSuffix),
-			DomainKeyword: rule.DomainKeyword,
-			DomainRegex:   rule.DomainRegex,
-			ProcessName:   rule.ProcessName,
-			ProcessPath:   rule.ProcessPath,
-		}
-		if len(raw.Domain)+len(raw.DomainSuffix)+len(raw.DomainKeyword)+len(raw.DomainRegex)+len(raw.ProcessName)+len(raw.ProcessPath) == 0 {
 			continue
 		}
 		server := TagDNSRemote
 		if rule.Outbound == OutboundDirect {
 			server = TagDNSDirect
 		}
-		rules = append(rules, option.DNSRule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{
-			RawDefaultDNSRule: raw,
-			DNSRuleAction:     option.DNSRuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.DNSRouteActionOptions{Server: server}},
-		}})
+		if dns, ok := dnsRule(rule, option.DNSRuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.DNSRouteActionOptions{Server: server}}); ok {
+			rules = append(rules, dns)
+		}
 	}
 	final := TagDNSRemote
 	if preset.DefaultOutbound == OutboundDirect {
@@ -348,4 +353,47 @@ func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
 		options.Strategy = option.DomainStrategy(C.DomainStrategyIPv4Only)
 	}
 	return options
+}
+
+// dnsRule is the DNS rule of a rule on names and programs: a query has neither an address, a port nor a protocol of
+// the connection to come, so a rule with one of them has no DNS rule.
+func dnsRule(rule Rule, action option.DNSRuleAction) (option.DNSRule, bool) {
+	if len(rule.Protocol)+len(rule.Network)+len(rule.IPCIDR)+len(rule.SourceIPCIDR)+len(rule.Port)+len(rule.PortRange) > 0 ||
+		rule.IPVersion != 0 || rule.IPIsPrivate {
+		return option.DNSRule{}, false
+	}
+	var fills []func(raw *option.RawDefaultDNSRule)
+	add := func(set bool, fill func(raw *option.RawDefaultDNSRule)) {
+		if set {
+			fills = append(fills, fill)
+		}
+	}
+	add(len(rule.Domain) > 0, func(raw *option.RawDefaultDNSRule) { raw.Domain = aceList(rule.Domain) })
+	add(len(rule.DomainSuffix) > 0, func(raw *option.RawDefaultDNSRule) { raw.DomainSuffix = aceList(rule.DomainSuffix) })
+	add(len(rule.DomainKeyword) > 0, func(raw *option.RawDefaultDNSRule) { raw.DomainKeyword = rule.DomainKeyword })
+	add(len(rule.DomainRegex) > 0, func(raw *option.RawDefaultDNSRule) { raw.DomainRegex = rule.DomainRegex })
+	add(len(rule.ProcessName) > 0, func(raw *option.RawDefaultDNSRule) { raw.ProcessName = rule.ProcessName })
+	add(len(rule.ProcessPath) > 0, func(raw *option.RawDefaultDNSRule) { raw.ProcessPath = rule.ProcessPath })
+	add(len(rule.ProcessPathRegex) > 0, func(raw *option.RawDefaultDNSRule) { raw.ProcessPathRegex = rule.ProcessPathRegex })
+	if len(fills) == 0 {
+		return option.DNSRule{}, false
+	}
+	if rule.destinations() <= 1 {
+		var raw option.RawDefaultDNSRule
+		for _, fill := range fills {
+			fill(&raw)
+		}
+		raw.Invert = rule.Invert
+		return option.DNSRule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{RawDefaultDNSRule: raw, DNSRuleAction: action}}, true
+	}
+	parts := make([]option.DNSRule, len(fills))
+	for i, fill := range fills {
+		var raw option.RawDefaultDNSRule
+		fill(&raw)
+		parts[i] = option.DNSRule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{RawDefaultDNSRule: raw}}
+	}
+	return option.DNSRule{Type: C.RuleTypeLogical, LogicalOptions: option.LogicalDNSRule{
+		RawLogicalDNSRule: option.RawLogicalDNSRule{Mode: C.LogicalTypeAnd, Rules: parts, Invert: rule.Invert},
+		DNSRuleAction:     action,
+	}}, true
 }

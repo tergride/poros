@@ -11,24 +11,34 @@ const simpleSettings = ['presets', 'conn', 'subs', 'start', 'look', 'help']
 export const advancedSettings = ['conn', 'subs', 'start', 'look', 'help']
 
 /**
- * The screen of a mode that stands for path: the same settings page, the profiles for the servers. The wizard and the
- * editor of a preset belong to both.
+ * The screen of a mode that stands for path: the same settings page, the profiles for the servers, the same preset in
+ * the editor of each mode. The simple mode has no page for a built-in preset, so its list stands for one; builtins
+ * are their IDs. The wizard belongs to both.
  */
-export function routeInMode(mode: UiMode, path: string): string {
-  if (path.startsWith('/wizard') || path.startsWith('/preset/') || path === '/') return path
+export function routeInMode(mode: UiMode, path: string, builtins: string[] = []): string {
+  if (path.startsWith('/wizard') || path === '/') return path
   if (mode === 'advanced') {
     if (path.startsWith('/adv')) return path
+    const preset = /^\/preset\/([^/]+)/.exec(path)?.[1]
+    if (preset) return `/adv/routing/rules/${preset}`
     const page = /^\/settings\/([^/]+)/.exec(path)?.[1]
-    if (page === 'presets') return '/adv/routing'
+    if (page === 'presets') return '/adv/routing/rules'
     if (page) return `/adv/settings/${advancedSettings.includes(page) ? page : 'conn'}`
     return '/adv/profiles'
   }
   if (!path.startsWith('/adv')) return path
+  const preset = /^\/adv\/routing\/rules\/([^/]+)/.exec(path)?.[1]
+  if (preset && !builtins.includes(preset)) return `/preset/${preset}`
   if (path.startsWith('/adv/routing')) return '/settings/presets'
   const page = /^\/adv\/settings\/([^/]+)/.exec(path)?.[1]
   if (page) return `/settings/${simpleSettings.includes(page) ? page : 'conn'}`
   return '/main'
 }
+
+const builtinIds = () =>
+  useCoreStore()
+    .presets.filter((p) => p.builtin)
+    .map((p) => p.id)
 
 // The mode a switch is on its way to: the screen of the new mode opens before the setting changes, so that a page
 // with unsaved changes can still keep the user on it.
@@ -40,7 +50,7 @@ export function installModeGuard(router: Router): void {
     const core = useCoreStore()
     if (!core.settings) return true
     const mode: UiMode = pendingMode ?? (core.settings.uiMode === 'advanced' ? 'advanced' : 'simple')
-    const path = routeInMode(mode, to.path)
+    const path = routeInMode(mode, to.path, builtinIds())
     return path === to.path ? true : path
   })
 }
@@ -55,7 +65,7 @@ export function useUiMode() {
     if (next === mode.value) return
     pendingMode = next
     try {
-      const failure = await router.push(routeInMode(next, router.currentRoute.value.path))
+      const failure = await router.push(routeInMode(next, router.currentRoute.value.path, builtinIds()))
       if (failure) return
       await core.updateSettings({ uiMode: next })
     } finally {

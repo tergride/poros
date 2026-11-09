@@ -153,27 +153,61 @@ test('a preset copy is made, saved and chosen', async ({ page }) => {
   await page.getByRole('link', { name: /Пресет:/ }).click()
   await expect(page.getByRole('heading', { name: 'Пресеты', exact: true })).toBeVisible()
   await shot(page, 'settings-presets')
-  await page.getByRole('button', { name: 'Создать копию' }).first().click()
+  // A copy asks its kind and is made at once under a free name.
+  await page.getByTestId('preset-copy').first().click()
+  const kind = page.getByRole('dialog', { name: 'Копия пресета «Весь трафик»' })
+  await expect(kind.getByTestId('new-preset-simple')).toBeChecked()
+  await shot(page, 'preset-new-kind')
+  await kind.getByTestId('new-preset-create').click()
+  await expect(page.getByTestId('preset-name')).toHaveValue('Весь трафик — копия')
+  await expect(page.getByTestId('preset-base')).toHaveText('Копия пресета «Весь трафик»')
   await page.getByTestId('preset-name').fill('Дом')
-  await page.getByLabel('Сайт, IP или подсеть').fill('example.org')
-  await page.getByLabel('Сайт, IP или подсеть').press('Enter')
-  await expect(page.getByTestId('site')).toHaveCount(1)
+
+  // One list of rules: a narrower rule rises over a wider one, a wrong value is told at once.
+  await page.getByTestId('rule-new-value').fill('example.org')
+  await page.getByTestId('rule-new-value').press('Enter')
+  await page.getByTestId('rule-new-value').fill('https://Ads.Example.org/banner')
+  await page.getByTestId('rule-add').click()
+  await expect(page.getByTestId('rule-value')).toHaveCount(2)
+  await expect(page.getByTestId('rule-value').first()).toHaveValue('ads.example.org')
+  await page.getByTestId('rule-new-value').fill('not a site')
+  await page.getByTestId('rule-add').click()
+  await expect(page.getByTestId('preset-failure')).toHaveText('«not a site» — не сайт.')
+  await expect(page.getByTestId('rule-value')).toHaveCount(2)
+  await page.getByTestId('rule-new-kind').click()
+  await page.getByRole('option', { name: 'Программа', exact: true }).click()
+  await page.getByTestId('rule-new-value').fill('steam')
+  await page.getByTestId('rule-add').click()
+  await expect(page.getByTestId('rule-value').nth(2)).toHaveValue('steam.exe')
+  await expect(page.getByTestId('preset-failure')).toBeHidden()
+  // Down does not take a narrower rule under a wider one.
+  await page.getByTestId('rule-row').first().getByRole('button', { name: 'Вниз' }).click()
+  await expect(page.getByTestId('rule-value').first()).toHaveValue('ads.example.org')
+  await expect(page.getByTestId('rules')).toContainText('Локальные сети')
+
   await page.getByTestId('preset-default').getByTestId('segment-direct').click()
   await expect(page.getByTestId('preset-default').getByTestId('segment-direct')).toHaveAttribute('data-state', 'checked')
   await shot(page, 'preset-edit')
   await page.getByTestId('preset-save').click()
-  await expect(page.getByText('Дом', { exact: true })).toBeVisible()
+  await expect(page.getByText('На основе «Весь трафик»: 3 правила.')).toBeVisible()
   await expect(page.getByRole('radio', { name: 'Дом' })).toBeChecked()
 
+  // A preset from scratch, made advanced before saving: the warning says it cannot go back.
   await page.getByTestId('preset-create').click()
-  await expect(page.getByTestId('preset-name')).toHaveValue('')
+  await page.getByRole('dialog', { name: 'Новый пресет' }).getByTestId('new-preset-create').click()
+  await expect(page.getByTestId('preset-name')).toHaveValue('Новый пресет')
   await expect(page.getByTestId('preset-base')).toHaveCount(0)
   await page.getByTestId('preset-name').fill('Работа')
-  await page.getByLabel('Сайт, IP или подсеть').fill('example.com')
-  await page.getByLabel('Сайт, IP или подсеть').press('Enter')
+  await page.getByTestId('preset-to-advanced').click()
+  await expect(page.getByRole('dialog', { name: 'Сделать пресет расширенным?' })).toContainText('Вернуть пресет в простой будет нельзя.')
+  await shot(page, 'preset-to-advanced')
+  await page.getByTestId('to-advanced-confirm').click()
+  await expect(page.getByTestId('preset-advanced')).toBeVisible()
+  await expect(page.getByTestId('preset-to-advanced')).toHaveCount(0)
+  await expect(page.getByTestId('rule-rest')).toContainText('Через сервер')
   await shot(page, 'preset-new')
   await page.getByTestId('preset-save').click()
-  await expect(page.getByText('Свой пресет: сайтов — 1, приложений — 0')).toBeVisible()
+  await expect(page.getByText('Свой пресет: нет правил.')).toBeVisible()
   await expect(page.getByRole('radio', { name: 'Работа' })).toBeChecked()
 
   for (const [link, heading] of [
@@ -199,39 +233,43 @@ test('a preset copy is made, saved and chosen', async ({ page }) => {
 test('the lists of a preset take a pasted list, name bad lines and save with the preset', async ({ page }) => {
   await throughWizard(page)
   await page.getByRole('link', { name: /Пресет:/ }).click()
-  await page.getByRole('button', { name: 'Создать копию' }).first().click()
+  await page.getByTestId('preset-copy').first().click()
+  await page.getByTestId('new-preset-create').click()
   await page.getByTestId('preset-name').fill('Дом')
-  await page.getByLabel('Сайт, IP или подсеть').fill('example.org')
-  await page.getByLabel('Сайт, IP или подсеть').press('Enter')
+  await page.getByTestId('rule-new-value').fill('example.org')
+  await page.getByTestId('rule-new-value').press('Enter')
+  await expect(page.getByTestId('rule-value')).toHaveCount(1)
   await page.getByTestId('preset-lists').click()
 
   const lists = page.getByRole('dialog', { name: 'Списки пресета «Дом»' })
   const text = lists.getByTestId('lists-text')
-  await expect(text).toHaveValue('example.org')
+  await expect(text).toHaveValue('suffix:example.org')
   await expect(lists.getByTestId('lists-tab-proxy')).toHaveText('Через сервер · 1')
-  await text.fill('example.org\nvideo.example.com\n# работа\nnot a site\n*.')
+  await text.fill('suffix:example.org\nsuffix:video.example.com\n# работа\nmail.example.net\nsuffix:*.\nport:443')
   await expect(lists.getByTestId('lists-invalid')).toHaveText(
-    'Не распознаны 2 строки: 4 «not a site», 5 «*.». Исправьте или удалите их.',
+    'Не распознаны 3 строки: 4 «mail.example.net» — нет приставки, 5 «suffix:*.» — не сайт, 6 «port:443» — этот вид — в расширенном пресете. Исправьте или удалите их.',
   )
   await expect(lists.getByTestId('lists-apply')).toBeDisabled()
   await shot(page, 'preset-lists-invalid')
-  await text.fill('example.org\nvideo.example.com\n# работа\nmail.example.net')
+  await text.fill('suffix:example.org\nsuffix:video.example.com\n# работа\nsuffix:mail.example.net')
 
   await lists.getByTestId('lists-tab-direct').click()
-  await text.fill('192.168.50.0/24\nsteam.exe\nC:\\Games\\game.exe\nVideo.example.com')
-  await expect(lists.getByTestId('lists-duplicate')).toContainText('4 «Video.example.com» (Через сервер)')
+  await text.fill('ip:192.168.50.0/24\nprocessName:steam.exe\nprocessPath:C:\\Games\\game.exe\nsuffix:Video.example.com')
+  await expect(lists.getByTestId('lists-duplicate')).toContainText('4 «suffix:Video.example.com» (Через сервер)')
   await expect(lists.getByTestId('lists-apply')).toBeDisabled()
-  await text.fill('192.168.50.0/24\nsteam.exe\nC:\\Games\\game.exe')
+  await text.fill('ip:192.168.50.0/24\nprocessName:steam.exe\nprocessPath:C:\\Games\\game.exe')
   await expect(lists.getByTestId('lists-tab-direct')).toHaveText('Напрямую · 3')
   await expect(lists.getByTestId('lists-tab-proxy')).toHaveText('Через сервер · 3')
   await expect(lists.getByTestId('lists-apply')).toBeEnabled()
   await shot(page, 'preset-lists')
   await lists.getByTestId('lists-apply').click()
   await expect(lists).toBeHidden()
-  await expect(page.getByTestId('site')).toHaveCount(4)
+  // The line of the rule there was keeps its place; new lines come after it.
+  await expect(page.getByTestId('rule-value')).toHaveCount(6)
+  await expect(page.getByTestId('rule-value').first()).toHaveValue('example.org')
 
   await page.getByTestId('preset-save').click()
-  await expect(page.getByText('На основе «Весь трафик»: добавлено: сайтов — 4, приложений — 2')).toBeVisible()
+  await expect(page.getByText('На основе «Весь трафик»: 6 правил.')).toBeVisible()
 })
 
 test('poros:// links open a dialog and add only after a yes', async ({ page }) => {
@@ -250,13 +288,20 @@ test('poros:// links open a dialog and add only after a yes', async ({ page }) =
   await expect(page.getByTestId('server-group')).toHaveCount(2)
 
   const preset = encode(
-    JSON.stringify({ kind: 'poros-preset', v: 1, based_on: 'all', name: 'Дом', sites: [{ value: 'example.org', action: 'block' }], dns: 'tls://1.1.1.1' }),
+    JSON.stringify({
+      kind: 'poros-preset',
+      v: 1,
+      based_on: 'all',
+      name: 'Дом',
+      rules: [{ name: '', conditions: [{ kind: 'suffix', values: ['example.org'] }], invert: false, off: false, action: 'block' }],
+      dns: 'tls://1.1.1.1',
+    }),
   )
   await send(`poros://route/${preset}`)
   const ask = page.getByRole('dialog', { name: 'Добавить пресет из ссылки?' })
   await expect(ask).toContainText('Пресет «Дом» появится в «Моих пресетах»')
   await expect(ask.getByTestId('link-preset-summary')).toHaveText(
-    'На основе «Весь трафик»: добавлено: сайтов — 1, приложений — 0. Свой DNS.',
+    'На основе «Весь трафик»: 1 правило. Свой DNS.',
   )
   await shot(page, 'link-preset')
   await ask.getByTestId('link-preset-add').click()

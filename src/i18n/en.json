@@ -87,17 +87,24 @@
       "hardened": "Like All traffic, plus TLS fragmentation. Helps when the connection keeps breaking."
     },
     "rule": {
-      "Local networks": "Local networks"
+      "Local networks": "Local networks",
+      "Route DNS": "DNS queries"
     },
     "builtin": "built-in",
     "copyOf": "Based on “{base}”",
-    "added": "added: {sites} sites, {apps} apps",
-    "addedAlone": "Own preset: {sites} sites, {apps} apps"
+    "ruleValue": {
+      "Route DNS": "the DNS protocol",
+      "Local networks": "private addresses"
+    },
+    "rules": "no rules | {n} rule | {n} rules",
+    "alone": "Own preset",
+    "advanced": "advanced"
   },
   "action": {
     "proxy": "Through the server",
     "direct": "Directly",
-    "block": "Block"
+    "block": "Block",
+    "dns": "Poros answers"
   },
   "wizard": {
     "tagline": "Quick setup takes less than a minute.",
@@ -261,7 +268,7 @@
     "copied": "Copied",
     "modes": "TUN and System do this by themselves: TUN for every program, System for those that take the Windows proxy, such as browsers.",
     "lan": "Devices in your network can connect to port {port} too, at this computer's address in the local network.",
-    "lanOff": "Only this computer can connect. For a phone or TV to go online through Poros, turn on «Let other devices connect» in Connection."
+    "lanOff": "Only this computer can connect. For a phone or TV to go online through Poros, turn on “Let other devices connect” in Connection."
   },
   "ip": {
     "title": "IP and DNS",
@@ -415,44 +422,168 @@
     "default": {
       "direct": "By default, traffic goes directly.",
       "block": "By default, traffic is blocked."
-    }
+    },
+    "advanced": "An advanced preset."
   },
   "presetEdit": {
     "back": "Presets",
     "copyOf": "Copy of “{name}”",
     "name": "Name",
     "namePlaceholder": "For example, Work",
-    "sites": "Sites and IPs",
-    "sitePlaceholder": "Site, IP or subnet",
-    "apps": "Apps",
-    "appPlaceholder": "File name, such as steam.exe",
-    "action": "Action",
     "dns": "DNS",
     "dnsServers": "DNS servers",
-    "dnsPreset": "As in the preset",
-    "dnsStandard": "Standard",
     "dnsCustom": "Custom…",
-    "dnsCustomPlaceholder": "https://dns.example/dns-query",
     "save": "Save and apply",
     "copyName": "{name} — copy",
-    "duplicate": "“{value}” is in the list already.",
     "default": "By default, traffic goes",
-    "defaultHint": "Where everything goes that the lists below do not take.",
-    "defaultBlocked": "Only the listed sites and apps will work. Poros blocks the rest."
+    "defaultHint": "Where everything goes that no rule below takes.",
+    "defaultBlocked": "Only the sites and programs of the rules will work. Poros blocks the rest.",
+    "dnsDefault": "Default",
+    "dnsSystem": "System",
+    "dnsRemote": "For traffic through the server",
+    "dnsRemoteHint": "Queries go through the server. “Default” is Google.",
+    "dnsDirect": "For direct traffic",
+    "dnsDirectHint": "Queries go past the server. “Default” is the system DNS.",
+    "dnsCustomHint": "https://, tls:// or an IP address",
+    "dnsOwn": "{title}: own server",
+    "tabRules": "Rules",
+    "tabEndpoints": "Endpoints",
+    "tabDns": "DNS",
+    "builtinNote": "A built-in preset does not change. To add rules of your own, make a copy.",
+    "remove": "Remove the preset",
+    "unsaved": "The preset “{name}” has unsaved changes."
   },
   "presetLists": {
     "open": "Edit as lists",
     "title": "Lists of “{name}”",
     "titleUnnamed": "Preset lists",
-    "hint": "One site, IP, subnet or program (steam.exe or a full path) per line. Lines starting with # are skipped. A ready list can be pasted whole.",
-    "locked": "Locked rules are not part of the lists.",
+    "hint": "Every line starts with a prefix: suffix: is a site with its subdomains, ip: an IP or a subnet, processName: a program, processPath: the path to a program. Lines starting with # are not read.",
+    "locked": "Locked rules and rules of several conditions stay out of here. New lines go to the end of the list.",
     "apply": "Apply",
     "invalid": "{n} line not recognized: {lines}. Fix or remove it. | {n} lines not recognized: {lines}. Fix or remove them.",
     "duplicate": "Already on other tabs: {lines}. Keep each line on one tab only.",
-    "line": "{line} “{text}”",
+    "line": "{line} “{text}”: {why}",
     "lineOn": "{line} “{text}” ({tab})",
     "more": "{lines} and {n} more",
-    "problems": "Some lines have errors"
+    "problems": "Some lines have errors",
+    "hintAdvanced": "Every line starts with a prefix: suffix: is a site with its subdomains, ip: an IP or a subnet, processName: a program, processPath: the path to a program; an advanced preset adds domain: for an exact domain, keyword:, regex:, processPathRegex:, port:, protocol:, network:, ipVersion:, sourceIP:. Lines starting with # are not read.",
+    "noPrefix": "no prefix",
+    "advancedOnly": "this kind belongs to an advanced preset"
+  },
+  "rules": {
+    "title": "Rules",
+    "hint": "Checked from the top; the first that matches decides. A narrower rule rises over a wider one of the same kind by itself: ads.example.com over example.com.",
+    "kind": "Kind",
+    "value": "Value",
+    "action": "Where to",
+    "newKind": "Kind of the new rule",
+    "newValue": "Value of the new rule",
+    "newAction": "Where the new rule goes",
+    "up": "Up",
+    "down": "Down",
+    "on": "On",
+    "editConditions": "Change the conditions…",
+    "withConditions": "Rule with conditions…",
+    "several": "Several conditions",
+    "inverted": "Inverted",
+    "invertedSummary": "all but {text}",
+    "privateValue": "private addresses",
+    "rest": "Everything else",
+    "restValue": "the card “Traffic goes by default”",
+    "kinds": {
+      "suffix": "Site",
+      "ip": "IP or subnet",
+      "processName": "Program",
+      "processPath": "Program path",
+      "domain": "Exact domain",
+      "keyword": "Word in the domain",
+      "regex": "Domain by pattern",
+      "port": "Port or range",
+      "processPathRegex": "Path by pattern",
+      "protocol": "Protocol",
+      "network": "Network",
+      "ipVersion": "IP version",
+      "sourceIP": "Source IP",
+      "private": "Private networks"
+    },
+    "placeholder": {
+      "suffix": "example.com",
+      "ip": "192.168.1.0/24",
+      "processName": "steam.exe",
+      "processPath": "C:\\Games\\game.exe",
+      "domain": "www.example.com",
+      "keyword": "video",
+      "regex": "^ads\\.",
+      "port": "443 or 8000-8080",
+      "processPathRegex": "(?i)\\\\games\\\\",
+      "protocol": "quic",
+      "network": "udp",
+      "ipVersion": "4 or 6",
+      "sourceIP": "192.168.1.20"
+    },
+    "invalid": {
+      "suffix": "not a site",
+      "ip": "neither an address nor a subnet",
+      "processName": "not a program name",
+      "processPath": "not a path to a program",
+      "domain": "not a domain",
+      "keyword": "not a word",
+      "regex": "a wrong pattern",
+      "port": "neither a port nor a range",
+      "processPathRegex": "a wrong pattern",
+      "protocol": "no such protocol",
+      "network": "neither TCP nor UDP",
+      "ipVersion": "neither 4 nor 6",
+      "sourceIP": "neither an address nor a subnet"
+    },
+    "problem": {
+      "value": "“{value}” is {why}.",
+      "line": "{kind}, line {line}: “{value}” is {why}.",
+      "duplicate": "“{value}” is in the list already.",
+      "noCondition": "The rule has no conditions.",
+      "empty": "{kind}: write at least one value.",
+      "advanced": "Only an advanced preset has this.",
+      "invalid": "A wrong value."
+    },
+    "dialog": {
+      "title": "Rule",
+      "name": "Name",
+      "namePlaceholder": "Such as Games over UDP",
+      "conditions": "Conditions",
+      "addCondition": "Condition",
+      "conditionsHint": "The rule matches when all its conditions do; a condition matches by any of its values, one per line.",
+      "kind": "Kind of the condition",
+      "suffix": "Site and subdomains",
+      "remove": "Remove the condition",
+      "invert": "Inverted",
+      "invertHint": "The rule takes everything its conditions do not match.",
+      "done": "Done"
+    }
+  },
+  "newPreset": {
+    "title": "New preset",
+    "copyTitle": "Copy of the preset “{name}”",
+    "name": "New preset",
+    "simple": "Simple",
+    "simpleText": "Sites, IPs and programs: through the server, directly or blocked. Enough for almost everyone.",
+    "advanced": "Advanced",
+    "advancedText": "Adds rules of several conditions, ports and protocols, WARP, OpenVPN and OpenConnect endpoints and a direct DNS of your own.",
+    "note": "A simple preset can become advanced later, but not back.",
+    "create": "Create"
+  },
+  "toAdvanced": {
+    "button": "Make advanced",
+    "title": "Make the preset advanced?",
+    "text": "The preset “{name}” gets all the settings of an advanced one: rules of several conditions, ports and protocols, WARP, endpoints and a direct DNS. Its rules stay as they are.",
+    "warn": "The preset cannot become simple again."
+  },
+  "routing": {
+    "tabs": {
+      "rules": "Presets and rules",
+      "common": "General"
+    },
+    "presets": "Presets",
+    "mine": "Mine"
   },
   "reason": {
     "start_failed": "the core could not connect",
@@ -479,7 +610,7 @@
     "subscription_url": "this is a subscription link: add it as a subscription",
     "not_manual": "servers go only to a group of your own, not to a subscription",
     "check_failed": "a part of the check failed",
-    "invalid_entry": "this is no site, address, subnet or program",
+    "invalid_entry": "the value does not fit its kind",
     "invalid_link": "this is no Poros preset link",
     "invalid_value": "invalid value",
     "unknown": "something went wrong",
@@ -494,7 +625,11 @@
     "unknown_preset": "there is no such preset",
     "preset_name_taken": "a preset of this name exists already",
     "check_off": "the IP and DNS check is off in the settings",
-    "details": "Details: {details}"
+    "details": "Details: {details}",
+    "no_prefix": "the line has no prefix",
+    "advanced_only": "only an advanced preset has this",
+    "no_condition": "the rule has no conditions",
+    "empty_condition": "the condition has no values"
   },
   "units": {
     "B": "B",
@@ -706,8 +841,8 @@
     "copyLink": "Copy link",
     "coreHint": "The profile runs on {core}",
     "problem": "The core will not start the profile: {problem}",
-    "needs": "Works only with «{name}»",
-    "excludes": "Does not work with «{name}»",
+    "needs": "Works only with “{name}”",
+    "excludes": "Does not work with “{name}”",
     "notJson": "This is not JSON",
     "notValue": "This value does not fit",
     "jsonLine": "JSON error on line {line}",

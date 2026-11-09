@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+import NewPresetDialog from '@/components/presets/NewPresetDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Dialog, Menu, MenuItem, MenuSeparator, RadioGroup, RadioItem } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
@@ -20,6 +21,8 @@ const failure = useFailure()
 const attempt = useAttempt()
 const { t, te } = useI18n()
 const removing = ref<Preset | null>(null)
+// The base of a preset to make: "" for one from scratch, null for no dialog.
+const making = ref<string | null>(null)
 
 const builtins = computed(() => core.presets.filter((p) => p.builtin))
 const mine = computed(() => core.presets.filter((p) => !p.builtin))
@@ -29,10 +32,8 @@ const nameOf = (preset: Preset | undefined) =>
 // A preset made from scratch has no base; removing it while chosen goes back to the standard one, all traffic.
 const baseOf = (preset: Preset) => nameOf(core.presets.find((p) => p.id === (preset.basedOn || 'all')))
 const aboutMine = (preset: Preset) => {
-  const added = { sites: preset.sites, apps: preset.apps }
-  return preset.basedOn
-    ? `${t('presets.copyOf', { base: baseOf(preset) })}: ${t('presets.added', added)}`
-    : t('presets.addedAlone', added)
+  const rules = t('presets.rules', { n: preset.rules }, preset.rules)
+  return `${preset.basedOn ? t('presets.copyOf', { base: baseOf(preset) }) : t('presets.alone')}: ${rules}.`
 }
 
 const selected = computed({
@@ -56,6 +57,11 @@ async function importLink(): Promise<void> {
   } catch (error) {
     ui.notice = { tone: 'warn', text: failure(error) }
   }
+}
+
+function open(id: string): void {
+  making.value = null
+  void router.push(`/preset/${id}`)
 }
 
 function remove(): Promise<void> {
@@ -87,7 +93,7 @@ function remove(): Promise<void> {
           </strong>
           <span class="text-xs text-t3">{{ te(`presets.about.${preset.id}`) ? t(`presets.about.${preset.id}`) : '' }}</span>
         </div>
-        <Button size="sm" @click="router.push(`/preset/${preset.id}`)"><Copy />{{ t('settings.presets.makeCopy') }}</Button>
+        <Button size="sm" data-testid="preset-copy" @click="making = preset.id"><Copy />{{ t('settings.presets.makeCopy') }}</Button>
       </div>
     </SettingsCard>
     <SettingsCard :title="t('settings.presets.mine')">
@@ -100,7 +106,10 @@ function remove(): Promise<void> {
       >
         <RadioItem :value="preset.id" :aria-label="preset.name" />
         <div>
-          <strong class="font-medium">{{ preset.name }}</strong>
+          <strong class="flex items-center gap-2 font-medium">
+            {{ preset.name }}
+            <span v-if="preset.advanced" class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] text-t2">{{ t('presets.advanced') }}</span>
+          </strong>
           <span class="block text-xs text-t3">{{ aboutMine(preset) }}</span>
         </div>
         <div class="flex gap-1.5">
@@ -118,10 +127,11 @@ function remove(): Promise<void> {
     </SettingsCard>
   </RadioGroup>
   <div class="flex gap-2">
-    <Button data-testid="preset-create" @click="router.push('/preset/new')"><Plus />{{ t('settings.presets.create') }}</Button>
+    <Button data-testid="preset-create" @click="making = ''"><Plus />{{ t('settings.presets.create') }}</Button>
     <Button @click="importLink"><ClipboardPaste />{{ t('settings.presets.import') }}</Button>
   </div>
 
+  <NewPresetDialog :based-on="making" @close="making = null" @created="open" />
   <Dialog :open="removing !== null" :title="t('settings.presets.removeTitle')" @update:open="(o) => !o && (removing = null)">
     <p class="text-t2">
       {{ t('settings.presets.removeText', { name: removing?.name ?? '', base: removing ? baseOf(removing) : '' }) }}

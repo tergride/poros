@@ -3,121 +3,109 @@ package engine
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
 	"testing"
 )
 
+// Every line says what it is by its prefix, as in Throne: nothing is guessed.
 func TestReadPresetLists(t *testing.T) {
-	read, err := ReadPresetLists(PresetLists{Lists: map[string]string{
-		ActionProxy: "video.example.com\r\n# work\n\n  https://Mail.Example.org/inbox  \nnot a site\nDOMAIN:media.example.net\nfull:exact.example\nvideo.example.com",
-		ActionDirect: "192.168.50.0/24\nip:203.0.113.7\nsteam.exe\nC:\\Games\\game.exe\n/usr/bin/firefox\nprocessName:steam\nprocesspath:D:\\Tools\\tool\n" +
-			"*.video.example.com\nSTEAM.EXE",
-		ActionBlock: "*.ads.example\nsuffix:tracker.example\ngeosite:category-ads\nregex:\\.ads\\.example$\n*.\nsteam.exe",
-	}})
+	lists := map[string]string{
+		ActionProxy: "suffix:video.example.com\r\n# work\n\n  suffix:https://Mail.Example.org/inbox  \nmedia.example.net\nSUFFIX:media.example.net\n" +
+			"domain:exact.example\nsuffix:video.example.com",
+		ActionDirect: "ip:192.168.50.0/24\nIP:203.0.113.7\nprocessName:steam.exe\nprocessPath:C:\\Games\\game.exe\nprocessname:steam\n" +
+			"suffix:*.video.example.com\nprocessName:STEAM.EXE",
+		ActionBlock: "suffix:*.ads.example\ngeosite:category-ads\nregex:\\.ads\\.example$\nsuffix:*.\nprocessName:steam.exe\nC:\\Tools\\tool.exe",
+	}
+	read, err := ReadPresetLists(PresetListsInput{Lists: lists})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantSites := []PresetEntry{
-		{Value: "video.example.com", Action: ActionProxy},
-		{Value: "https://Mail.Example.org/inbox", Action: ActionProxy},
-		{Value: "media.example.net", Action: ActionProxy},
-		{Value: "exact.example", Action: ActionProxy},
-		{Value: "192.168.50.0/24", Action: ActionDirect},
-		{Value: "203.0.113.7", Action: ActionDirect},
-		{Value: "*.ads.example", Action: ActionBlock},
-		{Value: "tracker.example", Action: ActionBlock},
+	want := []string{"suffix:video.example.com", "suffix:mail.example.org", "suffix:media.example.net",
+		"ip:192.168.50.0/24", "ip:203.0.113.7", "processName:steam.exe", `processPath:C:\Games\game.exe`, "suffix:ads.example"}
+	if got := values(read.Rules); !slices.Equal(got, want) {
+		t.Errorf("rules:\n%q\nwant\n%q", got, want)
 	}
-	wantApps := []PresetEntry{
-		{Value: "steam.exe", Action: ActionDirect},
-		{Value: `C:\Games\game.exe`, Action: ActionDirect},
-		{Value: "/usr/bin/firefox", Action: ActionDirect},
-		{Value: "steam", Action: ActionDirect},
-		{Value: `D:\Tools\tool`, Action: ActionDirect},
+	if read.Rules[3].Action != ActionDirect || read.Rules[7].Action != ActionBlock {
+		t.Errorf("the tab is the action: %+v", read.Rules)
 	}
-	// The same site in another spelling on another tab is a problem; on its own tab it counts once.
+	// The same rule in another spelling on another tab is a problem; on its own tab it counts once.
 	wantProblems := []PresetListProblem{
-		{Action: ActionProxy, Line: 5, Text: "not a site", Reason: ReasonInvalidEntry},
-		{Action: ActionDirect, Line: 8, Text: "*.video.example.com", Reason: ReasonDuplicate, Other: ActionProxy},
-		{Action: ActionBlock, Line: 3, Text: "geosite:category-ads", Reason: ReasonInvalidEntry},
-		{Action: ActionBlock, Line: 4, Text: `regex:\.ads\.example$`, Reason: ReasonInvalidEntry},
-		{Action: ActionBlock, Line: 5, Text: "*.", Reason: ReasonInvalidEntry},
-		{Action: ActionBlock, Line: 6, Text: "steam.exe", Reason: ReasonDuplicate, Other: ActionDirect},
-	}
-	if !reflect.DeepEqual(read.Sites, wantSites) {
-		t.Errorf("sites:\n%+v\nwant\n%+v", read.Sites, wantSites)
-	}
-	if !reflect.DeepEqual(read.Apps, wantApps) {
-		t.Errorf("apps:\n%+v\nwant\n%+v", read.Apps, wantApps)
+		{Action: ActionProxy, Line: 5, Text: "media.example.net", Reason: ReasonNoPrefix},
+		{Action: ActionProxy, Line: 7, Text: "domain:exact.example", Reason: ReasonAdvancedOnly},
+		{Action: ActionDirect, Line: 6, Text: "suffix:*.video.example.com", Reason: ReasonDuplicate, Other: ActionProxy},
+		{Action: ActionBlock, Line: 2, Text: "geosite:category-ads", Reason: ReasonNoPrefix},
+		{Action: ActionBlock, Line: 3, Text: `regex:\.ads\.example$`, Reason: ReasonAdvancedOnly},
+		{Action: ActionBlock, Line: 4, Text: "suffix:*.", Reason: ReasonInvalidEntry},
+		{Action: ActionBlock, Line: 5, Text: "processName:steam.exe", Reason: ReasonDuplicate, Other: ActionDirect},
+		{Action: ActionBlock, Line: 6, Text: `C:\Tools\tool.exe`, Reason: ReasonNoPrefix},
 	}
 	if !reflect.DeepEqual(read.Problems, wantProblems) {
 		t.Errorf("problems:\n%+v\nwant\n%+v", read.Problems, wantProblems)
 	}
 
-	if _, err = ReadPresetLists(PresetLists{Lists: map[string]string{"warp": "example.com"}}); reason(err) != ReasonInvalidValue {
+	// An advanced preset takes all the kinds.
+	advanced, err := ReadPresetLists(PresetListsInput{Advanced: true, Lists: map[string]string{
+		ActionDirect: "domain:exact.example\nkeyword:tracker\nregex:\\.ads\\.example$\nprocessPathRegex:(?i)games\nport:8000-8080\nport:443\n" +
+			"protocol:QUIC\nnetwork:udp\nipVersion:6\nsourceIP:192.168.1.0/24\nprivate:",
+	}})
+	want = []string{"domain:exact.example", "keyword:tracker", `regex:\.ads\.example$`, "processPathRegex:(?i)games", "port:8000-8080", "port:443",
+		"protocol:quic", "network:udp", "ipVersion:6", "sourceIP:192.168.1.0/24"}
+	if got := values(advanced.Rules); err != nil || !slices.Equal(got, want) ||
+		!reflect.DeepEqual(advanced.Problems, []PresetListProblem{{Action: ActionDirect, Line: 11, Text: "private:", Reason: ReasonNoPrefix}}) {
+		t.Errorf("advanced: %q, %+v, %v", got, advanced.Problems, err)
+	}
+
+	if _, err = ReadPresetLists(PresetListsInput{Lists: map[string]string{"warp": "suffix:example.com"}}); reason(err) != ReasonInvalidValue {
 		t.Errorf("an unknown list: %v", err)
 	}
-	empty, err := ReadPresetLists(PresetLists{})
-	if err != nil || empty.Sites == nil || empty.Apps == nil || empty.Problems == nil {
+	empty, err := ReadPresetLists(PresetListsInput{})
+	if err != nil || empty.Rules == nil || empty.Problems == nil {
 		t.Errorf("no lists: %+v, %v", empty, err)
 	}
 }
 
-// The window shows a preset's entries and gives them back unchanged, and what it gives is a preset to save.
-func TestPresetListsRoundTrip(t *testing.T) {
-	entries := PresetEntries{
-		Sites: []PresetEntry{
-			{Value: "example.org", Action: ActionBlock},
-			{Value: "192.168.50.0/24", Action: ActionDirect},
-			{Value: "https://video.example.com/watch", Action: ActionProxy},
-			{Value: "setup.exe", Action: ActionProxy},
-		},
-		Apps: []PresetEntry{
-			{Value: "steam.exe", Action: ActionDirect},
-			{Value: "steam", Action: ActionDirect},
-			{Value: "example.com", Action: ActionProxy},
-			{Value: `C:\Games\game.exe`, Action: ActionBlock},
-		},
-	}
-	lists, err := WritePresetLists(entries)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]string{
-		ActionProxy:  "https://video.example.com/watch\ndomain:setup.exe\nprocessName:example.com",
-		ActionDirect: "192.168.50.0/24\nsteam.exe\nprocessName:steam",
-		ActionBlock:  "example.org\nC:\\Games\\game.exe",
-	}
-	if !reflect.DeepEqual(lists.Lists, want) {
-		t.Fatalf("lists:\n%q\nwant\n%q", lists.Lists, want)
-	}
-	read, err := ReadPresetLists(lists)
-	if err != nil || len(read.Problems) != 0 {
-		t.Fatalf("read back: %+v, %v", read, err)
-	}
-	// The order changes to that of the tabs, the entries stay.
-	wantSites := []PresetEntry{entries.Sites[2], entries.Sites[3], entries.Sites[1], entries.Sites[0]}
-	wantApps := []PresetEntry{entries.Apps[2], entries.Apps[0], entries.Apps[1], entries.Apps[3]}
-	if !reflect.DeepEqual(read.Sites, wantSites) || !reflect.DeepEqual(read.Apps, wantApps) {
-		t.Errorf("read back:\n%+v\n%+v", read.Sites, read.Apps)
-	}
+// The window writes the rules it has lines for; after it, a rule with a line keeps its place, its name and its
+// switch, one without a line stays, a removed line removes its rule, and a new line comes last before narrower rules
+// rise over wider ones.
+func TestPresetListsKeepPlaces(t *testing.T) {
+	games := PresetRule{Name: "Games", Action: ActionDirect, Conditions: []RuleCondition{
+		{Kind: CondProcessName, Values: []string{"game.exe"}}, {Kind: CondNetwork, Values: []string{"udp"}},
+	}}
+	named := rule(CondSuffix, "a.example", ActionProxy)
+	named.Name, named.Off = "A", true
+	private := PresetRule{Action: ActionProxy, Conditions: []RuleCondition{{Kind: CondPrivate, Values: []string{}}}}
+	inverted := rule(CondSuffix, "c.example", ActionProxy)
+	inverted.Invert = true
+	rules := []PresetRule{games, named, rule(CondIP, "10.0.0.0/8", ActionDirect), private, inverted, rule(CondSuffix, "b.example", ActionBlock)}
 
-	e, _ := openTest(t, t.TempDir())
-	draft, _ := e.PresetCopy("all")
-	draft.Name, draft.Sites, draft.Apps = "Lists", read.Sites, read.Apps
-	if saved, err := e.SavePreset(draft); err != nil || saved.Sites != 4 || saved.Apps != 4 {
-		t.Errorf("SavePreset: %+v, %v", saved, err)
+	lists, err := WritePresetLists(PresetRules{Advanced: true, Rules: rules})
+	want := map[string]string{ActionProxy: "suffix:a.example", ActionDirect: "ip:10.0.0.0/8", ActionBlock: "suffix:b.example"}
+	if err != nil || !reflect.DeepEqual(lists.Lists, want) {
+		t.Fatalf("lists: %q, %v", lists.Lists, err)
 	}
-
-	// An entry the window cannot read stays as typed, for the window to name.
-	lists, err = WritePresetLists(PresetEntries{Sites: []PresetEntry{{Value: "not a site", Action: ActionProxy}}})
-	if err != nil || lists.Lists[ActionProxy] != "not a site" {
-		t.Errorf("a broken entry: %q, %v", lists.Lists, err)
-	}
-	if _, err = WritePresetLists(PresetEntries{Apps: []PresetEntry{{Value: "steam.exe", Action: "elsewhere"}}}); reason(err) != ReasonInvalidEntry {
+	if _, err = WritePresetLists(PresetRules{Rules: []PresetRule{rule(CondSuffix, "example.com", "elsewhere")}}); reason(err) != ReasonInvalidValue {
 		t.Errorf("an unknown action: %v", err)
 	}
 
-	result, err := e.Handlers()[MethodPresetsReadLists](t.Context(), json.RawMessage(`{"lists":{"block":"ads.example"}}`))
-	if read, ok := result.(PresetListsRead); err != nil || !ok || !reflect.DeepEqual(read.Sites, []PresetEntry{{Value: "ads.example", Action: ActionBlock}}) {
+	read, err := ReadPresetLists(PresetListsInput{Advanced: true, Rules: rules, Lists: map[string]string{
+		ActionProxy:  "suffix:a.example\nsuffix:x.a.example",
+		ActionDirect: "port:443",
+		ActionBlock:  "ip:10.0.0.0/8",
+	}})
+	if err != nil || len(read.Problems) != 0 {
+		t.Fatalf("read: %+v, %v", read, err)
+	}
+	wantRules := []PresetRule{games, rule(CondSuffix, "x.a.example", ActionProxy), named, rule(CondIP, "10.0.0.0/8", ActionBlock), private, inverted, rule(CondPort, "443", ActionDirect)}
+	if !reflect.DeepEqual(read.Rules, wantRules) {
+		t.Errorf("rules:\n%+v\nwant\n%+v", read.Rules, wantRules)
+	}
+
+	e, _ := openTest(t, t.TempDir())
+	if saved, err := e.SavePreset(PresetCopy{BasedOn: "all", Name: "Lists", Advanced: true, Rules: read.Rules}); err != nil || saved.Rules != 7 {
+		t.Errorf("what the window gives is a preset to save: %+v, %v", saved, err)
+	}
+	result, err := e.Handlers()[MethodPresetsReadLists](t.Context(), json.RawMessage(`{"advanced":false,"rules":[],"lists":{"block":"suffix:ads.example"}}`))
+	if read, ok := result.(PresetListsRead); err != nil || !ok || !slices.Equal(values(read.Rules), []string{"suffix:ads.example"}) || read.Rules[0].Action != ActionBlock {
 		t.Errorf("through JSON-RPC: %+v, %v", result, err)
 	}
 }

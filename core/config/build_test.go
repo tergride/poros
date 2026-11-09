@@ -347,6 +347,10 @@ func TestParsePreset(t *testing.T) {
 		"no condition":     strings.Replace(good, `,"domain_suffix":["example.com"]`, ``, 1),
 		"unknown outbound": strings.Replace(good, `"outbound":"proxy"`, `"outbound":"warp"`, 1),
 		"bad cidr":         strings.Replace(good, `"domain_suffix":["example.com"]`, `"ip_cidr":["10.0.0.0/33"]`, 1),
+		"bad port range":   strings.Replace(good, `"domain_suffix":["example.com"]`, `"port_range":["9000:80"]`, 1),
+		"bad regex":        strings.Replace(good, `"domain_suffix":["example.com"]`, `"domain_regex":["(ads"]`, 1),
+		"bad network":      strings.Replace(good, `"domain_suffix":["example.com"]`, `"network":["icmp"]`, 1),
+		"bad direct dns":   strings.Replace(good, `"default_outbound":"direct"`, `"default_outbound":"direct","direct_dns":"dns.google"`, 1),
 		"other kind":       strings.Replace(good, `poros-route-profile`, `throne-route-profile`, 1),
 	}
 	for name, text := range bad {
@@ -479,5 +483,66 @@ func TestRefusalNeedsNoServer(t *testing.T) {
 	data, _ := configs.SingBoxJSON()
 	if err = boxmain.Check(data); err != nil {
 		t.Errorf("sing-box refuses it: %v", err)
+	}
+}
+
+// Rules of an advanced preset: every condition must match, so a rule on two kinds of destination is built of rules
+// apart; an inverted rule takes the rest, and the names follow the rules they can: those on names and programs.
+func TestAdvancedRules(t *testing.T) {
+	preset := Preset{
+		Name: "Advanced", DefaultOutbound: OutboundProxy, DirectDNS: "tls://dns.example:853",
+		Rules: []Rule{
+			allPreset.Rules[0],
+			{Name: "Video words", Action: ActionRoute, Outbound: OutboundDirect, DomainSuffix: []string{"example.com"}, DomainKeyword: []string{"video"}},
+			{Name: "Web of a site", Action: ActionRoute, Outbound: OutboundDirect, DomainSuffix: []string{"example.org"}, Port: []uint16{443}, PortRange: []string{"8000:8080"}},
+			{Name: "Not mine", Action: ActionRoute, Outbound: OutboundProxy, DomainSuffix: []string{"mine.example"}, Invert: true},
+			{Name: "Games", Action: ActionRoute, Outbound: OutboundDirect, ProcessPathRegex: []string{`(?i)\\games\\`}},
+			{Name: "QUIC", Action: ActionReject, Network: []string{"udp"}, Protocol: []string{"quic"}},
+			{Name: "IPv6 of the LAN", Action: ActionRoute, Outbound: OutboundDirect, IPVersion: 6, SourceIPCIDR: []string{"192.168.1.0/24"}},
+			allPreset.Rules[1],
+		},
+	}
+	configs, err := Build(Input{Server: mustParse(t, sampleLinks(t)["trojan tcp"]), Preset: preset, Tun: true, MixedPort: 2090})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := configs.SingBoxJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = boxmain.Check(data); err != nil {
+		t.Fatalf("sing-box refuses the config: %v", err)
+	}
+	route := configs.SingBox.Route.Rules
+	// sniff, the DNS rule, then the user's.
+	words, web, notMine := route[2], route[3], route[4]
+	if words.Type != C.RuleTypeLogical || words.LogicalOptions.Mode != C.LogicalTypeAnd || len(words.LogicalOptions.Rules) != 2 ||
+		words.LogicalOptions.RouteOptions.Outbound != TagDirect {
+		t.Errorf("a site and a word must both match: %+v", words)
+	}
+	if web.Type != C.RuleTypeDefault || len(web.DefaultOptions.Port) != 1 || web.DefaultOptions.PortRange[0] != "8000:8080" {
+		t.Errorf("a site and its ports are one rule: %+v", web)
+	}
+	if !notMine.DefaultOptions.Invert {
+		t.Errorf("inverted: %+v", notMine)
+	}
+	dns := configs.SingBox.DNS.Rules
+	if len(dns) != 3 || dns[0].Type != C.RuleTypeLogical || !dns[1].DefaultOptions.Invert || dns[1].DefaultOptions.RouteOptions.Server != TagDNSRemote ||
+		dns[2].DefaultOptions.ProcessPathRegex[0] != `(?i)\\games\\` {
+		t.Errorf("names follow the rules on names and programs only: %+v", dns)
+	}
+	servers := configs.SingBox.DNS.Servers
+	if len(servers) != 3 || servers[1].Tag != TagDNSDirect || servers[1].Type != C.DNSTypeTLS || servers[2].Tag != tagDNSSystem {
+		t.Fatalf("the direct DNS of the preset, its name from the system's: %+v", servers)
+	}
+	if tls := servers[1].Options.(*option.RemoteTLSDNSServerOptions); tls.Detour != "" || tls.DomainResolver.Server != tagDNSSystem {
+		t.Errorf("the direct DNS goes past the server: %+v", tls)
+	}
+
+	inverted := Preset{Name: "Not the office", DefaultOutbound: OutboundDirect, Rules: []Rule{
+		{Action: ActionRoute, Outbound: OutboundProxy, IPCIDR: []string{"10.20.0.0/16"}, Invert: true},
+	}}
+	if excluded := tunExcluded(inverted); len(excluded) != 1 {
+		t.Errorf("an inverted rule on addresses takes the private ranges too: %v", excluded)
 	}
 }

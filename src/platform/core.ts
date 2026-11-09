@@ -17,10 +17,12 @@ import type {
   OutsideLink,
   Preset,
   PresetCopy,
-  PresetEntries,
   PresetLink,
   PresetLists,
+  PresetListsInput,
   PresetListsRead,
+  PresetRules,
+  RuleProblem,
   MoveServers,
   RenameGroup,
   SaveServer,
@@ -71,6 +73,7 @@ import {
   MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
+  MethodPresetsCheck,
   MethodPresetsExport,
   MethodPresetsGet,
   MethodPresetsImport,
@@ -146,8 +149,9 @@ export interface CoreMethods {
   [MethodPresetsRemove]: { params: ByID; result: null }
   [MethodPresetsExport]: { params: ByID; result: PresetLink }
   [MethodPresetsImport]: { params: PresetLink; result: Preset }
-  [MethodPresetsWriteLists]: { params: PresetEntries; result: PresetLists }
-  [MethodPresetsReadLists]: { params: PresetLists; result: PresetListsRead }
+  [MethodPresetsCheck]: { params: PresetRules; result: PresetRules }
+  [MethodPresetsWriteLists]: { params: PresetRules; result: PresetLists }
+  [MethodPresetsReadLists]: { params: PresetListsInput; result: PresetListsRead }
   [MethodLinksParse]: { params: OutsideLink; result: LinkInfo }
   [MethodConnectionStart]: { params: undefined; result: ConnectionState }
   [MethodConnectionStop]: { params: undefined; result: ConnectionState }
@@ -198,7 +202,8 @@ export const StatusNotAnswering = 'not_answering'
 export interface CoreError {
   code: number
   message: string
-  data?: { reason?: string }
+  /** A failure about a rule of a preset carries the whole RuleProblem. */
+  data?: { reason?: string } & Partial<RuleProblem>
 }
 
 /** The local proxy of the core, HTTP and SOCKS5 on one port: DefaultMixedPort of core/engine/connection.go. */

@@ -191,10 +191,9 @@ func (s *shell) loseConnection(t *testing.T) {
 func (s *shell) useDirectPreset(providerURL, mode string) {
 	s.t.Helper()
 	s.useServer(providerURL)
-	var preset map[string]any
-	json.Unmarshal(s.call("presets.get", map[string]string{"id": "all"}), &preset)
-	preset["name"] = "Direct probe"
-	preset["sites"] = []map[string]string{{"value": "msftconnecttest.com", "action": "direct"}}
+	preset := map[string]any{"basedOn": "all", "name": "Direct probe", "rules": []map[string]any{{
+		"conditions": []map[string]any{{"kind": "suffix", "values": []string{"msftconnecttest.com"}}}, "action": "direct",
+	}}}
 	var saved struct{ ID string }
 	json.Unmarshal(s.call("presets.save", preset), &saved)
 	var settings map[string]any

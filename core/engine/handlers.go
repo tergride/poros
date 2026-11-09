@@ -49,6 +49,7 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodPresetsRemove:       withParams(func(p ByID) (any, error) { return nil, e.RemovePreset(p.ID) }),
 		MethodPresetsExport:       withParams(func(p ByID) (PresetLink, error) { return e.ExportPreset(p.ID) }),
 		MethodPresetsImport:       withParams(e.ImportPreset),
+		MethodPresetsCheck:        withParams(CheckPresetRules),
 		MethodPresetsWriteLists:   withParams(WritePresetLists),
 		MethodPresetsReadLists:    withParams(ReadPresetLists),
 		MethodLinksParse:          withParams(e.ParseLink),

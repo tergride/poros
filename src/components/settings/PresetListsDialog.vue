@@ -6,21 +6,25 @@ import { useI18n } from 'vue-i18n'
 
 import { Banner, Button, Dialog, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui'
 import { useFailure } from '@/composables/useReason'
-import type { PresetEntries, PresetListProblem, PresetListsRead } from '@/platform/core-types'
+import { kindOfLine } from '@/lib/rules'
+import type { PresetListProblem, PresetListsRead, PresetRule } from '@/platform/core-types'
 import {
   ActionBlock,
   ActionDirect,
   ActionProxy,
   MethodPresetsReadLists,
   MethodPresetsWriteLists,
+  ReasonAdvancedOnly,
   ReasonDuplicate,
+  ReasonNoPrefix,
 } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
-// The entries of a preset as a list per action, to paste whole lists at once. The core reads the lines; Apply hands
-// the entries to the editor, which saves them with the rest of the preset.
-const props = defineProps<{ name: string; entries: PresetEntries }>()
-const emit = defineEmits<{ apply: [entries: PresetEntries] }>()
+// The rules of a preset as a list per action, as Throne's simple rules, to paste whole lists at once: every line
+// starts with the prefix of its kind. The core reads the lines; Apply hands the rules to the editor, which saves them
+// with the rest of the preset. Rules of several conditions and the locked ones stay out of the window and in place.
+const props = defineProps<{ name: string; advanced: boolean; rules: PresetRule[] }>()
+const emit = defineEmits<{ apply: [rules: PresetRule[]] }>()
 const open = defineModel<boolean>('open', { default: false })
 
 const core = useCoreStore()
@@ -42,7 +46,7 @@ watch(open, async (shown) => {
   read.value = null
   failure.value = ''
   try {
-    lists.value = (await core.core().call(MethodPresetsWriteLists, { sites: props.entries.sites, apps: props.entries.apps })).lists
+    lists.value = (await core.core().call(MethodPresetsWriteLists, { advanced: props.advanced, rules: props.rules })).lists
     await check()
   } catch (error) {
     failure.value = reason(error)
@@ -53,7 +57,7 @@ async function check(): Promise<PresetListsRead | null> {
   if (!lists.value) return null
   const mine = ++serial
   try {
-    const result = await core.core().call(MethodPresetsReadLists, { lists: { ...lists.value } })
+    const result = await core.core().call(MethodPresetsReadLists, { advanced: props.advanced, rules: props.rules, lists: { ...lists.value } })
     if (mine === serial) {
       read.value = result
       failure.value = ''
@@ -70,19 +74,27 @@ const checkSoon = useDebounceFn(check, 250)
 async function apply(): Promise<void> {
   const result = await check()
   if (!result || result.problems.length > 0) return
-  emit('apply', { sites: result.sites, apps: result.apps })
+  emit('apply', result.rules)
   open.value = false
 }
 
-const count = (action: string) =>
-  read.value ? [...read.value.sites, ...read.value.apps].filter((entry) => entry.action === action).length : 0
-const problemsOf = (action: string) => read.value?.problems.filter((problem) => problem.action === action) ?? []
-const invalid = computed(() => problemsOf(tab.value).filter((problem) => problem.reason !== ReasonDuplicate))
-const duplicates = computed(() => problemsOf(tab.value).filter((problem) => problem.reason === ReasonDuplicate))
+// The lines of a tab: a list of hundreds counts what is written, not what the core has read so far.
+const count = (action: string) => (lists.value?.[action] ?? '').split('\n').filter((line) => line.trim() && !line.trim().startsWith('#')).length
+const problemsOf = (action: string) => read.value?.problems.filter((problem) => problem.reason !== ReasonDuplicate && problem.action === action) ?? []
+const duplicatesOf = (action: string) => read.value?.problems.filter((problem) => problem.reason === ReasonDuplicate && problem.action === action) ?? []
+const invalid = computed(() => problemsOf(tab.value))
+const duplicates = computed(() => duplicatesOf(tab.value))
 
 // A pasted list can have hundreds of bad lines: the message names the first few.
 const named = 5
 const short = (text: string) => (text.length > 40 ? `${text.slice(0, 39)}…` : text)
+
+function why(problem: PresetListProblem): string {
+  if (problem.reason === ReasonNoPrefix) return t('presetLists.noPrefix')
+  if (problem.reason === ReasonAdvancedOnly) return t('presetLists.advancedOnly')
+  const kind = kindOfLine(problem.text)
+  return kind ? t(`rules.invalid.${kind}`) : t('rules.problem.invalid')
+}
 
 function lineList(problems: PresetListProblem[]): string {
   const lines = problems
@@ -90,7 +102,7 @@ function lineList(problems: PresetListProblem[]): string {
     .map((p) =>
       p.reason === ReasonDuplicate
         ? t('presetLists.lineOn', { line: p.line, text: short(p.text), tab: t(`action.${p.other}`) })
-        : t('presetLists.line', { line: p.line, text: short(p.text) }),
+        : t('presetLists.line', { line: p.line, text: short(p.text), why: why(p) }),
     )
     .join(', ')
   return problems.length > named ? t('presetLists.more', { lines, n: problems.length - named }) : lines
@@ -112,7 +124,7 @@ const title = computed(() =>
         <TabsList class="px-3">
           <TabsTrigger v-for="action in tabs" :key="action" :value="action" :data-testid="`lists-tab-${action}`">
             {{ t(`action.${action}`) }} · {{ count(action) }}
-            <template v-if="problemsOf(action).length > 0">
+            <template v-if="problemsOf(action).length + duplicatesOf(action).length > 0">
               <TriangleAlert class="text-warn" /><span class="sr-only">{{ t('presetLists.problems') }}</span>
             </template>
           </TabsTrigger>
@@ -149,7 +161,7 @@ const title = computed(() =>
           <span>{{ t('presetLists.duplicate', { lines: lineList(duplicates) }) }}</span>
         </div>
         <Banner v-if="failure">{{ failure }}</Banner>
-        <p class="text-xs text-t3">{{ t('presetLists.hint') }}</p>
+        <p class="text-xs text-t3">{{ t(advanced ? 'presetLists.hintAdvanced' : 'presetLists.hint') }}</p>
       </TabsContent>
       <template #footer>
         <span class="sp text-xs text-t3">{{ t('presetLists.locked') }}</span>

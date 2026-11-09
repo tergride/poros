@@ -15,9 +15,9 @@ import (
 // fakeGuard keeps a block that is only a flag, the way the guard process keeps it for a window: a new engine on the
 // same guard finds the block the previous one left.
 type fakeGuard struct {
-	mu       sync.Mutex
-	rights   bool
-	block    *fakeLink
+	mu     sync.Mutex
+	rights bool
+	block  *fakeLink
 	// taken is the block of another Poros on the computer.
 	taken    bool
 	arms     int

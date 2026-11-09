@@ -395,84 +395,156 @@ type NetworkState struct {
 	ErrorText string `json:"errorText"`
 }
 
-// Preset is a routing preset: which traffic goes through the server.
+// / Preset is a routing preset: which traffic goes through the server.
 type Preset struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Builtin bool   `json:"builtin"`
 	// BasedOn is the built-in preset a copy started from, "" for a preset made from scratch, which runs on the
-	// standard rules: all traffic through the server. Sites and Apps count what the user's preset adds.
+	// standard rules: all traffic through the server.
 	BasedOn string `json:"basedOn"`
-	Sites   int    `json:"sites"`
-	Apps    int    `json:"apps"`
+	// Advanced is a preset of the advanced kind: more kinds of conditions, rules of several conditions, a direct DNS.
+	Advanced bool `json:"advanced"`
+	// Rules counts the user's rules of a copy, and all the rules of a built-in preset.
+	Rules int `json:"rules"`
 }
 
-// Where the traffic of a preset entry goes.
+// Where the traffic of a preset rule goes.
 const (
 	ActionProxy  = "proxy"
 	ActionDirect = "direct"
 	ActionBlock  = "block"
 )
 
-// PresetEntry is a site, address or subnet, or a program, of a preset copy and where its traffic goes.
-type PresetEntry struct {
-	// Value is a domain (it takes its subdomains too), an address, a subnet, a program's file name or its full path.
-	Value  string `json:"value"`
+// Kinds of a condition of a preset rule. They are the prefixes of the lists window too, spelled as in Throne.
+const (
+	// CondSuffix is a domain with its subdomains.
+	CondSuffix = "suffix"
+	// CondIP is an address or a subnet of the destination.
+	CondIP = "ip"
+	// CondProcessName is the file name of a program, CondProcessPath its full path.
+	CondProcessName = "processName"
+	CondProcessPath = "processPath"
+	// CondDomain and the kinds below belong to the advanced preset. CondDomain is a domain without its subdomains.
+	CondDomain           = "domain"
+	CondKeyword          = "keyword"
+	CondRegex            = "regex"
+	CondProcessPathRegex = "processPathRegex"
+	// CondPort is a port or a range, 8000-8080.
+	CondPort = "port"
+	// CondProtocol is a protocol sing-box recognizes: tls, http, quic, dns, stun, bittorrent, dtls, ssh, rdp, ntp.
+	CondProtocol = "protocol"
+	// CondNetwork is tcp or udp, CondIPVersion 4 or 6.
+	CondNetwork   = "network"
+	CondIPVersion = "ipVersion"
+	// CondSourceIP is an address or a subnet of the source, as of a device in the local network.
+	CondSourceIP = "sourceIP"
+	// CondPrivate is the private networks; it takes no values and has no line in the lists window.
+	CondPrivate = "private"
+)
+
+// RuleCondition is a condition of a preset rule: it matches by any of its values.
+type RuleCondition struct {
+	Kind   string   `json:"kind"`
+	Values []string `json:"values"`
+}
+
+// PresetRule is a rule of a user's preset: it matches when every condition does. A rule of a simple preset has one
+// condition of a simple kind with one value.
+type PresetRule struct {
+	// Name is the rule's own name in an advanced preset, "" for none.
+	Name       string          `json:"name"`
+	Conditions []RuleCondition `json:"conditions"`
+	// Invert takes what the conditions do not match; Off keeps the rule out of the connection. Both are advanced.
+	Invert bool   `json:"invert"`
+	Off    bool   `json:"off"`
 	Action string `json:"action"`
 }
 
-// InheritedRule is a rule a user's preset keeps from its built-in preset or the standard rules; the user's entries
-// come first.
+// RuleProblem is the data of an error about a rule of a preset: which rule, condition and value.
+type RuleProblem struct {
+	// Reason is invalid_entry for a value that is not of its kind, invalid_value for an unknown kind or action,
+	// no_condition, empty_condition for a condition without values, advanced_only for what a simple preset cannot
+	// have, and duplicate for a rule that repeats the rule Other.
+	Reason string `json:"reason"`
+	// Rule counts the rules from 0, Line the values of the condition of Kind from 1.
+	Rule  int    `json:"rule"`
+	Kind  string `json:"kind"`
+	Line  int    `json:"line"`
+	Value string `json:"value"`
+	Other int    `json:"other"`
+}
+
+// InheritedRule is a rule a user's preset keeps from its built-in preset or the standard rules.
 type InheritedRule struct {
 	// Name is in English; the interface translates the names it knows.
-	Name   string `json:"name"`
+	Name string `json:"name"`
+	// Action is proxy, direct or block, and dns for the rule of DNS queries, which Poros answers.
 	Action string `json:"action"`
+	// First is a rule before the user's rules; the others come after them.
+	First bool `json:"first"`
 }
 
-// PresetCopy is a user's preset as the editor shows it. An empty ID is a new preset, an empty BasedOn one made from
-// scratch.
+// PresetCopy is a preset as the editor shows it. An empty ID is a new preset, an empty BasedOn one made from
+// scratch. A built-in preset comes with Builtin set and no rules of its own; it is never saved.
 type PresetCopy struct {
-	ID      string        `json:"id"`
-	BasedOn string        `json:"basedOn"`
-	Name    string        `json:"name"`
-	Sites   []PresetEntry `json:"sites"`
-	Apps    []PresetEntry `json:"apps"`
-	// DNS is the remote DNS server: "" keeps the preset's, otherwise https://, tls:// or a plain address.
+	ID       string       `json:"id"`
+	Builtin  bool         `json:"builtin"`
+	BasedOn  string       `json:"basedOn"`
+	Name     string       `json:"name"`
+	Advanced bool         `json:"advanced"`
+	Rules    []PresetRule `json:"rules"`
+	// DNS is the remote DNS server: "" is the default one, otherwise https://, tls:// or a plain address.
 	DNS string `json:"dns"`
-	// Default is where the traffic goes that no entry and no inherited rule takes: proxy, direct or block. ""
-	// keeps the one of the built-in preset.
+	// DirectDNS is the DNS server of direct traffic of an advanced preset: "" is the default one, local the
+	// system's, otherwise https://, tls:// or a plain address.
+	DirectDNS string `json:"directDns"`
+	// Default is where the traffic goes that no rule takes: proxy, direct or block. "" keeps the one of the
+	// built-in preset.
 	Default   string          `json:"default"`
 	Inherited []InheritedRule `json:"inherited"`
 }
 
-// PresetEntries are the sites and programs of a user's preset.
-type PresetEntries struct {
-	Sites []PresetEntry `json:"sites"`
-	Apps  []PresetEntry `json:"apps"`
+// DNSLocal is the system's DNS as the direct DNS of a preset.
+const DNSLocal = "local"
+
+// PresetRules are the rules of a preset of a kind: presets.check gives them back checked, with every value as the
+// core reads it and narrower rules over wider ones.
+type PresetRules struct {
+	Advanced bool         `json:"advanced"`
+	Rules    []PresetRule `json:"rules"`
 }
 
-// PresetLists are the entries of a preset as the lists window shows them: a text per action (proxy, direct, block)
-// with a line per site, address, subnet or program.
+// PresetLists are the rules of a preset as the lists window shows them: a text per action (proxy, direct, block)
+// with a line per rule, each starting with the prefix of its kind.
 type PresetLists struct {
 	Lists map[string]string `json:"lists"`
 }
 
-// PresetListProblem is a line of the lists window that became no entry.
+// PresetListsInput is the text of the lists window and the rules it was written from.
+type PresetListsInput struct {
+	Advanced bool              `json:"advanced"`
+	Rules    []PresetRule      `json:"rules"`
+	Lists    map[string]string `json:"lists"`
+}
+
+// PresetListProblem is a line of the lists window that became no rule.
 type PresetListProblem struct {
 	// Action names the tab, Line counts from 1 on it, Text is the line without the spaces around it.
 	Action string `json:"action"`
 	Line   int    `json:"line"`
 	Text   string `json:"text"`
-	// Reason is invalid_entry for a line that is no site, address, subnet or program, and duplicate for one already
-	// on the tab Other.
+	// Reason is no_prefix, advanced_only for a kind of the advanced preset in a simple one, invalid_entry for a value
+	// that is not of its kind, and duplicate for a line already on the tab Other.
 	Reason string `json:"reason"`
 	Other  string `json:"other"`
 }
 
-// PresetListsRead is what the lists window holds: the entries of its lines, and the lines that are none.
+// PresetListsRead is what the lists window holds: the rules with its lines, and the lines that are none. The rules
+// the window has a line for keep their places, those without one stay, and new lines come last; then narrower rules
+// rise over wider ones.
 type PresetListsRead struct {
-	Sites    []PresetEntry       `json:"sites"`
-	Apps     []PresetEntry       `json:"apps"`
+	Rules    []PresetRule        `json:"rules"`
 	Problems []PresetListProblem `json:"problems"`
 }
 
@@ -731,15 +803,19 @@ const (
 	MethodServersResetTraffic = "servers.resetTraffic"
 	// MethodServersClean removes servers as CleanServers says and answers with their IDs.
 	MethodServersClean = "servers.clean"
-	// MethodPresetsGet gives a user's preset for the editor; for a built-in preset, a new copy of it, and for "" a
-	// new preset from scratch.
-	MethodPresetsGet    = "presets.get"
+	// MethodPresetsGet gives a preset for the editor; a built-in one comes with Builtin set, to show and to copy.
+	MethodPresetsGet = "presets.get"
+	// MethodPresetsSave stores a user's preset, a new one when it has no ID; its rules are checked as by
+	// MethodPresetsCheck.
 	MethodPresetsSave   = "presets.save"
 	MethodPresetsRemove = "presets.remove"
 	MethodPresetsExport = "presets.export"
 	MethodPresetsImport = "presets.import"
-	// MethodPresetsWriteLists gives the entries of a preset as the text of the lists window, MethodPresetsReadLists
-	// the entries of that text and the lines it could not read; neither saves anything.
+	// MethodPresetsCheck checks the rules of a preset without saving them; a wrong one fails with a RuleProblem as
+	// the data of the error.
+	MethodPresetsCheck = "presets.check"
+	// MethodPresetsWriteLists gives the rules of a preset as the text of the lists window, MethodPresetsReadLists
+	// the rules with that text and the lines it could not read; neither saves anything.
 	MethodPresetsWriteLists = "presets.writeLists"
 	MethodPresetsReadLists  = "presets.readLists"
 	// MethodLinksParse reads a poros:// link without adding anything.
@@ -829,8 +905,16 @@ const (
 	ReasonCheckOff = "check_off"
 	// ReasonCheckFailed is a check of which a part did not work: a service did not answer.
 	ReasonCheckFailed = "check_failed"
-	// ReasonInvalidEntry is a preset entry that is no domain, address, subnet or program.
+	// ReasonInvalidEntry is a value of a preset rule that is not of its kind: no site, address, port or program.
 	ReasonInvalidEntry = "invalid_entry"
+	// ReasonNoPrefix is a line of the lists window without the prefix of its kind.
+	ReasonNoPrefix = "no_prefix"
+	// ReasonAdvancedOnly is what only an advanced preset has, found in a simple one: a kind, several conditions or
+	// values, an inverted or switched-off rule, a direct DNS.
+	ReasonAdvancedOnly = "advanced_only"
+	// ReasonNoCondition is a preset rule without conditions, ReasonEmptyCondition a condition without values.
+	ReasonNoCondition    = "no_condition"
+	ReasonEmptyCondition = "empty_condition"
 	// ReasonInvalidLink is a preset or poros:// link Poros cannot read.
 	ReasonInvalidLink = "invalid_link"
 	// ReasonUpdateFailed is a check or download of an update that did not work.

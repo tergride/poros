@@ -18,10 +18,7 @@ func TestOutsideLinks(t *testing.T) {
 		t.Fatalf("Throne subscription link: %+v, %v", info, err)
 	}
 
-	draft, _ := e.PresetCopy("all")
-	draft.Name = "Home"
-	draft.Sites = []PresetEntry{{Value: "example.org", Action: ActionBlock}}
-	draft.DNS = "tls://1.1.1.1"
+	draft := PresetCopy{BasedOn: "all", Name: "Home", Rules: []PresetRule{rule(CondSuffix, "example.org", ActionBlock)}, DNS: "tls://1.1.1.1"}
 	saved, err := e.SavePreset(draft)
 	if err != nil {
 		t.Fatal(err)
@@ -32,7 +29,7 @@ func TestOutsideLinks(t *testing.T) {
 	}
 	info, err = e.ParseLink(OutsideLink{Link: exported.Link})
 	if err != nil || info.Kind != LinkPreset || info.Preset == nil || info.Preset.Name != "Home" || info.Preset.BasedOn != "all" ||
-		len(info.Preset.Sites) != 1 || info.Preset.DNS != "tls://1.1.1.1" {
+		len(info.Preset.Rules) != 1 || info.Preset.DNS != "tls://1.1.1.1" {
 		t.Fatalf("preset link: %+v, %v", info, err)
 	}
 	if presets, _ := e.Presets(); len(presets) != 3 {
