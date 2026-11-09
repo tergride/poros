@@ -62,6 +62,7 @@ async function create(): Promise<void> {
       directDns: '',
       default: '',
       inherited: [],
+      endpoints: [],
     })
     emit('created', preset.id)
   } catch (error) {

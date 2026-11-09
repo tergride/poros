@@ -45,7 +45,7 @@ function exportLink(preset: Preset): Promise<void> {
   return attempt(async () => {
     const { link } = await core.core().call(MethodPresetsExport, { id: preset.id })
     await navigator.clipboard.writeText(link)
-    ui.notice = { tone: 'info', text: t('settings.presets.exported') }
+    ui.notice = { tone: 'info', text: t(preset.endpoints > 0 ? 'settings.presets.exportedLocal' : 'settings.presets.exported') }
   })
 }
 

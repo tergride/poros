@@ -34,15 +34,16 @@ func ruleFailure(problem RuleProblem, format string, args ...any) error {
 // CheckPresetRules gives the rules of a preset as the core keeps them: every value read for its kind, repeats in a
 // condition dropped, and a narrower rule over a wider one. A rule that is wrong fails with a RuleProblem.
 func CheckPresetRules(p PresetRules) (PresetRules, error) {
-	rules, err := checkRules(p.Advanced, p.Rules)
-	return PresetRules{Advanced: p.Advanced, Rules: rules}, err
+	rules, err := checkRules(p.Advanced, p.Endpoints, p.Rules)
+	return PresetRules{Advanced: p.Advanced, Rules: rules, Endpoints: p.Endpoints}, err
 }
 
-func checkRules(advanced bool, rules []PresetRule) ([]PresetRule, error) {
+// checkRules checks the rules of a preset whose endpoints are the profiles endpoints names.
+func checkRules(advanced bool, endpoints []string, rules []PresetRule) ([]PresetRule, error) {
 	checked := make([]PresetRule, 0, len(rules))
 	seen := map[string]int{}
 	for i, rule := range rules {
-		rule, err := checkRule(advanced, i, rule)
+		rule, err := checkRule(advanced, endpoints, i, rule)
 		if err != nil {
 			return nil, err
 		}
@@ -58,10 +59,17 @@ func checkRules(advanced bool, rules []PresetRule) ([]PresetRule, error) {
 	return narrowFirst(checked), nil
 }
 
-func checkRule(advanced bool, i int, rule PresetRule) (PresetRule, error) {
+func checkRule(advanced bool, endpoints []string, i int, rule PresetRule) (PresetRule, error) {
 	problem := func(reason string) RuleProblem { return RuleProblem{Reason: reason, Rule: i} }
-	if !slices.Contains(ruleActions, rule.Action) {
-		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the action must be proxy, direct or block, not %q", i+1, rule.Action)
+	switch {
+	case rule.Action == ActionEndpoint && !advanced:
+		return rule, ruleFailure(problem(ReasonAdvancedOnly), "rule %d: only an advanced preset has endpoints", i+1)
+	case rule.Action == ActionEndpoint && !slices.Contains(endpoints, rule.Endpoint):
+		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the preset has no endpoint %q", i+1, rule.Endpoint)
+	case rule.Action != ActionEndpoint && !slices.Contains(ruleActions, rule.Action):
+		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the action must be proxy, direct, block or endpoint, not %q", i+1, rule.Action)
+	case rule.Action != ActionEndpoint:
+		rule.Endpoint = ""
 	}
 	if len(rule.Conditions) == 0 {
 		return rule, ruleFailure(problem(ReasonNoCondition), "rule %d has no condition", i+1)
@@ -276,7 +284,8 @@ func narrowFirst(rules []PresetRule) []PresetRule {
 }
 
 // configRule is a checked rule of a preset as the config builder takes it.
-func configRule(rule PresetRule) config.Rule {
+// configRule turns a checked rule into one of the connection; endpoints are those of its preset.
+func configRule(rule PresetRule, endpoints []string) config.Rule {
 	out := config.Rule{Name: rule.Name, Invert: rule.Invert}
 	if out.Name == "" && len(rule.Conditions) > 0 && len(rule.Conditions[0].Values) > 0 {
 		out.Name = rule.Conditions[0].Values[0]
@@ -284,6 +293,8 @@ func configRule(rule PresetRule) config.Rule {
 	switch rule.Action {
 	case ActionBlock:
 		out.Action = config.ActionReject
+	case ActionEndpoint:
+		out.Action, out.Outbound = config.ActionRoute, config.EndpointTag(slices.Index(endpoints, rule.Endpoint))
 	default:
 		out.Action, out.Outbound = config.ActionRoute, rule.Action
 	}

@@ -67,7 +67,7 @@ function exportLink(): Promise<void> {
   return attempt(async () => {
     const { link } = await core.core().call(MethodPresetsExport, { id: selected.value })
     await navigator.clipboard.writeText(link)
-    ui.notice = { tone: 'info', text: t('settings.presets.exported') }
+    ui.notice = { tone: 'info', text: t(current.value?.endpoints ? 'settings.presets.exportedLocal' : 'settings.presets.exported') }
   })
 }
 
@@ -169,7 +169,7 @@ onBeforeRouteUpdate(ask)
             </span>
             <span class="flex-1" />
             <Button v-if="!draft.advanced" size="sm" data-testid="preset-to-advanced" @click="toAdvancedOpen = true"><Layers />{{ t('toAdvanced.button') }}</Button>
-            <Button size="sm" @click="exportLink"><Link />{{ t('settings.presets.export') }}</Button>
+            <Button size="sm" data-testid="preset-export" @click="exportLink"><Link />{{ t('settings.presets.export') }}</Button>
             <Button variant="ghost" size="icon-sm" :aria-label="t('presetEdit.remove')" data-testid="preset-remove" @click="removing = current ?? null">
               <Trash2 />
             </Button>

@@ -23,11 +23,12 @@ func listKind(prefix string) (string, bool) {
 
 // inList tells whether the lists window has a line for a rule: one condition with one value, as kind:value.
 func inList(rule PresetRule) bool {
-	return single(rule) && rule.Conditions[0].Kind != CondPrivate
+	return single(rule) && rule.Conditions[0].Kind != CondPrivate && rule.Action != ActionEndpoint
 }
 
 // WritePresetLists gives the rules of a preset as the text of the lists window: each line has the prefix of its kind,
-// as in Throne. Rules of several conditions or values, inverted ones and the private networks have no line.
+// as in Throne. Rules of several conditions or values, inverted ones, the private networks and rules to endpoints,
+// which are this computer's profiles, have no line.
 func WritePresetLists(p PresetRules) (PresetLists, error) {
 	lines := map[string][]string{}
 	for _, rule := range p.Rules {
@@ -60,6 +61,17 @@ func ReadPresetLists(p PresetListsInput) (PresetListsRead, error) {
 	tabOf := map[string]string{}
 	var keys []string
 	lines := map[string]line{}
+	// A line with the value of a rule to an endpoint would repeat that rule, which stays out of the window.
+	for _, rule := range p.Rules {
+		if rule.Action == ActionEndpoint && single(rule) {
+			condition := rule.Conditions[0]
+			value, ok := ruleValue(condition.Kind, condition.Values[0])
+			if !ok {
+				value = condition.Values[0]
+			}
+			tabOf[valueKey(condition.Kind, value)] = ActionEndpoint
+		}
+	}
 	for _, action := range listActions {
 		for i, raw := range strings.Split(p.Lists[action], "\n") {
 			text := strings.TrimSpace(raw)

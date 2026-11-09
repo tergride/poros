@@ -1,25 +1,26 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, Lock, MoreHorizontal, Pencil, Plus, Trash2, X } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Input, Menu, MenuItem, MenuSeparator, Select, Switch } from '@/components/ui'
 import { usePresetDraft } from '@/composables/usePresetDraft'
-import { advancedKinds, inRow, moved, newRule, ruleActions, ruleSummary, simpleKinds } from '@/lib/rules'
+import { advancedKinds, fromTarget, inRow, moved, newRule, ruleSummary, simpleKinds, targetOf } from '@/lib/rules'
 import type { InheritedRule, PresetRule } from '@/platform/core-types'
 import { ActionProxy, CondPrivate, CondSuffix } from '@/platform/core-types'
 
 // The rules of a preset, one list checked from the top. A row of one condition and one value changes in place; a
 // rule of several conditions changes in the rule dialog. The rules of the base stand under a lock around the user's:
-// the DNS queries Poros answers before them, the local networks and, in an advanced preset, the rest after them.
+// the DNS queries Poros answers and, in an advanced preset, the networks of its endpoints before them, the local
+// networks and, in an advanced preset, the rest after them.
 const props = defineProps<{ advanced: boolean }>()
-const { draft, apply, checked, ruleOpen } = usePresetDraft()
+const { draft, apply, checked, ruleOpen, endpointOf, targets: targetsOf } = usePresetDraft()
 const { t, te } = useI18n()
 
 const locked = computed(() => draft.value?.builtin ?? true)
 const kinds = computed(() => (props.advanced ? advancedKinds : simpleKinds).map((value) => ({ value, label: t(`rules.kinds.${value}`) })))
-const actions = computed(() => ruleActions.map((value) => ({ value, label: t(`action.${value}`) })))
+const targets = computed(() => targetsOf(false))
 const columns = computed(() =>
   props.advanced ? 'grid-cols-[36px_160px_minmax(0,1fr)_170px_30px_30px_30px]' : 'grid-cols-[160px_minmax(0,1fr)_170px_30px_30px_30px]',
 )
@@ -27,6 +28,10 @@ const columns = computed(() =>
 const newKind = ref<string>(CondSuffix)
 const newValue = ref('')
 const newAction = ref<string>(ActionProxy)
+// An endpoint the preset no longer has is no choice for a new rule.
+watch(targets, (choices) => {
+  if (!choices.some((c) => c.value === newAction.value)) newAction.value = ActionProxy
+})
 const adding = ref(false)
 
 async function add(): Promise<void> {
@@ -63,8 +68,8 @@ function setValue(rule: PresetRule, i: number, event: Event): void {
   void replace(i, { ...rule, conditions: [{ kind: rule.conditions[0]?.kind ?? CondSuffix, values: value ? [value] : [] }] })
 }
 
-function setAction(rule: PresetRule, action: string): void {
-  rule.action = action
+function setTarget(rule: PresetRule, target: string): void {
+  Object.assign(rule, fromTarget(target))
 }
 
 function remove(i: number): void {
@@ -76,6 +81,7 @@ function remove(i: number): void {
 const label = (rule: InheritedRule) => (te(`presets.rule.${rule.name}`) ? t(`presets.rule.${rule.name}`) : rule.name)
 const value = (rule: InheritedRule) => (te(`presets.ruleValue.${rule.name}`) ? t(`presets.ruleValue.${rule.name}`) : '')
 const head = computed(() => (props.advanced ? (draft.value?.inherited.filter((r) => r.first) ?? []) : []))
+const endpointNames = computed(() => (props.advanced ? (draft.value?.endpoints ?? []).map((id) => endpointOf(id).name).join(', ') : ''))
 const tail = computed(() => draft.value?.inherited.filter((r) => !r.first) ?? [])
 const restAction = computed(() => (draft.value ? t(`action.${draft.value.default}`) : ''))
 const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
@@ -96,7 +102,7 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
         data-testid="rule-new-value"
         @keydown.enter="add"
       />
-      <Select v-model="newAction" :options="actions" class="h-8 w-full" :aria-label="t('rules.newAction')" />
+      <Select v-model="newAction" :options="targets" class="h-8 w-full" :aria-label="t('rules.newAction')" data-testid="rule-new-action" />
       <Button :disabled="adding" data-testid="rule-add" @click="add"><Plus />{{ t('common.add') }}</Button>
     </div>
 
@@ -105,6 +111,13 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ label(rule) }}</span>
       <span class="truncate text-[12.5px]">{{ value(rule) }}</span>
       <span class="pl-[11px] text-[12.5px]">{{ t(`action.${rule.action}`) }}</span>
+      <span /><span /><span />
+    </div>
+    <div v-if="endpointNames" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-endpoints">
+      <span />
+      <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('rules.endpoints') }}</span>
+      <span class="truncate text-[12.5px]">{{ endpointNames }}</span>
+      <span class="truncate pl-[11px] text-[12.5px]">{{ endpointNames }}</span>
       <span /><span /><span />
     </div>
 
@@ -146,11 +159,12 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
         </Button>
       </template>
       <Select
-        :model-value="rule.action"
-        :options="actions"
+        :model-value="targetOf(rule)"
+        :options="targets"
         class="h-8 w-full"
         :aria-label="t('rules.action')"
-        @update:model-value="(action: string) => setAction(rule, action)"
+        data-testid="rule-action"
+        @update:model-value="(target: string) => setTarget(rule, target)"
       />
       <Button variant="ghost" size="icon-sm" :disabled="i === 0" :aria-label="t('rules.up')" @click="apply(moved(draft.rules, i, -1))"><ArrowUp /></Button>
       <Button variant="ghost" size="icon-sm" :disabled="i === draft.rules.length - 1" :aria-label="t('rules.down')" @click="apply(moved(draft.rules, i, 1))">

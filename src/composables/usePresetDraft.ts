@@ -2,11 +2,21 @@ import { type ComputedRef, type InjectionKey, type Ref, computed, inject, provid
 import { useI18n } from 'vue-i18n'
 
 import { sentence, useFailure } from '@/composables/useReason'
-import { problemText } from '@/lib/rules'
+import { protocolName } from '@/lib/format'
+import { endpointTarget, problemText, ruleActions } from '@/lib/rules'
 import { isCoreError } from '@/platform'
 import type { Preset, PresetCopy, PresetRule } from '@/platform/core-types'
 import { MethodPresetsCheck, MethodPresetsGet, MethodPresetsSave } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
+
+/** A profile of the endpoints of a preset as the editor shows it; gone is one that is no longer there. */
+export interface EndpointView {
+  id: string
+  name: string
+  protocol: string
+  group: string
+  gone: boolean
+}
 
 /**
  * The preset an editor works on, shared by the parts of the editor: the draft, what is wrong with it, and the dialogs
@@ -28,6 +38,9 @@ export interface PresetDraft {
   save(): Promise<Preset | null>
   discard(): void
   shownName(preset: Pick<Preset, 'id' | 'name' | 'builtin'> | undefined): string
+  endpointOf(id: string): EndpointView
+  /** Where a rule of the draft may send its traffic, as choices of a list; withType names the protocol of an endpoint. */
+  targets(withType: boolean): { value: string; label: string }[]
 }
 
 const draftKey: InjectionKey<PresetDraft> = Symbol('preset draft')
@@ -52,13 +65,20 @@ export function providePresetDraft(): PresetDraft {
   async function checked(rules: PresetRule[]): Promise<PresetRule[] | null> {
     if (!draft.value) return null
     try {
-      const result = await core.core().call(MethodPresetsCheck, { advanced: draft.value.advanced, rules })
+      const result = await core.core().call(MethodPresetsCheck, { advanced: draft.value.advanced, rules, endpoints: draft.value.endpoints })
       failure.value = ''
       return result.rules
     } catch (error) {
       failure.value = told(error)
       return null
     }
+  }
+
+  function endpointOf(id: string): EndpointView {
+    const server = core.servers.find((s) => s.id === id)
+    if (!server) return { id, name: t('endpoints.gone'), protocol: '', group: '', gone: true }
+    const group = core.groups.find((g) => g.id === server.groupId)?.name ?? ''
+    return { id, name: server.name, protocol: protocolName(server.protocol, t), group, gone: false }
   }
 
   const value: PresetDraft = {
@@ -113,6 +133,16 @@ export function providePresetDraft(): PresetDraft {
       failure.value = ''
     },
     shownName,
+    endpointOf,
+    targets(withType) {
+      const actions = ruleActions.map((action) => ({ value: action, label: t(`action.${action}`) }))
+      if (!draft.value?.advanced) return actions
+      const endpoints = draft.value.endpoints.map((id) => {
+        const endpoint = endpointOf(id)
+        return { value: endpointTarget(id), label: withType && !endpoint.gone ? `${endpoint.name} (${endpoint.protocol})` : endpoint.name }
+      })
+      return [...actions, ...endpoints]
+    },
   }
   provide(draftKey, value)
   return value

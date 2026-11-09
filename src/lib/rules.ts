@@ -2,6 +2,7 @@ import type { PresetRule, RuleProblem } from '@/platform/core-types'
 import {
   ActionBlock,
   ActionDirect,
+  ActionEndpoint,
   ActionProxy,
   CondDomain,
   CondIP,
@@ -40,14 +41,28 @@ export const advancedKinds: string[] = [
   CondPrivate,
 ]
 
-/** Where a rule sends its traffic; WARP and the endpoints of a preset join the advanced kind later. */
+/** Where a rule sends its traffic; an advanced preset adds its endpoints, and WARP later. */
 export const ruleActions: string[] = [ActionProxy, ActionDirect, ActionBlock]
+
+/** Where a rule sends its traffic as one choice of a list: an action, or an endpoint of the preset by its profile. */
+export function targetOf(rule: Pick<PresetRule, 'action' | 'endpoint'>): string {
+  return rule.action === ActionEndpoint ? endpointTarget(rule.endpoint) : rule.action
+}
+
+export const endpointTarget = (id: string) => `${ActionEndpoint}:${id}`
+
+/** The action and endpoint of a choice of targetOf. */
+export function fromTarget(target: string): Pick<PresetRule, 'action' | 'endpoint'> {
+  const prefix = `${ActionEndpoint}:`
+  return target.startsWith(prefix) ? { action: ActionEndpoint, endpoint: target.slice(prefix.length) } : { action: target, endpoint: '' }
+}
 
 /** The protocols sing-box recognizes, as the core checks them. */
 export const protocols = ['tls', 'http', 'quic', 'dns', 'stun', 'bittorrent', 'dtls', 'ssh', 'rdp', 'ntp']
 
-export function newRule(kind: string, value: string, action: string): PresetRule {
-  return { name: '', conditions: [{ kind, values: kind === CondPrivate || value === '' ? [] : [value] }], invert: false, off: false, action }
+/** A rule of one condition; target is an action or an endpoint, as targetOf gives them. */
+export function newRule(kind: string, value: string, target: string): PresetRule {
+  return { name: '', conditions: [{ kind, values: kind === CondPrivate || value === '' ? [] : [value] }], invert: false, off: false, ...fromTarget(target) }
 }
 
 /** A rule a row of the list edits in place: one condition with at most one value, not inverted. */

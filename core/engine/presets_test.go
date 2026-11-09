@@ -419,3 +419,91 @@ func TestPresetCheckThroughRPC(t *testing.T) {
 		t.Errorf("the error says which rule and value: %s", data)
 	}
 }
+
+// vpnProfiles adds an OpenVPN, an OpenConnect and a Trojan profile to a group of the user's and gives their IDs.
+func vpnProfiles(t *testing.T, e *Engine) (ovpn, oc, trojan string) {
+	t.Helper()
+	certificate, _ := testCertificate(t)
+	added, err := e.AddServers(AddServers{NewGroup: "Office", Text: strings.Join([]string{
+		porosLink(t, `{"type":"openvpn","name":"Office","server":"vpn.example.com","server_port":1194,`+
+			`"openvpn":{"network":"udp","username":"u","password":"pw","ca":`+jsonText(t, certificate)+`}}`),
+		porosLink(t, `{"type":"openconnect","name":"Lab","server":"gw.example.com","server_port":443,"openconnect":{"username":"u","password":"pw"}}`),
+		"trojan://secret@de.example.com:443#Germany",
+	}, "\n")})
+	if err != nil || len(added.IDs) != 3 {
+		t.Fatalf("AddServers: %+v, %v", added, err)
+	}
+	return added.IDs[0], added.IDs[1], added.IDs[2]
+}
+
+// Endpoints of an advanced preset are OpenVPN and OpenConnect profiles of this computer: the connection reaches them
+// by their place, a link leaves them out with the rules to them, and the lists window has no line for those rules.
+func TestPresetEndpoints(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	ovpn, oc, trojan := vpnProfiles(t, e)
+	wiki := rule(CondSuffix, "wiki.example", ActionEndpoint)
+	wiki.Endpoint = oc
+	site := rule(CondSuffix, "example.org", ActionDirect)
+	site.Endpoint = oc
+	draft := PresetCopy{BasedOn: "all", Name: "Office", Advanced: true, Endpoints: []string{ovpn, oc}, Rules: []PresetRule{wiki, site}}
+	saved, err := e.SavePreset(draft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := e.PresetCopy(saved.ID)
+	if err != nil || !slices.Equal(stored.Endpoints, []string{ovpn, oc}) || stored.Rules[0].Endpoint != oc || stored.Rules[1].Endpoint != "" {
+		t.Fatalf("the endpoints and the rule to one stay; another action has no endpoint: %+v, %v", stored, err)
+	}
+	preset, _, err := e.preset(saved.ID)
+	if err != nil || !slices.Equal(preset.Endpoints, []string{ovpn, oc}) || preset.Rules[1].Outbound != config.EndpointTag(1) {
+		t.Fatalf("the connection reaches an endpoint by its place: %+v, %v", preset, err)
+	}
+
+	for name, c := range map[string]struct {
+		endpoints []string
+		advanced  bool
+		reason    string
+	}{
+		"a simple preset":        {[]string{ovpn}, false, ReasonAdvancedOnly},
+		"twice":                  {[]string{ovpn, ovpn}, true, ReasonInvalidValue},
+		"no VPN":                 {[]string{trojan}, true, ReasonInvalidValue},
+		"a profile that is gone": {[]string{"gone"}, true, ReasonNotFound},
+	} {
+		wrong := PresetCopy{BasedOn: "all", Name: "Wrong", Advanced: c.advanced, Endpoints: c.endpoints, Rules: []PresetRule{}}
+		if _, err := e.SavePreset(wrong); reason(err) != c.reason {
+			t.Errorf("%s: %v, want %s", name, err, c.reason)
+		}
+	}
+	stray := draft
+	stray.Endpoints = []string{ovpn}
+	if _, err := e.SavePreset(stray); problemOf(t, err) != (RuleProblem{Reason: ReasonInvalidValue, Rule: 0}) {
+		t.Errorf("a rule to an endpoint the preset has not: %v", err)
+	}
+	if _, err := CheckPresetRules(PresetRules{Rules: []PresetRule{wiki}, Endpoints: []string{oc}}); problemOf(t, err).Reason != ReasonAdvancedOnly {
+		t.Errorf("a simple preset has no rules to endpoints: %v", err)
+	}
+
+	link, err := e.ExportPreset(saved.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported, err := e.ImportPreset(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if copy, _ := e.PresetCopy(imported.ID); len(copy.Endpoints) != 0 || !slices.Equal(values(copy.Rules), []string{"suffix:example.org"}) {
+		t.Errorf("a link leaves out the endpoints and the rules to them: %+v", copy)
+	}
+
+	lists, err := WritePresetLists(PresetRules{Advanced: true, Rules: stored.Rules})
+	if err != nil || lists.Lists[ActionProxy] != "" || lists.Lists[ActionDirect] != "suffix:example.org" {
+		t.Errorf("a rule to an endpoint has no line: %+v, %v", lists, err)
+	}
+	read, err := ReadPresetLists(PresetListsInput{Advanced: true, Rules: stored.Rules, Lists: map[string]string{
+		ActionProxy: "suffix:Wiki.example", ActionDirect: "suffix:example.org",
+	}})
+	if err != nil || !reflect.DeepEqual(read.Rules, stored.Rules) ||
+		!reflect.DeepEqual(read.Problems, []PresetListProblem{{Action: ActionProxy, Line: 1, Text: "suffix:Wiki.example", Reason: ReasonDuplicate, Other: ActionEndpoint}}) {
+		t.Errorf("a line that repeats a rule to an endpoint: %+v, %v", read, err)
+	}
+}

@@ -546,3 +546,95 @@ func TestAdvancedRules(t *testing.T) {
 		t.Errorf("an inverted rule on addresses takes the private ranges too: %v", excluded)
 	}
 }
+
+// Endpoints connect alongside the server: the networks they announce go through them before the user's rules, the
+// names of their domains to the DNS they were given, and a rule sends them more, its names to their DNS too. A
+// refusing connection has none, and refuses what the preset sends to them.
+func TestEndpoints(t *testing.T) {
+	links := sampleLinks(t)
+	preset := Preset{
+		Name: "Office", DefaultOutbound: OutboundProxy, Endpoints: []string{"ovpn", "oc"},
+		Rules: []Rule{
+			allPreset.Rules[0],
+			{Name: "Wiki", Action: ActionRoute, Outbound: EndpointTag(1), DomainSuffix: []string{"wiki.example"}},
+			{Name: "Lab", Action: ActionRoute, Outbound: EndpointTag(0), IPCIDR: []string{"203.0.113.0/24"}},
+			allPreset.Rules[1],
+		},
+	}
+	in := Input{
+		Server: mustParse(t, links["trojan tcp"]), Preset: preset, Tun: true, MixedPort: 2090,
+		Endpoints: []profile.Profile{mustParse(t, links["openvpn"]), mustParse(t, links["openconnect"])},
+	}
+	configs, err := Build(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := configs.SingBoxJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = boxmain.Check(data); err != nil {
+		t.Fatalf("sing-box refuses the config: %v\n%s", err, data)
+	}
+	endpoints := configs.SingBox.Endpoints
+	if len(endpoints) != 2 || endpoints[0].Type != C.TypeOpenVPNClient || endpoints[0].Tag != "endpoint-1" ||
+		endpoints[1].Type != C.TypeOpenConnect || endpoints[1].Tag != "endpoint-2" {
+		t.Fatalf("an endpoint per profile: %+v", endpoints)
+	}
+	route := configs.SingBox.Route.Rules
+	// sniff, the DNS rule, the networks of each endpoint, then the user's.
+	for i, tag := range []string{"endpoint-1", "endpoint-2"} {
+		rule := route[2+i].DefaultOptions
+		if len(rule.PreferredBy) != 1 || rule.PreferredBy[0] != tag || rule.RouteOptions.Outbound != tag {
+			t.Errorf("the networks of %s go through it: %+v", tag, rule)
+		}
+	}
+	if wiki := route[4].DefaultOptions; wiki.RouteOptions.Outbound != "endpoint-2" || wiki.DomainSuffix[0] != "wiki.example" {
+		t.Errorf("a rule sends a site to an endpoint: %+v", wiki)
+	}
+	dns := configs.SingBox.DNS
+	if len(dns.Servers) != 4 || dns.Servers[2].Type != C.DNSTypeOpenVPN || dns.Servers[3].Type != C.DNSTypeOpenConnect {
+		t.Fatalf("each endpoint has its DNS: %+v", dns.Servers)
+	}
+	if ovpn := dns.Servers[2].Options.(*option.OpenVPNDNSServerOptions); ovpn.Endpoint != "endpoint-1" || !ovpn.AcceptDefaultResolvers {
+		t.Errorf("the DNS the OpenVPN server gave: %+v", ovpn)
+	}
+	if len(dns.Rules) != 3 || dns.Rules[0].DefaultOptions.PreferredBy[0] != "dns-endpoint-1" || dns.Rules[1].DefaultOptions.PreferredBy[0] != "dns-endpoint-2" ||
+		dns.Rules[2].DefaultOptions.RouteOptions.Server != "dns-endpoint-2" {
+		t.Errorf("the domains of an endpoint, then the names a rule sends it, go to its DNS: %+v", dns.Rules)
+	}
+	// The private networks behind an endpoint must reach the rules.
+	for _, prefix := range configs.SingBox.Inbounds[1].Options.(*option.TunInboundOptions).RouteExcludeAddress {
+		if prefix.Contains(netip.MustParseAddr("10.8.0.1")) || prefix.Contains(netip.MustParseAddr("192.168.10.1")) {
+			t.Errorf("with endpoints, %s must stay in the TUN", prefix)
+		}
+	}
+
+	in.Refuse, in.Server = true, profile.Profile{}
+	refusing, err := Build(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refusing.SingBox.Endpoints) != 0 || len(refusing.SingBox.DNS.Servers) != 2 {
+		t.Errorf("a refusal has no endpoints: %+v", refusing.SingBox.Endpoints)
+	}
+	if wiki := refusing.SingBox.Route.Rules[2].DefaultOptions; wiki.RouteOptions.Outbound != TagProxy {
+		t.Errorf("a refusal refuses what goes to an endpoint: %+v", wiki)
+	}
+	data, _ = refusing.SingBoxJSON()
+	if err = boxmain.Check(data); err != nil {
+		t.Errorf("sing-box refuses the refusal: %v", err)
+	}
+
+	in.Refuse, in.Server = false, mustParse(t, links["trojan tcp"])
+	for name, wrong := range map[string]Input{
+		"a missing profile": {Server: in.Server, Preset: preset, MixedPort: 2090, Endpoints: in.Endpoints[:1]},
+		"no VPN":            {Server: in.Server, Preset: preset, MixedPort: 2090, Endpoints: []profile.Profile{in.Server, in.Endpoints[1]}},
+		"no such endpoint": {Server: in.Server, MixedPort: 2090, Preset: Preset{Name: "x", DefaultOutbound: OutboundProxy,
+			Rules: []Rule{{Action: ActionRoute, Outbound: EndpointTag(0), DomainSuffix: []string{"example.com"}}}}},
+	} {
+		if _, err := Build(wrong); err == nil {
+			t.Errorf("%s must be refused", name)
+		}
+	}
+}

@@ -17,6 +17,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -209,5 +210,73 @@ func TestOpenVPNRefusalFailsTheStart(t *testing.T) {
 	e.StartConnection()
 	if state := waitState(t, states); state.State != ConnectionIdle || state.Error != ReasonStartFailed {
 		t.Fatalf("a refused login: %+v", state)
+	}
+}
+
+// openVPNOffice runs an OpenVPN server that announces 192.0.2.80/32 and reaches the web page at 192.0.2.80 and .81,
+// and gives a link to it with password.
+func openVPNOffice(t *testing.T, password string) string {
+	t.Helper()
+	certificate, key := testCertificate(t)
+	port := freePort(t)
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"openvpn-server","tag":"ovpn-in","listen":"127.0.0.1",`+
+		`"listen_port":%d,"network":"tcp","address":["10.8.0.1/24"],"users":[{"username":"u","password":"pw"}],"push":{"routes":["192.0.2.80/32"]},`+
+		`"tls":{"certificate":%s,"key":%s,"verify_client_certificate":"none"}}],"outbounds":[{"type":"direct","tag":"direct"}],`+
+		`"route":{"rules":[{"ip_cidr":["192.0.2.80/31"],"action":"route","outbound":"direct","override_address":"127.0.0.1"}],"final":"direct"}}`,
+		port, jsonText(t, certificate), jsonText(t, key)))
+	return porosLink(t, fmt.Sprintf(`{"type":"openvpn","name":"Office","server":"127.0.0.1","server_port":%d,`+
+		`"openvpn":{"network":"tcp","username":"u","password":%s,"ca":%s}}`, port, jsonText(t, password), jsonText(t, certificate)))
+}
+
+// useOffice adds the profile of link to a group of the user's and picks an advanced preset with it as an endpoint
+// and a rule that sends 192.0.2.81 to it.
+func useOffice(t *testing.T, e *Engine, link string) {
+	t.Helper()
+	added, err := e.AddServers(AddServers{NewGroup: "Office", Text: link})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lab := PresetRule{Conditions: []RuleCondition{{Kind: CondIP, Values: []string{"192.0.2.81"}}}, Action: ActionEndpoint, Endpoint: added.IDs[0]}
+	preset, err := e.SavePreset(PresetCopy{BasedOn: "all", Name: "Office", Advanced: true, Endpoints: added.IDs, Rules: []PresetRule{lab}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings, _ := e.Settings()
+	settings.Preset = preset.ID
+	if _, err = e.SetSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// An endpoint connects alongside the server: the network its server announces and what a rule sends to it go
+// through it. Through the server 192.0.2.80 and .81 open nowhere.
+func TestConnectionWithEndpoint(t *testing.T) {
+	e, states := openConnectionTest(t)
+	page, err := url.Parse(webPage(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := freePort(t)
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"inbounds":[{"type":"trojan","listen":"127.0.0.1","listen_port":%d,`+
+		`"users":[{"password":"secret"}]}],"outbounds":[{"type":"direct","tag":"direct"}]}`, port))
+	useServer(t, e, fmt.Sprintf("trojan://secret@127.0.0.1:%d?security=none#local", port))
+	useOffice(t, e, openVPNOffice(t, "pw"))
+	connectAndFetch(t, e, states, "http://"+net.JoinHostPort("192.0.2.80", page.Port()))
+	if body, err := fetchThrough(e, "http://"+net.JoinHostPort("192.0.2.81", page.Port())); err != nil || body != "through the server" {
+		t.Fatalf("a rule sends an address to the endpoint: %q, %v", body, err)
+	}
+}
+
+// An endpoint that does not come up fails the start and is named.
+func TestEndpointRefusalFailsTheStart(t *testing.T) {
+	e, states := openConnectionTest(t)
+	port := freePort(t)
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"inbounds":[{"type":"trojan","listen":"127.0.0.1","listen_port":%d,`+
+		`"users":[{"password":"secret"}]}],"outbounds":[{"type":"direct","tag":"direct"}]}`, port))
+	useServer(t, e, fmt.Sprintf("trojan://secret@127.0.0.1:%d?security=none#local", port))
+	useOffice(t, e, openVPNOffice(t, "wrong"))
+	e.StartConnection()
+	if state := waitState(t, states); state.State != ConnectionIdle || state.Error != ReasonEndpointFailed || !strings.HasPrefix(state.ErrorText, "Office: ") {
+		t.Fatalf("a refused endpoint: %+v", state)
 	}
 }

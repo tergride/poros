@@ -6,7 +6,9 @@ package config
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/netip"
+	"slices"
 
 	"PorosCore/profile"
 
@@ -43,12 +45,16 @@ const (
 )
 
 // privateRanges stay out of the TUN unless a rule sends some of them elsewhere than direct: LAN, link-local and
-// multicast traffic is no business of the server.
+// multicast traffic is no business of the server. The unicast ones are those of the networks behind endpoints too.
 var privateRanges = []netip.Prefix{
 	netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("172.16.0.0/12"),
 	netip.MustParsePrefix("192.168.0.0/16"), netip.MustParsePrefix("169.254.0.0/16"),
 	netip.MustParsePrefix("224.0.0.0/4"), netip.MustParsePrefix("fc00::/7"),
 	netip.MustParsePrefix("fe80::/10"), netip.MustParsePrefix("ff00::/8"),
+}
+
+func privateUnicast(prefix netip.Prefix) bool {
+	return prefix.Addr().IsPrivate()
 }
 
 var loopbackRanges = []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("::1/128")}
@@ -62,6 +68,9 @@ type Input struct {
 	// Links are the servers of a chain, in its order.
 	Links  []profile.Profile
 	Preset Preset
+	// Endpoints are the profiles of Preset.Endpoints, in its order. A connection that refuses has none: what the
+	// preset sends to them is refused with the rest of the server's traffic.
+	Endpoints []profile.Profile
 	// Tun and the mixed inbound always exist; SystemProxy is the engine's business, not the config's.
 	Tun bool
 	// AllowLAN opens the mixed inbound to other devices.
@@ -105,6 +114,16 @@ func Build(in Input) (Configs, error) {
 	if in.MixedPort == 0 {
 		return Configs{}, errors.New("the mixed port is missing")
 	}
+	preset, profiles := in.Preset, in.Endpoints
+	var endpoints []option.Endpoint
+	if in.Refuse {
+		preset, profiles = preset.withoutEndpoints(), nil
+	} else {
+		var err error
+		if endpoints, err = endpointParts(preset, profiles); err != nil {
+			return Configs{}, err
+		}
+	}
 	var configs Configs
 	var proxy boxServer
 	switch {
@@ -137,13 +156,35 @@ func Build(in Input) (Configs, error) {
 	}
 	configs.SingBox = option.Options{
 		Log:       &option.LogOptions{Level: logLevel},
-		DNS:       buildDNS(in.Preset, in.DisableIPv6),
-		Inbounds:  buildInbounds(in),
+		DNS:       buildDNS(preset, profiles, in.DisableIPv6),
+		Inbounds:  buildInbounds(in, preset),
 		Outbounds: append(proxy.outbounds, option.Outbound{Type: C.TypeDirect, Tag: TagDirect, Options: &option.DirectOutboundOptions{}}),
-		Endpoints: proxy.endpoints,
-		Route:     buildRoute(in),
+		Endpoints: slices.Concat(proxy.endpoints, endpoints),
+		Route:     buildRoute(in, preset),
 	}
 	return configs, nil
+}
+
+// endpointParts builds the endpoints of a preset. They dial their servers directly, not through the server.
+func endpointParts(preset Preset, profiles []profile.Profile) ([]option.Endpoint, error) {
+	if len(profiles) != len(preset.Endpoints) {
+		return nil, errors.New("the endpoints of the preset are missing")
+	}
+	var endpoints []option.Endpoint
+	for i, p := range profiles {
+		if p.Type != profile.TypeOpenVPN && p.Type != profile.TypeOpenConnect {
+			return nil, fmt.Errorf("endpoint %d: %s is no OpenVPN or OpenConnect profile", i+1, p.Type)
+		}
+		if err := p.Validate(); err != nil {
+			return nil, fmt.Errorf("endpoint %d: %w", i+1, err)
+		}
+		parts, err := singBoxServer(p, EndpointTag(i), false)
+		if err != nil {
+			return nil, fmt.Errorf("endpoint %d: %w", i+1, err)
+		}
+		endpoints = append(endpoints, parts.endpoints...)
+	}
+	return endpoints, nil
 }
 
 // bridgeOutbound reaches a server on Xray through the bridge Xray listens on.
@@ -155,7 +196,7 @@ func bridgeOutbound(tag string, bridge Bridge) option.Outbound {
 	}}
 }
 
-func buildInbounds(in Input) []option.Inbound {
+func buildInbounds(in Input, preset Preset) []option.Inbound {
 	listen := netip.AddrFrom4([4]byte{127, 0, 0, 1})
 	if in.AllowLAN {
 		listen = netip.IPv4Unspecified()
@@ -170,14 +211,16 @@ func buildInbounds(in Input) []option.Inbound {
 			Address:             badoption.Listable[netip.Prefix]{tunAddress4, tunAddress6},
 			AutoRoute:           true,
 			StrictRoute:         true,
-			RouteExcludeAddress: tunExcluded(in.Preset),
+			RouteExcludeAddress: tunExcluded(preset),
 		}})
 	}
 	return inbounds
 }
 
 // tunExcluded keeps broadcast and the private ranges out of the TUN, except those a rule sends elsewhere than
-// direct: an excluded range never reaches the rules.
+// direct: an excluded range never reaches the rules. The networks of an endpoint are known only once it is up, and
+// are mostly private ones: with endpoints, the private unicast ranges stay in the TUN, and the rule of local networks
+// sends what no endpoint takes direct.
 func tunExcluded(preset Preset) badoption.Listable[netip.Prefix] {
 	excluded := badoption.Listable[netip.Prefix]{netip.MustParsePrefix("255.255.255.255/32")}
 	var claimed []netip.Prefix
@@ -198,7 +241,7 @@ func tunExcluded(preset Preset) badoption.Listable[netip.Prefix] {
 		}
 	}
 	for _, private := range privateRanges {
-		taken := false
+		taken := len(preset.Endpoints) > 0 && privateUnicast(private)
 		for _, prefix := range claimed {
 			taken = taken || prefix.Overlaps(private)
 		}
@@ -209,7 +252,7 @@ func tunExcluded(preset Preset) badoption.Listable[netip.Prefix] {
 	return excluded
 }
 
-func buildRoute(in Input) *option.RouteOptions {
+func buildRoute(in Input, preset Preset) *option.RouteOptions {
 	rules := []option.Rule{actionRule(option.RawDefaultRule{}, option.RuleAction{Action: C.RuleActionTypeSniff})}
 	if in.DisableIPv6 {
 		rules = append(rules, ipv6Block(), actionRule(option.RawDefaultRule{}, option.RuleAction{
@@ -220,11 +263,22 @@ func buildRoute(in Input) *option.RouteOptions {
 	if in.AllowLAN {
 		rules = append(rules, lanGuard())
 	}
-	for _, rule := range in.Preset.Rules {
+	// The networks of the endpoints come right after the DNS queries, before the user's rules: an endpoint is the one
+	// way to them.
+	head := dnsHead(preset.Rules)
+	for _, rule := range preset.Rules[:head] {
+		rules = append(rules, routeRule(rule))
+	}
+	for i := range preset.Endpoints {
+		tag := EndpointTag(i)
+		rules = append(rules, actionRule(option.RawDefaultRule{PreferredBy: badoption.Listable[string]{tag}},
+			option.RuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.RouteActionOptions{Outbound: tag}}))
+	}
+	for _, rule := range preset.Rules[head:] {
 		rules = append(rules, routeRule(rule))
 	}
 	final := TagProxy
-	switch in.Preset.DefaultOutbound {
+	switch preset.DefaultOutbound {
 	case OutboundDirect:
 		final = TagDirect
 	case OutboundBlock:
@@ -276,6 +330,15 @@ func lanGuard() option.Rule {
 	}}
 }
 
+// dnsHead counts the rules of DNS queries a preset starts with.
+func dnsHead(rules []Rule) int {
+	n := 0
+	for n < len(rules) && rules[n].Action == ActionHijackDNS {
+		n++
+	}
+	return n
+}
+
 func routeRule(rule Rule) option.Rule {
 	action := option.RuleAction{Action: rule.Action}
 	if rule.Action == ActionRoute {
@@ -315,9 +378,10 @@ func prefixables(prefixes []netip.Prefix) badoption.Listable[*badoption.Prefixab
 }
 
 // buildDNS resolves the names of direct traffic with the direct DNS, the system's unless the preset has its own,
-// and the rest with the remote DNS through the server, in the order of the rules, so that a name follows the same
-// rule as its connection.
-func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
+// the names an endpoint's rules send to it with the DNS it was given, and the rest with the remote DNS through the
+// server, in the order of the rules, so that a name follows the same rule as its connection. The names of an
+// endpoint's own domains go to its DNS before any rule.
+func buildDNS(preset Preset, endpoints []profile.Profile, disableIPv6 bool) *option.DNSOptions {
 	text := preset.DNS
 	if text == "" {
 		text = "https://" + remoteDNSServer + remoteDNSPath
@@ -332,6 +396,14 @@ func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
 		servers = append(servers, direct, option.DNSServerOptions{Type: C.DNSTypeLocal, Tag: tagDNSSystem, Options: &option.LocalDNSServerOptions{}})
 	}
 	var rules []option.DNSRule
+	for i, p := range endpoints {
+		tag := dnsEndpointTag(i)
+		servers = append(servers, endpointDNS(p, i))
+		rules = append(rules, option.DNSRule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{
+			RawDefaultDNSRule: option.RawDefaultDNSRule{PreferredBy: badoption.Listable[string]{tag}},
+			DNSRuleAction:     option.DNSRuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.DNSRouteActionOptions{Server: tag}},
+		}})
+	}
 	for _, rule := range preset.Rules {
 		if rule.Action != ActionRoute {
 			continue
@@ -339,6 +411,8 @@ func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
 		server := TagDNSRemote
 		if rule.Outbound == OutboundDirect {
 			server = TagDNSDirect
+		} else if n, ok := endpointIndex(rule.Outbound); ok {
+			server = dnsEndpointTag(n)
 		}
 		if dns, ok := dnsRule(rule, option.DNSRuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.DNSRouteActionOptions{Server: server}}); ok {
 			rules = append(rules, dns)
@@ -353,6 +427,23 @@ func buildDNS(preset Preset, disableIPv6 bool) *option.DNSOptions {
 		options.Strategy = option.DomainStrategy(C.DomainStrategyIPv4Only)
 	}
 	return options
+}
+
+func dnsEndpointTag(i int) string {
+	return "dns-" + EndpointTag(i)
+}
+
+// endpointDNS is the DNS an endpoint was given by its server, reached through the endpoint. It answers the names of
+// the endpoint's domains and, sent there by a rule, any other name.
+func endpointDNS(p profile.Profile, i int) option.DNSServerOptions {
+	if p.Type == profile.TypeOpenConnect {
+		return option.DNSServerOptions{Type: C.DNSTypeOpenConnect, Tag: dnsEndpointTag(i), Options: &option.OpenConnectDNSServerOptions{
+			Endpoint: EndpointTag(i), AcceptDefaultResolvers: true,
+		}}
+	}
+	return option.DNSServerOptions{Type: C.DNSTypeOpenVPN, Tag: dnsEndpointTag(i), Options: &option.OpenVPNDNSServerOptions{
+		Endpoint: EndpointTag(i), AcceptDefaultResolvers: true,
+	}}
 }
 
 // dnsRule is the DNS rule of a rule on names and programs: a query has neither an address, a port nor a protocol of

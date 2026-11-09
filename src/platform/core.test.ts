@@ -83,8 +83,8 @@ import {
 } from './core-types'
 import type { PresetCopy, PresetRule } from './core-types'
 
-const rule = (kind: string, value: string, action: string): PresetRule => ({ name: '', conditions: [{ kind, values: [value] }], invert: false, off: false, action })
-const emptyCopy: PresetCopy = { id: '', builtin: false, basedOn: '', name: '', advanced: false, rules: [], dns: '', directDns: '', default: '', inherited: [] }
+const rule = (kind: string, value: string, action: string): PresetRule => ({ name: '', conditions: [{ kind, values: [value] }], invert: false, off: false, action, endpoint: '' })
+const emptyCopy: PresetCopy = { id: '', builtin: false, basedOn: '', name: '', advanced: false, rules: [], dns: '', directDns: '', default: '', inherited: [], endpoints: [] }
 
 async function reasonOf(promise: Promise<unknown>): Promise<string | undefined> {
   try {
@@ -452,6 +452,38 @@ ${vless('se.example.com', 'Sweden')}` })
     const back = await core.call(MethodPresetsReadLists, { advanced: true, rules, lists: { ...lists.lists, proxy: 'suffix:x.example.org' } })
     expect(back.rules.map((r) => r.conditions[0]!.values[0])).toEqual(['x.example.org', 'example.org', 'game.exe', '10.0.0.0/8'])
   })
+  it('keeps the endpoints of an advanced preset as the engine does', async () => {
+    const core = createStubCore()
+    const encode = (text: string) => btoa(text).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
+    const office = { type: 'openvpn', name: 'Office', server: 'vpn.example.com', server_port: 1194, openvpn: { username: 'u', password: 'pw' } }
+    const added = await core.call(MethodServersAdd, {
+      groupId: '',
+      newGroup: 'Office',
+      text: `poros://add/${encode(JSON.stringify(office))}
+trojan://p@de.example.com:443#Germany`,
+    })
+    const [vpn, trojan] = added.ids as [string, string]
+    const wiki = { ...rule('suffix', 'wiki.example', 'endpoint'), endpoint: vpn }
+    const draft = { ...emptyCopy, basedOn: 'all', name: 'Office', advanced: true, endpoints: [vpn], rules: [wiki, rule('suffix', 'example.org', 'direct')] }
+    const saved = await core.call(MethodPresetsSave, draft)
+    expect(saved).toMatchObject({ advanced: true, rules: 2, endpoints: 1 })
+    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, advanced: false, rules: [] }))).toBe(ReasonAdvancedOnly)
+    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'No VPN', endpoints: [trojan], rules: [] }))).toBe(ReasonInvalidValue)
+    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'Gone', endpoints: ['gone'], rules: [] }))).toBe(ReasonNotFound)
+    const stray = await core.call(MethodPresetsCheck, { advanced: true, rules: [wiki] }).catch((error: unknown) => error)
+    expect(isCoreError(stray) && stray.data).toMatchObject({ reason: ReasonInvalidValue, rule: 0 })
+
+    // A link leaves the endpoints out with the rules to them; the lists window has no line for those rules.
+    const { link } = await core.call(MethodPresetsExport, { id: saved.id })
+    const imported = await core.call(MethodPresetsImport, { link })
+    expect(await core.call(MethodPresetsGet, { id: imported.id })).toMatchObject({ endpoints: [], rules: [{ conditions: [{ values: ['example.org'] }] }] })
+    const stored = await core.call(MethodPresetsGet, { id: saved.id })
+    expect((await core.call(MethodPresetsWriteLists, { advanced: true, rules: stored.rules })).lists).toEqual({ proxy: '', direct: 'suffix:example.org', block: '' })
+    const read = await core.call(MethodPresetsReadLists, { advanced: true, rules: stored.rules, lists: { proxy: 'suffix:Wiki.example', direct: 'suffix:example.org' } })
+    expect(read.problems).toEqual([{ action: 'proxy', line: 1, text: 'suffix:Wiki.example', reason: ReasonDuplicate, other: 'endpoint' }])
+    expect(read.rules).toEqual(stored.rules)
+  })
+
   it('reads poros:// links as the engine does and adds nothing', async () => {
     const core = createStubCore()
     const encode = (text: string) => btoa(text).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')

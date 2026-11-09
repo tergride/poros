@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Hammer, Plus, TextAlignStart } from '@lucide/vue'
+import { Plus, TextAlignStart } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import DefaultCard from '@/components/presets/DefaultCard.vue'
 import DnsChoice from '@/components/presets/DnsChoice.vue'
+import EndpointList from '@/components/presets/EndpointList.vue'
 import RuleDialog from '@/components/presets/RuleDialog.vue'
 import RuleList from '@/components/presets/RuleList.vue'
 import ToAdvancedDialog from '@/components/presets/ToAdvancedDialog.vue'
@@ -68,10 +69,7 @@ function applyLists(rules: PresetRule[]): void {
         <RuleList advanced />
       </TabsContent>
       <TabsContent value="endpoints">
-        <div class="grid justify-items-center gap-3 py-10 text-center" data-testid="section-soon">
-          <Hammer class="size-8 text-t3" />
-          <p class="max-w-[420px] text-t2">{{ t('adv.soon') }}</p>
-        </div>
+        <EndpointList />
       </TabsContent>
       <TabsContent value="dns">
         <SettingsCard :title="t('presetEdit.dnsServers')" class="max-w-[640px]">

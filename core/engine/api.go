@@ -266,7 +266,7 @@ type ConnectionState struct {
 	Tun         bool   `json:"tun"`
 	SystemProxy bool   `json:"systemProxy"`
 	// Servers are all the servers the connection goes through: the chosen one, the links of a chain, the proxies
-	// of its group. A change of any of them waits for a restart.
+	// of its group and the endpoints of the preset. A change of any of them waits for a restart.
 	Servers []string `json:"servers,omitempty"`
 	// Since is when the connection came up, Unix milliseconds.
 	Since int64 `json:"since"`
@@ -407,13 +407,17 @@ type Preset struct {
 	Advanced bool `json:"advanced"`
 	// Rules counts the user's rules of a copy, and all the rules of a built-in preset.
 	Rules int `json:"rules"`
+	// Endpoints counts the endpoints of an advanced preset, which a link to it leaves out.
+	Endpoints int `json:"endpoints"`
 }
 
-// Where the traffic of a preset rule goes.
+// Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
+// Endpoint names.
 const (
-	ActionProxy  = "proxy"
-	ActionDirect = "direct"
-	ActionBlock  = "block"
+	ActionProxy    = "proxy"
+	ActionDirect   = "direct"
+	ActionBlock    = "block"
+	ActionEndpoint = "endpoint"
 )
 
 // Kinds of a condition of a preset rule. They are the prefixes of the lists window too, spelled as in Throne.
@@ -459,6 +463,9 @@ type PresetRule struct {
 	Invert bool   `json:"invert"`
 	Off    bool   `json:"off"`
 	Action string `json:"action"`
+	// Endpoint is the ID of the profile of the endpoint ActionEndpoint sends to, one of the preset's Endpoints; ""
+	// for the other actions.
+	Endpoint string `json:"endpoint"`
 }
 
 // RuleProblem is the data of an error about a rule of a preset: which rule, condition and value.
@@ -503,16 +510,21 @@ type PresetCopy struct {
 	// built-in preset.
 	Default   string          `json:"default"`
 	Inherited []InheritedRule `json:"inherited"`
+	// Endpoints of an advanced preset are the IDs of OpenVPN and OpenConnect profiles of any group. They connect
+	// alongside the server, the networks they announce go through them, and rules send them more. They are this
+	// computer's profiles: a link to the preset leaves them out, and the rules to them.
+	Endpoints []string `json:"endpoints"`
 }
 
 // DNSLocal is the system's DNS as the direct DNS of a preset.
 const DNSLocal = "local"
 
 // PresetRules are the rules of a preset of a kind: presets.check gives them back checked, with every value as the
-// core reads it and narrower rules over wider ones.
+// core reads it and narrower rules over wider ones. Endpoints are those of the preset, which its rules may send to.
 type PresetRules struct {
-	Advanced bool         `json:"advanced"`
-	Rules    []PresetRule `json:"rules"`
+	Advanced  bool         `json:"advanced"`
+	Rules     []PresetRule `json:"rules"`
+	Endpoints []string     `json:"endpoints,omitempty"`
 }
 
 // PresetLists are the rules of a preset as the lists window shows them: a text per action (proxy, direct, block)
@@ -535,7 +547,8 @@ type PresetListProblem struct {
 	Line   int    `json:"line"`
 	Text   string `json:"text"`
 	// Reason is no_prefix, advanced_only for a kind of the advanced preset in a simple one, invalid_entry for a value
-	// that is not of its kind, and duplicate for a line already on the tab Other.
+	// that is not of its kind, and duplicate for a line already on the tab Other, or of a rule to an endpoint when
+	// Other is endpoint.
 	Reason string `json:"reason"`
 	Other  string `json:"other"`
 }
@@ -895,6 +908,9 @@ const (
 	ReasonKillSwitchTaken = "kill_switch_taken"
 	// ReasonStartFailed is a core that refused to start; ErrorText has its words.
 	ReasonStartFailed = "start_failed"
+	// ReasonEndpointFailed is an endpoint of the preset that did not connect, or whose profile is gone or of another
+	// type now; ErrorText names it.
+	ReasonEndpointFailed = "endpoint_failed"
 	// ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
 	ReasonSystemProxyFailed = "system_proxy_failed"
 	// ReasonStopTimeout is a connection that did not close in time; the core has to restart to let go of it.

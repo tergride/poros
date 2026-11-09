@@ -395,7 +395,7 @@ export interface ConnectionState {
   systemProxy: boolean;
   /**
    * Servers are all the servers the connection goes through: the chosen one, the links of a chain, the proxies
-   * of its group. A change of any of them waits for a restart.
+   * of its group and the endpoints of the preset. A change of any of them waits for a restart.
    */
   servers?: string[];
   /**
@@ -615,19 +615,31 @@ export interface Preset {
    * Rules counts the user's rules of a copy, and all the rules of a built-in preset.
    */
   rules: number /* int */;
+  /**
+   * Endpoints counts the endpoints of an advanced preset, which a link to it leaves out.
+   */
+  endpoints: number /* int */;
 }
 /**
- * Where the traffic of a preset rule goes.
+ * Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
+ * Endpoint names.
  */
 export const ActionProxy = "proxy";
 /**
- * Where the traffic of a preset rule goes.
+ * Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
+ * Endpoint names.
  */
 export const ActionDirect = "direct";
 /**
- * Where the traffic of a preset rule goes.
+ * Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
+ * Endpoint names.
  */
 export const ActionBlock = "block";
+/**
+ * Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
+ * Endpoint names.
+ */
+export const ActionEndpoint = "endpoint";
 /**
  * CondSuffix is a domain with its subdomains.
  */
@@ -707,6 +719,11 @@ export interface PresetRule {
   invert: boolean;
   off: boolean;
   action: string;
+  /**
+   * Endpoint is the ID of the profile of the endpoint ActionEndpoint sends to, one of the preset's Endpoints; ""
+   * for the other actions.
+   */
+  endpoint: string;
 }
 /**
  * RuleProblem is the data of an error about a rule of a preset: which rule, condition and value.
@@ -770,6 +787,12 @@ export interface PresetCopy {
    */
   default: string;
   inherited: InheritedRule[];
+  /**
+   * Endpoints of an advanced preset are the IDs of OpenVPN and OpenConnect profiles of any group. They connect
+   * alongside the server, the networks they announce go through them, and rules send them more. They are this
+   * computer's profiles: a link to the preset leaves them out, and the rules to them.
+   */
+  endpoints: string[];
 }
 /**
  * DNSLocal is the system's DNS as the direct DNS of a preset.
@@ -777,11 +800,12 @@ export interface PresetCopy {
 export const DNSLocal = "local";
 /**
  * PresetRules are the rules of a preset of a kind: presets.check gives them back checked, with every value as the
- * core reads it and narrower rules over wider ones.
+ * core reads it and narrower rules over wider ones. Endpoints are those of the preset, which its rules may send to.
  */
 export interface PresetRules {
   advanced: boolean;
   rules: PresetRule[];
+  endpoints?: string[];
 }
 /**
  * PresetLists are the rules of a preset as the lists window shows them: a text per action (proxy, direct, block)
@@ -810,7 +834,8 @@ export interface PresetListProblem {
   text: string;
   /**
    * Reason is no_prefix, advanced_only for a kind of the advanced preset in a simple one, invalid_entry for a value
-   * that is not of its kind, and duplicate for a line already on the tab Other.
+   * that is not of its kind, and duplicate for a line already on the tab Other, or of a rule to an endpoint when
+   * Other is endpoint.
    */
   reason: string;
   other: string;
@@ -1428,6 +1453,11 @@ export const ReasonKillSwitchTaken = "kill_switch_taken";
  * ReasonStartFailed is a core that refused to start; ErrorText has its words.
  */
 export const ReasonStartFailed = "start_failed";
+/**
+ * ReasonEndpointFailed is an endpoint of the preset that did not connect, or whose profile is gone or of another
+ * type now; ErrorText names it.
+ */
+export const ReasonEndpointFailed = "endpoint_failed";
 /**
  * ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
  */

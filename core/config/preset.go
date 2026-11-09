@@ -26,6 +26,23 @@ const (
 	OutboundBlock = "block"
 )
 
+// EndpointTag is the outbound of an endpoint of a preset: the i-th of Preset.Endpoints, from 0.
+func EndpointTag(i int) string {
+	return endpointPrefix + strconv.Itoa(i+1)
+}
+
+const endpointPrefix = "endpoint-"
+
+// endpointIndex gives the place in Preset.Endpoints of the endpoint an outbound names.
+func endpointIndex(outbound string) (int, bool) {
+	text, found := strings.CutPrefix(outbound, endpointPrefix)
+	n, err := strconv.Atoi(text)
+	if !found || err != nil || n < 1 || strconv.Itoa(n) != text {
+		return 0, false
+	}
+	return n - 1, true
+}
+
 // Rule actions.
 const (
 	ActionRoute     = "route"
@@ -48,13 +65,17 @@ type Preset struct {
 	// system's DNS.
 	DirectDNS string `json:"direct_dns,omitempty"`
 	Rules     []Rule `json:"rules"`
+	// Endpoints are the IDs of the OpenVPN and OpenConnect profiles that connect alongside the server: the
+	// connection gives them as Input.Endpoints, in this order, and a rule reaches one through its EndpointTag.
+	// They are this computer's profiles, so no preset file has them.
+	Endpoints []string `json:"-"`
 }
 
 // Rule matches a connection when every condition it has matches, and a condition matches by any of its values.
 // Invert takes what the conditions do not match.
 type Rule struct {
 	Name string `json:"name,omitempty"`
-	// Action is route, reject or hijack-dns; Outbound is proxy or direct and goes with route.
+	// Action is route, reject or hijack-dns; Outbound is proxy, direct or an EndpointTag and goes with route.
 	Action        string   `json:"action"`
 	Outbound      string   `json:"outbound,omitempty"`
 	Invert        bool     `json:"invert,omitempty"`
@@ -99,6 +120,18 @@ func ParsePreset(data []byte) (Preset, error) {
 	return file.Preset, nil
 }
 
+// withoutEndpoints sends what the preset sends to its endpoints to the server instead.
+func (p Preset) withoutEndpoints() Preset {
+	p.Rules = slices.Clone(p.Rules)
+	for i := range p.Rules {
+		if _, ok := endpointIndex(p.Rules[i].Outbound); ok {
+			p.Rules[i].Outbound = OutboundProxy
+		}
+	}
+	p.Endpoints = nil
+	return p
+}
+
 // Validate checks what the config builder relies on.
 func (p Preset) Validate() error {
 	if strings.TrimSpace(p.Name) == "" {
@@ -110,6 +143,9 @@ func (p Preset) Validate() error {
 	for i, rule := range p.Rules {
 		if err := rule.validate(); err != nil {
 			return fmt.Errorf("rule %d %q: %w", i+1, rule.Name, err)
+		}
+		if n, ok := endpointIndex(rule.Outbound); ok && n >= len(p.Endpoints) {
+			return fmt.Errorf("rule %d %q: the preset has no endpoint %d", i+1, rule.Name, n+1)
 		}
 	}
 	if p.DNS != "" {
@@ -128,7 +164,7 @@ func (p Preset) Validate() error {
 func (r Rule) validate() error {
 	switch r.Action {
 	case ActionRoute:
-		if r.Outbound != OutboundProxy && r.Outbound != OutboundDirect {
+		if _, endpoint := endpointIndex(r.Outbound); r.Outbound != OutboundProxy && r.Outbound != OutboundDirect && !endpoint {
 			return fmt.Errorf("unknown outbound %q", r.Outbound)
 		}
 	case ActionReject, ActionHijackDNS:

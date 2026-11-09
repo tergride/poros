@@ -19,6 +19,7 @@ import type {
 import {
   ActionBlock,
   ActionDirect,
+  ActionEndpoint,
   ActionProxy,
   ConnectionIdle,
   ConnectionRunning,
@@ -197,8 +198,8 @@ const builtinRules: InheritedRule[] = [
   { name: 'Local networks', action: ActionDirect, first: false },
 ]
 const builtins: (Preset & { inherited: InheritedRule[] })[] = [
-  { id: 'all', name: 'All traffic', builtin: true, basedOn: '', advanced: false, rules: 2, inherited: builtinRules },
-  { id: 'hardened', name: 'Hardened bypass', builtin: true, basedOn: '', advanced: false, rules: 2, inherited: builtinRules },
+  { id: 'all', name: 'All traffic', builtin: true, basedOn: '', advanced: false, rules: 2, endpoints: 0, inherited: builtinRules },
+  { id: 'hardened', name: 'Hardened bypass', builtin: true, basedOn: '', advanced: false, rules: 2, endpoints: 0, inherited: builtinRules },
 ]
 
 /** The standard rules of a preset made from scratch, as in core/engine/presets.go. */
@@ -263,7 +264,8 @@ function encodeLink(copy: PresetCopy): string {
     based_on: copy.basedOn,
     name: copy.name,
     advanced: copy.advanced,
-    rules: copy.rules,
+    // The endpoints are this computer's profiles: the link leaves them out, and the rules to them.
+    rules: copy.rules.filter((rule) => rule.action !== ActionEndpoint),
     dns: copy.dns,
     direct_dns: copy.directDns,
     default: copy.default,
@@ -298,6 +300,7 @@ function decodeLink(link: string): PresetCopy {
       directDns: String(data.direct_dns ?? ''),
       default: String(data.default ?? ''),
       inherited: [],
+      endpoints: [],
     }
   } catch {
     throw failed(ReasonInvalidLink, 'the link holds no Poros preset')
@@ -527,7 +530,7 @@ export function createStubCore(): CoreClient {
   const chosenGroup = () => servers.find((s) => s.id === settings.server)?.groupId ?? ''
   const presetList = (): Preset[] => [
     ...builtins.map(({ inherited: _, ...preset }) => preset),
-    ...copies.map((c) => ({ id: c.id, name: c.name, builtin: false, basedOn: c.basedOn, advanced: c.advanced, rules: c.rules.length })),
+    ...copies.map((c) => ({ id: c.id, name: c.name, builtin: false, basedOn: c.basedOn, advanced: c.advanced, rules: c.rules.length, endpoints: c.endpoints.length })),
   ]
   const setStatus = (next: CoreStatus) => {
     status = next
@@ -656,9 +659,16 @@ export function createStubCore(): CoreClient {
       throw failed(ReasonInvalidValue, `the default must be proxy, direct or block, not "${draft.default}"`)
     }
     if (!draft.advanced && draft.directDns.trim()) throw failed(ReasonAdvancedOnly, 'a simple preset has no direct DNS')
+    if (!draft.advanced && draft.endpoints.length > 0) throw failed(ReasonAdvancedOnly, 'only an advanced preset has endpoints')
+    for (const [i, id] of draft.endpoints.entries()) {
+      if (draft.endpoints.indexOf(id) !== i) throw failed(ReasonInvalidValue, `the endpoint "${id}" is there twice`)
+      const server = servers.find((s) => s.id === id)
+      if (!server) throw failed(ReasonNotFound, `there is no server "${id}"`)
+      if (server.protocol !== 'openvpn' && server.protocol !== 'openconnect') throw failed(ReasonInvalidValue, `an endpoint is an OpenVPN or OpenConnect profile`)
+    }
     const base = foundation(draft.basedOn)
     if (!base) throw failed(ReasonUnknownPreset, `there is no built-in preset "${draft.basedOn}"`)
-    const rules = checkRules({ advanced: draft.advanced, rules: draft.rules })
+    const rules = checkRules({ advanced: draft.advanced, rules: draft.rules, endpoints: draft.endpoints })
     if (nameTaken(name, draft.id)) throw failed(ReasonPresetNameTaken, `there is a preset named "${name}" already`)
     const old = copies.find((c) => c.id === draft.id)
     if (draft.id && !old) throw failed(ReasonNotFound, `there is no preset "${draft.id}"`)
@@ -669,6 +679,7 @@ export function createStubCore(): CoreClient {
       rules,
       dns: draft.dns.trim(),
       directDns: draft.directDns.trim(),
+      endpoints: [...draft.endpoints],
       id: draft.id || String(nextId++),
       inherited: base.inherited,
     }
@@ -679,7 +690,19 @@ export function createStubCore(): CoreClient {
   const copyOf = (id: string): PresetCopy => {
     const base = builtins.find((b) => b.id === id)
     if (base) {
-      return { id, builtin: true, basedOn: '', name: base.name, advanced: false, rules: [], dns: '', directDns: '', default: ActionProxy, inherited: base.inherited }
+      return {
+        id,
+        builtin: true,
+        basedOn: '',
+        name: base.name,
+        advanced: false,
+        rules: [],
+        dns: '',
+        directDns: '',
+        default: ActionProxy,
+        inherited: base.inherited,
+        endpoints: [],
+      }
     }
     const copy = copies.find((c) => c.id === id)
     if (!copy) throw failed(ReasonNotFound, `there is no preset "${id}"`)
@@ -955,7 +978,7 @@ export function createStubCore(): CoreClient {
       const copy = decodeLink(link)
       return saveCopy({ ...copy, name: freeName(copy.name) })
     },
-    [MethodPresetsCheck]: (rules) => ({ advanced: rules.advanced, rules: checkRules(rules) }),
+    [MethodPresetsCheck]: (rules) => ({ advanced: rules.advanced, rules: checkRules(rules), endpoints: rules.endpoints }),
     [MethodPresetsWriteLists]: (rules) => writeLists(rules),
     [MethodPresetsReadLists]: (input) => readLists(input),
     [MethodLinksParse]: ({ link }) => parseOutsideLink(link),
@@ -973,7 +996,11 @@ export function createStubCore(): CoreClient {
           ...idle,
           state: ConnectionRunning,
           serverId: settings.server,
-          servers: [settings.server, ...(profiles.get(settings.server)?.chain?.servers ?? [])],
+          servers: [
+            settings.server,
+            ...(profiles.get(settings.server)?.chain?.servers ?? []),
+            ...(copies.find((c) => c.id === settings.preset)?.endpoints ?? []),
+          ],
           tun: settings.tun,
           systemProxy: settings.systemProxy,
           since: Date.now(),

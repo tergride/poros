@@ -3,6 +3,7 @@ import type { PresetListProblem, PresetLists, PresetListsInput, PresetListsRead,
 import {
   ActionBlock,
   ActionDirect,
+  ActionEndpoint,
   ActionProxy,
   CondDomain,
   CondIP,
@@ -157,10 +158,14 @@ export function narrowFirst(rules: PresetRule[]): PresetRule[] {
 }
 
 /** As checkRules in core/engine/presetrules.go: the rules as kept, or a failure that names the rule and value. */
-export function checkRules({ advanced, rules }: PresetRules): PresetRule[] {
+export function checkRules({ advanced, rules, endpoints = [] }: PresetRules): PresetRule[] {
   const seen = new Map<string, number>()
   const checked = rules.map((rule, i): PresetRule => {
-    if (!listActions.includes(rule.action)) throw ruleFailure(problemOf(ReasonInvalidValue, i), `rule ${i + 1}: unknown action`)
+    if (rule.action === ActionEndpoint && !advanced) throw ruleFailure(problemOf(ReasonAdvancedOnly, i), `rule ${i + 1}: only an advanced preset has endpoints`)
+    if (rule.action === ActionEndpoint && !endpoints.includes(rule.endpoint)) {
+      throw ruleFailure(problemOf(ReasonInvalidValue, i), `rule ${i + 1}: the preset has no endpoint "${rule.endpoint}"`)
+    }
+    if (rule.action !== ActionEndpoint && !listActions.includes(rule.action)) throw ruleFailure(problemOf(ReasonInvalidValue, i), `rule ${i + 1}: unknown action`)
     if (rule.conditions.length === 0) throw ruleFailure(problemOf(ReasonNoCondition, i), `rule ${i + 1} has no condition`)
     const name = rule.name.trim()
     if (!advanced && (rule.conditions.length > 1 || rule.conditions[0]!.values.length > 1 || rule.invert || rule.off || name)) {
@@ -190,7 +195,7 @@ export function checkRules({ advanced, rules }: PresetRules): PresetRule[] {
       }
       return { kind, values }
     })
-    const next = { ...rule, name, conditions }
+    const next = { ...rule, name, conditions, endpoint: rule.action === ActionEndpoint ? rule.endpoint : '' }
     if (single(next)) {
       const key = valueKey(conditions[0]!.kind, conditions[0]!.values[0]!)
       const other = seen.get(key)
@@ -204,7 +209,7 @@ export function checkRules({ advanced, rules }: PresetRules): PresetRule[] {
   return narrowFirst(checked)
 }
 
-const inList = (rule: PresetRule) => single(rule) && rule.conditions[0]!.kind !== CondPrivate
+const inList = (rule: PresetRule) => single(rule) && rule.conditions[0]!.kind !== CondPrivate && rule.action !== ActionEndpoint
 
 export function writeLists({ rules }: PresetRules): PresetLists {
   const lines = new Map<string, string[]>()
@@ -223,6 +228,12 @@ export function readLists({ advanced, rules, lists }: PresetListsInput): PresetL
   const problems: PresetListProblem[] = []
   const tabOf = new Map<string, string>()
   const lines = new Map<string, { kind: string; value: string }>()
+  // A line with the value of a rule to an endpoint would repeat that rule, which stays out of the window.
+  for (const rule of rules) {
+    if (rule.action !== ActionEndpoint || !single(rule)) continue
+    const condition = rule.conditions[0]!
+    tabOf.set(valueKey(condition.kind, ruleValue(condition.kind, condition.values[0]!) ?? condition.values[0]!), ActionEndpoint)
+  }
   for (const action of listActions) {
     for (const [i, raw] of (lists?.[action] ?? '').split('\n').entries()) {
       const text = raw.trim()
@@ -263,7 +274,9 @@ export function readLists({ advanced, rules, lists }: PresetListsInput): PresetL
     result.push({ ...rule, action })
   }
   for (const [key, line] of lines) {
-    if (!kept.has(key)) result.push({ name: '', conditions: [{ kind: line.kind, values: [line.value] }], invert: false, off: false, action: tabOf.get(key)! })
+    if (!kept.has(key)) {
+      result.push({ name: '', conditions: [{ kind: line.kind, values: [line.value] }], invert: false, off: false, action: tabOf.get(key)!, endpoint: '' })
+    }
   }
   return { rules: narrowFirst(result), problems }
 }

@@ -104,7 +104,8 @@
     "proxy": "Through the server",
     "direct": "Directly",
     "block": "Block",
-    "dns": "Poros answers"
+    "dns": "Poros answers",
+    "endpoint": "Endpoint"
   },
   "wizard": {
     "tagline": "Quick setup takes less than a minute.",
@@ -320,7 +321,8 @@
       "create": "Create a preset",
       "imported": "Preset “{name}” added.",
       "removeTitle": "Remove the preset?",
-      "removeText": "“{name}” will be gone. If it is chosen, Poros goes back to “{base}”."
+      "removeText": "“{name}” will be gone. If it is chosen, Poros goes back to “{base}”.",
+      "exportedLocal": "The preset link is copied. Endpoints and the rules to them are profiles of this computer and stay out of the link."
     },
     "conn": {
       "lead": "How Poros connects and what it does when the connection breaks. TUN and System are on the main screen.",
@@ -458,7 +460,7 @@
     "title": "Lists of “{name}”",
     "titleUnnamed": "Preset lists",
     "hint": "Every line starts with a prefix: suffix: is a site with its subdomains, ip: an IP or a subnet, processName: a program, processPath: the path to a program. Lines starting with # are not read.",
-    "locked": "Locked rules and rules of several conditions stay out of here. New lines go to the end of the list.",
+    "locked": "Locked rules, rules of several conditions and rules to endpoints stay out of here. New lines go to the end of the list.",
     "apply": "Apply",
     "invalid": "{n} line not recognized: {lines}. Fix or remove it. | {n} lines not recognized: {lines}. Fix or remove them.",
     "duplicate": "Already on other tabs: {lines}. Keep each line on one tab only.",
@@ -558,7 +560,18 @@
       "invert": "Inverted",
       "invertHint": "The rule takes everything its conditions do not match.",
       "done": "Done"
-    }
+    },
+    "endpoints": "Endpoint networks"
+  },
+  "endpoints": {
+    "hint": "OpenVPN and OpenConnect profiles connect alongside the server while this preset runs. The networks they announce go through them, by the locked rule “Endpoint networks”; rules send them other traffic. If an endpoint does not connect, Start fails and says why.",
+    "none": "No endpoints.",
+    "profiles": "OpenVPN and OpenConnect profiles",
+    "noProfiles": "There are no OpenVPN or OpenConnect profiles",
+    "gone": "Profile removed",
+    "goneHint": "It is no longer there: remove the endpoint, or Start fails.",
+    "removeTitle": "Remove the endpoint?",
+    "removeText": "{n} rules to “{name}” will send their traffic through the server. | {n} rule to “{name}” will send its traffic through the server. | {n} rules to “{name}” will send their traffic through the server."
   },
   "newPreset": {
     "title": "New preset",
@@ -629,7 +642,8 @@
     "no_prefix": "the line has no prefix",
     "advanced_only": "only an advanced preset has this",
     "no_condition": "the rule has no conditions",
-    "empty_condition": "the condition has no values"
+    "empty_condition": "the condition has no values",
+    "endpoint_failed": "an endpoint of the preset did not connect"
   },
   "units": {
     "B": "B",
