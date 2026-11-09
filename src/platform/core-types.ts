@@ -1285,6 +1285,20 @@ export const ReasonKillSwitchFailed = "kill_switch_failed";
  */
 export const ReasonPortBusy = "port_busy";
 /**
+ * ReasonPortPoros is the port of the mixed inbound held by another Poros on this computer, as of another Windows
+ * user.
+ */
+export const ReasonPortPoros = "port_poros";
+/**
+ * ReasonTunTaken is a TUN asked for while another Poros on this computer has its own on: Windows has one set of
+ * routes for every user.
+ */
+export const ReasonTunTaken = "tun_taken";
+/**
+ * ReasonKillSwitchTaken is a block of the kill switch asked for while another Poros on this computer holds one.
+ */
+export const ReasonKillSwitchTaken = "kill_switch_taken";
+/**
  * ReasonStartFailed is a core that refused to start; ErrorText has its words.
  */
 export const ReasonStartFailed = "start_failed";

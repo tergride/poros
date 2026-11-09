@@ -18,6 +18,8 @@ type fakeGuard struct {
 	mu       sync.Mutex
 	rights   bool
 	block    *fakeLink
+	// taken is the block of another Poros on the computer.
+	taken    bool
 	arms     int
 	disarms  int
 	whileRun bool
@@ -45,6 +47,9 @@ func (g *fakeGuard) Arm() (GuardLink, error) {
 	defer g.mu.Unlock()
 	if g.block != nil {
 		return g.block, nil
+	}
+	if g.taken {
+		return nil, errGuardTaken
 	}
 	if !g.rights {
 		return nil, errGuardRights
@@ -363,6 +368,18 @@ func TestKillSwitchAlwaysWithTunAsksForRights(t *testing.T) {
 	}
 	if state := unsupported.KillSwitchState(); state.Error != ReasonKillSwitchFailed {
 		t.Errorf("without a guard the block fails: %+v", state)
+	}
+
+	// The block of another Poros on the computer: rights would not help, and the reason says whose it is.
+	taken := openKillSwitchTest(t, &fakeGuard{taken: true, rights: true}, t.TempDir(), KillSwitchOff)
+	setSettings(t, taken.Engine, func(s *Settings) { s.Tun = true })
+	setMode(t, taken.Engine, KillSwitchAlways)
+	deadline = time.Now().Add(5 * time.Second)
+	for taken.KillSwitchState().Error == "" && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if state := taken.KillSwitchState(); state.Error != ReasonKillSwitchTaken {
+		t.Errorf("the block of another Poros: %+v", state)
 	}
 }
 

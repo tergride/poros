@@ -457,6 +457,9 @@
   "reason": {
     "start_failed": "the core could not connect",
     "port_busy": "port 2090 is taken by another program",
+    "port_poros": "port 2090 is taken by another Poros on this computer, such as one of another Windows user",
+    "tun_taken": "another Poros on this computer, such as one of another Windows user, has its TUN on. Windows has one set of routes for everyone, so only one can have a TUN: connect through System",
+    "kill_switch_taken": "another Poros on this computer, such as one of another Windows user, holds a kill switch with TUN. Two blocks of Windows would shut out each other's connection, so this one did not turn on",
     "tun_busy": "Windows still holds the TUN adapter of an earlier start. Try again; if that does not help, restart Windows",
     "system_proxy_failed": "the system proxy could not be set",
     "no_server": "no server is chosen",

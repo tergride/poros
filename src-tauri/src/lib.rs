@@ -384,13 +384,22 @@ pub fn run() {
     }
 
     let args: Vec<String> = std::env::args().skip(1).collect();
-    // A second start for the same data hands its links to the running Poros, which shows its window.
+    // A second start for the same data hands its links to the running Poros, which shows its window; one from
+    // another folder of the user, or in a folder another user runs, says so and ends.
     let incoming = match data_dir::portable() {
         Some(dir) => match tauri::async_runtime::block_on(async { instance::claim(&dir, &args) }) {
             Ok(Claim::Primary(incoming)) => Some(incoming),
             Ok(Claim::Handed) => return,
+            Ok(Claim::OtherCopy(path)) => {
+                fatal::other_copy(&path);
+                return;
+            }
+            Ok(Claim::OtherUser) => {
+                fatal::folder_of_other_user();
+                return;
+            }
             Err(error) => {
-                eprintln!("poros: one copy per folder: {error}");
+                eprintln!("poros: one copy per user and folder: {error}");
                 None
             }
         },

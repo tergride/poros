@@ -20,6 +20,7 @@ import (
 	"PorosCore/config"
 	"PorosCore/internal/boxbox"
 	"PorosCore/internal/boxmain"
+	"PorosCore/internal/marker"
 	"PorosCore/internal/netmon"
 	"PorosCore/internal/probe"
 	"PorosCore/internal/xray"
@@ -72,6 +73,51 @@ type runningConnection struct {
 	refusing bool
 	// stopTraffic ends the speed and delay reports.
 	stopTraffic context.CancelFunc
+	// marks tell another Poros on the computer that the port of the local proxy, and the TUN, are taken.
+	marks marks
+}
+
+type marks []*marker.Marker
+
+func (m marks) release() {
+	for _, held := range m {
+		held.Release()
+	}
+}
+
+// holdMarks takes the markers of what a sing-box holds for the whole computer: the port of the local proxy and the TUN.
+func holdMarks(port uint16, tun bool) (marks, error) {
+	held, err := marker.Hold(marker.Port(port))
+	if errors.Is(err, marker.ErrTaken) {
+		return nil, failure(ReasonPortPoros, "port %d is taken by another Poros on this computer", port)
+	}
+	if err != nil {
+		return nil, err
+	}
+	m := marks{held}
+	if tun {
+		if held, err = marker.Hold(marker.Tun); err != nil {
+			m.release()
+			if errors.Is(err, marker.ErrTaken) {
+				return nil, tunTaken()
+			}
+			return nil, err
+		}
+		m = append(m, held)
+	}
+	return m, nil
+}
+
+func tunTaken() error {
+	return failure(ReasonTunTaken, "another Poros on this computer, as of another Windows user, has its TUN on")
+}
+
+// portBusy tells another Poros from another program on the port of the local proxy.
+func portBusy(port uint16) error {
+	if marker.Taken(marker.Port(port)) {
+		return failure(ReasonPortPoros, "port %d is taken by another Poros on this computer", port)
+	}
+	return failure(ReasonPortBusy, "port %d is taken by another program", port)
 }
 
 // connError is a failed start: a reason for the interface and the details.
@@ -242,6 +288,11 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if !found {
 		return ConnectionState{}, failure(ReasonStartFailed, "the preset %q is gone", settings.Preset)
 	}
+	// Before the rights: they would not help, and the prompt for them would come for nothing. This core's own TUN is
+	// already down: the earlier connection stopped before this start.
+	if settings.Tun && marker.Taken(marker.Tun) {
+		return ConnectionState{}, tunTaken()
+	}
 	if settings.Tun && !elevated() {
 		return ConnectionState{}, failure(ReasonNeedsElevation, "TUN needs administrator rights")
 	}
@@ -254,7 +305,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		listen = "0.0.0.0"
 	}
 	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(e.mixedPort)))) {
-		return ConnectionState{}, failure(ReasonPortBusy, "port %d is taken by another program", e.mixedPort)
+		return ConnectionState{}, portBusy(e.mixedPort)
 	}
 	e.clearFailure()
 	if settings.Tun && !waitTunGone(ctx, tunGoneTimeout) {
@@ -333,6 +384,12 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 			return ConnectionState{}, failure(ReasonStartFailed, "Xray: %v", err)
 		}
 	}
+	if running.marks, err = holdMarks(e.mixedPort, settings.Tun); err != nil {
+		if running.xray != nil {
+			running.xray.Close()
+		}
+		return ConnectionState{}, err
+	}
 	counter := &trafficCounter{}
 	// The counter joins before the box starts, so that it sees the first connection too.
 	trackTraffic := func(box *boxbox.Box) { box.Router().AppendTracker(counter) }
@@ -346,6 +403,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		}
 	}
 	if err != nil {
+		running.marks.release()
 		if running.xray != nil {
 			running.xray.Close()
 		}
@@ -423,6 +481,9 @@ func (e *Engine) stopRunning(keepProxy bool) error {
 	case <-time.After(stopTimeout):
 		errs = append(errs, errors.New("the connection did not close in time"))
 	}
+	// Even a box that has not closed lets go: the next start of this core must not take its own marks for another
+	// Poros's, and a TUN still there is waited for as an earlier one.
+	running.marks.release()
 	return errors.Join(errs...)
 }
 

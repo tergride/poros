@@ -809,6 +809,14 @@ const (
 	ReasonKillSwitchFailed = "kill_switch_failed"
 	// ReasonPortBusy is the port of the mixed inbound held by another program.
 	ReasonPortBusy = "port_busy"
+	// ReasonPortPoros is the port of the mixed inbound held by another Poros on this computer, as of another Windows
+	// user.
+	ReasonPortPoros = "port_poros"
+	// ReasonTunTaken is a TUN asked for while another Poros on this computer has its own on: Windows has one set of
+	// routes for every user.
+	ReasonTunTaken = "tun_taken"
+	// ReasonKillSwitchTaken is a block of the kill switch asked for while another Poros on this computer holds one.
+	ReasonKillSwitchTaken = "kill_switch_taken"
 	// ReasonStartFailed is a core that refused to start; ErrorText has its words.
 	ReasonStartFailed = "start_failed"
 	// ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.

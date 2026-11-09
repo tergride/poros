@@ -13,6 +13,7 @@ import (
 
 	"PorosCore/config"
 	"PorosCore/internal/boxmain"
+	"PorosCore/internal/marker"
 	"PorosCore/internal/xray"
 )
 
@@ -234,7 +235,37 @@ func TestConnectionRefusals(t *testing.T) {
 	if state := waitState(t, states); state.Error != ReasonPortBusy {
 		t.Errorf("a start on a taken port: %+v", state)
 	}
+	// Another Poros on the computer, as of another Windows user, holds the port with its marker.
+	other, err := marker.Hold(marker.Port(e.mixedPort))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.StartConnection()
+	if state := waitState(t, states); state.Error != ReasonPortPoros {
+		t.Errorf("a start on the port of another Poros: %+v", state)
+	}
+	other.Release()
 	busy.Close()
+
+	// The TUN of another Poros is told before the rights: they would not help.
+	otherTun, err := marker.Hold(marker.Tun)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withTun, _ := e.Settings()
+	withTun.Tun = true
+	if _, err = e.SetSettings(withTun); err != nil {
+		t.Fatal(err)
+	}
+	e.StartConnection()
+	if state := waitState(t, states); state.Error != ReasonTunTaken {
+		t.Errorf("a start with the TUN of another Poros on: %+v", state)
+	}
+	otherTun.Release()
+	withTun.Tun = false
+	if _, err = e.SetSettings(withTun); err != nil {
+		t.Fatal(err)
+	}
 
 	// Never on the host for real: an elevated test run must not bring a TUN up.
 	if elevated() {

@@ -7,9 +7,9 @@ import CoreBanner from '@/components/main/CoreBanner.vue'
 import { Banner, Button } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
-import { useFailure, useReason } from '@/composables/useReason'
+import { sentence, useFailure, useReason } from '@/composables/useReason'
 import { useUpdates } from '@/composables/useUpdates'
-import { ReasonKillSwitchFailed, ReasonKillSwitchNeedsElevation } from '@/platform/core-types'
+import { ReasonKillSwitchFailed, ReasonKillSwitchNeedsElevation, ReasonKillSwitchTaken } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
@@ -47,8 +47,10 @@ async function installUpdate(): Promise<void> {
 }
 
 // The kill switch has banners of its own; a failed start for its sake is told there, not twice.
-const killSwitchReasons = [ReasonKillSwitchNeedsElevation, ReasonKillSwitchFailed]
+const killSwitchReasons = [ReasonKillSwitchNeedsElevation, ReasonKillSwitchFailed, ReasonKillSwitchTaken]
 const killSwitchBroken = computed(() => core.killSwitch.error === ReasonKillSwitchFailed)
+// Another Poros on the computer holds the block of Windows: rights would not help, only its own Stop.
+const killSwitchTaken = computed(() => core.killSwitch.error === ReasonKillSwitchTaken)
 const connectionError = computed(
   () =>
     !!core.connection.error &&
@@ -86,6 +88,9 @@ function closeConnectionError(): void {
     <template #actions>
       <Button size="sm" @click="ui.logs = true">{{ t('menu.logs') }}</Button>
     </template>
+  </Banner>
+  <Banner v-if="killSwitchTaken" data-testid="kill-switch-taken">
+    {{ sentence(t('reason.kill_switch_taken')) }}
   </Banner>
   <Banner v-if="connectionError" data-testid="connection-error">
     {{ connectionErrorText }}

@@ -26,6 +26,7 @@ import (
 	"github.com/sagernet/sing/common/logger"
 
 	corehost "PorosCore/internal/host"
+	"PorosCore/internal/marker"
 )
 
 const (
@@ -34,6 +35,8 @@ const (
 	CodeConfig      = "config"
 	CodeTampered    = "tampered"
 	CodeInternal    = "internal"
+	// CodeTaken is the block of another Poros on the computer: two would shut out each other's Poros.
+	CodeTaken = "taken"
 )
 
 // Config is the block a guard holds.
@@ -201,6 +204,13 @@ func Run(args []string) {
 	host, err := openHost(opts.hostPID)
 	if err != nil {
 		fail(err)
+	}
+
+	// The marker stays held until this process exits, and the process lives exactly as long as its block.
+	if _, err := marker.Hold(marker.Block); errors.Is(err, marker.ErrTaken) {
+		fail(newError(CodeTaken, "another Poros on this computer holds a block of Windows"))
+	} else if err != nil {
+		fail(newError(CodeInternal, "hold the marker of the block: %v", err))
 	}
 
 	var active backend

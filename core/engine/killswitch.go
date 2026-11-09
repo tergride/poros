@@ -16,6 +16,7 @@ import (
 
 	"PorosCore/config"
 	"PorosCore/internal/boxmain"
+	"PorosCore/internal/marker"
 )
 
 // The kill switch keeps the traffic of the server from going out directly: after a lost connection, and in the
@@ -30,7 +31,7 @@ type Guard interface {
 	// Find joins the block that is on for this window; it is nil without one.
 	Find() (GuardLink, error)
 	// Arm turns the block on, or joins the one that is on; without administrator rights it fails with
-	// errGuardRights.
+	// errGuardRights, and with the block of another Poros on the computer with errGuardTaken.
 	Arm() (GuardLink, error)
 }
 
@@ -46,6 +47,10 @@ type GuardLink interface {
 }
 
 var errGuardRights = errors.New("the kill switch needs administrator rights")
+
+// errGuardTaken is a block of Windows that another Poros on the computer holds: two blocks would shut out each other's
+// Poros.
+var errGuardTaken = errors.New("another Poros on this computer, as of another Windows user, holds a block of Windows")
 
 // rearmInterval spaces the attempts to bring back a block that went away, as when the firewall service restarts.
 const rearmInterval = 30 * time.Second
@@ -174,8 +179,11 @@ func (e *Engine) armBlock() error {
 	}
 	if err != nil {
 		reason := ReasonKillSwitchFailed
-		if errors.Is(err, errGuardRights) {
+		switch {
+		case errors.Is(err, errGuardRights):
 			reason = ReasonKillSwitchNeedsElevation
+		case errors.Is(err, errGuardTaken):
+			reason = ReasonKillSwitchTaken
 		}
 		e.failKillSwitch(reason, err)
 		return failure(reason, "%v", err)
@@ -365,16 +373,17 @@ func (e *Engine) startRefusal(settings Settings) {
 	}
 	tun := false
 	if settings.Tun {
-		// The block holds while the TUN comes up, and alone if it cannot.
+		// The block holds while the TUN comes up, and alone if it cannot. The TUN of another Poros on the computer
+		// leaves the refusal without one.
 		_ = e.armBlock()
-		tun = elevated() && prepareTun(context.Background())
+		tun = elevated() && !marker.Taken(marker.Tun) && prepareTun(context.Background())
 	}
 	listen := "127.0.0.1"
 	if settings.AllowLAN {
 		listen = "0.0.0.0"
 	}
 	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(e.mixedPort)))) {
-		e.refusalFailed(settings, fmt.Errorf("port %d is taken by another program", e.mixedPort))
+		e.refusalFailed(settings, portBusy(e.mixedPort))
 		return
 	}
 	configs, err := config.Build(config.Input{
@@ -392,7 +401,12 @@ func (e *Engine) startRefusal(settings Settings) {
 	}
 	running := &runningConnection{tun: tun, refusing: true}
 	if err == nil {
-		running.box, running.cancel, err = boxmain.Create(singBox, nil)
+		running.marks, err = holdMarks(e.mixedPort, tun)
+	}
+	if err == nil {
+		if running.box, running.cancel, err = boxmain.Create(singBox, nil); err != nil {
+			running.marks.release()
+		}
 	}
 	if err != nil {
 		e.refusalFailed(settings, fmt.Errorf("sing-box: %w", err))

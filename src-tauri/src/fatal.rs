@@ -13,7 +13,8 @@ mod native {
     use windows_sys::Win32::Globalization::GetUserDefaultUILanguage;
     use windows_sys::Win32::UI::Shell::ShellExecuteW;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        IDYES, MB_ICONERROR, MB_OK, MB_YESNO, MessageBoxW, SW_SHOWNORMAL,
+        IDYES, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MB_SETFOREGROUND, MB_TOPMOST, MB_YESNO,
+        MessageBoxW, SW_SHOWNORMAL,
     };
 
     const LANG_RUSSIAN: u16 = 0x19;
@@ -34,6 +35,19 @@ mod native {
                 text.as_ptr(),
                 caption.as_ptr(),
                 MB_OK | MB_ICONERROR,
+            )
+        };
+    }
+
+    /// On top: the running Poros brings its window forward at the same moment.
+    pub fn info(text: &str) {
+        let (text, caption) = (wide(text), wide("Poros"));
+        unsafe {
+            MessageBoxW(
+                null_mut(),
+                text.as_ptr(),
+                caption.as_ptr(),
+                MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | MB_TOPMOST,
             )
         };
     }
@@ -74,6 +88,10 @@ mod native {
     pub fn error(text: &str) {
         eprintln!("{text}");
     }
+
+    pub fn info(text: &str) {
+        eprintln!("{text}");
+    }
 }
 
 #[cfg(windows)]
@@ -101,4 +119,39 @@ pub fn data_dir_unwritable(dir: &Path) -> ! {
     };
     native::error(&text);
     std::process::exit(1)
+}
+
+/// This user runs Poros from another folder: one Poros per user, or the two would fight over the port, the TUN and
+/// the proxy of Windows.
+pub fn other_copy(path: &str) {
+    let text = if native::russian() {
+        format!(
+            "Poros уже работает из другой папки:
+{path}
+
+Чтобы запустить эту копию, сначала закройте ту: «Выход» в меню её значка в трее."
+        )
+    } else {
+        format!(
+            "Poros is already running from another folder:
+{path}
+
+To start this copy, quit that one first: Exit in the menu of its tray icon."
+        )
+    };
+    native::info(&text);
+}
+
+/// Another Windows user runs Poros from this folder: its data is theirs while it runs.
+pub fn folder_of_other_user() {
+    let text = if native::russian() {
+        "Эту копию Poros уже запустил другой пользователь Windows.
+
+У каждого пользователя должна быть своя копия: распакуйте Poros в другую папку."
+    } else {
+        "Another Windows user is already running this copy of Poros.
+
+Each user needs a copy of their own: unpack Poros into another folder."
+    };
+    native::info(text);
 }

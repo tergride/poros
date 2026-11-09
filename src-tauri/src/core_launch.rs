@@ -428,7 +428,8 @@ pub mod pipe_security {
         }
     }
 
-    fn user_sid() -> std::io::Result<String> {
+    /// The SID of this account as text: S-1-5-21-…
+    pub fn user_sid() -> std::io::Result<String> {
         // SAFETY: plain Win32 calls on buffers sized by the first GetTokenInformation call; every handle and
         // allocation is released before returning.
         unsafe {
@@ -463,10 +464,12 @@ pub mod pipe_security {
     }
 
     pub fn attributes() -> std::io::Result<Attributes> {
-        let sddl: Vec<u16> = format!("D:P(A;;GA;;;{})(A;;GA;;;BA)", user_sid()?)
-            .encode_utf16()
-            .chain(std::iter::once(0))
-            .collect();
+        from_sddl(&format!("D:P(A;;GA;;;{})(A;;GA;;;BA)", user_sid()?))
+    }
+
+    /// Attributes with the access list `sddl` describes.
+    pub fn from_sddl(sddl: &str) -> std::io::Result<Attributes> {
+        let sddl: Vec<u16> = sddl.encode_utf16().chain(std::iter::once(0)).collect();
         let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
         // SAFETY: sddl is a NUL-terminated string; the descriptor is freed by Attributes.
         let ok = unsafe {

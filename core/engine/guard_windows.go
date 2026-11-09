@@ -3,9 +3,17 @@ package engine
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"PorosCore/config"
 	"PorosCore/internal/guard"
+	"PorosCore/internal/marker"
+)
+
+// How long the marker of a block may outlive the guard of this window that turned it off.
+const (
+	guardGoneWait = 2 * time.Second
+	guardGonePoll = 100 * time.Millisecond
 )
 
 type windowsGuard struct {
@@ -36,12 +44,23 @@ func (g windowsGuard) Arm() (GuardLink, error) {
 	if link, err := g.Find(); link != nil || err != nil {
 		return link, err
 	}
+	// This window has no block of its own, so a block there is another Poros's: asking for rights would not help. The
+	// guard of this window that has just turned its block off may still be exiting, so the marker gets a moment.
+	for wait := guardGoneWait; marker.Taken(marker.Block); wait -= guardGonePoll {
+		if wait <= 0 {
+			return nil, errGuardTaken
+		}
+		time.Sleep(guardGonePoll)
+	}
 	if !elevated() {
 		return nil, errGuardRights
 	}
 	link, err := guard.Start(g.hostPID, g.logPath, guard.Config{AllowLAN: true, TunName: config.TunName})
-	if guard.ErrorCode(err) == guard.CodePrivilege {
+	switch guard.ErrorCode(err) {
+	case guard.CodePrivilege:
 		return nil, fmt.Errorf("%w: %v", errGuardRights, err)
+	case guard.CodeTaken:
+		return nil, fmt.Errorf("%w: %v", errGuardTaken, err)
 	}
 	if link == nil {
 		return nil, err
