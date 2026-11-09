@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ChevronRight, Layers, Lock, Play, Settings, ShieldAlert, Square, X } from '@lucide/vue'
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { I18nT, useI18n } from 'vue-i18n'
 
 import portalArt from '@/assets/img/portal.jpg'
 import { Button, Flag, Switch } from '@/components/ui'
@@ -9,10 +9,11 @@ import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useConnectionView } from '@/composables/useConnectionView'
 import { latencyTone } from '@/lib/format'
+import { localProxyHost, localProxyPort } from '@/platform/core'
 import { ConnectionStopping } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
-defineEmits<{ ip: [] }>()
+defineEmits<{ ip: []; proxy: [] }>()
 
 const core = useCoreStore()
 const connect = useConnect()
@@ -42,14 +43,16 @@ const {
   serverName,
 } = useConnectionView()
 
+// Without TUN and System the hint names the local proxy; its address opens what it is and how to use it.
 const hint = computed(() => {
   const s = core.settings
   if (!s) return ''
   if (s.tun && s.systemProxy) return t('portal.hint.both')
   if (s.tun) return t('portal.hint.tun')
   if (s.systemProxy) return t('portal.hint.system')
-  return t('portal.hint.none', { address: '127.0.0.1:2090' })
+  return ''
 })
+const proxyAddress = `${localProxyHost}:${localProxyPort}`
 </script>
 
 <template>
@@ -195,7 +198,19 @@ const hint = computed(() => {
         <b class="text-[13px] font-semibold">System</b>
       </label>
     </div>
-    <p class="relative text-xs text-t3">{{ hint }}</p>
+    <p v-if="hint || !core.settings" class="relative text-xs text-t3">{{ hint }}</p>
+    <I18nT v-else keypath="portal.hint.none" tag="p" scope="global" class="relative text-xs text-t3">
+      <template #address>
+        <button
+          type="button"
+          class="cursor-pointer font-mono text-t2 underline decoration-t3 decoration-dotted underline-offset-[3px] hover:text-t1"
+          data-testid="portal-proxy"
+          @click="$emit('proxy')"
+        >
+          {{ proxyAddress }}
+        </button>
+      </template>
+    </I18nT>
 
     <div class="relative flex gap-2">
       <RouterLink

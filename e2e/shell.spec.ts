@@ -47,6 +47,21 @@ test('a first start goes through the wizard to the servers', async ({ page }) =>
   await expect(page.getByTestId('server').nth(2)).toContainText('нет ответа')
 })
 
+test('the address of the local proxy says what it is and copies its links', async ({ page }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await throughWizard(page)
+  // Without TUN and System the hint names the proxy; its address opens the dialog.
+  await page.getByTestId('portal-proxy').click()
+  const dialog = page.getByRole('dialog', { name: 'Локальный прокси' })
+  await expect(dialog).toContainText('Подключаться может только этот компьютер')
+  await dialog.getByTestId('proxy-socks5').click()
+  await expect(dialog.getByTestId('proxy-socks5')).toContainText('Скопировано')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('socks5://127.0.0.1:2090')
+  await shot(page, 'main-proxy')
+  await dialog.getByTestId('proxy-http').click()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('http://127.0.0.1:2090')
+})
+
 test('the first Start asks what to turn on, and TUN asks for rights', async ({ page }) => {
   await throughWizard(page)
   await page.getByTestId('start').click()
@@ -290,8 +305,13 @@ test('the kill switch guards System without rights and asks for them only for TU
   await expect(page.getByTestId('segment-off')).toHaveAttribute('data-state', 'checked')
   await shot(page, 'settings-conn')
 
-  // With System alone the kill switch needs no rights, and the note says how it works.
-  await expect(page.getByTestId('kill-switch').getByTestId('option-note')).toContainText('Как работает Kill switch')
+  // With System alone the kill switch needs no rights; how it works shows while the pointer rests on the setting.
+  await expect(page.getByTestId('kill-switch')).not.toContainText('Как работает Kill switch')
+  await page.getByTestId('kill-switch').getByTestId('option-text').hover()
+  await expect(page.getByTestId('tooltip')).toContainText('Как работает Kill switch')
+  await shot(page, 'settings-conn-note')
+  await page.mouse.move(0, 0)
+  await expect(page.getByTestId('tooltip')).toBeHidden()
   await page.getByTestId('segment-connected').click()
   await expect(page.getByRole('dialog')).toBeHidden()
   await expect(page.getByTestId('kill-switch')).toContainText('трафик VPN не пойдёт напрямую')

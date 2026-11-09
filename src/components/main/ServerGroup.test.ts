@@ -67,6 +67,15 @@ describe('a group of servers', () => {
     expect(wrapper.find('button[aria-label="Действия с подпиской"]').exists()).toBe(true)
   })
 
+  it('turns red what runs out and says why on hover', () => {
+    const calm = mountGroup({})
+    expect(calm.find('[data-testid="quota"]').attributes('data-running-out')).toBeUndefined()
+    const low = mountGroup({ group: { ...group, download: 9_500_000_000, upload: 0, expire: Date.now() + 86_400_000 } })
+    expect(low.find('[data-testid="quota"]').attributes('data-running-out')).toBe('')
+    expect(low.find('[data-testid="quota-traffic"]').classes()).toContain('text-bad')
+    expect(low.find('[data-testid="quota-time"]').classes()).toContain('text-bad')
+  })
+
   it('shows the country of a server as a flag named in the hint', () => {
     const flags = mountGroup({}).findAll('[data-testid="flag"]')
     expect(flags.map((f) => f.text())).toEqual(['🇩🇪', '🇫🇮'])

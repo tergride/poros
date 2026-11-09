@@ -29,6 +29,11 @@ watch(open, (shown) => {
 
 const place = (info: IPInfo) => [countryName(info.countryCode, locale.value), info.city].filter(Boolean).join(', ')
 const addresses = (info: IPInfo) => [info.ip, info.ipv6].filter(Boolean)
+const families = (info: IPInfo) =>
+  [
+    { family: 'IPv4', address: info.ip },
+    { family: 'IPv6', address: info.ipv6 },
+  ].filter((entry) => entry.address)
 const sides = computed(() => [
   { id: 'without' as const, info: core.network.direct },
   { id: 'through' as const, info: core.network.proxy },
@@ -64,24 +69,21 @@ async function copy(): Promise<void> {
             <span class="text-xs text-t3">{{ t('ip.connectFirst') }}</span>
           </template>
           <template v-else-if="addresses(side.info).length">
-            <!-- An IPv6 address is long: it wraps inside the card after a colon, and the second address is smaller. -->
-            <b
-              v-for="(address, index) in addresses(side.info)"
-              :key="address"
-              :class="[
-                'font-mono leading-snug font-medium [overflow-wrap:anywhere] select-text',
-                index === 0 ? 'text-[17px]' : 'text-[12.5px] text-t2',
-              ]"
-              data-testid="ip-address"
-              ><template v-for="(part, i) in address.split(':')" :key="i"
-                ><template v-if="i > 0">:<wbr /></template>{{ part }}</template
-              ></b
-            >
+            <!-- Where the address leads first, then the addresses. -->
             <span class="flex items-center gap-2 text-[13px]">
               <Flag :code="side.info.countryCode" class="text-[17px]" />
               {{ place(side.info) }}
             </span>
             <span class="text-xs text-t3">{{ side.info.isp }}</span>
+            <template v-for="entry in families(side.info)" :key="entry.family">
+              <span class="mt-1 text-[11.5px] text-t3">{{ entry.family }}</span>
+              <!-- An IPv6 address is long: it wraps inside the card after a colon. -->
+              <b class="font-mono text-[17px] leading-snug font-medium [overflow-wrap:anywhere] select-text" data-testid="ip-address"
+                ><template v-for="(part, i) in entry.address.split(':')" :key="i"
+                  ><template v-if="i > 0">:<wbr /></template>{{ part }}</template
+                ></b
+              >
+            </template>
           </template>
           <span v-else class="text-xs text-t3">{{ core.network.checking ? t('ip.checking') : t('ip.unknown') }}</span>
         </section>

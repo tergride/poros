@@ -201,6 +201,10 @@ export interface CoreError {
   data?: { reason?: string }
 }
 
+/** The local proxy of the core, HTTP and SOCKS5 on one port: DefaultMixedPort of core/engine/connection.go. */
+export const localProxyHost = '127.0.0.1'
+export const localProxyPort = 2090
+
 /** The shell's codes for a replaced core: the user declined the UAC prompt; the core could not start. */
 export const CodeElevationCancelled = -33002
 export const CodeStartFailed = -33003

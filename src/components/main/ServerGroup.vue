@@ -3,9 +3,10 @@ import { ChevronDown, ChevronRight, Copy, Gauge, MoreHorizontal, Pencil, Refresh
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import SubscriptionQuota from '@/components/main/SubscriptionQuota.vue'
 import { useClock } from '@/composables/useClock'
 import { Button, Flag, Menu, MenuItem, MenuSeparator } from '@/components/ui'
-import { formatAgo, formatBytes, formatDate, latencyTone, serverTitle } from '@/lib/format'
+import { formatAgo, latencyTone, serverTitle } from '@/lib/format'
 import type { Group, Server } from '@/platform/core-types'
 import { GroupManual } from '@/platform/core-types'
 
@@ -23,23 +24,9 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const now = useClock(60_000)
 
-const bytes = (value: number) => formatBytes(value, locale.value, (unit) => t(`units.${unit}`))
 // A group of the user's has no provider: no quota, no update and no link.
 const manual = computed(() => props.group.kind === GroupManual)
 const used = computed(() => props.group.upload + props.group.download)
-const percent = computed(() => (props.group.total > 0 ? Math.min(100, (used.value / props.group.total) * 100) : 0))
-// A subscription that ran out works no more at the provider's: it says so instead of looking like the others.
-const expired = computed(() => props.group.expire > 0 && props.group.expire <= now.value)
-const exhausted = computed(() => props.group.total > 0 && used.value >= props.group.total)
-const quotaText = computed(() => {
-  const s = props.group
-  if (s.total > 0) return exhausted.value ? t('list.exhausted') : t('list.quota', { used: bytes(used.value), total: bytes(s.total) })
-  return used.value > 0 ? t('list.used', { used: bytes(used.value) }) : t('list.unlimited')
-})
-const untilText = computed(() => {
-  const date = formatDate(props.group.expire, locale.value, now.value)
-  return expired.value ? t('list.expired', { date }) : t('list.until', { date })
-})
 const summary = computed(() => {
   const servers = t('servers.count', props.group.servers)
   if (manual.value) return t('list.manualGroup', { servers })
@@ -69,23 +56,7 @@ function latencyText(latency: number): string {
           <small class="block truncate text-xs text-t3">{{ summary }}</small>
         </span>
       </button>
-      <!-- A long line, as in English, moves the date below whole instead of breaking it inside. -->
-      <div
-        v-if="!manual && (group.total > 0 || group.expire > 0 || used > 0)"
-        class="grid w-[196px] flex-none gap-1 text-[11.5px] text-t2"
-        data-testid="quota"
-      >
-        <div class="flex flex-wrap justify-between gap-x-2 whitespace-nowrap">
-          <span :class="exhausted && 'text-warn'">{{ quotaText }}</span>
-          <span v-if="group.expire > 0" :class="expired ? 'text-warn' : 'text-t3'">{{ untilText }}</span>
-        </div>
-        <div v-if="group.total > 0" class="h-[5px] overflow-hidden rounded-[3px] bg-s5">
-          <i
-            :class="['block h-full rounded-[3px]', exhausted || expired ? 'bg-warn' : 'bg-[image:var(--road)]']"
-            :style="{ width: `${percent}%` }"
-          />
-        </div>
-      </div>
+      <SubscriptionQuota v-if="!manual && (group.total > 0 || group.expire > 0 || used > 0)" :group="group" class="w-[196px]" />
       <Button v-if="!manual" variant="ghost" size="icon-sm" :aria-label="t('list.update')" :disabled="updating" @click="emit('update')">
         <RefreshCw :class="updating && 'animate-spin'" />
       </Button>

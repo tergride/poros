@@ -33,6 +33,7 @@ import { useI18n } from 'vue-i18n'
 
 import GroupEditor from '@/components/adv/GroupEditor.vue'
 import NewGroupDialog from '@/components/adv/NewGroupDialog.vue'
+import SubscriptionQuota from '@/components/main/SubscriptionQuota.vue'
 import { Button, ContextMenu, ContextMenuItem, ContextMenuSeparator, Dialog, Flag, Input, Menu, MenuItem, MenuSeparator, Select, Textarea } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useClock } from '@/composables/useClock'
@@ -40,7 +41,7 @@ import { useConnect } from '@/composables/useConnect'
 import { useProfileActions } from '@/composables/useProfileActions'
 import { useReason } from '@/composables/useReason'
 import { useSelection } from '@/composables/useSelection'
-import { formatAgo, formatBytes, formatDate, latencyTone, protocolName, serverTitle } from '@/lib/format'
+import { formatAgo, formatBytes, latencyTone, protocolName, serverTitle } from '@/lib/format'
 import type { Group, Server } from '@/platform/core-types'
 import { GroupManual, MethodGroupsRemove, MethodServersClean, MethodSubscriptionsUpdate } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
@@ -94,17 +95,6 @@ function result(s: Server): string {
   return parts.join(' · ')
 }
 
-// The header of a subscription: its quota, its end date and its last update.
-const quota = computed(() => {
-  const g = group.value
-  if (!g || g.kind === GroupManual) return null
-  const used = g.upload + g.download
-  return {
-    text: g.total > 0 ? t('list.quota', { used: bytes(used), total: bytes(g.total) }) : used > 0 ? t('list.used', { used: bytes(used) }) : t('list.unlimited'),
-    percent: g.total > 0 ? Math.min(100, (used / g.total) * 100) : 0,
-    until: g.expire > 0 ? t('list.until', { date: formatDate(g.expire, locale.value, now.value) }) : '',
-  }
-})
 const updatedText = computed(() => {
   const g = group.value
   if (!g || g.kind === GroupManual) return t('profiles.manualText')
@@ -256,10 +246,8 @@ async function importEntered(): Promise<void> {
             <h2 class="truncate font-disp text-[17px] font-normal" data-testid="group-title">{{ group.name }}</h2>
             <small class="block truncate text-xs text-t3">{{ updatedText }}</small>
           </div>
-          <div v-if="quota" class="grid w-[230px] gap-1 text-xs whitespace-nowrap">
-            <div class="flex justify-between gap-2"><span>{{ quota.text }}</span><span class="text-t3">{{ quota.until }}</span></div>
-            <div class="h-1 overflow-hidden rounded-full bg-s4"><i class="block h-full bg-[image:var(--road)]" :style="{ width: `${quota.percent}%` }" /></div>
-          </div>
+          <!-- The header of a subscription: its quota and its end date, as in the simple mode. -->
+          <SubscriptionQuota v-if="!manual" :group="group" class="w-[230px]" />
           <Button v-if="!manual" size="sm" :disabled="updating || !core.ready" @click="updateGroup(group)">
             <RefreshCw :class="updating && 'animate-spin'" />{{ t('profiles.update') }}
           </Button>

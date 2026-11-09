@@ -199,7 +199,11 @@
     "copied": "The subscription link is copied.",
     "expired": "expired {date}",
     "exhausted": "quota used up",
-    "used": "{used} used"
+    "used": "{used} used",
+    "trafficLow": "The subscription's traffic is running out: {left} of {total} left.",
+    "trafficOut": "The subscription's traffic is used up. Providers usually turn the servers off until it is renewed.",
+    "endingSoon": "The subscription ends {when}, on {date}. Renew it with the provider.",
+    "ended": "The subscription ended on {date}. Providers usually turn the servers off until it is renewed."
   },
   "ping": {
     "none": "no answer",
@@ -248,6 +252,16 @@
       "damaged": "The update to {version} did not install: the archive is damaged. Poros runs the previous version.",
       "failed": "The update to {version} did not install. Poros runs the previous version; the reason is in the log."
     }
+  },
+  "proxy": {
+    "title": "Local proxy",
+    "lead": "{address} is the proxy of Poros on this computer. A program set to it goes online by the rules of the preset: through the server or directly.",
+    "how": "Set it in the program's settings, usually under Proxy or Network: type HTTP or SOCKS5, address {host}, port {port}. Or copy a ready link:",
+    "copy": "Copy the {kind} link",
+    "copied": "Copied",
+    "modes": "TUN and System do this by themselves: TUN for every program, System for those that take the Windows proxy, such as browsers.",
+    "lan": "Devices in your network can connect to port {port} too, at this computer's address in the local network.",
+    "lanOff": "Only this computer can connect. For a phone or TV to go online through Poros, turn on «Let other devices connect» in Connection."
   },
   "ip": {
     "title": "IP and DNS",
