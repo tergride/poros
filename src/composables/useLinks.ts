@@ -34,7 +34,7 @@ export function useLinks(): void {
       // The advanced mode offers to add the server; the simple mode adds none by hand: the add dialog tries the link
       // and says so.
       if (info.kind === LinkServer && info.server && core.settings?.uiMode === 'advanced') {
-        ui.linkServer = { link, server: info.server }
+        ui.linkServer = { link, server: info.server, profile: info.profile ?? null }
         return
       }
       if (info.kind === LinkServer) {

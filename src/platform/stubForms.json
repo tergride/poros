@@ -1,0 +1,4047 @@
+{
+  "forms": [
+    {
+      "type": "vless",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "vless.uuid",
+          "label": "uuid",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "vless.flow",
+          "label": "vless.flow",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "",
+            "xtls-rprx-vision"
+          ],
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                ""
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.packet_encoding",
+          "label": "packetEncoding",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "packetaddr",
+            "xudp"
+          ]
+        },
+        {
+          "path": "vless.encryption",
+          "label": "vless.encryption",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "vless.transport.type",
+          "label": "transport.type",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "ws",
+            "grpc",
+            "http",
+            "httpupgrade",
+            "quic",
+            "xhttp"
+          ]
+        },
+        {
+          "path": "vless.transport.header_type",
+          "label": "transport.headerType",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "http"
+          ],
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                ""
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.host",
+          "label": "transport.host",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                ""
+              ]
+            },
+            {
+              "path": "vless.transport.header_type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                ""
+              ]
+            },
+            {
+              "path": "vless.transport.header_type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.host",
+          "label": "transport.host",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade",
+                "xhttp"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade",
+                "xhttp"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.service_name",
+          "label": "transport.serviceName",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "grpc"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.method",
+          "label": "transport.method",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.headers",
+          "label": "transport.headers",
+          "kind": "headers",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.max_early_data",
+          "label": "transport.earlyData",
+          "kind": "number",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "ws"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.early_data_header_name",
+          "label": "transport.earlyDataHeader",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "ws"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.xhttp.mode",
+          "label": "transport.xhttpMode",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "auto",
+            "packet-up",
+            "stream-up",
+            "stream-one"
+          ],
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "xhttp"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.transport.xhttp.extra",
+          "label": "transport.xhttpExtra",
+          "kind": "json",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vless.transport.type",
+              "in": [
+                "xhttp"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vless.tls",
+          "label": "tls.security",
+          "kind": "security",
+          "tab": "security",
+          "options": [
+            "",
+            "tls",
+            "reality"
+          ]
+        },
+        {
+          "path": "vless.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.utls",
+          "label": "tls.fingerprint",
+          "kind": "utls",
+          "tab": "security",
+          "options": [
+            "",
+            "chrome",
+            "firefox",
+            "edge",
+            "safari",
+            "360",
+            "qq",
+            "ios",
+            "android",
+            "random",
+            "randomized"
+          ],
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.reality.public_key",
+          "label": "tls.realityPublicKey",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.reality.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.reality.short_id",
+          "label": "tls.realityShortId",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.reality.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.reality.spider_x",
+          "label": "tls.realitySpiderX",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.reality.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            },
+            {
+              "path": "vless.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            },
+            {
+              "path": "vless.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            },
+            {
+              "path": "vless.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            },
+            {
+              "path": "vless.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.ech.enabled"
+            },
+            {
+              "path": "vless.tls.enabled"
+            },
+            {
+              "path": "vless.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vless.tls.ech.enabled"
+            },
+            {
+              "path": "vless.tls.enabled"
+            },
+            {
+              "path": "vless.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced",
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            },
+            {
+              "path": "vless.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ],
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ],
+          "when": [
+            {
+              "path": "vless.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.multiplex.enabled",
+          "label": "mux.enabled",
+          "kind": "bool",
+          "tab": "mux"
+        },
+        {
+          "path": "vless.multiplex.protocol",
+          "label": "mux.protocol",
+          "kind": "select",
+          "tab": "mux",
+          "options": [
+            "",
+            "smux",
+            "yamux",
+            "h2mux"
+          ],
+          "when": [
+            {
+              "path": "vless.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.multiplex.max_connections",
+          "label": "mux.maxConnections",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "vless.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.multiplex.min_streams",
+          "label": "mux.minStreams",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "vless.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.multiplex.max_streams",
+          "label": "mux.maxStreams",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "vless.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vless.multiplex.padding",
+          "label": "mux.padding",
+          "kind": "bool",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "vless.multiplex.enabled"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "vmess",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "vmess.uuid",
+          "label": "uuid",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "vmess.security",
+          "label": "vmess.security",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "auto",
+            "aes-128-gcm",
+            "chacha20-poly1305",
+            "none",
+            "zero"
+          ]
+        },
+        {
+          "path": "vmess.alter_id",
+          "label": "vmess.alterId",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "vmess.packet_encoding",
+          "label": "packetEncoding",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "packetaddr",
+            "xudp"
+          ]
+        },
+        {
+          "path": "vmess.transport.type",
+          "label": "transport.type",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "ws",
+            "grpc",
+            "http",
+            "httpupgrade",
+            "quic"
+          ]
+        },
+        {
+          "path": "vmess.transport.header_type",
+          "label": "transport.headerType",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "http"
+          ],
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                ""
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.host",
+          "label": "transport.host",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                ""
+              ]
+            },
+            {
+              "path": "vmess.transport.header_type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                ""
+              ]
+            },
+            {
+              "path": "vmess.transport.header_type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.host",
+          "label": "transport.host",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.service_name",
+          "label": "transport.serviceName",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "grpc"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.method",
+          "label": "transport.method",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.headers",
+          "label": "transport.headers",
+          "kind": "headers",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.max_early_data",
+          "label": "transport.earlyData",
+          "kind": "number",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "ws"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.early_data_header_name",
+          "label": "transport.earlyDataHeader",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "ws"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.xhttp.mode",
+          "label": "transport.xhttpMode",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "auto",
+            "packet-up",
+            "stream-up",
+            "stream-one"
+          ],
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "xhttp"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.transport.xhttp.extra",
+          "label": "transport.xhttpExtra",
+          "kind": "json",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "vmess.transport.type",
+              "in": [
+                "xhttp"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls",
+          "label": "tls.security",
+          "kind": "security",
+          "tab": "security",
+          "options": [
+            "",
+            "tls"
+          ]
+        },
+        {
+          "path": "vmess.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.utls",
+          "label": "tls.fingerprint",
+          "kind": "utls",
+          "tab": "security",
+          "options": [
+            "",
+            "chrome",
+            "firefox",
+            "edge",
+            "safari",
+            "360",
+            "qq",
+            "ios",
+            "android",
+            "random",
+            "randomized"
+          ],
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vmess.tls.ech.enabled"
+            },
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "vmess.tls.ech.enabled"
+            },
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced",
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ],
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ],
+          "when": [
+            {
+              "path": "vmess.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.multiplex.enabled",
+          "label": "mux.enabled",
+          "kind": "bool",
+          "tab": "mux"
+        },
+        {
+          "path": "vmess.multiplex.protocol",
+          "label": "mux.protocol",
+          "kind": "select",
+          "tab": "mux",
+          "options": [
+            "",
+            "smux",
+            "yamux",
+            "h2mux"
+          ],
+          "when": [
+            {
+              "path": "vmess.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.multiplex.max_connections",
+          "label": "mux.maxConnections",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "vmess.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.multiplex.min_streams",
+          "label": "mux.minStreams",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "vmess.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.multiplex.max_streams",
+          "label": "mux.maxStreams",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "vmess.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "vmess.multiplex.padding",
+          "label": "mux.padding",
+          "kind": "bool",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "vmess.multiplex.enabled"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "trojan",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "trojan.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "trojan.transport.type",
+          "label": "transport.type",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "ws",
+            "grpc",
+            "http",
+            "httpupgrade",
+            "quic"
+          ]
+        },
+        {
+          "path": "trojan.transport.header_type",
+          "label": "transport.headerType",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "http"
+          ],
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                ""
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.host",
+          "label": "transport.host",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                ""
+              ]
+            },
+            {
+              "path": "trojan.transport.header_type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                ""
+              ]
+            },
+            {
+              "path": "trojan.transport.header_type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.host",
+          "label": "transport.host",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.service_name",
+          "label": "transport.serviceName",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "grpc"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.method",
+          "label": "transport.method",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "http"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.headers",
+          "label": "transport.headers",
+          "kind": "headers",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "ws",
+                "http",
+                "httpupgrade"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.max_early_data",
+          "label": "transport.earlyData",
+          "kind": "number",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "ws"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.early_data_header_name",
+          "label": "transport.earlyDataHeader",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "ws"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.xhttp.mode",
+          "label": "transport.xhttpMode",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "auto",
+            "packet-up",
+            "stream-up",
+            "stream-one"
+          ],
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "xhttp"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.transport.xhttp.extra",
+          "label": "transport.xhttpExtra",
+          "kind": "json",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "trojan.transport.type",
+              "in": [
+                "xhttp"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls",
+          "label": "tls.security",
+          "kind": "security",
+          "tab": "security",
+          "options": [
+            "",
+            "tls",
+            "reality"
+          ]
+        },
+        {
+          "path": "trojan.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.utls",
+          "label": "tls.fingerprint",
+          "kind": "utls",
+          "tab": "security",
+          "options": [
+            "",
+            "chrome",
+            "firefox",
+            "edge",
+            "safari",
+            "360",
+            "qq",
+            "ios",
+            "android",
+            "random",
+            "randomized"
+          ],
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.reality.public_key",
+          "label": "tls.realityPublicKey",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.reality.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.reality.short_id",
+          "label": "tls.realityShortId",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.reality.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.reality.spider_x",
+          "label": "tls.realitySpiderX",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.reality.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            },
+            {
+              "path": "trojan.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            },
+            {
+              "path": "trojan.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            },
+            {
+              "path": "trojan.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            },
+            {
+              "path": "trojan.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.ech.enabled"
+            },
+            {
+              "path": "trojan.tls.enabled"
+            },
+            {
+              "path": "trojan.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "trojan.tls.ech.enabled"
+            },
+            {
+              "path": "trojan.tls.enabled"
+            },
+            {
+              "path": "trojan.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced",
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            },
+            {
+              "path": "trojan.tls.reality.enabled",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ],
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ],
+          "when": [
+            {
+              "path": "trojan.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.multiplex.enabled",
+          "label": "mux.enabled",
+          "kind": "bool",
+          "tab": "mux"
+        },
+        {
+          "path": "trojan.multiplex.protocol",
+          "label": "mux.protocol",
+          "kind": "select",
+          "tab": "mux",
+          "options": [
+            "",
+            "smux",
+            "yamux",
+            "h2mux"
+          ],
+          "when": [
+            {
+              "path": "trojan.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.multiplex.max_connections",
+          "label": "mux.maxConnections",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "trojan.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.multiplex.min_streams",
+          "label": "mux.minStreams",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "trojan.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.multiplex.max_streams",
+          "label": "mux.maxStreams",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "trojan.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "trojan.multiplex.padding",
+          "label": "mux.padding",
+          "kind": "bool",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "trojan.multiplex.enabled"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "shadowsocks",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "shadowsocks.method",
+          "label": "shadowsocks.method",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "2022-blake3-aes-128-gcm",
+            "2022-blake3-aes-256-gcm",
+            "2022-blake3-chacha20-poly1305",
+            "none",
+            "aes-128-gcm",
+            "aes-192-gcm",
+            "aes-256-gcm",
+            "chacha20-ietf-poly1305",
+            "xchacha20-ietf-poly1305",
+            "aes-128-ctr",
+            "aes-192-ctr",
+            "aes-256-ctr",
+            "aes-128-cfb",
+            "aes-192-cfb",
+            "aes-256-cfb",
+            "rc4-md5",
+            "chacha20-ietf",
+            "xchacha20"
+          ]
+        },
+        {
+          "path": "shadowsocks.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common",
+          "when": [
+            {
+              "path": "shadowsocks.method",
+              "in": [
+                "none"
+              ],
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.udp_over_tcp",
+          "label": "udpOverTcp",
+          "kind": "bool",
+          "tab": "common"
+        },
+        {
+          "path": "shadowsocks.plugin",
+          "label": "shadowsocks.plugin",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "obfs-local",
+            "v2ray-plugin"
+          ],
+          "when": [
+            {
+              "path": "shadowsocks.shadowtls.version",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.plugin_opts",
+          "label": "shadowsocks.pluginOpts",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "shadowsocks.plugin"
+            },
+            {
+              "path": "shadowsocks.shadowtls.version",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.shadowtls.version",
+          "label": "shadowtls.version",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "0",
+            "1",
+            "2",
+            "3"
+          ],
+          "numeric": true,
+          "when": [
+            {
+              "path": "shadowsocks.plugin",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.shadowtls.password",
+          "label": "shadowtls.password",
+          "kind": "secret",
+          "tab": "security",
+          "when": [
+            {
+              "path": "shadowsocks.shadowtls.version",
+              "in": [
+                "2",
+                "3"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.shadowtls.tls.server_name",
+          "label": "shadowtls.site",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "shadowsocks.shadowtls.version"
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.shadowtls.tls.utls",
+          "label": "tls.fingerprint",
+          "kind": "utls",
+          "tab": "security",
+          "options": [
+            "",
+            "chrome",
+            "firefox",
+            "edge",
+            "safari",
+            "360",
+            "qq",
+            "ios",
+            "android",
+            "random",
+            "randomized"
+          ],
+          "when": [
+            {
+              "path": "shadowsocks.shadowtls.version"
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.shadowtls.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "shadowsocks.shadowtls.version"
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.shadowtls.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "shadowsocks.shadowtls.version"
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.multiplex.enabled",
+          "label": "mux.enabled",
+          "kind": "bool",
+          "tab": "mux"
+        },
+        {
+          "path": "shadowsocks.multiplex.protocol",
+          "label": "mux.protocol",
+          "kind": "select",
+          "tab": "mux",
+          "options": [
+            "",
+            "smux",
+            "yamux",
+            "h2mux"
+          ],
+          "when": [
+            {
+              "path": "shadowsocks.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.multiplex.max_connections",
+          "label": "mux.maxConnections",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "shadowsocks.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.multiplex.min_streams",
+          "label": "mux.minStreams",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "shadowsocks.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.multiplex.max_streams",
+          "label": "mux.maxStreams",
+          "kind": "number",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "shadowsocks.multiplex.enabled"
+            }
+          ]
+        },
+        {
+          "path": "shadowsocks.multiplex.padding",
+          "label": "mux.padding",
+          "kind": "bool",
+          "tab": "mux",
+          "when": [
+            {
+              "path": "shadowsocks.multiplex.enabled"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "anytls",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "anytls.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "anytls.idle_session_check_interval",
+          "label": "anytls.checkInterval",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "anytls.idle_session_timeout",
+          "label": "anytls.idleTimeout",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "anytls.min_idle_session",
+          "label": "anytls.minIdle",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "anytls.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security"
+        },
+        {
+          "path": "anytls.tls.utls",
+          "label": "tls.fingerprint",
+          "kind": "utls",
+          "tab": "security",
+          "options": [
+            "",
+            "chrome",
+            "firefox",
+            "edge",
+            "safari",
+            "360",
+            "qq",
+            "ios",
+            "android",
+            "random",
+            "randomized"
+          ]
+        },
+        {
+          "path": "anytls.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "anytls.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "anytls.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "anytls.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "anytls.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "anytls.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "anytls.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "anytls.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "anytls.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "anytls.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "anytls.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        },
+        {
+          "path": "anytls.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "socks",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "socks.version",
+          "label": "socks.version",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "5",
+            "4",
+            "4a"
+          ]
+        },
+        {
+          "path": "socks.username",
+          "label": "username",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "socks.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common",
+          "when": [
+            {
+              "path": "socks.version",
+              "in": [
+                "4",
+                "4a"
+              ],
+              "not": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "http",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "http.username",
+          "label": "username",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "http.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "http.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "http.headers",
+          "label": "transport.headers",
+          "kind": "headers",
+          "tab": "advanced"
+        },
+        {
+          "path": "http.tls",
+          "label": "tls.security",
+          "kind": "security",
+          "tab": "security",
+          "options": [
+            "",
+            "tls"
+          ]
+        },
+        {
+          "path": "http.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.utls",
+          "label": "tls.fingerprint",
+          "kind": "utls",
+          "tab": "security",
+          "options": [
+            "",
+            "chrome",
+            "firefox",
+            "edge",
+            "safari",
+            "360",
+            "qq",
+            "ios",
+            "android",
+            "random",
+            "randomized"
+          ],
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "http.tls.ech.enabled"
+            },
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "http.tls.ech.enabled"
+            },
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced",
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ],
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        },
+        {
+          "path": "http.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ],
+          "when": [
+            {
+              "path": "http.tls.enabled"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "naive",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "naive.username",
+          "label": "username",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "naive.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "naive.quic",
+          "label": "naive.quic",
+          "kind": "bool",
+          "tab": "common"
+        },
+        {
+          "path": "naive.quic_congestion_control",
+          "label": "congestion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "bbr",
+            "bbr2",
+            "cubic",
+            "reno"
+          ],
+          "when": [
+            {
+              "path": "naive.quic"
+            }
+          ]
+        },
+        {
+          "path": "naive.insecure_concurrency",
+          "label": "naive.concurrency",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "naive.extra_headers",
+          "label": "transport.headers",
+          "kind": "headers",
+          "tab": "advanced"
+        },
+        {
+          "path": "naive.udp_over_tcp",
+          "label": "udpOverTcp",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "naive.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security"
+        },
+        {
+          "path": "naive.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "naive.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "naive.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "naive.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "naive.tls.ech.enabled"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ssh",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "ssh.user",
+          "label": "username",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "ssh.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "ssh.private_key",
+          "label": "ssh.privateKey",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "ssh.private_key_passphrase",
+          "label": "ssh.passphrase",
+          "kind": "secret",
+          "tab": "security",
+          "when": [
+            {
+              "path": "ssh.private_key"
+            }
+          ]
+        },
+        {
+          "path": "ssh.host_key",
+          "label": "ssh.hostKey",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "ssh.host_key_algorithms",
+          "label": "ssh.hostKeyAlgorithms",
+          "kind": "list",
+          "tab": "advanced"
+        },
+        {
+          "path": "ssh.client_version",
+          "label": "ssh.clientVersion",
+          "kind": "text",
+          "tab": "advanced"
+        }
+      ]
+    },
+    {
+      "type": "snell",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "snell.version",
+          "label": "snell.version",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "4",
+            "6"
+          ],
+          "numeric": true
+        },
+        {
+          "path": "snell.psk",
+          "label": "snell.psk",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "snell.userkey",
+          "label": "snell.userKey",
+          "kind": "secret",
+          "tab": "advanced"
+        },
+        {
+          "path": "snell.reuse",
+          "label": "snell.reuse",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "snell.obfs_mode",
+          "label": "snell.obfs",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "http",
+            "tls"
+          ],
+          "when": [
+            {
+              "path": "snell.version",
+              "in": [
+                "4"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "snell.obfs_host",
+          "label": "snell.obfsHost",
+          "kind": "text",
+          "tab": "transport",
+          "when": [
+            {
+              "path": "snell.version",
+              "in": [
+                "4"
+              ]
+            },
+            {
+              "path": "snell.obfs_mode",
+              "in": [
+                "http",
+                "tls"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "snell.mode",
+          "label": "snell.mode",
+          "kind": "select",
+          "tab": "transport",
+          "options": [
+            "",
+            "default",
+            "unshaped",
+            "unsafe-raw"
+          ],
+          "when": [
+            {
+              "path": "snell.version",
+              "in": [
+                "6"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "hysteria2",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria2.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria2.server_ports",
+          "label": "hysteria.ports",
+          "kind": "list",
+          "tab": "common",
+          "when": [
+            {
+              "path": "hysteria2.realm.server_url",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "hysteria2.hop_interval",
+          "label": "hysteria.hopInterval",
+          "kind": "text",
+          "tab": "common",
+          "when": [
+            {
+              "path": "hysteria2.server_ports"
+            }
+          ]
+        },
+        {
+          "path": "hysteria2.up_mbps",
+          "label": "hysteria.up",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria2.down_mbps",
+          "label": "hysteria.down",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria2.obfs_password",
+          "label": "hysteria.obfs",
+          "kind": "secret",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria2.realm.server_url",
+          "label": "realm.server",
+          "kind": "text",
+          "tab": "advanced",
+          "when": [
+            {
+              "path": "hysteria2.server_ports",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "hysteria2.realm.realm_id",
+          "label": "realm.id",
+          "kind": "text",
+          "tab": "advanced",
+          "when": [
+            {
+              "path": "hysteria2.realm.server_url"
+            }
+          ]
+        },
+        {
+          "path": "hysteria2.realm.token",
+          "label": "realm.token",
+          "kind": "secret",
+          "tab": "advanced",
+          "when": [
+            {
+              "path": "hysteria2.realm.server_url"
+            }
+          ]
+        },
+        {
+          "path": "hysteria2.realm.stun_servers",
+          "label": "realm.stun",
+          "kind": "list",
+          "tab": "advanced",
+          "when": [
+            {
+              "path": "hysteria2.realm.server_url"
+            }
+          ]
+        },
+        {
+          "path": "hysteria2.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria2.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria2.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria2.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria2.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria2.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria2.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "hysteria2.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "hysteria2.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "hysteria2.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "hysteria2.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "hysteria2.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        },
+        {
+          "path": "hysteria2.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "hysteria",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria.auth",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria.server_ports",
+          "label": "hysteria.ports",
+          "kind": "list",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria.hop_interval",
+          "label": "hysteria.hopInterval",
+          "kind": "text",
+          "tab": "common",
+          "when": [
+            {
+              "path": "hysteria.server_ports"
+            }
+          ]
+        },
+        {
+          "path": "hysteria.up_mbps",
+          "label": "hysteria.up",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria.down_mbps",
+          "label": "hysteria.down",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "hysteria.obfs",
+          "label": "hysteria.obfs",
+          "kind": "secret",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "hysteria.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "hysteria.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "hysteria.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "hysteria.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "hysteria.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "hysteria.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        },
+        {
+          "path": "hysteria.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "tuic",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "tuic.uuid",
+          "label": "uuid",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "tuic.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "tuic.congestion_control",
+          "label": "congestion",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "",
+            "cubic",
+            "new_reno",
+            "bbr"
+          ]
+        },
+        {
+          "path": "tuic.udp_relay_mode",
+          "label": "tuic.relay",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "native",
+            "quic"
+          ]
+        },
+        {
+          "path": "tuic.zero_rtt_handshake",
+          "label": "tuic.zeroRtt",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "tuic.heartbeat",
+          "label": "tuic.heartbeat",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "tuic.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security"
+        },
+        {
+          "path": "tuic.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "tuic.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "tuic.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "tuic.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "tuic.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "tuic.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "tuic.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "tuic.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "tuic.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "tuic.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "tuic.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        },
+        {
+          "path": "tuic.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "masque",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "masque.username",
+          "label": "username",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "masque.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "masque.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "masque.version",
+          "label": "masque.version",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "0",
+            "3",
+            "2",
+            "1"
+          ],
+          "numeric": true
+        },
+        {
+          "path": "masque.headers",
+          "label": "transport.headers",
+          "kind": "headers",
+          "tab": "advanced"
+        },
+        {
+          "path": "masque.mtu",
+          "label": "mtu",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "masque.tls.server_name",
+          "label": "tls.serverName",
+          "kind": "text",
+          "tab": "security"
+        },
+        {
+          "path": "masque.tls.alpn",
+          "label": "tls.alpn",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "masque.tls.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "masque.tls.certificate_sha256",
+          "label": "tls.certificatePin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "masque.tls.certificate_public_key_sha256",
+          "label": "tls.publicKeyPin",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "masque.tls.ech.enabled",
+          "label": "tls.ech",
+          "kind": "bool",
+          "tab": "security"
+        },
+        {
+          "path": "masque.tls.ech.config",
+          "label": "tls.echConfig",
+          "kind": "list",
+          "tab": "security",
+          "when": [
+            {
+              "path": "masque.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "masque.tls.ech.query_server_name",
+          "label": "tls.echServerName",
+          "kind": "text",
+          "tab": "security",
+          "when": [
+            {
+              "path": "masque.tls.ech.enabled"
+            }
+          ]
+        },
+        {
+          "path": "masque.tls.disable_sni",
+          "label": "tls.disableSni",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "masque.tls.min_version",
+          "label": "tls.minVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        },
+        {
+          "path": "masque.tls.max_version",
+          "label": "tls.maxVersion",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "wireguard",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "wireguard.private_key",
+          "label": "wireguard.privateKey",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "wireguard.peer_public_key",
+          "label": "wireguard.peerPublicKey",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "wireguard.address",
+          "label": "wireguard.address",
+          "kind": "list",
+          "tab": "common"
+        },
+        {
+          "path": "wireguard.pre_shared_key",
+          "label": "wireguard.preSharedKey",
+          "kind": "secret",
+          "tab": "security"
+        },
+        {
+          "path": "wireguard.reserved",
+          "label": "wireguard.reserved",
+          "kind": "bytes",
+          "tab": "advanced"
+        },
+        {
+          "path": "wireguard.mtu",
+          "label": "mtu",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "wireguard.persistent_keepalive",
+          "label": "wireguard.keepalive",
+          "kind": "number",
+          "tab": "advanced"
+        }
+      ]
+    },
+    {
+      "type": "openvpn",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "openvpn.network",
+          "label": "openvpn.network",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "",
+            "udp",
+            "udp4",
+            "udp6",
+            "tcp",
+            "tcp4",
+            "tcp6"
+          ]
+        },
+        {
+          "path": "openvpn.username",
+          "label": "username",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "openvpn.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "openvpn.ca",
+          "label": "pem.ca",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.cert",
+          "label": "pem.cert",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.key",
+          "label": "pem.key",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.peer_fingerprint",
+          "label": "openvpn.fingerprint",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.control_wrap.type",
+          "label": "openvpn.wrap",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "",
+            "tls_auth",
+            "tls_crypt",
+            "tls_crypt_v2"
+          ]
+        },
+        {
+          "path": "openvpn.control_wrap.key",
+          "label": "openvpn.wrapKey",
+          "kind": "lines",
+          "tab": "security",
+          "when": [
+            {
+              "path": "openvpn.control_wrap.type"
+            }
+          ]
+        },
+        {
+          "path": "openvpn.control_wrap.direction",
+          "label": "openvpn.wrapDirection",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "",
+            "server",
+            "client"
+          ],
+          "when": [
+            {
+              "path": "openvpn.control_wrap.type",
+              "in": [
+                "tls_auth"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "openvpn.verify_name",
+          "label": "openvpn.verifyName",
+          "kind": "text",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.verify_name_type",
+          "label": "openvpn.verifyNameType",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "",
+            "subject",
+            "name",
+            "name-prefix"
+          ],
+          "when": [
+            {
+              "path": "openvpn.verify_name"
+            }
+          ]
+        },
+        {
+          "path": "openvpn.remote_cert_tls",
+          "label": "openvpn.remoteCertTls",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "",
+            "server",
+            "client",
+            "none"
+          ]
+        },
+        {
+          "path": "openvpn.cipher",
+          "label": "openvpn.cipher",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.data_ciphers",
+          "label": "openvpn.dataCiphers",
+          "kind": "list",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.auth",
+          "label": "openvpn.auth",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.compression",
+          "label": "openvpn.compression",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "none",
+            "no",
+            "lz4",
+            "lz4-v2",
+            "stub",
+            "stub-v2",
+            "disabled",
+            "off"
+          ]
+        },
+        {
+          "path": "openvpn.compression_lzo",
+          "label": "openvpn.lzo",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "none",
+            "no",
+            "yes",
+            "adaptive",
+            "asym",
+            "disabled",
+            "off"
+          ]
+        },
+        {
+          "path": "openvpn.mtu",
+          "label": "mtu",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.mss_fix",
+          "label": "openvpn.mssFix",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.fragment",
+          "label": "openvpn.fragment",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.ping_interval",
+          "label": "openvpn.ping",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.ping_restart",
+          "label": "openvpn.pingRestart",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.renegotiate_interval",
+          "label": "openvpn.renegotiate",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.static_challenge",
+          "label": "openvpn.challenge",
+          "kind": "text",
+          "tab": "advanced"
+        }
+      ]
+    },
+    {
+      "type": "openconnect",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "openconnect.flavor",
+          "label": "openconnect.flavor",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "",
+            "anyconnect",
+            "gp",
+            "fortinet",
+            "f5",
+            "pulse",
+            "nc"
+          ]
+        },
+        {
+          "path": "openconnect.path",
+          "label": "transport.path",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "openconnect.username",
+          "label": "username",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "openconnect.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "openconnect.auth_group",
+          "label": "openconnect.group",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "openconnect.peer_fingerprint",
+          "label": "openconnect.fingerprint",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "openconnect.insecure",
+          "label": "tls.insecure",
+          "kind": "bool",
+          "tab": "security",
+          "when": [
+            {
+              "path": "openconnect.peer_fingerprint",
+              "not": true
+            }
+          ]
+        },
+        {
+          "path": "openconnect.ca",
+          "label": "pem.ca",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openconnect.cert",
+          "label": "pem.cert",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openconnect.key",
+          "label": "pem.key",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openconnect.key_password",
+          "label": "openconnect.keyPassword",
+          "kind": "secret",
+          "tab": "security",
+          "when": [
+            {
+              "path": "openconnect.key"
+            }
+          ]
+        },
+        {
+          "path": "openconnect.no_udp",
+          "label": "openconnect.noUdp",
+          "kind": "bool",
+          "tab": "advanced"
+        },
+        {
+          "path": "openconnect.mtu",
+          "label": "mtu",
+          "kind": "number",
+          "tab": "advanced"
+        }
+      ]
+    },
+    {
+      "type": "chain",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "chain.servers",
+          "label": "chain.servers",
+          "kind": "servers",
+          "tab": "common"
+        }
+      ]
+    },
+    {
+      "type": "custom",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "custom.json",
+          "label": "custom.json",
+          "kind": "json",
+          "tab": "common"
+        }
+      ]
+    },
+    {
+      "type": "direct",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        }
+      ]
+    }
+  ],
+  "new": [
+    {
+      "id": "vless",
+      "kind": "proxy",
+      "profile": {
+        "type": "vless",
+        "server": "",
+        "server_port": 443,
+        "vless": {
+          "uuid": "",
+          "tls": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "id": "vmess",
+      "kind": "proxy",
+      "profile": {
+        "type": "vmess",
+        "server": "",
+        "server_port": 443,
+        "vmess": {
+          "uuid": "",
+          "security": "auto"
+        }
+      }
+    },
+    {
+      "id": "trojan",
+      "kind": "proxy",
+      "profile": {
+        "type": "trojan",
+        "server": "",
+        "server_port": 443,
+        "trojan": {
+          "password": "",
+          "tls": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "id": "shadowsocks",
+      "kind": "proxy",
+      "profile": {
+        "type": "shadowsocks",
+        "server": "",
+        "server_port": 8388,
+        "shadowsocks": {
+          "method": "2022-blake3-aes-128-gcm",
+          "password": ""
+        }
+      }
+    },
+    {
+      "id": "shadowtls",
+      "kind": "proxy",
+      "profile": {
+        "type": "shadowsocks",
+        "server": "",
+        "server_port": 443,
+        "shadowsocks": {
+          "method": "2022-blake3-aes-128-gcm",
+          "password": "",
+          "shadowtls": {
+            "version": 3,
+            "tls": {
+              "enabled": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "anytls",
+      "kind": "proxy",
+      "profile": {
+        "type": "anytls",
+        "server": "",
+        "server_port": 443,
+        "anytls": {
+          "password": "",
+          "tls": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "id": "socks",
+      "kind": "proxy",
+      "profile": {
+        "type": "socks",
+        "server": "",
+        "server_port": 1080,
+        "socks": {
+          "version": "5"
+        }
+      }
+    },
+    {
+      "id": "http",
+      "kind": "proxy",
+      "profile": {
+        "type": "http",
+        "server": "",
+        "server_port": 8080,
+        "http": {}
+      }
+    },
+    {
+      "id": "naive",
+      "kind": "proxy",
+      "profile": {
+        "type": "naive",
+        "server": "",
+        "server_port": 443,
+        "naive": {
+          "tls": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "id": "ssh",
+      "kind": "proxy",
+      "profile": {
+        "type": "ssh",
+        "server": "",
+        "server_port": 22,
+        "ssh": {
+          "user": "root"
+        }
+      }
+    },
+    {
+      "id": "snell",
+      "kind": "proxy",
+      "profile": {
+        "type": "snell",
+        "server": "",
+        "server_port": 443,
+        "snell": {
+          "version": 4,
+          "psk": ""
+        }
+      }
+    },
+    {
+      "id": "hysteria2",
+      "kind": "quic",
+      "profile": {
+        "type": "hysteria2",
+        "server": "",
+        "server_port": 443,
+        "hysteria2": {
+          "tls": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "id": "tuic",
+      "kind": "quic",
+      "profile": {
+        "type": "tuic",
+        "server": "",
+        "server_port": 443,
+        "tuic": {
+          "uuid": "",
+          "tls": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "id": "masque",
+      "kind": "quic",
+      "profile": {
+        "type": "masque",
+        "server": "",
+        "server_port": 443,
+        "masque": {
+          "tls": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "id": "wireguard",
+      "kind": "vpn",
+      "profile": {
+        "type": "wireguard",
+        "server": "",
+        "server_port": 51820,
+        "wireguard": {
+          "private_key": "",
+          "peer_public_key": "",
+          "address": []
+        }
+      }
+    },
+    {
+      "id": "openvpn",
+      "kind": "vpn",
+      "profile": {
+        "type": "openvpn",
+        "server": "",
+        "server_port": 1194,
+        "openvpn": {}
+      }
+    },
+    {
+      "id": "openconnect",
+      "kind": "vpn",
+      "profile": {
+        "type": "openconnect",
+        "server": "",
+        "server_port": 443,
+        "openconnect": {}
+      }
+    },
+    {
+      "id": "chain",
+      "kind": "compound",
+      "profile": {
+        "type": "chain",
+        "server": "",
+        "server_port": 0,
+        "chain": {
+          "servers": []
+        }
+      }
+    },
+    {
+      "id": "custom",
+      "kind": "compound",
+      "profile": {
+        "type": "custom",
+        "server": "",
+        "server_port": 0,
+        "custom": {
+          "json": {
+            "type": "",
+            "server": "",
+            "server_port": 443
+          }
+        }
+      }
+    },
+    {
+      "id": "direct",
+      "kind": "compound",
+      "profile": {
+        "type": "direct",
+        "server": "",
+        "server_port": 0,
+        "direct": {}
+      }
+    }
+  ]
+}

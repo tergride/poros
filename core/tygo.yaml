@@ -5,11 +5,12 @@ packages:
     output_path: "../src/platform/profile-types.ts"
     include_files:
       - "profile.go"
+      - "fields.go"
     preserve_comments: "types"
     type_mappings:
       json.RawMessage: "unknown"
     frontmatter: |
-      // Source: core/profile/profile.go. Change the Go types and run `go tool tygo generate` in core.
+      // Source: core/profile/profile.go and fields.go. Change the Go types and run `go tool tygo generate` in core.
   - path: "PorosCore/engine"
     output_path: "../src/platform/core-types.ts"
     include_files:
@@ -17,6 +18,8 @@ packages:
     preserve_comments: "types"
     type_mappings:
       profile.Profile: "profile.Profile"
+      profile.ProfileForm: "profile.ProfileForm"
+      profile.NewProfile: "profile.NewProfile"
     frontmatter: |
       // Source: core/engine/api.go. Change the Go types and run `go tool tygo generate` in core.
       import type * as profile from './profile-types'

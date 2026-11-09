@@ -171,3 +171,88 @@ test('the group editor keeps the address and the updates of a subscription', asy
   await editor.getByRole('tab', { name: 'Запрос' }).click()
   await expect(editor.getByTestId('group-address')).toHaveValue('104.16.1.1')
 })
+
+test('a new profile comes from «New profile», and the editor greys out what does not apply', async ({ page }) => {
+  await toAdvanced(page)
+  await page.getByTestId('new-profile').click()
+  await shot(page, 'adv-new-profile')
+  await page.getByTestId('new-vless').click()
+  const editor = page.getByRole('dialog', { name: 'Новый профиль' })
+  await expect(editor.getByTestId('profile-chip')).toHaveText('VLESS · TLS')
+  await editor.getByLabel('Имя', { exact: true }).fill('Мой VLESS')
+  await editor.getByLabel('Адрес', { exact: true }).fill('my.example.com')
+  await editor.getByLabel('UUID', { exact: true }).fill('8f3a2c1e-0000-4000-8000-0000000071bd')
+  await expect(editor.getByTestId('profile-core')).toHaveText('sing-box')
+
+  // Without TLS its settings do not apply; REALITY shows its own.
+  await editor.getByRole('tab', { name: 'Безопасность' }).click()
+  await editor.getByRole('combobox', { name: 'Безопасность' }).click()
+  await page.getByRole('option', { name: 'Нет' }).click()
+  await expect(editor.locator('[data-field="vless.tls.server_name"] input')).toBeDisabled()
+  await expect(editor.locator('[data-field="vless.tls.server_name"]')).toContainText('Действует только вместе с «TLS»')
+  await editor.getByRole('combobox', { name: 'Безопасность' }).click()
+  await page.getByRole('option', { name: 'REALITY' }).click()
+  await expect(editor.getByLabel('Открытый ключ REALITY')).toBeEnabled()
+  await expect(editor.locator('[data-field="vless.tls.ech.enabled"] button')).toBeDisabled()
+  await expect(editor.getByTestId('profile-chip')).toHaveText('VLESS · REALITY')
+  await shot(page, 'adv-profile-editor')
+
+  // The JSON tab shows the profile and points at the line of a mistake.
+  await editor.getByRole('tab', { name: 'JSON' }).click()
+  await expect(editor.getByTestId('profile-json')).toHaveValue(/"uuid": "8f3a2c1e/)
+  await editor.getByTestId('profile-json').fill('{\n  "type": "vless",\n  oops\n}')
+  await expect(editor.getByTestId('profile-json-error')).toHaveText('Ошибка JSON в строке 3')
+  await expect(editor.getByTestId('profile-save')).toBeDisabled()
+  await editor.getByRole('tab', { name: 'Общее' }).click()
+  await editor.getByTestId('profile-save').click()
+  await expect(editor).toBeHidden()
+
+  await page.getByTestId('group-item').nth(1).click()
+  await expect(page.getByTestId('group-title')).toHaveText('Мои серверы')
+  await expect(page.getByTestId('profile-row')).toHaveCount(1)
+  await expect(page.getByTestId('profile-row')).toContainText('Мой VLESS')
+})
+
+test('a profile changes in the editor, and a chain goes through other profiles', async ({ page }) => {
+  await toAdvanced(page)
+  const rows = page.getByTestId('profile-row')
+  await rows.nth(0).click({ button: 'right' })
+  await page.getByTestId('edit-profile').click()
+  const editor = page.getByRole('dialog', { name: 'Профиль' })
+  await editor.getByLabel('Имя', { exact: true }).fill('Переименован')
+  await expect(editor.getByTestId('profile-copy-link')).toBeEnabled()
+  await editor.getByTestId('profile-save').click()
+  await expect(editor).toBeHidden()
+  await expect(rows.nth(0)).toContainText('Переименован')
+
+  await page.getByTestId('new-profile').click()
+  await page.getByTestId('new-chain').click()
+  const chain = page.getByRole('dialog', { name: 'Новый профиль' })
+  await expect(chain.getByTestId('profile-problem')).toContainText('at least two servers')
+  for (const name of [/Переименован/, /Netherlands/]) {
+    await chain.getByTestId('chain-add').click()
+    await page.getByRole('option', { name }).first().click()
+  }
+  await expect(chain.getByTestId('chain-server')).toHaveCount(2)
+  await expect(chain.getByTestId('profile-problem')).toBeHidden()
+  await chain.getByTestId('profile-save').click()
+  await expect(chain).toBeHidden()
+})
+
+test('a link to a server opens in the editor before it is added', async ({ page }) => {
+  await toAdvanced(page)
+  const encode = (text: string) => Buffer.from(text).toString('base64url')
+  const server = { type: 'trojan', name: 'Home', server: 'de.example.com', server_port: 443, trojan: { password: 'p' } }
+  await page.evaluate(
+    (detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })),
+    [`poros://add/${encode(JSON.stringify(server))}`],
+  )
+  await page.getByTestId('link-edit').click()
+  const editor = page.getByRole('dialog', { name: 'Новый профиль' })
+  await expect(editor.getByLabel('Имя', { exact: true })).toHaveValue('Home')
+  await editor.getByLabel('Имя', { exact: true }).fill('Дом')
+  await editor.getByTestId('profile-save').click()
+  await expect(editor).toBeHidden()
+  await page.getByTestId('group-item').nth(1).click()
+  await expect(page.getByTestId('profile-row')).toContainText('Дом')
+})

@@ -12,6 +12,7 @@ import {
   MethodServersClone,
   MethodServersDeepLinks,
   MethodServersExport,
+  MethodServersGet,
   MethodServersLinks,
   MethodServersMove,
   MethodServersRemove,
@@ -104,5 +105,16 @@ export function useProfileActions() {
         tell(skipped ? t('profiles.addedSkipped', { added: t('servers.count', added.ids.length), skipped }) : t('profiles.added', { added: t('servers.count', added.ids.length) }))
       }),
     newGroup: (name: string) => attempt(() => call().call(MethodGroupsAdd, { name })),
+    /** Opens the editor on a server. */
+    edit: (id: string) =>
+      attempt(async () => {
+        const { server, profile } = await call().call(MethodServersGet, { id })
+        ui.profileEdit = { id, profile, target: { groupId: server.groupId, newGroup: '' } }
+      }),
+    /** Opens «New profile» for a group of the user's: the given one, else the first, else a new «My servers». */
+    newProfile: (group: Group | null) => {
+      const target = group?.kind === GroupManual ? group : core.groups.find((g) => g.kind === GroupManual)
+      ui.profilePicker = target ? { groupId: target.id, newGroup: '' } : { groupId: '', newGroup: t('profiles.myServers') }
+    },
   }
 }

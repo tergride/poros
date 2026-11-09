@@ -284,6 +284,7 @@ async function importEntered(): Promise<void> {
             <Search class="absolute top-2 left-[11px] size-4 text-t3" />
             <Input v-model="query" class="h-8 pl-[33px]" :placeholder="t('profiles.search')" :aria-label="t('profiles.search')" />
           </div>
+          <Button variant="primary" size="sm" data-testid="new-profile" @click="actions.newProfile(group)"><Plus />{{ t('profiles.newProfile') }}</Button>
           <Menu align="end">
             <template #trigger>
               <Button size="sm"><Download />{{ t('profiles.import') }}<ChevronDown class="size-3.5" /></Button>
@@ -388,6 +389,7 @@ async function importEntered(): Promise<void> {
           <template v-else-if="one">
             <ContextMenuItem :disabled="!core.ready" @select="actions.start(one!.id)"><Play />{{ t('profiles.start') }}</ContextMenuItem>
             <ContextMenuItem :disabled="!running(one)" @select="attempt(() => connect.stop())"><Square />{{ t('portal.stop') }}</ContextMenuItem>
+            <ContextMenuItem data-testid="edit-profile" @select="actions.edit(one!.id)"><SquarePen />{{ t('profiles.edit') }}</ContextMenuItem>
             <ContextMenuItem @select="actions.clone([one!.id])"><Copy />{{ t('profiles.clone') }}</ContextMenuItem>
             <ContextMenuSeparator :label="t('profiles.share')" />
             <ContextMenuItem @select="actions.exportConfigs([one!.id])"><Download />{{ t('profiles.exportConfig') }}</ContextMenuItem>

@@ -25,7 +25,9 @@ import type {
   RenameGroup,
   SaveServer,
   Server,
+  ServerCheck,
   ServerConfig,
+  ServerForms,
   ServerIDs,
   ServerLinks,
   ServerProfile,
@@ -80,7 +82,9 @@ import {
   MethodServersAdd,
   MethodServersClone,
   MethodServersDeepLinks,
+  MethodServersCheck,
   MethodServersExport,
+  MethodServersForms,
   MethodServersGet,
   MethodServersLinks,
   MethodServersList,
@@ -126,6 +130,8 @@ export interface CoreMethods {
   [MethodServersLinks]: { params: ServerIDs; result: ServerLinks }
   [MethodServersDeepLinks]: { params: ServerIDs; result: ServerLinks }
   [MethodServersExport]: { params: ByID; result: ServerConfig }
+  [MethodServersForms]: { params: undefined; result: ServerForms }
+  [MethodServersCheck]: { params: SaveServer; result: ServerCheck }
   [MethodServersTest]: { params: ServersQuery; result: null }
   [MethodServersSpeedTest]: { params: ServersQuery; result: null }
   [MethodServersIPTest]: { params: ServersQuery; result: null }

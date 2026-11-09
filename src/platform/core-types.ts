@@ -394,6 +394,11 @@ export interface ConnectionState {
   tun: boolean;
   systemProxy: boolean;
   /**
+   * Servers are all the servers the connection goes through: the chosen one, the links of a chain, the proxies
+   * of its group. A change of any of them waits for a restart.
+   */
+  servers?: string[];
+  /**
    * Since is when the connection came up, Unix milliseconds.
    */
   since: number /* int64 */;
@@ -729,8 +734,10 @@ export interface LinkInfo {
   preset?: PresetCopy;
   /**
    * Server is the server a server link adds, without an ID or a group yet; servers.add takes the link itself.
+   * Profile is its whole profile, for the editor to change before it is added.
    */
   server?: Server;
+  profile?: profile.Profile;
 }
 /**
  * Kinds of LinkInfo.
@@ -800,6 +807,30 @@ export interface SaveServer {
   id: string;
   groupId: string;
   profile: profile.Profile;
+}
+/**
+ * ServerForms is what the profile editor draws: the form of each type of profile and the choices of «New profile».
+ */
+export interface ServerForms {
+  forms: profile.ProfileForm[];
+  new: profile.NewProfile[];
+}
+/**
+ * ServerCheck is what the editor tells of a profile before it is saved.
+ */
+export interface ServerCheck {
+  /**
+   * Core is the core that would run it with the current settings: sing-box or xray.
+   */
+  core: string;
+  /**
+   * Problem is why it would not run, as the core says it, in English; empty when it would.
+   */
+  problem: string;
+  /**
+   * Link is its share link once it would run; a chain has none.
+   */
+  link: string;
 }
 /**
  * ServerIDs names servers, in the order given.
@@ -1004,6 +1035,15 @@ export const MethodServersDeepLinks = "servers.deepLinks";
  * MethodServersExport gives a server as the outbound of the core that runs it.
  */
 export const MethodServersExport = "servers.export";
+/**
+ * MethodServersForms gives what the profile editor draws.
+ */
+export const MethodServersForms = "servers.forms";
+/**
+ * MethodServersCheck tells, of a profile not saved yet, which core would run it, why it would not run, and its
+ * share link; it takes servers.save's parameters.
+ */
+export const MethodServersCheck = "servers.check";
 /**
  * Methods the core answers.
  */

@@ -102,6 +102,7 @@ const protocolNames: Record<string, string> = {
   openvpn: 'OpenVPN',
   openconnect: 'OpenConnect',
   masque: 'MASQUE',
+  shadowtls: 'ShadowTLS',
 }
 
 /** The name of a protocol as its authors write it; the profiles Poros makes up are named in the interface's language. */

@@ -55,6 +55,8 @@ func singBoxServer(p profile.Profile, tag string, hardened bool) (boxServer, err
 			return boxServer{}, err
 		}
 		s := p.Shadowsocks.ShadowTLS
+		// ShadowTLS always runs TLS: its settings only name the site and how to greet it.
+		s.TLS.Enabled = true
 		tls, err := singBoxTLS(s.TLS, false, false)
 		if err != nil {
 			return boxServer{}, err

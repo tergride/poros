@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 
 	"PorosCore/profile"
@@ -81,6 +82,9 @@ func TestConnectionThroughAChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	connectAndFetch(t, e, states, page)
+	if got, want := e.ConnectionState().Servers, append([]string{chain.ID}, added.IDs...); !slices.Equal(got, want) {
+		t.Errorf("the connection goes through %v, want %v", got, want)
+	}
 	e.StopConnection()
 	waitState(t, states)
 

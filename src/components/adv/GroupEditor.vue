@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { Banner, Button, Checkbox, Dialog, Input, Select, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui'
 import { useProfileActions } from '@/composables/useProfileActions'
 import { useReason } from '@/composables/useReason'
+import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import type { Group, GroupSettings } from '@/platform/core-types'
 import { GroupManual, MethodGroupsConfigure, MethodGroupsRename } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
@@ -17,6 +18,7 @@ const emit = defineEmits<{ close: [] }>()
 const core = useCoreStore()
 const actions = useProfileActions()
 const reason = useReason()
+const restart = useRestartNeeded()
 const { t } = useI18n()
 
 const tab = ref('base')
@@ -48,7 +50,8 @@ const proxies = computed(() => [
 ])
 const versions = (choices: string[]) => [
   { value: '', label: t('groupEditor.asSettings') },
-  ...choices.map((value) => ({ value, label: t(`groupEditor.version.${value}`) })),
+  // The keys of the versions hold no dots: vue-i18n reads a dot as a level of the key.
+  ...choices.map((value) => ({ value, label: t(`groupEditor.version.${value.replace('.', '_')}`) })),
 ]
 const deviceChoices = computed(() => [
   { value: '', label: t('groupEditor.asSettings') },
@@ -113,6 +116,11 @@ async function save(): Promise<void> {
       ? { ...group.settings, serverAddress: next.serverAddress, frontProxy: next.frontProxy, landingProxy: next.landingProxy }
       : next
     await core.core().call(MethodGroupsConfigure, { id: group.id, url: manual.value ? '' : url.value.trim(), settings: sent })
+    // The address and the proxies of a group are part of a connection through its servers.
+    const before = group.settings
+    if (next.serverAddress !== before.serverAddress || next.frontProxy !== before.frontProxy || next.landingProxy !== before.landingProxy) {
+      groupIds.value.forEach((id) => restart.serverSaved(id))
+    }
     emit('close')
   } catch (error) {
     failure.value = reason(error)

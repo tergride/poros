@@ -375,7 +375,8 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		_ = e.stopRunning(true)
 		return ConnectionState{}, ctx.Err()
 	}
-	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Since: e.now().UnixMilli()}
+	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Servers: e.serversThrough(settings.Server),
+		Since: e.now().UnixMilli()}
 	if err = e.syncProxyOf(settings); err != nil {
 		state.Error, state.ErrorText = ReasonSystemProxyFailed, err.Error()
 		log.Printf("connection: system proxy: %v", err)

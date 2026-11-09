@@ -13,6 +13,8 @@ import type {
   PresetLists,
   PresetListsRead,
   Server,
+  ServerCheck,
+  ServerForms,
   Settings,
   SkipReason,
   SubscriptionUpdate,
@@ -27,6 +29,7 @@ import {
   ConnectionStarting,
   ConnectionStopping,
   CoreSingBox,
+  CoreXray,
   EventConnectionChanged,
   EventConnectionTraffic,
   EventKillSwitchChanged,
@@ -66,9 +69,11 @@ import {
   MethodPresetsSave,
   MethodPresetsWriteLists,
   MethodServersAdd,
+  MethodServersCheck,
   MethodServersClone,
   MethodServersDeepLinks,
   MethodServersExport,
+  MethodServersForms,
   MethodServersGet,
   MethodServersLinks,
   MethodServersList,
@@ -123,6 +128,7 @@ import {
 } from './core-types'
 import type { CoreClient, CoreError, CoreEvent, CoreEvents, CoreMethod, CoreMethods, CoreStatus } from './core'
 import type { Profile } from './profile-types'
+import stubForms from './stubForms.json'
 
 const defaultSettings: Settings = {
   uiMode: 'simple',
@@ -400,10 +406,28 @@ function readPorosLink(data: string): Profile | null {
   }
 }
 
+// The profiles Poros makes up have no address of their own.
+const compoundTypes = ['chain', 'custom', 'direct']
+
 /** Enough of profile.Validate for the screens: a type with its part, an address and a port. */
 function validProfile(p: Profile): boolean {
   const part = (p as unknown as Record<string, unknown>)[p.type]
-  return typeof part === 'object' && part !== null && !!p.server?.trim() && p.server_port >= 1 && p.server_port <= 65535
+  if (typeof part !== 'object' || part === null) return false
+  return compoundTypes.includes(p.type) || (!!p.server?.trim() && p.server_port >= 1 && p.server_port <= 65535)
+}
+
+/** The forms of core/profile/fields.go, which TestStubForms in core/engine keeps the same. */
+const forms = stubForms as ServerForms
+
+/** The rules of servers.check as far as screens need them: Xray for XHTTP and VLESS encryption, the link once valid. */
+function checkProfile(p: Profile): ServerCheck {
+  const vless = p.vless
+  const core = vless && (vless.encryption || vless.transport?.type === 'xhttp') ? CoreXray : CoreSingBox
+  if (!forms.forms.some((f) => f.type === p.type)) return { core, problem: `unknown server type "${p.type}"`, link: '' }
+  if (!validProfile(p)) return { core, problem: 'the server address is missing', link: '' }
+  if (p.type === 'chain' && (p.chain?.servers?.length ?? 0) < 2) return { core, problem: 'a chain needs at least two servers', link: '' }
+  const shared = Object.values(shareSchemes).includes(p.type)
+  return { core, problem: '', link: p.type === 'chain' ? '' : shared ? writeShareLink(p) : 'poros://add/' + encodeBase64(JSON.stringify(p)) }
 }
 
 const shareSchemes: Record<string, string> = {
@@ -465,7 +489,7 @@ const noMeasures = { security: '', upload: 0, download: 0, speedDown: '', speedU
 
 /** The view of a server, as serverRecord.view in core/engine/servers.go; the stub knows only SOCKS as insecure. */
 function serverOf(p: Profile, id: string, groupId: string): Server {
-  const name = p.name?.trim() || p.server + ':' + p.server_port
+  const name = p.name?.trim() || (compoundTypes.includes(p.type) ? p.type : p.server + ':' + p.server_port)
   const flag = [...name].slice(0, 2)
   const country = regional(flag[0]) && regional(flag[1]) ? flag.map((c) => String.fromCharCode(c.codePointAt(0)! - 0x1f1e6 + 65)).join('') : ''
   const security = p.type === 'socks' ? 'none' : ''
@@ -504,7 +528,7 @@ function parseOutsideLink(link: string): LinkInfo {
     case 'add': {
       const profile = scheme.toLowerCase() === 'poros' ? readPorosLink(data) : readThroneLink(data)
       if (!profile) throw failed(ReasonInvalidLink, `the ${scheme.toLowerCase()}://add/ link is damaged`)
-      return { kind: LinkServer, url: '', name: '', server: serverOf(profile, '', '') }
+      return { kind: LinkServer, url: '', name: '', server: serverOf(profile, '', ''), profile }
     }
     case 'route':
       if (scheme.toLowerCase() !== 'poros') throw failed(ReasonInvalidLink, 'Throne routing profiles are not Poros presets')
@@ -867,10 +891,9 @@ export function createStubCore(): CoreClient {
       return { server: { ...server }, profile: structuredClone(profiles.get(id)!) }
     },
     [MethodServersSave]: ({ id, groupId, profile }) => {
-      if (!validProfile(profile)) throw failed(ReasonInvalidValue, 'the server settings are not valid')
-      if (!shareSchemes[profile.type] && !Object.values(shareSchemes).includes(profile.type)) {
-        throw failed(ReasonServerUnsupported, `unknown server type "${profile.type}"`)
-      }
+      if (!forms.forms.some((f) => f.type === profile.type)) throw failed(ReasonServerUnsupported, `unknown server type "${profile.type}"`)
+      const problem = checkProfile(profile).problem
+      if (problem) throw failed(ReasonInvalidValue, problem)
       const before = chosenGroup()
       let saved: Server
       if (id) {
@@ -921,6 +944,8 @@ export function createStubCore(): CoreClient {
     [MethodServersDeepLinks]: ({ ids }) => ({
       links: ids.map((id) => (findServer(id), 'poros://add/' + encodeBase64(JSON.stringify(profiles.get(id)!)))),
     }),
+    [MethodServersForms]: () => structuredClone(forms),
+    [MethodServersCheck]: ({ profile }) => checkProfile(profile),
     [MethodServersExport]: ({ id }) => {
       findServer(id)
       const { type, server, server_port, [type]: part } = profiles.get(id)! as unknown as Record<string, unknown> & { type: string }
@@ -1018,6 +1043,7 @@ export function createStubCore(): CoreClient {
           ...idle,
           state: ConnectionRunning,
           serverId: settings.server,
+          servers: [settings.server, ...(profiles.get(settings.server)?.chain?.servers ?? [])],
           tun: settings.tun,
           systemProxy: settings.systemProxy,
           since: Date.now(),

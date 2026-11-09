@@ -265,6 +265,9 @@ type ConnectionState struct {
 	ServerID    string `json:"serverId"`
 	Tun         bool   `json:"tun"`
 	SystemProxy bool   `json:"systemProxy"`
+	// Servers are all the servers the connection goes through: the chosen one, the links of a chain, the proxies
+	// of its group. A change of any of them waits for a restart.
+	Servers []string `json:"servers,omitempty"`
 	// Since is when the connection came up, Unix milliseconds.
 	Since int64 `json:"since"`
 	// Error is the reason the last start failed or a running connection lost a part, such as system_proxy_failed;
@@ -493,7 +496,9 @@ type LinkInfo struct {
 	// Preset is the copy a preset link adds.
 	Preset *PresetCopy `json:"preset,omitempty"`
 	// Server is the server a server link adds, without an ID or a group yet; servers.add takes the link itself.
-	Server *Server `json:"server,omitempty"`
+	// Profile is its whole profile, for the editor to change before it is added.
+	Server  *Server          `json:"server,omitempty"`
+	Profile *profile.Profile `json:"profile,omitempty"`
 }
 
 // Kinds of LinkInfo.
@@ -546,6 +551,22 @@ type SaveServer struct {
 	ID      string          `json:"id"`
 	GroupID string          `json:"groupId"`
 	Profile profile.Profile `json:"profile"`
+}
+
+// ServerForms is what the profile editor draws: the form of each type of profile and the choices of «New profile».
+type ServerForms struct {
+	Forms []profile.ProfileForm `json:"forms"`
+	New   []profile.NewProfile  `json:"new"`
+}
+
+// ServerCheck is what the editor tells of a profile before it is saved.
+type ServerCheck struct {
+	// Core is the core that would run it with the current settings: sing-box or xray.
+	Core string `json:"core"`
+	// Problem is why it would not run, as the core says it, in English; empty when it would.
+	Problem string `json:"problem"`
+	// Link is its share link once it would run; a chain has none.
+	Link string `json:"link"`
 }
 
 // ServerIDs names servers, in the order given.
@@ -679,7 +700,12 @@ const (
 	MethodServersDeepLinks = "servers.deepLinks"
 	// MethodServersExport gives a server as the outbound of the core that runs it.
 	MethodServersExport = "servers.export"
-	MethodPresetsList   = "presets.list"
+	// MethodServersForms gives what the profile editor draws.
+	MethodServersForms = "servers.forms"
+	// MethodServersCheck tells, of a profile not saved yet, which core would run it, why it would not run, and its
+	// share link; it takes servers.save's parameters.
+	MethodServersCheck = "servers.check"
+	MethodPresetsList  = "presets.list"
 	// MethodConnectionStart connects with the settings, or reconnects with them: it answers at once with the
 	// starting state, and connection.changed tells how it went.
 	MethodConnectionStart = "connection.start"

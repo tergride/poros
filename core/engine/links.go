@@ -31,7 +31,7 @@ func (e *Engine) ParseLink(p OutsideLink) (LinkInfo, error) {
 			return LinkInfo{}, jsonrpc.Failed(ReasonInvalidLink, "%s", err.Error())
 		}
 		server := serverRecord{Profile: p}.view("")
-		return LinkInfo{Kind: LinkServer, Server: &server}, nil
+		return LinkInfo{Kind: LinkServer, Server: &server, Profile: &p}, nil
 	case "route":
 		if scheme != "poros" {
 			return LinkInfo{}, jsonrpc.Failed(ReasonInvalidLink, "Throne routing profiles are not Poros presets")

@@ -5,8 +5,6 @@ import (
 
 	"github.com/sagernet/bbolt"
 
-	"PorosCore/config"
-	"PorosCore/internal/boxmain"
 	"PorosCore/internal/jsonrpc"
 	"PorosCore/profile"
 )
@@ -60,14 +58,7 @@ func checkCustom(p profile.Profile) error {
 	if p.Type != profile.TypeCustom {
 		return nil
 	}
-	configs, err := config.Build(config.Input{Server: p, Preset: config.Preset{Name: "check", DefaultOutbound: config.OutboundProxy}, MixedPort: 1})
-	if err == nil {
-		var data []byte
-		if data, err = configs.SingBoxJSON(); err == nil {
-			err = boxmain.Check(data)
-		}
-	}
-	if err != nil {
+	if err := checkBuild(p, nil, false); err != nil {
 		return jsonrpc.Failed(ReasonInvalidValue, "sing-box refuses the custom outbound: %v", err)
 	}
 	return nil

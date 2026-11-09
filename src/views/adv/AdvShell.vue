@@ -6,6 +6,8 @@ import { useRoute } from 'vue-router'
 
 import ConnBar from '@/components/adv/ConnBar.vue'
 import LinkServerDialog from '@/components/adv/LinkServerDialog.vue'
+import ProfileEditor from '@/components/adv/ProfileEditor.vue'
+import ProfilePicker from '@/components/adv/ProfilePicker.vue'
 import AdminDialog from '@/components/main/AdminDialog.vue'
 import IpDialog from '@/components/main/IpDialog.vue'
 import ModesDialog from '@/components/main/ModesDialog.vue'
@@ -64,5 +66,7 @@ onMounted(() => {
     <AdminDialog />
     <IpDialog v-model:open="ipOpen" />
     <LinkServerDialog />
+    <ProfilePicker />
+    <ProfileEditor />
   </div>
 </template>

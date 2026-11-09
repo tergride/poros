@@ -18,8 +18,9 @@ export const useRestartNeeded = defineStore('restartNeeded', () => {
   const core = useCoreStore()
   const connect = useConnect()
   const applied = ref('')
-  // A preset saved while it runs changes the connection without changing the settings.
+  // A preset or a server saved while the connection runs on it changes the connection without changing the settings.
   const presetEdited = ref(false)
+  const serverEdited = ref(false)
   const dialogOpen = ref(false)
 
   watch(
@@ -28,12 +29,13 @@ export const useRestartNeeded = defineStore('restartNeeded', () => {
       if (running && core.settings) {
         applied.value = builtWith(core.settings)
         presetEdited.value = false
+        serverEdited.value = false
       }
     },
     { immediate: true },
   )
 
-  const needed = computed(() => core.running && !!core.settings && (builtWith(core.settings) !== applied.value || presetEdited.value))
+  const needed = computed(() => core.running && !!core.settings && (builtWith(core.settings) !== applied.value || presetEdited.value || serverEdited.value))
 
   // The dialog has nothing to ask about once the connection stopped or took the settings. Synchronously: a change
   // and its undoing within one tick must not leave the dialog open.
@@ -50,5 +52,10 @@ export const useRestartNeeded = defineStore('restartNeeded', () => {
     await connect.connect()
   }
 
-  return { needed, presetEdited, dialogOpen, apply }
+  /** Marks a saved server, if the running connection goes through it. */
+  function serverSaved(id: string): void {
+    if (core.running && (core.connection.servers ?? [core.connection.serverId]).includes(id)) serverEdited.value = true
+  }
+
+  return { needed, presetEdited, serverEdited, dialogOpen, apply, serverSaved }
 })

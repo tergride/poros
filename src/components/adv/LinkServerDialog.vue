@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Server } from '@lucide/vue'
+import { Plus, Server, SquarePen } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -34,6 +34,19 @@ watch(
 )
 const server = computed(() => ui.linkServer?.server)
 
+// The group the server goes to: a group of the user's, or a new one of the name typed.
+const targetOf = () =>
+  target.value === newGroup
+    ? { groupId: '', newGroup: groupName.value.trim() || t('profiles.myServers') }
+    : { groupId: target.value, newGroup: '' }
+
+function editFirst(): void {
+  const link = ui.linkServer
+  if (!link?.profile) return
+  ui.linkServer = null
+  ui.profileEdit = { id: '', profile: link.profile, target: targetOf() }
+}
+
 async function add(): Promise<void> {
   const link = ui.linkServer
   if (!link) return
@@ -64,7 +77,8 @@ async function add(): Promise<void> {
       <Input v-if="target === newGroup" v-model="groupName" :placeholder="t('list.groupNamePlaceholder')" data-testid="link-new-group" />
     </div>
     <template #footer>
-      <Button variant="ghost" class="sp" @click="ui.linkServer = null">{{ t('common.cancel') }}</Button>
+      <Button variant="ghost" class="sp" :disabled="!ui.linkServer?.profile" data-testid="link-edit" @click="editFirst()"><SquarePen />{{ t('profiles.editFirst') }}</Button>
+      <Button variant="ghost" @click="ui.linkServer = null">{{ t('common.cancel') }}</Button>
       <Button variant="primary" data-testid="link-add" @click="add()"><Plus />{{ t('common.add') }}</Button>
     </template>
   </Dialog>

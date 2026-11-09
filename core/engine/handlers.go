@@ -8,6 +8,7 @@ import (
 	"github.com/xtls/xray-core/core"
 
 	"PorosCore/internal/jsonrpc"
+	"PorosCore/profile"
 )
 
 func (e *Engine) Info() AppInfo {
@@ -38,6 +39,10 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodServersLinks:        withParams(e.ShareLinks),
 		MethodServersDeepLinks:    withParams(e.DeepLinks),
 		MethodServersExport:       withParams(e.ExportServer),
+		MethodServersForms: noParams(func() (ServerForms, error) {
+			return ServerForms{Forms: profile.Forms(), New: profile.NewProfiles()}, nil
+		}),
+		MethodServersCheck:        withParams(e.CheckServer),
 		MethodPresetsList:         noParams(e.Presets),
 		MethodPresetsGet:          withParams(func(p ByID) (PresetCopy, error) { return e.PresetCopy(p.ID) }),
 		MethodPresetsSave:         withParams(e.SavePreset),

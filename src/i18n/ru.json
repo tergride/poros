@@ -624,7 +624,10 @@
     "addedSkipped": "Добавлено: {added}. Не добавлено: {skipped} — их нельзя запустить или в них ошибка.",
     "addFailed": "Профили не добавлены: {reason}",
     "linkTitle": "Добавить сервер из ссылки?",
-    "linkText": "Ссылка из браузера или мессенджера ведёт на один сервер."
+    "linkText": "Ссылка из браузера или мессенджера ведёт на один сервер.",
+    "newProfile": "Профиль",
+    "edit": "Изменить…",
+    "editFirst": "Изменить перед добавлением"
   },
   "groupEditor": {
     "title": "Группа",
@@ -654,9 +657,9 @@
     "off": "Выкл",
     "version": {
       "auto": "Авто",
-      "1.2": "TLS 1.2",
-      "1.3": "TLS 1.3",
-      "1.1": "HTTP/1.1"
+      "1_2": "TLS 1.2",
+      "1_3": "TLS 1.3",
+      "1_1": "HTTP/1.1"
     },
     "frequency": {
       "title": "Как часто",
@@ -677,5 +680,324 @@
     "removeUnavailable": "Удалять недоступные",
     "sortByLatency": "Сортировать по задержке",
     "byTest": "По итогам URL-теста."
+  },
+  "profileEditor": {
+    "title": "Профиль",
+    "newProfile": "Новый профиль",
+    "type": "Тип",
+    "none": "Нет",
+    "copyLink": "Копировать ссылку",
+    "coreHint": "Профиль работает на ядре {core}",
+    "problem": "Ядро не запустит профиль: {problem}",
+    "needs": "Действует только вместе с «{name}»",
+    "excludes": "Не действует вместе с «{name}»",
+    "notJson": "Это не JSON",
+    "notValue": "Значение не подходит",
+    "jsonLine": "Ошибка JSON в строке {line}",
+    "jsonNoType": "Профиль — объект JSON с полем type",
+    "jsonHint": "Профиль так, как его хранит Poros. Ядро проверяет его при вводе, ошибки — под вкладками.",
+    "show": "Показать",
+    "hide": "Скрыть",
+    "up": "Выше",
+    "down": "Ниже",
+    "addServer": "Добавить сервер…",
+    "missingServer": "Сервера больше нет",
+    "tab": {
+      "common": "Общее",
+      "transport": "Транспорт",
+      "security": "Безопасность",
+      "mux": "Мультиплекс",
+      "advanced": "Дополнительно",
+      "json": "JSON"
+    },
+    "kind": {
+      "proxy": "Прокси",
+      "quic": "QUIC",
+      "vpn": "VPN",
+      "compound": "Составные"
+    },
+    "field": {
+      "name": "Имя",
+      "server": "Адрес",
+      "port": "Порт",
+      "uuid": "UUID",
+      "password": "Пароль",
+      "username": "Имя пользователя",
+      "packetEncoding": "Кодирование пакетов",
+      "udpOverTcp": "UDP поверх TCP",
+      "congestion": "Управление перегрузкой",
+      "mtu": "MTU",
+      "vless": {
+        "flow": "Flow",
+        "encryption": "Шифрование VLESS"
+      },
+      "vmess": {
+        "security": "Шифр",
+        "alterId": "Alter ID"
+      },
+      "shadowsocks": {
+        "method": "Метод",
+        "plugin": "Плагин",
+        "pluginOpts": "Параметры плагина"
+      },
+      "shadowtls": {
+        "version": "ShadowTLS",
+        "password": "Пароль ShadowTLS",
+        "site": "Сайт рукопожатия"
+      },
+      "anytls": {
+        "checkInterval": "Проверка простоя",
+        "idleTimeout": "Закрывать простой через",
+        "minIdle": "Сеансов в запасе"
+      },
+      "socks": {
+        "version": "Версия"
+      },
+      "naive": {
+        "quic": "HTTP/3 (QUIC)",
+        "concurrency": "Соединений"
+      },
+      "ssh": {
+        "privateKey": "Закрытый ключ",
+        "passphrase": "Пароль ключа",
+        "hostKey": "Ключи сервера",
+        "hostKeyAlgorithms": "Алгоритмы ключа сервера",
+        "clientVersion": "Версия клиента"
+      },
+      "snell": {
+        "version": "Версия",
+        "psk": "PSK",
+        "userKey": "Ключ пользователя",
+        "reuse": "Повторно использовать соединения",
+        "obfs": "Маскировка",
+        "obfsHost": "Хост маскировки",
+        "mode": "Режим"
+      },
+      "hysteria": {
+        "ports": "Перебор портов",
+        "hopInterval": "Смена порта через",
+        "up": "Отдача",
+        "down": "Загрузка",
+        "obfs": "Пароль маскировки"
+      },
+      "realm": {
+        "server": "Сервис Realm",
+        "id": "ID Realm",
+        "token": "Токен",
+        "stun": "Серверы STUN"
+      },
+      "tuic": {
+        "relay": "Передача UDP",
+        "zeroRtt": "Рукопожатие 0-RTT",
+        "heartbeat": "Пульс"
+      },
+      "masque": {
+        "version": "HTTP"
+      },
+      "wireguard": {
+        "privateKey": "Закрытый ключ",
+        "peerPublicKey": "Открытый ключ сервера",
+        "address": "Адреса туннеля",
+        "preSharedKey": "Общий ключ",
+        "reserved": "Reserved",
+        "keepalive": "Keepalive, с"
+      },
+      "pem": {
+        "ca": "Сертификат центра (CA)",
+        "cert": "Сертификат клиента",
+        "key": "Ключ клиента"
+      },
+      "openvpn": {
+        "network": "Сеть",
+        "fingerprint": "Отпечатки сервера",
+        "wrap": "Защита канала управления",
+        "wrapKey": "Ключ защиты",
+        "wrapDirection": "Направление tls-auth",
+        "verifyName": "verify-x509-name",
+        "verifyNameType": "Тип verify-x509-name",
+        "remoteCertTls": "remote-cert-tls",
+        "cipher": "cipher",
+        "dataCiphers": "data-ciphers",
+        "auth": "auth",
+        "compression": "compress",
+        "lzo": "comp-lzo",
+        "mssFix": "mssfix",
+        "fragment": "fragment",
+        "ping": "ping",
+        "pingRestart": "ping-restart",
+        "renegotiate": "reneg-sec",
+        "challenge": "static-challenge"
+      },
+      "openconnect": {
+        "flavor": "Шлюз",
+        "group": "Группа",
+        "fingerprint": "Отпечатки шлюза",
+        "keyPassword": "Пароль ключа",
+        "noUdp": "Без DTLS (только TCP)"
+      },
+      "chain": {
+        "servers": "Серверы цепочки"
+      },
+      "custom": {
+        "json": "Исходящее sing-box"
+      },
+      "transport": {
+        "type": "Сеть",
+        "headerType": "Маскировка HTTP",
+        "host": "Host",
+        "path": "Path",
+        "serviceName": "Service Name",
+        "method": "Method",
+        "headers": "Заголовки",
+        "earlyData": "Early Data",
+        "earlyDataHeader": "Заголовок Early Data",
+        "xhttpMode": "Режим XHTTP",
+        "xhttpExtra": "Extra XHTTP"
+      },
+      "tls": {
+        "security": "Безопасность",
+        "serverName": "SNI",
+        "fingerprint": "Отпечаток uTLS",
+        "realityPublicKey": "Открытый ключ REALITY",
+        "realityShortId": "Short ID REALITY",
+        "realitySpiderX": "SpiderX REALITY",
+        "alpn": "ALPN",
+        "insecure": "Не проверять сертификат",
+        "certificatePin": "Закрепить сертификат",
+        "publicKeyPin": "Закрепить ключ сервера",
+        "ech": "ECH",
+        "echConfig": "Конфигурация ECH",
+        "echServerName": "Имя для запроса ECH",
+        "disableSni": "Не отправлять SNI",
+        "minVersion": "TLS не ниже",
+        "maxVersion": "TLS не выше"
+      },
+      "mux": {
+        "enabled": "Мультиплекс",
+        "protocol": "Протокол",
+        "maxConnections": "Соединений не больше",
+        "minStreams": "Потоков не меньше",
+        "maxStreams": "Потоков не больше",
+        "padding": "Заполнение"
+      }
+    },
+    "empty": {
+      "congestion": "По умолчанию",
+      "packetEncoding": "Нет",
+      "vless": {
+        "flow": "Нет"
+      },
+      "mux": {
+        "protocol": "По умолчанию"
+      },
+      "openconnect": {
+        "flavor": "Cisco AnyConnect"
+      },
+      "openvpn": {
+        "network": "UDP",
+        "compression": "Не задано",
+        "lzo": "Не задано",
+        "remoteCertTls": "Не задано",
+        "verifyNameType": "По умолчанию",
+        "wrap": "Нет",
+        "wrapDirection": "Не задано"
+      },
+      "snell": {
+        "mode": "По умолчанию"
+      },
+      "tuic": {
+        "relay": "По умолчанию"
+      },
+      "transport": {
+        "type": "TCP",
+        "headerType": "Нет",
+        "xhttpMode": "Авто"
+      },
+      "tls": {
+        "fingerprint": "Нет",
+        "minVersion": "Авто",
+        "maxVersion": "Авто",
+        "security": "Нет"
+      }
+    },
+    "choice": {
+      "masque": {
+        "version": {
+          "0": "HTTP/3 или HTTP/2",
+          "1": "HTTP/1.1",
+          "2": "HTTP/2",
+          "3": "HTTP/3"
+        }
+      },
+      "shadowtls": {
+        "version": {
+          "0": "Нет",
+          "1": "v1",
+          "2": "v2",
+          "3": "v3"
+        }
+      },
+      "snell": {
+        "version": {
+          "4": "v4",
+          "6": "v6"
+        }
+      },
+      "openconnect": {
+        "flavor": {
+          "anyconnect": "Cisco AnyConnect",
+          "gp": "GlobalProtect",
+          "fortinet": "Fortinet",
+          "f5": "F5",
+          "pulse": "Pulse Secure",
+          "nc": "Juniper Network Connect"
+        }
+      }
+    },
+    "option": {
+      "tls": "TLS",
+      "reality": "REALITY",
+      "auto": "Авто"
+    },
+    "hint": {
+      "hysteria": {
+        "ports": "Диапазоны через запятую: 20000:30000",
+        "hopInterval": "Например, 30s",
+        "up": "Мбит/с",
+        "down": "Мбит/с"
+      },
+      "anytls": {
+        "checkInterval": "Например, 30s",
+        "idleTimeout": "Например, 30s"
+      },
+      "tls": {
+        "alpn": "Через запятую: h2, http/1.1",
+        "certificatePin": "SHA-256 сертификата в base64, через запятую",
+        "publicKeyPin": "SHA-256 ключа сервера в base64, через запятую",
+        "echConfig": "Пусто — спросить у DNS"
+      },
+      "wireguard": {
+        "address": "Через запятую: 172.16.0.2/32, fd01::2/128",
+        "reserved": "Три числа от 0 до 255"
+      },
+      "transport": {
+        "headers": "Один заголовок в строке: Name: value"
+      },
+      "ssh": {
+        "hostKey": "Через запятую; пусто — любой ключ"
+      },
+      "realm": {
+        "server": "Адрес https://"
+      },
+      "openvpn": {
+        "fingerprint": "SHA-256 сертификата сервера, через запятую"
+      },
+      "chain": {
+        "servers": "Первый сервер подключается напрямую, каждый следующий — через предыдущий"
+      },
+      "custom": {
+        "json": "Одно исходящее соединение или конечная точка sing-box со своими полями type, server и server_port"
+      }
+    }
   }
 }

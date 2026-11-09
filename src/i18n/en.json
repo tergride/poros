@@ -624,7 +624,10 @@
     "addedSkipped": "Added: {added}. Not added: {skipped}, which cannot run or are broken.",
     "addFailed": "The profiles were not added: {reason}",
     "linkTitle": "Add the server from the link?",
-    "linkText": "The link from a browser or a messenger leads to one server."
+    "linkText": "The link from a browser or a messenger leads to one server.",
+    "newProfile": "Profile",
+    "edit": "Edit…",
+    "editFirst": "Edit before adding"
   },
   "groupEditor": {
     "title": "Group",
@@ -654,9 +657,9 @@
     "off": "Off",
     "version": {
       "auto": "Auto",
-      "1.2": "TLS 1.2",
-      "1.3": "TLS 1.3",
-      "1.1": "HTTP/1.1"
+      "1_2": "TLS 1.2",
+      "1_3": "TLS 1.3",
+      "1_1": "HTTP/1.1"
     },
     "frequency": {
       "title": "How often",
@@ -677,5 +680,324 @@
     "removeUnavailable": "Remove unavailable",
     "sortByLatency": "Sort by delay",
     "byTest": "By the results of the URL test."
+  },
+  "profileEditor": {
+    "title": "Profile",
+    "newProfile": "New profile",
+    "type": "Type",
+    "none": "None",
+    "copyLink": "Copy link",
+    "coreHint": "The profile runs on {core}",
+    "problem": "The core will not start the profile: {problem}",
+    "needs": "Works only with «{name}»",
+    "excludes": "Does not work with «{name}»",
+    "notJson": "This is not JSON",
+    "notValue": "This value does not fit",
+    "jsonLine": "JSON error on line {line}",
+    "jsonNoType": "A profile is a JSON object with a type field",
+    "jsonHint": "The profile as Poros stores it. The core checks it as you type; errors show under the tabs.",
+    "show": "Show",
+    "hide": "Hide",
+    "up": "Up",
+    "down": "Down",
+    "addServer": "Add a server…",
+    "missingServer": "The server is gone",
+    "tab": {
+      "common": "General",
+      "transport": "Transport",
+      "security": "Security",
+      "mux": "Multiplex",
+      "advanced": "Advanced",
+      "json": "JSON"
+    },
+    "kind": {
+      "proxy": "Proxy",
+      "quic": "QUIC",
+      "vpn": "VPN",
+      "compound": "Compound"
+    },
+    "field": {
+      "name": "Name",
+      "server": "Address",
+      "port": "Port",
+      "uuid": "UUID",
+      "password": "Password",
+      "username": "User name",
+      "packetEncoding": "Packet encoding",
+      "udpOverTcp": "UDP over TCP",
+      "congestion": "Congestion control",
+      "mtu": "MTU",
+      "vless": {
+        "flow": "Flow",
+        "encryption": "VLESS encryption"
+      },
+      "vmess": {
+        "security": "Cipher",
+        "alterId": "Alter ID"
+      },
+      "shadowsocks": {
+        "method": "Method",
+        "plugin": "Plugin",
+        "pluginOpts": "Plugin options"
+      },
+      "shadowtls": {
+        "version": "ShadowTLS",
+        "password": "ShadowTLS password",
+        "site": "Handshake site"
+      },
+      "anytls": {
+        "checkInterval": "Idle check",
+        "idleTimeout": "Close idle after",
+        "minIdle": "Spare sessions"
+      },
+      "socks": {
+        "version": "Version"
+      },
+      "naive": {
+        "quic": "HTTP/3 (QUIC)",
+        "concurrency": "Connections"
+      },
+      "ssh": {
+        "privateKey": "Private key",
+        "passphrase": "Key passphrase",
+        "hostKey": "Server keys",
+        "hostKeyAlgorithms": "Server key algorithms",
+        "clientVersion": "Client version"
+      },
+      "snell": {
+        "version": "Version",
+        "psk": "PSK",
+        "userKey": "User key",
+        "reuse": "Reuse connections",
+        "obfs": "Obfuscation",
+        "obfsHost": "Obfuscation host",
+        "mode": "Mode"
+      },
+      "hysteria": {
+        "ports": "Port hopping",
+        "hopInterval": "Hop every",
+        "up": "Upload",
+        "down": "Download",
+        "obfs": "Obfuscation password"
+      },
+      "realm": {
+        "server": "Realm service",
+        "id": "Realm ID",
+        "token": "Token",
+        "stun": "STUN servers"
+      },
+      "tuic": {
+        "relay": "UDP relay",
+        "zeroRtt": "0-RTT handshake",
+        "heartbeat": "Heartbeat"
+      },
+      "masque": {
+        "version": "HTTP"
+      },
+      "wireguard": {
+        "privateKey": "Private key",
+        "peerPublicKey": "Server public key",
+        "address": "Tunnel addresses",
+        "preSharedKey": "Pre-shared key",
+        "reserved": "Reserved",
+        "keepalive": "Keepalive, s"
+      },
+      "pem": {
+        "ca": "Authority certificate (CA)",
+        "cert": "Client certificate",
+        "key": "Client key"
+      },
+      "openvpn": {
+        "network": "Network",
+        "fingerprint": "Server fingerprints",
+        "wrap": "Control channel protection",
+        "wrapKey": "Protection key",
+        "wrapDirection": "tls-auth direction",
+        "verifyName": "verify-x509-name",
+        "verifyNameType": "verify-x509-name type",
+        "remoteCertTls": "remote-cert-tls",
+        "cipher": "cipher",
+        "dataCiphers": "data-ciphers",
+        "auth": "auth",
+        "compression": "compress",
+        "lzo": "comp-lzo",
+        "mssFix": "mssfix",
+        "fragment": "fragment",
+        "ping": "ping",
+        "pingRestart": "ping-restart",
+        "renegotiate": "reneg-sec",
+        "challenge": "static-challenge"
+      },
+      "openconnect": {
+        "flavor": "Gateway",
+        "group": "Group",
+        "fingerprint": "Gateway fingerprints",
+        "keyPassword": "Key password",
+        "noUdp": "No DTLS (TCP only)"
+      },
+      "chain": {
+        "servers": "Servers of the chain"
+      },
+      "custom": {
+        "json": "sing-box outbound"
+      },
+      "transport": {
+        "type": "Network",
+        "headerType": "HTTP obfuscation",
+        "host": "Host",
+        "path": "Path",
+        "serviceName": "Service Name",
+        "method": "Method",
+        "headers": "Headers",
+        "earlyData": "Early Data",
+        "earlyDataHeader": "Early Data header",
+        "xhttpMode": "XHTTP mode",
+        "xhttpExtra": "XHTTP extra"
+      },
+      "tls": {
+        "security": "Security",
+        "serverName": "SNI",
+        "fingerprint": "uTLS fingerprint",
+        "realityPublicKey": "REALITY public key",
+        "realityShortId": "REALITY short ID",
+        "realitySpiderX": "REALITY SpiderX",
+        "alpn": "ALPN",
+        "insecure": "Do not check the certificate",
+        "certificatePin": "Pin the certificate",
+        "publicKeyPin": "Pin the server key",
+        "ech": "ECH",
+        "echConfig": "ECH config",
+        "echServerName": "ECH query name",
+        "disableSni": "Do not send SNI",
+        "minVersion": "TLS at least",
+        "maxVersion": "TLS at most"
+      },
+      "mux": {
+        "enabled": "Multiplex",
+        "protocol": "Protocol",
+        "maxConnections": "At most connections",
+        "minStreams": "At least streams",
+        "maxStreams": "At most streams",
+        "padding": "Padding"
+      }
+    },
+    "empty": {
+      "congestion": "Default",
+      "packetEncoding": "None",
+      "vless": {
+        "flow": "None"
+      },
+      "mux": {
+        "protocol": "Default"
+      },
+      "openconnect": {
+        "flavor": "Cisco AnyConnect"
+      },
+      "openvpn": {
+        "network": "UDP",
+        "compression": "Not set",
+        "lzo": "Not set",
+        "remoteCertTls": "Not set",
+        "verifyNameType": "Default",
+        "wrap": "None",
+        "wrapDirection": "Not set"
+      },
+      "snell": {
+        "mode": "Default"
+      },
+      "tuic": {
+        "relay": "Default"
+      },
+      "transport": {
+        "type": "TCP",
+        "headerType": "None",
+        "xhttpMode": "Auto"
+      },
+      "tls": {
+        "fingerprint": "None",
+        "minVersion": "Auto",
+        "maxVersion": "Auto",
+        "security": "None"
+      }
+    },
+    "choice": {
+      "masque": {
+        "version": {
+          "0": "HTTP/3 or HTTP/2",
+          "1": "HTTP/1.1",
+          "2": "HTTP/2",
+          "3": "HTTP/3"
+        }
+      },
+      "shadowtls": {
+        "version": {
+          "0": "None",
+          "1": "v1",
+          "2": "v2",
+          "3": "v3"
+        }
+      },
+      "snell": {
+        "version": {
+          "4": "v4",
+          "6": "v6"
+        }
+      },
+      "openconnect": {
+        "flavor": {
+          "anyconnect": "Cisco AnyConnect",
+          "gp": "GlobalProtect",
+          "fortinet": "Fortinet",
+          "f5": "F5",
+          "pulse": "Pulse Secure",
+          "nc": "Juniper Network Connect"
+        }
+      }
+    },
+    "option": {
+      "tls": "TLS",
+      "reality": "REALITY",
+      "auto": "Auto"
+    },
+    "hint": {
+      "hysteria": {
+        "ports": "Ranges split by commas: 20000:30000",
+        "hopInterval": "Such as 30s",
+        "up": "Mbit/s",
+        "down": "Mbit/s"
+      },
+      "anytls": {
+        "checkInterval": "Such as 30s",
+        "idleTimeout": "Such as 30s"
+      },
+      "tls": {
+        "alpn": "Split by commas: h2, http/1.1",
+        "certificatePin": "SHA-256 of the certificate in base64, split by commas",
+        "publicKeyPin": "SHA-256 of the server key in base64, split by commas",
+        "echConfig": "Empty asks DNS for it"
+      },
+      "wireguard": {
+        "address": "Split by commas: 172.16.0.2/32, fd01::2/128",
+        "reserved": "Three numbers from 0 to 255"
+      },
+      "transport": {
+        "headers": "One header a line: Name: value"
+      },
+      "ssh": {
+        "hostKey": "Split by commas; empty accepts any key"
+      },
+      "realm": {
+        "server": "An https:// address"
+      },
+      "openvpn": {
+        "fingerprint": "SHA-256 of the server certificate, split by commas"
+      },
+      "chain": {
+        "servers": "The first server is dialled directly, each next one through the one before"
+      },
+      "custom": {
+        "json": "One sing-box outbound or endpoint with its own type, server and server_port"
+      }
+    }
   }
 }
