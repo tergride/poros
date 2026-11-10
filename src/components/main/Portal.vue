@@ -9,7 +9,7 @@ import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useConnectionView } from '@/composables/useConnectionView'
 import { latencyTone } from '@/lib/format'
-import { localProxyHost, localProxyPort } from '@/platform/core'
+import { localProxyHost } from '@/platform/core'
 import { ConnectionStopping } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
@@ -52,7 +52,7 @@ const hint = computed(() => {
   if (s.systemProxy) return t('portal.hint.system')
   return ''
 })
-const proxyAddress = `${localProxyHost}:${localProxyPort}`
+const proxyAddress = computed(() => `${localProxyHost}:${core.proxyPort}`)
 </script>
 
 <template>

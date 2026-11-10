@@ -382,8 +382,14 @@ func (e *Engine) startRefusal(settings Settings) {
 	if settings.AllowLAN {
 		listen = "0.0.0.0"
 	}
-	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(e.mixedPort)))) {
-		e.refusalFailed(settings, portBusy(e.mixedPort))
+	port := e.proxyPort(settings)
+	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(port)))) {
+		e.refusalFailed(settings, portBusy(port))
+		return
+	}
+	systemPort, err := e.systemPortOf(settings)
+	if err != nil {
+		e.refusalFailed(settings, err)
 		return
 	}
 	configs, err := config.Build(config.Input{
@@ -392,17 +398,19 @@ func (e *Engine) startRefusal(settings Settings) {
 		DNS:         dnsOf(settings),
 		Tun:         tun,
 		AllowLAN:    settings.AllowLAN,
+		Auth:        proxyAuthOf(settings),
+		SystemPort:  systemPort,
 		DisableIPv6: !settings.IPv6,
-		MixedPort:   e.mixedPort,
+		MixedPort:   port,
 		LogLevel:    singBoxLogLevel(settings.DebugLog),
 	})
 	var singBox []byte
 	if err == nil {
 		singBox, err = configs.SingBoxJSON()
 	}
-	running := &runningConnection{tun: tun, refusing: true}
+	running := &runningConnection{tun: tun, refusing: true, port: port, systemPort: systemPort}
 	if err == nil {
-		running.marks, err = holdMarks(e.mixedPort, tun)
+		running.marks, err = holdMarks(port, tun)
 	}
 	if err == nil {
 		if running.box, running.cancel, err = boxmain.Create(singBox, nil); err != nil {

@@ -308,7 +308,9 @@
       "subs": "Subscriptions",
       "start": "Start",
       "look": "Appearance",
-      "help": "Help"
+      "help": "Help",
+      "inbound": "Inbound",
+      "tests": "Tests"
     },
     "presets": {
       "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy or a new preset.",
@@ -447,6 +449,32 @@
       "logsFolder": "Folder",
       "debugLog": "Detailed log",
       "debugLogHint": "Records every connection through Poros. Errors are always recorded. Takes effect with the next connection."
+    },
+    "inbound": {
+      "port": "Local port",
+      "portLabel": "Port",
+      "portHint": "The port listens on 127.0.0.1, and on every address of the computer with “Allow other devices to connect” on the “Connection” page.",
+      "auth": "Authorization",
+      "authOn": "Enable authorization",
+      "authHint": "Ask programs that connect to the port for a name and password. The Windows system proxy passes no password, so Poros opens a port of its own for it, on this computer only.",
+      "username": "Username",
+      "password": "Password"
+    },
+    "tests": {
+      "latency": "Delay",
+      "url": "Delay test URL",
+      "timeout": "Timeout, ms",
+      "concurrency": "Concurrency",
+      "speed": "Speed",
+      "mode": "Mode",
+      "speedUrl": "Simple download URL",
+      "modes": {
+        "full": "Download and upload",
+        "download": "Download only",
+        "upload": "Upload only",
+        "simple": "Simple download",
+        "country": "Country only"
+      }
     }
   },
   "linkPreset": {
@@ -785,7 +813,8 @@
       "basic": "Basic",
       "search": "Search settings",
       "nothingFound": "Nothing found",
-      "unsaved": "There are unsaved changes."
+      "unsaved": "There are unsaved changes.",
+      "more": "More"
     },
     "unsaved": {
       "title": "Save the changes?",

@@ -20,9 +20,9 @@ import (
 
 const (
 	// latencyURL answers quickly from everywhere; a server's delay is how long a request through it takes.
-	latencyURL         = "http://cp.cloudflare.com/"
-	latencyTimeout     = 3 * time.Second
-	latencyConcurrency = 10
+	latencyURL                = "http://cp.cloudflare.com/"
+	defaultLatencyTimeout     = 3 * time.Second
+	defaultLatencyConcurrency = 10
 	// latencyBudget bounds a whole test of many servers.
 	latencyBudget = 3 * time.Minute
 	// pingFirst lets a new connection settle before its delay is measured, and pingInterval spaces the measures.
@@ -189,7 +189,7 @@ func resolveEach(ctx context.Context, resolver *net.Resolver, hosts []string, ip
 	resolved := map[string]netip.Addr{}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	slots := make(chan struct{}, latencyConcurrency)
+	slots := make(chan struct{}, defaultLatencyConcurrency)
 	seen := map[string]bool{}
 	for _, host := range hosts {
 		if seen[host] {
@@ -201,7 +201,7 @@ func resolveEach(ctx context.Context, resolver *net.Resolver, hosts []string, ip
 			defer wg.Done()
 			slots <- struct{}{}
 			defer func() { <-slots }()
-			lookupCtx, cancel := context.WithTimeout(ctx, latencyTimeout+dohTimeout)
+			lookupCtx, cancel := context.WithTimeout(ctx, defaultLatencyTimeout+dohTimeout)
 			defer cancel()
 			if addr, err := lookupPast(lookupCtx, resolver, host, ipv4Only); err == nil {
 				mu.Lock()
@@ -299,7 +299,8 @@ func (e *Engine) runLatencyTest(ctx context.Context, in config.TestInput) map[st
 		report([]ServerLatency{}, true)
 		return all
 	}
-	probe.BatchURLTestTo(ctx, t.box, t.tags, e.latencyURL, latencyConcurrency, false, latencyTimeout, func(result *probe.URLTestResult) {
+	url, timeout, concurrency := e.latencyTest()
+	probe.BatchURLTestTo(ctx, t.box, t.tags, url, concurrency, false, timeout, func(result *probe.URLTestResult) {
 		latency := -1
 		if result.Error == nil {
 			latency = max(1, int(result.Duration.Milliseconds()))
@@ -322,7 +323,8 @@ func (e *Engine) pingConnection(ctx context.Context, box *boxbox.Box, serverID s
 		case <-timer.C:
 		}
 		latency := -1
-		probe.BatchURLTestTo(ctx, box, []string{config.TagProxy}, e.latencyURL, 1, false, latencyTimeout, func(result *probe.URLTestResult) {
+		url, timeout, _ := e.latencyTest()
+		probe.BatchURLTestTo(ctx, box, []string{config.TagProxy}, url, 1, false, timeout, func(result *probe.URLTestResult) {
 			if result.Error == nil {
 				latency = max(1, int(result.Duration.Milliseconds()))
 			}

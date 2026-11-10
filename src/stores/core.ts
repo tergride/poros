@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 
 import { type CoreClient, type CoreStatus, useCore } from '@/platform'
+import { localProxyPort } from '@/platform/core'
 import type {
   ConnectionState,
   Group,
@@ -107,6 +108,8 @@ export const useCoreStore = defineStore('core', () => {
   /** The core answers: a call now gets a reply. */
   const ready = computed(() => status.value.state === 'ready' && status.value.reason === undefined)
   const server = computed(() => servers.value.find((s) => s.id === settings.value?.server) ?? null)
+  // The port of the local proxy: the settings' own, else the default one.
+  const proxyPort = computed(() => settings.value?.proxyPort || localProxyPort)
   const preset = computed(() => presets.value.find((p) => p.id === settings.value?.preset) ?? null)
 
   function core(): CoreClient {
@@ -247,6 +250,7 @@ export const useCoreStore = defineStore('core', () => {
     client,
     status,
     settings,
+    proxyPort,
     groups,
     servers,
     presets,

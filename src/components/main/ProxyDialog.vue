@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 
 import { Button, Dialog } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
-import { localProxyHost, localProxyPort } from '@/platform/core'
+import { localProxyHost } from '@/platform/core'
 import { useCoreStore } from '@/stores/core'
 
 // What the local proxy of the portal's hint is and how to use it: the address for a program's settings and the links
@@ -15,11 +15,16 @@ const core = useCoreStore()
 const attempt = useAttempt()
 const { t } = useI18n()
 
-const address = `${localProxyHost}:${localProxyPort}`
-const links = [
-  { kind: 'HTTP', link: `http://${address}` },
-  { kind: 'SOCKS5', link: `socks5://${address}` },
-]
+const address = computed(() => `${localProxyHost}:${core.proxyPort}`)
+// With a password on the port the links carry it, so that a program takes them whole.
+const links = computed(() => {
+  const s = core.settings
+  const user = s?.proxyAuth ? `${encodeURIComponent(s.proxyUsername)}:${encodeURIComponent(s.proxyPassword)}@` : ''
+  return [
+    { kind: 'HTTP', link: `http://${user}${address.value}` },
+    { kind: 'SOCKS5', link: `socks5://${user}${address.value}` },
+  ]
+})
 const lan = computed(() => core.settings?.allowLan ?? false)
 
 const copied = ref('')
@@ -44,7 +49,7 @@ onBeforeUnmount(() => clearTimeout(timer))
     </template>
     <div class="grid gap-3" data-testid="proxy-dialog">
       <p class="text-t2">{{ t('proxy.lead', { address }) }}</p>
-      <p class="text-t2">{{ t('proxy.how', { host: localProxyHost, port: localProxyPort }) }}</p>
+      <p class="text-t2">{{ t('proxy.how', { host: localProxyHost, port: core.proxyPort }) }}</p>
       <div class="overflow-hidden rounded-[10px] border border-line">
         <button
           v-for="item in links"
@@ -62,7 +67,7 @@ onBeforeUnmount(() => clearTimeout(timer))
         </button>
       </div>
       <p class="text-xs text-t3">{{ t('proxy.modes') }}</p>
-      <p class="text-xs text-t3" data-testid="proxy-lan">{{ lan ? t('proxy.lan', { port: localProxyPort }) : t('proxy.lanOff') }}</p>
+      <p class="text-xs text-t3" data-testid="proxy-lan">{{ lan ? t('proxy.lan', { port: core.proxyPort }) : t('proxy.lanOff') }}</p>
     </div>
   </Dialog>
 </template>

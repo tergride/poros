@@ -76,6 +76,17 @@ type runningConnection struct {
 	stopTraffic context.CancelFunc
 	// marks tell another Poros on the computer that the port of the local proxy, and the TUN, are taken.
 	marks marks
+	// port is that of the local proxy, systemPort that of the system proxy while the local one asks for a
+	// password, else 0.
+	port, systemPort uint16
+}
+
+// systemProxyPort is the port the system proxy of Windows points at.
+func (r *runningConnection) systemProxyPort() uint16 {
+	if r.systemPort != 0 {
+		return r.systemPort
+	}
+	return r.port
 }
 
 type marks []*marker.Marker
@@ -309,8 +320,13 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if settings.AllowLAN {
 		listen = "0.0.0.0"
 	}
-	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(e.mixedPort)))) {
-		return ConnectionState{}, portBusy(e.mixedPort)
+	port := e.proxyPort(settings)
+	if !portFree(net.JoinHostPort(listen, strconv.Itoa(int(port)))) {
+		return ConnectionState{}, portBusy(port)
+	}
+	systemPort, err := e.systemPortOf(settings)
+	if err != nil {
+		return ConnectionState{}, err
 	}
 	e.clearFailure()
 	if settings.Tun && !waitTunGone(ctx, tunGoneTimeout) {
@@ -343,8 +359,10 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		Endpoints:     endpoints,
 		Tun:           settings.Tun,
 		AllowLAN:      settings.AllowLAN,
+		Auth:          proxyAuthOf(settings),
+		SystemPort:    systemPort,
 		DisableIPv6:   !settings.IPv6,
-		MixedPort:     e.mixedPort,
+		MixedPort:     port,
 		RealityOnXray: settings.RealityOnXray,
 		LogLevel:      singBoxLogLevel(settings.DebugLog),
 	}
@@ -381,7 +399,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if ctx.Err() != nil {
 		return ConnectionState{}, ctx.Err()
 	}
-	running := &runningConnection{iface: in.Interface, tun: settings.Tun}
+	running := &runningConnection{iface: in.Interface, tun: settings.Tun, port: port, systemPort: systemPort}
 	// Xray listens first: sing-box dials its bridge.
 	if configs.Xray != nil {
 		if running.xray, err = xray.CreateXrayInstance(string(configs.Xray)); err != nil {
@@ -392,7 +410,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 			return ConnectionState{}, failure(ReasonStartFailed, "Xray: %v", err)
 		}
 	}
-	if running.marks, err = holdMarks(e.mixedPort, settings.Tun); err != nil {
+	if running.marks, err = holdMarks(port, settings.Tun); err != nil {
 		if running.xray != nil {
 			running.xray.Close()
 		}
@@ -557,7 +575,11 @@ func (e *Engine) applySystemProxy() error {
 	if e.foreignUser {
 		return errors.New("the core runs as another account than Poros: its system proxy would be that account's")
 	}
-	return e.sysProxy.Apply("127.0.0.1", e.mixedPort)
+	port := e.mixedPort
+	if running := e.conn.running; running != nil {
+		port = running.systemProxyPort()
+	}
+	return e.sysProxy.Apply("127.0.0.1", port)
 }
 
 // tunGoneTimeout covers Windows removing the adapter of a core that was killed with the TUN up.

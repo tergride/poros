@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Globe, Info, Link, Palette, Power, Search, Signpost } from '@lucide/vue'
+import { Check, Gauge, Globe, Info, Link, Palette, Power, Search, Server, Signpost } from '@lucide/vue'
 import { type Component, computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
@@ -7,9 +7,11 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import ConnPage from '@/components/settings/ConnPage.vue'
 import DnsPage from '@/components/settings/DnsPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
+import InboundPage from '@/components/settings/InboundPage.vue'
 import LookPage from '@/components/settings/LookPage.vue'
 import StartPage from '@/components/settings/StartPage.vue'
 import SubsPage from '@/components/settings/SubsPage.vue'
+import TestsPage from '@/components/settings/TestsPage.vue'
 import { Button, Dialog, Input } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { provideSettingsDraft } from '@/composables/useSettingsDraft'
@@ -23,20 +25,41 @@ const attempt = useAttempt()
 const { t } = useI18n()
 const draft = provideSettingsDraft()
 
-const pages: { id: string; icon: Component; page: Component }[] = [
-  { id: 'conn', icon: Globe, page: ConnPage },
-  { id: 'dns', icon: Signpost, page: DnsPage },
-  { id: 'subs', icon: Link, page: SubsPage },
-  { id: 'start', icon: Power, page: StartPage },
-  { id: 'look', icon: Palette, page: LookPage },
-  { id: 'help', icon: Info, page: HelpPage },
+interface Page {
+  id: string
+  icon: Component
+  page: Component
+}
+// «Basic» are the pages of the simple mode, with more of their settings; «More» the pages of the advanced mode alone.
+const groups: { id: string; pages: Page[] }[] = [
+  {
+    id: 'basic',
+    pages: [
+      { id: 'conn', icon: Globe, page: ConnPage },
+      { id: 'dns', icon: Signpost, page: DnsPage },
+      { id: 'subs', icon: Link, page: SubsPage },
+      { id: 'start', icon: Power, page: StartPage },
+      { id: 'look', icon: Palette, page: LookPage },
+      { id: 'help', icon: Info, page: HelpPage },
+    ],
+  },
+  {
+    id: 'more',
+    pages: [
+      { id: 'inbound', icon: Server, page: InboundPage },
+      { id: 'tests', icon: Gauge, page: TestsPage },
+    ],
+  },
 ]
+const pages = groups.flatMap((g) => g.pages)
 const current = computed(() => pages.find((p) => p.id === route.params.page) ?? pages[0]!)
 
 const query = ref('')
 const shown = computed(() => {
   const needle = query.value.trim().toLowerCase()
-  return pages.filter((p) => !needle || t(`settings.nav.${p.id}`).toLowerCase().includes(needle))
+  return groups
+    .map((g) => ({ ...g, pages: g.pages.filter((p) => !needle || t(`settings.nav.${p.id}`).toLowerCase().includes(needle)) }))
+    .filter((g) => g.pages.length > 0)
 })
 
 const saving = ref(false)
@@ -81,18 +104,20 @@ onBeforeRouteUpdate(ask)
         <Search class="absolute top-2 left-2.5 size-4 text-t3" />
         <Input v-model="query" class="h-8 pl-8" :placeholder="t('adv.settings.search')" :aria-label="t('adv.settings.search')" />
       </div>
-      <div class="px-2.5 pt-1.5 pb-1 text-[11.5px] font-medium tracking-wide text-t3 uppercase">{{ t('adv.settings.basic') }}</div>
-      <RouterLink
-        v-for="page in shown"
-        :key="page.id"
-        :to="`/adv/settings/${page.id}`"
-        :class="[
-          'flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px]',
-          page.id === current.id ? 'bg-s4 text-white' : 'text-t2 hover:bg-s3 hover:text-t1',
-        ]"
-      >
-        <component :is="page.icon" class="size-4" />{{ t(`settings.nav.${page.id}`) }}
-      </RouterLink>
+      <template v-for="group in shown" :key="group.id">
+        <div class="px-2.5 pt-1.5 pb-1 text-[11.5px] font-medium tracking-wide text-t3 uppercase">{{ t(`adv.settings.${group.id}`) }}</div>
+        <RouterLink
+          v-for="page in group.pages"
+          :key="page.id"
+          :to="`/adv/settings/${page.id}`"
+          :class="[
+            'flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px]',
+            page.id === current.id ? 'bg-s4 text-white' : 'text-t2 hover:bg-s3 hover:text-t1',
+          ]"
+        >
+          <component :is="page.icon" class="size-4" />{{ t(`settings.nav.${page.id}`) }}
+        </RouterLink>
+      </template>
       <p v-if="shown.length === 0" class="px-2.5 py-2 text-xs text-t3">{{ t('adv.settings.nothingFound') }}</p>
     </nav>
     <div class="relative flex min-w-0 flex-1 flex-col">

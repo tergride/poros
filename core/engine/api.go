@@ -30,6 +30,18 @@ type Settings struct {
 	Preset   string `json:"preset"`
 	CheckIP  bool   `json:"checkIp"`
 	AllowLAN bool   `json:"allowLan"`
+	// ProxyPort is the port of the local proxy, 0 for the default one, 2090. With ProxyAuth it asks programs for
+	// ProxyUsername and ProxyPassword; the system proxy goes to a port of its own then, since Windows passes no
+	// password to it.
+	ProxyPort     int    `json:"proxyPort"`
+	ProxyAuth     bool   `json:"proxyAuth"`
+	ProxyUsername string `json:"proxyUsername"`
+	ProxyPassword string `json:"proxyPassword"`
+	// LatencyURL is what a delay test asks for through each server, "" for http://cp.cloudflare.com/;
+	// LatencyTimeout is how many milliseconds it waits, LatencyConcurrency how many servers it tests at once.
+	LatencyURL         string `json:"latencyUrl"`
+	LatencyTimeout     int    `json:"latencyTimeout"`
+	LatencyConcurrency int    `json:"latencyConcurrency"`
 	// IPv6 lets connections use IPv6; off, names resolve to IPv4 only and IPv6 connections are refused.
 	IPv6 bool `json:"ipv6"`
 	// RealityOnXray runs VLESS with REALITY over TCP and gRPC on Xray rather than sing-box.

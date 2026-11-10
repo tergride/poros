@@ -138,7 +138,8 @@ func (e *Engine) IPTestServers(query ServersQuery) (any, error) {
 				results = append(results, ServerIP{ServerID: tag, Error: err.Error()})
 			}
 		case t.box != nil:
-			for _, result := range probe.BatchIPTest(ctx, t.box, t.tags, latencyConcurrency, true, 0) {
+			_, _, concurrency := e.latencyTest()
+			for _, result := range probe.BatchIPTest(ctx, t.box, t.tags, concurrency, true, 0) {
 				results = append(results, ServerIP{
 					ServerID: result.Tag, IP: result.Result.IP, Country: result.Result.CountryCode, Error: errorText(result.Error),
 				})

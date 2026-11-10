@@ -82,6 +82,13 @@ export function checkDnsSettings(s: Settings): void {
   const subnet = s.dnsClientSubnet.trim()
   if (subnet && !ip.test(subnet.split('/')[0]!)) throw invalid(`dnsClientSubnet: "${subnet}" is no subnet`)
   if (s.dnsObject) checkDnsObject(s.dnsObject)
+  // As validateInbound in core/engine/inbound.go.
+  if (!Number.isInteger(s.proxyPort) || s.proxyPort < 0 || s.proxyPort > 65535) throw invalid(`proxyPort must be from 1 to 65535, not ${s.proxyPort}`)
+  if (s.proxyAuth && (!s.proxyUsername.trim() || !s.proxyPassword)) throw invalid('a local proxy with authorization needs a username and a password')
+  if (s.proxyUsername.includes(':')) throw invalid('the username of the local proxy cannot hold a colon')
+  if (s.latencyUrl && !/^https?:\/\//.test(s.latencyUrl)) throw invalid(`the delay test asks for an http:// or https:// address, not "${s.latencyUrl}"`)
+  if (!Number.isInteger(s.latencyTimeout) || s.latencyTimeout < 500 || s.latencyTimeout > 30000) throw invalid('latencyTimeout must be from 500 to 30000 ms')
+  if (!Number.isInteger(s.latencyConcurrency) || s.latencyConcurrency < 1 || s.latencyConcurrency > 64) throw invalid('latencyConcurrency must be from 1 to 64')
   // As validateWARP in core/engine/warp.go, the formats left to the core.
   if (!['wireguard', 'masque'].includes(s.warpMode)) throw invalid(`warpMode must be wireguard or masque, not "${s.warpMode}"`)
   const device = s.warpMode === 'masque' ? s.warpMasque : s.warpWireGuard

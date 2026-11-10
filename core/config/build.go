@@ -14,15 +14,18 @@ import (
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/auth"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badoption"
 )
 
 // Tags of the config.
 const (
-	TagProxy     = "proxy"
-	TagDirect    = "direct"
-	tagMixed     = "mixed-in"
+	TagProxy  = "proxy"
+	TagDirect = "direct"
+	tagMixed  = "mixed-in"
+	// tagSystem is the port of the system proxy while the local proxy asks for a password.
+	tagSystem    = "system-in"
 	tagTun       = "tun-in"
 	TagDNSRemote = "dns-remote"
 	TagDNSDirect = "dns-direct"
@@ -86,6 +89,10 @@ type Input struct {
 	Tun bool
 	// AllowLAN opens the mixed inbound to other devices.
 	AllowLAN bool
+	// Auth is the name and password the mixed inbound asks for, nil for none. Windows passes no password to a
+	// system proxy, so SystemPort is then a port of its own on loopback for it, without one.
+	Auth       *ProxyAuth
+	SystemPort uint16
 	// DisableIPv6 answers names with IPv4 only and refuses IPv6 connections other than DNS. Names of connections
 	// are resolved here, so that the server too reaches sites over IPv4. The TUN still takes IPv6, so that it never
 	// goes around the tunnel.
@@ -102,6 +109,11 @@ type Input struct {
 	Bridge    Bridge
 	Interface string
 	Resolved  map[string]netip.Addr
+}
+
+// ProxyAuth is the name and password of the local proxy.
+type ProxyAuth struct {
+	Username, Password string
 }
 
 // Configs is a built connection. Xray is nil when sing-box runs the server itself.
@@ -250,9 +262,17 @@ func buildInbounds(in Input, preset Preset) []option.Inbound {
 	if in.AllowLAN {
 		listen = netip.IPv4Unspecified()
 	}
-	inbounds := []option.Inbound{{Type: C.TypeMixed, Tag: tagMixed, Options: &option.HTTPMixedInboundOptions{
-		ListenOptions: option.ListenOptions{Listen: (*badoption.Addr)(&listen), ListenPort: in.MixedPort},
-	}}}
+	mixed := &option.HTTPMixedInboundOptions{ListenOptions: option.ListenOptions{Listen: (*badoption.Addr)(&listen), ListenPort: in.MixedPort}}
+	if in.Auth != nil {
+		mixed.Users = []auth.User{{Username: in.Auth.Username, Password: in.Auth.Password}}
+	}
+	inbounds := []option.Inbound{{Type: C.TypeMixed, Tag: tagMixed, Options: mixed}}
+	if in.SystemPort != 0 {
+		loopback := netip.AddrFrom4([4]byte{127, 0, 0, 1})
+		inbounds = append(inbounds, option.Inbound{Type: C.TypeMixed, Tag: tagSystem, Options: &option.HTTPMixedInboundOptions{
+			ListenOptions: option.ListenOptions{Listen: (*badoption.Addr)(&loopback), ListenPort: in.SystemPort},
+		}})
+	}
 	if in.Tun {
 		inbounds = append(inbounds, option.Inbound{Type: C.TypeTun, Tag: tagTun, Options: &option.TunInboundOptions{
 			InterfaceName:       TunName,

@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/sagernet/bbolt"
 
@@ -20,6 +21,8 @@ func DefaultSettings() Settings {
 		CheckIP:                true,
 		IPv6:                   true,
 		RealityOnXray:          true,
+		LatencyTimeout:         int(defaultLatencyTimeout / time.Millisecond),
+		LatencyConcurrency:     defaultLatencyConcurrency,
 		DNSRouting:             DNSRoutingAuto,
 		DNSHosts:               true,
 		DNSCache:               true,
@@ -79,7 +82,7 @@ func (e *Engine) SetSettings(settings Settings) (Settings, error) {
 	if settings.KillSwitch != previous.KillSwitch {
 		go e.syncKillSwitch(previous.KillSwitch)
 	} else if settings.Tun != previous.Tun || settings.Preset != previous.Preset || settings.AllowLAN != previous.AllowLAN || settings.IPv6 != previous.IPv6 ||
-		dnsChanged(settings, previous) {
+		dnsChanged(settings, previous) || proxyChanged(settings, previous) {
 		go e.restartRefusal()
 	}
 	switch {
@@ -160,6 +163,9 @@ func (e *Engine) validateSettings(settings Settings) error {
 		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionHttp must be empty or 1.1, not %q", settings.SubscriptionHTTP)
 	}
 	if err := validateWARP(settings); err != nil {
+		return err
+	}
+	if err := validateInbound(settings); err != nil {
 		return err
 	}
 	return validateDNS(settings)

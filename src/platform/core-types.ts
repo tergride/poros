@@ -46,6 +46,22 @@ export interface Settings {
   checkIp: boolean;
   allowLan: boolean;
   /**
+   * ProxyPort is the port of the local proxy, 0 for the default one, 2090. With ProxyAuth it asks programs for
+   * ProxyUsername and ProxyPassword; the system proxy goes to a port of its own then, since Windows passes no
+   * password to it.
+   */
+  proxyPort: number /* int */;
+  proxyAuth: boolean;
+  proxyUsername: string;
+  proxyPassword: string;
+  /**
+   * LatencyURL is what a delay test asks for through each server, "" for http://cp.cloudflare.com/;
+   * LatencyTimeout is how many milliseconds it waits, LatencyConcurrency how many servers it tests at once.
+   */
+  latencyUrl: string;
+  latencyTimeout: number /* int */;
+  latencyConcurrency: number /* int */;
+  /**
    * IPv6 lets connections use IPv6; off, names resolve to IPv4 only and IPv6 connections are refused.
    */
   ipv6: boolean;
