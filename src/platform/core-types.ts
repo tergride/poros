@@ -276,6 +276,11 @@ export interface Settings {
    */
   debugLog: boolean;
   /**
+   * Stats counts the traffic of each connection and finds its program: the speed, the traffic of servers, the
+   * list of connections and the statistics come from it.
+   */
+  stats: boolean;
+  /**
    * LogLines is how many of the last lines of the log the log screen shows.
    */
   logLines: number /* int */;
@@ -505,6 +510,50 @@ export interface ServerLatency {
 export interface ServersTested {
   results: ServerLatency[];
   done: boolean;
+}
+/**
+ * Connection is one open connection through Poros while the statistics are on.
+ */
+export interface Connection {
+  id: string;
+  /**
+   * Start is when it opened, in Unix milliseconds.
+   */
+  start: number /* int64 */;
+  /**
+   * Network is tcp or udp, Protocol what sing-box recognized in it (tls, http, quic, dns…) or "".
+   */
+  network: string;
+  protocol: string;
+  /**
+   * Process is the file name of the program, ProcessPath its whole path; "" when Windows did not tell.
+   */
+  process: string;
+  processPath: string;
+  source: string;
+  /**
+   * Destination is host:port, with the name the program asked for when there is one.
+   */
+  destination: string;
+  /**
+   * Inbound and Outbound are tags of the connection's config: the TUN or the local proxy; the server (proxy),
+   * direct, an endpoint of the preset or WARP. Rule is the rule that sent it there, "" for the default.
+   */
+  inbound: string;
+  outbound: string;
+  rule: string;
+  /**
+   * Upload and Download are bytes in all.
+   */
+  upload: number /* int64 */;
+  download: number /* int64 */;
+}
+/**
+ * ConnectionList is the open connections; Tracked is false while there is no connection or no statistics.
+ */
+export interface ConnectionList {
+  connections: Connection[];
+  tracked: boolean;
 }
 /**
  * LogsQuery asks for the lines of the log written after the byte After; 0 asks for the last ones, as many as the
@@ -1474,6 +1523,15 @@ export const MethodConnectionStart = "connection.start";
  * Methods the core answers.
  */
 export const MethodConnectionStop = "connection.stop";
+/**
+ * MethodConnectionsList lists the open connections; MethodConnectionsClose closes one by its ID, or all of them
+ * without one.
+ */
+export const MethodConnectionsList = "connections.list";
+/**
+ * Methods the core answers.
+ */
+export const MethodConnectionsClose = "connections.close";
 /**
  * Methods the core answers.
  */

@@ -55,6 +55,8 @@ import {
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodConnectionsClose,
+  MethodConnectionsList,
   MethodGroupsAdd,
   MethodGroupsConfigure,
   MethodGroupsList,
@@ -189,6 +191,7 @@ const defaultSettings: Settings = {
   ignoreTlsErrors: false,
   xraySystemCerts: false,
   insecureDefault: false,
+  stats: true,
   deviceData: '',
   logLines: 500,
   updateBeta: false,
@@ -322,6 +325,24 @@ const stubLog = [
   '2026/11/07 14:02:13 connection: running',
   '2026/11/07 14:05:47 WARN outbound/vless[proxy]: stream reset, reconnecting',
 ]
+
+const stubConnection = {
+  network: 'tcp',
+  protocol: 'tls',
+  processPath: '',
+  source: '127.0.0.1:52144',
+  inbound: 'tun-in',
+  outbound: 'proxy',
+  rule: '',
+}
+const stubConnections = [
+  { ...stubConnection, id: 'c1', start: 0, process: 'chrome.exe', destination: 'www.example.com:443', upload: 120_000, download: 2_100_000 },
+  { ...stubConnection, id: 'c2', start: 400, process: 'chrome.exe', destination: 'cdn.example.net:443', network: 'udp', protocol: 'quic', source: '127.0.0.1:52160', upload: 9_000, download: 310_000 },
+  { ...stubConnection, id: 'c3', start: 800, process: 'telegram.exe', destination: '149.154.167.51:443', protocol: '', source: '127.0.0.1:52190', upload: 6_000, download: 48_000 },
+  { ...stubConnection, id: 'c4', start: 1200, process: 'steam.exe', destination: 'cache1.example.com:443', outbound: 'direct', source: '127.0.0.1:53012', upload: 30_000, download: 9_600_000 },
+  { ...stubConnection, id: 'c5', start: 1600, process: '', destination: '1.1.1.1:53', network: 'udp', protocol: 'dns', outbound: 'direct', source: '172.19.0.1:61000', upload: 200, download: 1_000 },
+].map((c) => ({ ...c, processPath: c.process ? `C:\\Program Files\\${c.process}` : '' }))
+const closedConnections = new Set<string>()
 
 const presetLinkPrefix = 'poros://route/'
 
@@ -617,9 +638,11 @@ export function createStubCore(): CoreClient {
     traffic = undefined
     if (next.state === ConnectionRunning) {
       let total = 0
+      let tick = 0
       traffic = setInterval(() => {
-        total += 1_300_000
-        emit(EventConnectionTraffic, { upload: 115_000, download: 1_300_000, totalUpload: total / 10, totalDownload: total })
+        const download = Math.round(1_300_000 * (1 + 0.4 * Math.sin(tick++ / 2)))
+        total += download
+        emit(EventConnectionTraffic, { upload: Math.round(download / 11), download, totalUpload: total / 10, totalDownload: total })
       }, 1000)
     }
   }
@@ -1116,6 +1139,22 @@ export function createStubCore(): CoreClient {
       return { ...connection }
     },
     [MethodConnectionState]: () => ({ ...connection }),
+    // Connections as on the mockup, their bytes growing with the time since the start.
+    [MethodConnectionsList]: () => {
+      if (connection.state !== ConnectionRunning || !settings.stats) return { connections: [], tracked: false }
+      const seconds = (Date.now() - connection.since) / 1000
+      return {
+        tracked: true,
+        connections: stubConnections
+          .filter((c) => !closedConnections.has(c.id))
+          .map((c) => ({ ...c, start: connection.since + c.start, upload: Math.round(c.upload * (1 + seconds)), download: Math.round(c.download * (1 + seconds)) })),
+      }
+    },
+    [MethodConnectionsClose]: ({ id }) => {
+      if (id && (!stubConnections.some((c) => c.id === id) || closedConnections.has(id))) throw failed(ReasonNotFound, `there is no connection "${id}"`)
+      for (const c of stubConnections) if (!id || c.id === id) closedConnections.add(c.id)
+      return null
+    },
     [MethodNetworkCheck]: () => {
       if (!settings.checkIp) throw failed(ReasonCheckOff, 'the IP and DNS check is turned off')
       return checkNetwork()

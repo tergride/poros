@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sagernet/bbolt"
+	"github.com/sagernet/sing-box/common/trafficcontrol"
 	"github.com/sagernet/sing/common/control"
 	"github.com/xtls/xray-core/core"
 
@@ -61,6 +62,8 @@ type connection struct {
 	running   *runningConnection
 	// box is the running sing-box, for downloads through the connection that must not wait for a start.
 	box atomic.Pointer[boxbox.Box]
+	// tracker follows its connections while the statistics are on, for lists that must not wait for a start either.
+	tracker atomic.Pointer[trafficcontrol.Manager]
 }
 
 type runningConnection struct {
@@ -370,6 +373,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		MixedPort:     port,
 		RealityOnXray: settings.RealityOnXray,
 		LogLevel:      singBoxLogLevel(settings.DebugLog),
+		FindProcess:   settings.Stats,
 		Tuning:        tune,
 		NTP:           ntpOf(settings),
 	}
@@ -423,9 +427,17 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		}
 		return ConnectionState{}, err
 	}
+	// The counters join before the box starts, so that they see the first connection too. Without the statistics
+	// there are none: no speed, no traffic of the server and no list of connections.
 	counter := &trafficCounter{}
-	// The counter joins before the box starts, so that it sees the first connection too.
-	trackTraffic := func(box *boxbox.Box) { box.Router().AppendTracker(counter) }
+	var tracker *trafficcontrol.Manager
+	trackTraffic := func(box *boxbox.Box) {
+		if settings.Stats {
+			tracker = trafficcontrol.NewManager()
+			box.Router().AppendTracker(counter)
+			box.Router().AppendTracker(tracker)
+		}
+	}
 	running.box, running.cancel, err = boxmain.Create(singBox, trackTraffic)
 	if err != nil && settings.Tun && tunFailed(err) && ctx.Err() == nil {
 		// Windows may have stalled on the adapter, as on bringing back one left behind: Wintun removes it on the
@@ -447,6 +459,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	}
 	e.conn.running = running
 	e.conn.box.Store(running.box)
+	e.conn.tracker.Store(tracker)
 	e.setGuarding(guarded, settings.Tun)
 	if !settings.Tun {
 		// A block for the TUN of before is no longer needed: without the TUN the kill switch is the system proxy.
@@ -454,7 +467,9 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	}
 	trafficCtx, stopTraffic := context.WithCancel(context.Background())
 	running.stopTraffic = stopTraffic
-	go e.reportTraffic(trafficCtx, counter, settings.Server)
+	if settings.Stats {
+		go e.reportTraffic(trafficCtx, counter, settings.Server)
+	}
 	go e.pingConnection(trafficCtx, running.box, settings.Server)
 
 	// OpenVPN and OpenConnect refuse connections until their handshake is done: the connection is up only then.
@@ -506,6 +521,7 @@ func (e *Engine) stopRunning(keepProxy bool) error {
 	}
 	e.conn.running = nil
 	e.conn.box.Store(nil)
+	e.conn.tracker.Store(nil)
 	running.stopTraffic()
 	done := make(chan struct{})
 	go func() {

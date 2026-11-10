@@ -29,6 +29,7 @@ func DefaultSettings() Settings {
 		NTPInterval:            defaultNTPInterval,
 		NTPOutbound:            config.OutboundDirect,
 		LogLines:               defaultLogLines,
+		Stats:                  true,
 		TunMTU:                 defaultTunMTU,
 		TunStrictRoute:         true,
 		TunIPv4:                TunIPv4Default,

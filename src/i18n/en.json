@@ -549,7 +549,10 @@
     "logging": {
       "screen": "Log screen",
       "lines": "Lines at most",
-      "linesHint": "From 100 to 20,000. How much the log records, “Detailed log” in “Help” says."
+      "linesHint": "From 100 to 20,000. How much the log records, “Detailed log” in “Help” says.",
+      "statsTitle": "Statistics",
+      "stats": "Statistics of connections",
+      "statsHint": "Traffic counters for “Connections”, “Statistics” and the speed. Turned off, there are none. Takes effect with the next connection."
     }
   },
   "linkPreset": {
@@ -914,6 +917,31 @@
       "badRegex": "The regular expression has a mistake: all lines are shown.",
       "empty": "The log is empty.",
       "nothing": "Nothing matches the filter."
+    },
+    "connections": {
+      "byProcess": "By process",
+      "list": "List",
+      "view": "View",
+      "filter": "Filter by process, address or outbound",
+      "active": "Active: {n}",
+      "what": "Process / destination",
+      "source": "Source",
+      "protocol": "Protocol",
+      "outbound": "Outbound",
+      "traffic": "Traffic",
+      "speed": "Speed",
+      "system": "System",
+      "server": "Server",
+      "direct": "Directly",
+      "endpoint": "Endpoint {n}",
+      "idle": "Not connected. Connections show up after Start.",
+      "untracked": "The statistics of connections are off: without them Poros neither counts the traffic of connections nor knows their programs.",
+      "toSettings": "Open the settings",
+      "none": "No open connections.",
+      "nothing": "Nothing matches the filter.",
+      "close": "Close the connection",
+      "closeProcess": "Close the connections of the process",
+      "closeAll": "Close all connections"
     }
   },
   "profiles": {

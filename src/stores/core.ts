@@ -98,6 +98,8 @@ export const useCoreStore = defineStore('core', () => {
   const killSwitch = ref<KillSwitchState>({ ...noBlock })
   const updates = ref<UpdateState>({ ...noUpdates })
   const traffic = ref<Traffic | null>(null)
+  // The speed of the last minute of the connection, for the charts of «Connections» and «Statistics».
+  const speedHistory = ref<Traffic[]>([])
   const testing = ref(false)
   // Speed and IP tests run on their own, beside the delay test.
   const speedTesting = ref(false)
@@ -164,9 +166,15 @@ export const useCoreStore = defineStore('core', () => {
       c.on(EventPresetsChanged, (next) => (presets.value = next))
       c.on(EventConnectionChanged, (next) => {
         connection.value = next
-        if (next.state !== ConnectionRunning) traffic.value = null
+        if (next.state !== ConnectionRunning) {
+          traffic.value = null
+          speedHistory.value = []
+        }
       })
-      c.on(EventConnectionTraffic, (next) => (traffic.value = next))
+      c.on(EventConnectionTraffic, (next) => {
+        traffic.value = next
+        speedHistory.value = [...speedHistory.value.slice(-59), next]
+      })
       c.on(EventNetworkChanged, (next) => (network.value = next))
       c.on(EventKillSwitchChanged, (next) => (killSwitch.value = next))
       c.on(EventUpdatesChanged, (next) => (updates.value = next))
@@ -259,6 +267,7 @@ export const useCoreStore = defineStore('core', () => {
     killSwitch,
     updates,
     traffic,
+    speedHistory,
     testing,
     speedTesting,
     ipTesting,

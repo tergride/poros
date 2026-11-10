@@ -125,6 +125,8 @@ type Input struct {
 	RealityOnXray bool
 	// LogLevel is sing-box's; "" is info.
 	LogLevel string
+	// FindProcess has sing-box find the program of each connection, for the statistics.
+	FindProcess bool
 	// Tuning is what the settings add to the server; the preset may harden it.
 	Tuning Tuning
 	// NTP is the clock of the core, nil for the system's.
@@ -434,6 +436,7 @@ func buildRoute(in Input, preset Preset) *option.RouteOptions {
 		Final:                 final,
 		AutoDetectInterface:   in.Tun,
 		DefaultDomainResolver: resolver,
+		FindProcess:           in.FindProcess,
 	}
 }
 

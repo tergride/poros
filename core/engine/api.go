@@ -182,6 +182,9 @@ type Settings struct {
 	UpdateCheck bool `json:"updateCheck"`
 	// DebugLog adds every connection and more of what the core does to the log; errors are always there.
 	DebugLog bool `json:"debugLog"`
+	// Stats counts the traffic of each connection and finds its program: the speed, the traffic of servers, the
+	// list of connections and the statistics come from it.
+	Stats bool `json:"stats"`
 	// LogLines is how many of the last lines of the log the log screen shows.
 	LogLines int `json:"logLines"`
 	// UpdateBeta takes the newest release, a pre-release too; else only the newest full one.
@@ -343,6 +346,36 @@ type ServerLatency struct {
 type ServersTested struct {
 	Results []ServerLatency `json:"results"`
 	Done    bool            `json:"done"`
+}
+
+// Connection is one open connection through Poros while the statistics are on.
+type Connection struct {
+	ID string `json:"id"`
+	// Start is when it opened, in Unix milliseconds.
+	Start int64 `json:"start"`
+	// Network is tcp or udp, Protocol what sing-box recognized in it (tls, http, quic, dns…) or "".
+	Network  string `json:"network"`
+	Protocol string `json:"protocol"`
+	// Process is the file name of the program, ProcessPath its whole path; "" when Windows did not tell.
+	Process     string `json:"process"`
+	ProcessPath string `json:"processPath"`
+	Source      string `json:"source"`
+	// Destination is host:port, with the name the program asked for when there is one.
+	Destination string `json:"destination"`
+	// Inbound and Outbound are tags of the connection's config: the TUN or the local proxy; the server (proxy),
+	// direct, an endpoint of the preset or WARP. Rule is the rule that sent it there, "" for the default.
+	Inbound  string `json:"inbound"`
+	Outbound string `json:"outbound"`
+	Rule     string `json:"rule"`
+	// Upload and Download are bytes in all.
+	Upload   int64 `json:"upload"`
+	Download int64 `json:"download"`
+}
+
+// ConnectionList is the open connections; Tracked is false while there is no connection or no statistics.
+type ConnectionList struct {
+	Connections []Connection `json:"connections"`
+	Tracked     bool         `json:"tracked"`
 }
 
 // LogsQuery asks for the lines of the log written after the byte After; 0 asks for the last ones, as many as the
@@ -975,7 +1008,11 @@ const (
 	// starting state, and connection.changed tells how it went.
 	MethodConnectionStart = "connection.start"
 	MethodConnectionStop  = "connection.stop"
-	MethodConnectionState = "connection.state"
+	// MethodConnectionsList lists the open connections; MethodConnectionsClose closes one by its ID, or all of them
+	// without one.
+	MethodConnectionsList  = "connections.list"
+	MethodConnectionsClose = "connections.close"
+	MethodConnectionState  = "connection.state"
 	// MethodNetworkCheck starts a check of the addresses and DNS at once; network.changed brings the result.
 	MethodNetworkCheck = "network.check"
 	MethodNetworkState = "network.state"
