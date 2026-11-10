@@ -111,7 +111,7 @@ func TestParseLink(t *testing.T) {
 			want: Profile{Type: TypeVLESS, Name: "v6", Server: "2001:db8::1", ServerPort: 80, VLESS: &VLESS{
 				UUID:      testUUID,
 				Transport: Transport{HeaderType: "http", Host: "a.example.com,b.example.com", Path: "/,/video"},
-				Multiplex: Multiplex{Enabled: true, Protocol: "h2mux", MaxStreams: 8, Padding: true},
+				Multiplex: Multiplex{Mode: SwitchOn, Protocol: "h2mux", MaxStreams: 8, Padding: true},
 			}},
 		},
 		{
@@ -156,7 +156,7 @@ func TestParseLink(t *testing.T) {
 			want: Profile{Type: TypeVMess, Name: "From fragment", Server: "203.0.113.20", ServerPort: 8080, VMess: &VMess{
 				UUID: testUUID, AlterID: 64, Security: "chacha20-poly1305",
 				Transport: Transport{Type: TransportGRPC, ServiceName: "svc"},
-				Multiplex: Multiplex{Enabled: true, Protocol: "smux"},
+				Multiplex: Multiplex{Mode: SwitchOn, Protocol: "smux"},
 			}},
 		},
 		{
@@ -200,7 +200,7 @@ func TestParseLink(t *testing.T) {
 			name: "trojan with security none",
 			link: "trojan://secret@t.example.com:8080?security=none&sni=t.example.com&mux=true",
 			want: Profile{Type: TypeTrojan, Server: "t.example.com", ServerPort: 8080, Trojan: &Trojan{
-				Password: "secret", Multiplex: Multiplex{Enabled: true},
+				Password: "secret", Multiplex: Multiplex{Mode: SwitchOn},
 			}},
 		},
 		{
@@ -237,7 +237,7 @@ func TestParseLink(t *testing.T) {
 				"&plugin-opts=mode%3Dwebsocket%3Btls%3Bhost%3Dcdn.example.com&mux=true#v6%20plugin",
 			want: Profile{Type: TypeShadowsocks, Name: "v6 plugin", Server: "2001:db8::5", ServerPort: 443, Shadowsocks: &Shadowsocks{
 				Method: "chacha20-ietf-poly1305", Password: "pw", Plugin: "v2ray-plugin",
-				PluginOpts: "mode=websocket;tls;host=cdn.example.com", Multiplex: Multiplex{Enabled: true},
+				PluginOpts: "mode=websocket;tls;host=cdn.example.com", Multiplex: Multiplex{Mode: SwitchOn},
 			}},
 		},
 		{

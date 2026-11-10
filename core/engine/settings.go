@@ -21,6 +21,8 @@ func DefaultSettings() Settings {
 		CheckIP:                true,
 		IPv6:                   true,
 		RealityOnXray:          true,
+		MuxProtocol:            "smux",
+		MuxConcurrency:         defaultMuxConcurrency,
 		TunMTU:                 defaultTunMTU,
 		TunStrictRoute:         true,
 		TunIPv4:                TunIPv4Default,
@@ -174,6 +176,9 @@ func (e *Engine) validateSettings(settings Settings) error {
 		return err
 	}
 	if err := validateTun(settings); err != nil {
+		return err
+	}
+	if err := validateProtocols(settings); err != nil {
 		return err
 	}
 	return validateDNS(settings)

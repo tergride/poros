@@ -889,3 +889,80 @@ func TestTunOptions(t *testing.T) {
 		t.Errorf("no ranges to bypass: %v", excluded)
 	}
 }
+
+// The tuning of the settings fills what profiles leave to the default: the multiplex where the protocol allows it,
+// fragments, the uTLS fingerprint and a forged handshake for the server connection, and QUIC; a profile's own choice
+// stays, and a server reached through another forges nothing.
+func TestTuning(t *testing.T) {
+	links := sampleLinks(t)
+	tune := Tuning{
+		Multiplex: true, MuxProtocol: "smux", MuxStreams: 8, Fragment: true, Fingerprint: "firefox",
+		Spoof: true, SpoofSNI: "www.example.com", SpoofMethod: "wrong-checksum",
+		QUIC: option.QUICOptions{InitialPacketSize: 1300, DisablePathMTUDiscovery: true},
+	}
+	build := func(p profile.Profile) option.Outbound {
+		t.Helper()
+		parts, err := serverParts(p, nil, TagProxy, nil, tune)
+		if err != nil || len(parts.outbounds) != 1 {
+			t.Fatalf("%s: %+v, %v", p.Name, parts, err)
+		}
+		return parts.outbounds[0]
+	}
+	ws := build(mustParse(t, links["vless ws tls"])).Options.(*option.VLESSOutboundOptions)
+	if ws.Multiplex == nil || ws.Multiplex.Protocol != "smux" || ws.Multiplex.MaxStreams != 8 || !ws.TLS.Fragment ||
+		ws.TLS.UTLS == nil || ws.TLS.Spoof != "www.example.com" || ws.TLS.SpoofMethod != "wrong-checksum" {
+		t.Errorf("a profile that leaves it all to the default: %+v %+v", ws.Multiplex, ws.TLS)
+	}
+	// XTLS Vision takes no multiplex, REALITY no forged or split handshake.
+	reality := build(mustParse(t, links["vless reality vision"])).Options.(*option.VLESSOutboundOptions)
+	if reality.Multiplex != nil || reality.TLS.Fragment || reality.TLS.Spoof != "" {
+		t.Errorf("REALITY with Vision: %+v %+v", reality.Multiplex, reality.TLS)
+	}
+	own := mustParse(t, links["trojan grpc"])
+	own.Trojan.Multiplex.Mode, own.Trojan.TLS.Fragment, own.Trojan.TLS.Spoof = profile.SwitchOff, profile.SwitchOff, profile.SwitchOff
+	if trojan := build(own).Options.(*option.TrojanOutboundOptions); trojan.Multiplex != nil || trojan.TLS.Fragment || trojan.TLS.Spoof != "" {
+		t.Errorf("a profile's own «off»: %+v %+v", trojan.Multiplex, trojan.TLS)
+	}
+	if hy := build(mustParse(t, links["hysteria2"])).Options.(*option.Hysteria2OutboundOptions); hy.InitialPacketSize != 1300 || !hy.DisablePathMTUDiscovery {
+		t.Errorf("QUIC of Hysteria2: %+v", hy.QUICOptions)
+	}
+	if !tune.Spoofs(mustParse(t, links["vless ws tls"]), false) || tune.Spoofs(mustParse(t, links["hysteria2"]), false) {
+		t.Error("a forged handshake is for TLS over TCP")
+	}
+	// The default forges only where sing-box can: a server name that is no address and not the forged one.
+	for name, change := range map[string]func(*profile.TLS){
+		"no SNI":         func(tls *profile.TLS) { tls.DisableSNI = true },
+		"an address":     func(tls *profile.TLS) { tls.ServerName = "203.0.113.7" },
+		"the forged one": func(tls *profile.TLS) { tls.ServerName = "WWW.example.com" },
+	} {
+		p := mustParse(t, links["vless ws tls"])
+		change(&p.VLESS.TLS)
+		if vless := build(p).Options.(*option.VLESSOutboundOptions); vless.TLS.Spoof != "" || tune.Spoofs(p, false) {
+			t.Errorf("%s: forged with %q", name, vless.TLS.Spoof)
+		}
+	}
+	noName := mustParse(t, links["vless ws tls"])
+	noName.VLESS.TLS.Spoof = profile.SwitchOn
+	if _, err := serverParts(noName, nil, TagProxy, nil, Tuning{Spoof: true}); err == nil {
+		t.Error("a profile's own forged handshake without a name builds")
+	}
+
+	configs, err := Build(Input{Server: mustParse(t, links["vless ws tls"]), Preset: allPreset, MixedPort: 2090, Tuning: tune})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := configs.SingBoxJSON()
+	if err = boxmain.Check(data); err != nil {
+		t.Fatalf("sing-box refuses the tuned config: %v\n%s", err, data)
+	}
+	// Through a chain, only the first server meets the censor.
+	chained, err := chainServer([]profile.Profile{mustParse(t, links["vless ws tls"]), mustParse(t, links["trojan tcp"])}, TagProxy, nil, tune)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range chained.outbounds {
+		if trojan, ok := o.Options.(*option.TrojanOutboundOptions); ok && trojan.TLS != nil && (trojan.TLS.Spoof != "" || trojan.TLS.Fragment) {
+			t.Errorf("the second server of a chain: %+v", trojan.TLS)
+		}
+	}
+}

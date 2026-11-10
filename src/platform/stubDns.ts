@@ -93,6 +93,12 @@ export function checkDnsSettings(s: Settings): void {
   if (s.latencyUrl && !/^https?:\/\//.test(s.latencyUrl)) throw invalid(`the delay test asks for an http:// or https:// address, not "${s.latencyUrl}"`)
   if (!Number.isInteger(s.latencyTimeout) || s.latencyTimeout < 500 || s.latencyTimeout > 30000) throw invalid('latencyTimeout must be from 500 to 30000 ms')
   if (!Number.isInteger(s.latencyConcurrency) || s.latencyConcurrency < 1 || s.latencyConcurrency > 64) throw invalid('latencyConcurrency must be from 1 to 64')
+  // As validateProtocols in core/engine/protocols.go, the formats of QUIC left to the core.
+  if (!['smux', 'yamux', 'h2mux'].includes(s.muxProtocol)) throw invalid(`muxProtocol must be smux, yamux or h2mux, not "${s.muxProtocol}"`)
+  if (!Number.isInteger(s.muxConcurrency) || s.muxConcurrency < 1 || s.muxConcurrency > 128) throw invalid(`muxConcurrency must be from 1 to 128, not ${s.muxConcurrency}`)
+  if (s.spoofDefault && !s.spoofSni.trim()) throw invalid('a forged handshake by default needs the name to forge')
+  const packet = s.quicInitialPacketSize
+  if (s.quicMaxStreams < 0 || packet < 0 || (packet !== 0 && (packet < 1200 || packet > 65000))) throw invalid('the streams are none or more, the initial packet from 1200 to 65000 bytes')
   // As validateWARP in core/engine/warp.go, the formats left to the core.
   if (!['wireguard', 'masque'].includes(s.warpMode)) throw invalid(`warpMode must be wireguard or masque, not "${s.warpMode}"`)
   const device = s.warpMode === 'masque' ? s.warpMasque : s.warpWireGuard

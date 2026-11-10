@@ -158,7 +158,7 @@ func queryIDs(store *serverStore, query ServersQuery) []string {
 
 // testInput gives the servers of a test the bridges to Xray they need and the addresses of their names.
 func (e *Engine) testInput(ctx context.Context, servers []config.TestServer, settings Settings) config.TestInput {
-	in := config.TestInput{RealityOnXray: settings.RealityOnXray}
+	in := config.TestInput{RealityOnXray: settings.RealityOnXray, Tuning: tuningOf(settings)}
 	if iface := netmon.DefaultInterface(); iface != nil {
 		in.Interface = iface.Name
 	}

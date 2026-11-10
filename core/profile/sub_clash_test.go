@@ -221,7 +221,7 @@ func TestClashProxies(t *testing.T) {
 				TLS: TLS{Enabled: true, ServerName: "h2.example.com", CertificateSHA256: []string{testSS2022Key},
 					ECH: ECH{Enabled: true, Config: []string{echPEMBegin, "AEX+DQBBpQAgACB", echPEMEnd}}},
 				Transport: Transport{Type: TransportHTTP, Host: "h2.example.com,h2b.example.com", Path: "/h2"},
-				Multiplex: Multiplex{Enabled: true, Protocol: "h2mux", MaxStreams: 8, Padding: true},
+				Multiplex: Multiplex{Mode: SwitchOn, Protocol: "h2mux", MaxStreams: 8, Padding: true},
 			}},
 		},
 		{
@@ -291,7 +291,7 @@ func TestClashProxies(t *testing.T) {
       min-streams: -1
 `,
 			want: Profile{Type: TypeVMess, Name: "Mux", Server: "mux.example.com", ServerPort: 443, VMess: &VMess{
-				UUID: testUUID, Security: "auto", Multiplex: Multiplex{Enabled: true, Protocol: "yamux", MaxConnections: 4},
+				UUID: testUUID, Security: "auto", Multiplex: Multiplex{Mode: SwitchOn, Protocol: "yamux", MaxConnections: 4},
 			}},
 		},
 		{
@@ -359,7 +359,7 @@ func TestClashProxies(t *testing.T) {
 `,
 			want: Profile{Type: TypeShadowsocks, Name: "2022", Server: "ss.example.com", ServerPort: 443, Shadowsocks: &Shadowsocks{
 				Method: "2022-blake3-aes-256-gcm", Password: testSS2022Key,
-				Multiplex: Multiplex{Enabled: true, Protocol: "smux", MaxConnections: 4, MinStreams: 4},
+				Multiplex: Multiplex{Mode: SwitchOn, Protocol: "smux", MaxConnections: 4, MinStreams: 4},
 			}},
 		},
 		{

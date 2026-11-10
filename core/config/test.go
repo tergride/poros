@@ -29,6 +29,8 @@ type TestInput struct {
 	// for Xray and sing-box alike.
 	Interface string
 	Resolved  map[string]netip.Addr
+	// Tuning is what the settings add to the servers, as for a connection, without a forged handshake.
+	Tuning Tuning
 }
 
 // TestConfigs measure servers: an outbound per server under its tag, in sing-box or behind a bridge to Xray.
@@ -55,7 +57,7 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 		var entry *xrayEntry
 		if xrayServer := Entry(server.Server, server.Links); RunsOnXray(xrayServer, in.RealityOnXray) {
 			tag := entryTag(server.Server, server.Tag)
-			outbound, err := xrayVLESS(xrayServer, tag, in.Interface, in.Resolved)
+			outbound, err := xrayVLESS(in.Tuning.onXray(xrayServer), tag, in.Interface, in.Resolved)
 			if err != nil {
 				configs.Failed[server.Tag] = err
 				continue
@@ -64,7 +66,7 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 			b := bridgeOutbound(tag, server.Bridge)
 			bridge = &b
 		}
-		built, err := serverParts(server.Server, server.Links, server.Tag, bridge, false)
+		built, err := serverParts(server.Server, server.Links, server.Tag, bridge, in.Tuning.forTest())
 		if err != nil {
 			configs.Failed[server.Tag] = err
 			continue

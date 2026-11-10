@@ -242,6 +242,7 @@
     "tryWithout": "Try without rights",
     "restart": "Restart with rights",
     "failed": "TUN did not start without administrator rights.",
+    "spoofFailed": "TLS spoofing did not start without administrator rights, which its WinDivert driver needs.",
     "useSystemShort": "Use System",
     "killSwitchTitle": "The kill switch with TUN needs administrator rights",
     "killSwitchText": "In the Always mode Poros keeps TUN up even without a connection, so that VPN traffic does not go around the server. TUN creates a network adapter in Windows, which only an administrator may do.",
@@ -311,7 +312,8 @@
       "help": "Help",
       "inbound": "Inbound",
       "tests": "Tests",
-      "tun": "TUN"
+      "tun": "TUN",
+      "protocols": "Protocols and bypass"
     },
     "presets": {
       "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy or a new preset.",
@@ -486,6 +488,22 @@
       "ranges": "Ranges",
       "bypassHint": "They go around the TUN unless a rule sends them through the server. One per line; loopback and broadcast always go around.",
       "bypassDefault": "Restore default ranges"
+    },
+    "protocols": {
+      "mux": "Multiplex",
+      "muxOn": "On by default",
+      "protocol": "Protocol",
+      "fragment": "TLS fragmentation",
+      "byDefault": "For profiles “as by default”",
+      "fragmentHint": "The ClientHello leaves in several TCP packets, and a blocker does not read the SNI. Not for REALITY and QUIC.",
+      "fingerprint": "Default fingerprint",
+      "noFingerprint": "None",
+      "spoof": "TLS spoofing",
+      "method": "Method",
+      "coreMethod": "The core’s default",
+      "spoofHint": "Needs administrator rights, the WinDivert driver. Only for servers with a name in the SNI.",
+      "quic": "HTTP/2 and QUIC",
+      "quicHint": "For Hysteria, Hysteria2, TUIC and MASQUE. Empty is the core’s own."
     }
   },
   "linkPreset": {
@@ -742,6 +760,7 @@
     "no_server": "no server is chosen",
     "server_unsupported": "Poros cannot connect to this server",
     "needs_elevation": "TUN needs administrator rights",
+    "spoof_needs_elevation": "TLS spoofing needs administrator rights",
     "kill_switch_needs_elevation": "the kill switch needs administrator rights",
     "logon_task_needs_elevation": "rights at autostart need administrator rights",
     "logon_task_failed": "Windows did not create the Task Scheduler task",
@@ -1171,10 +1190,13 @@
         "echServerName": "ECH query name",
         "disableSni": "Do not send SNI",
         "minVersion": "TLS at least",
-        "maxVersion": "TLS at most"
+        "maxVersion": "TLS at most",
+        "fragment": "Fragmentation",
+        "spoof": "TLS spoofing",
+        "spoofSni": "Spoof SNI"
       },
       "mux": {
-        "enabled": "Multiplex",
+        "mode": "Multiplex",
         "protocol": "Protocol",
         "maxConnections": "At most connections",
         "minStreams": "At least streams",
@@ -1189,7 +1211,8 @@
         "flow": "None"
       },
       "mux": {
-        "protocol": "Default"
+        "protocol": "As by default",
+        "mode": "As by default"
       },
       "openconnect": {
         "flavor": "Cisco AnyConnect"
@@ -1215,10 +1238,12 @@
         "xhttpMode": "Auto"
       },
       "tls": {
-        "fingerprint": "None",
+        "fingerprint": "As by default",
         "minVersion": "Auto",
         "maxVersion": "Auto",
-        "security": "None"
+        "security": "None",
+        "fragment": "As by default",
+        "spoof": "As by default"
       }
     },
     "choice": {
@@ -1253,6 +1278,22 @@
           "pulse": "Pulse Secure",
           "nc": "Juniper Network Connect"
         }
+      },
+      "mux": {
+        "mode": {
+          "on": "On",
+          "off": "Off"
+        }
+      },
+      "tls": {
+        "fragment": {
+          "on": "On",
+          "off": "Off"
+        },
+        "spoof": {
+          "on": "On",
+          "off": "Off"
+        }
       }
     },
     "option": {
@@ -1275,7 +1316,10 @@
         "alpn": "Split by commas: h2, http/1.1",
         "certificatePin": "SHA-256 of the certificate in base64, split by commas",
         "publicKeyPin": "SHA-256 of the server key in base64, split by commas",
-        "echConfig": "Empty asks DNS for it"
+        "echConfig": "Empty asks DNS for it",
+        "spoof": "Needs administrator rights",
+        "spoofSni": "Empty takes the one of “Protocols and bypass”",
+        "disableSni": "TLS spoofing does not work without the SNI."
       },
       "wireguard": {
         "address": "Split by commas: 172.16.0.2/32, fd01::2/128",

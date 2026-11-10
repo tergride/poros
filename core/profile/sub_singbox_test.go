@@ -91,7 +91,7 @@ func TestSingBoxOutbound(t *testing.T) {
 					UTLS: UTLS{Enabled: true, Fingerprint: "chrome"}},
 				Transport: Transport{Type: TransportHTTPUpgrade, Host: "cdn.example.com", Path: "/up",
 					Headers: map[string]string{"X-Forwarded-For": "198.51.100.1"}},
-				Multiplex: Multiplex{Enabled: true, Protocol: "h2mux", MaxStreams: 8, Padding: true},
+				Multiplex: Multiplex{Mode: SwitchOn, Protocol: "h2mux", MaxStreams: 8, Padding: true},
 			}},
 		},
 		{
@@ -118,7 +118,7 @@ func TestSingBoxOutbound(t *testing.T) {
 			want: Profile{Type: TypeTrojan, Server: "tr.example.com", ServerPort: 443, Trojan: &Trojan{
 				Password: "p@ss:w0rd",
 				TLS: TLS{Enabled: true, ServerName: "tr.example.com", MinVersion: "1.3", MaxVersion: "1.3",
-					CertificateSHA256: []string{testSS2022Key}, CertificatePublicKeySHA256: []string{testSS2022Key},
+					CertificateSHA256: []string{testSS2022Key}, CertificatePublicKeySHA256: []string{testSS2022Key}, Fragment: SwitchOn,
 					ECH: ECH{Enabled: true, Config: []string{echPEMBegin, "AEX+DQBBpQAgACB", echPEMEnd}, QueryServerName: "cloudflare-ech.com"}},
 				Transport: Transport{Type: TransportQUIC},
 			}},
@@ -142,7 +142,7 @@ func TestSingBoxOutbound(t *testing.T) {
 			name: "trojan without tls stays plain",
 			json: `{"type": "trojan", "server": "t.example.com", "server_port": 8080, "password": "secret", "multiplex": {"enabled": true}}`,
 			want: Profile{Type: TypeTrojan, Server: "t.example.com", ServerPort: 8080, Trojan: &Trojan{
-				Password: "secret", Multiplex: Multiplex{Enabled: true},
+				Password: "secret", Multiplex: Multiplex{Mode: SwitchOn},
 			}},
 		},
 		{
@@ -154,7 +154,7 @@ func TestSingBoxOutbound(t *testing.T) {
 			tag: "SS 2022",
 			want: Profile{Type: TypeShadowsocks, Server: "ss.example.com", ServerPort: 443, Shadowsocks: &Shadowsocks{
 				Method: "2022-blake3-aes-256-gcm", Password: testSS2022Key, UDPOverTCP: true,
-				Multiplex: Multiplex{Enabled: true, Protocol: "smux", MaxConnections: 4, MinStreams: 4},
+				Multiplex: Multiplex{Mode: SwitchOn, Protocol: "smux", MaxConnections: 4, MinStreams: 4},
 			}},
 		},
 		{
@@ -354,6 +354,10 @@ func TestSingBoxOutboundRejects(t *testing.T) {
 			"tls": {"enabled": true, "insecure": true, "certificate_sha256": ["deadbeef"]}}`, false, `pin "deadbeef"`},
 		{"bad key pin", `{"type": "anytls", "tag": "x", "server": "a.example.com", "server_port": 443, "password": "s3cret",
 			"tls": {"certificate_public_key_sha256": "abc="}}`, false, `pin "abc="`},
+		{"spoof without sni", `{"type": "trojan", "tag": "x", "server": "t.example.com", "server_port": 443, "password": "s3cret",
+			"tls": {"enabled": true, "disable_sni": true, "spoof": "www.example.com"}}`, false, "disable_sni"},
+		{"spoof of the real name", `{"type": "trojan", "tag": "x", "server": "t.example.com", "server_port": 443, "password": "s3cret",
+			"tls": {"enabled": true, "server_name": "www.example.com", "spoof": "www.example.com"}}`, false, "differ"},
 		{"tls versions the wrong way round", `{"type": "trojan", "tag": "x", "server": "t.example.com", "server_port": 443,
 			"password": "s3cret", "tls": {"enabled": true, "min_version": "1.3", "max_version": "1.2"}}`, false, "minimum TLS version"},
 		{"hops too fast", `{"type": "hysteria2", "tag": "x", "server": "hy.example.com", "server_ports": ["20000:30000"],

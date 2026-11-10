@@ -285,7 +285,7 @@ func linkHeaderText(headers map[string]string, separator string) string {
 }
 
 func (w *linkWriter) writeMultiplex(m Multiplex) {
-	if !m.Enabled {
+	if m.Mode != SwitchOn {
 		return
 	}
 	w.set("mux", "1")

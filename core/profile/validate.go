@@ -45,6 +45,11 @@ func (p Profile) Validate() error {
 	if strings.TrimSpace(p.Server) == "" {
 		return errors.New("the server address is missing")
 	}
+	for _, m := range []*Multiplex{p.muxOf(TypeVLESS), p.muxOf(TypeVMess), p.muxOf(TypeTrojan), p.muxOf(TypeShadowsocks)} {
+		if m != nil && m.Mode != "" && m.Mode != SwitchOn && m.Mode != SwitchOff {
+			return fmt.Errorf("the multiplex must be on, off or empty, not %q", m.Mode)
+		}
+	}
 	if p.ServerPort < 1 || p.ServerPort > 65535 {
 		return fmt.Errorf("the server port %d is not from 1 to 65535", p.ServerPort)
 	}
@@ -217,6 +222,17 @@ func (t TLS) validate(transport string) error {
 	}
 	if t.MinVersion != "" && t.MaxVersion != "" && t.MinVersion > t.MaxVersion {
 		return errors.New("the minimum TLS version is above the maximum")
+	}
+	for name, value := range map[string]string{"fragment": t.Fragment, "spoof": t.Spoof} {
+		if value != "" && value != SwitchOn && value != SwitchOff {
+			return fmt.Errorf("the TLS %s must be on, off or empty, not %q", name, value)
+		}
+	}
+	if t.Spoof == SwitchOn && t.DisableSNI {
+		return errors.New("a forged TLS handshake needs the server name that disable_sni leaves out")
+	}
+	if t.Spoof == SwitchOn && t.SpoofSNI != "" && strings.EqualFold(t.SpoofSNI, t.ServerName) {
+		return errors.New("the forged server name must differ from the real one")
 	}
 	if !t.Reality.Enabled {
 		return nil
@@ -576,6 +592,23 @@ func (c *Custom) validate() error {
 		return fmt.Errorf("a %s outbound is no server", kind)
 	case strings.TrimSpace(head.Detour) != "":
 		return errors.New("Poros dials the custom outbound itself; to go through another server, make a chain")
+	}
+	return nil
+}
+
+// muxOf gives the multiplex of a profile of kind, nil for another kind.
+func (p Profile) muxOf(kind string) *Multiplex {
+	switch {
+	case p.Type != kind:
+		return nil
+	case p.VLESS != nil:
+		return &p.VLESS.Multiplex
+	case p.VMess != nil:
+		return &p.VMess.Multiplex
+	case p.Trojan != nil:
+		return &p.Trojan.Multiplex
+	case p.Shadowsocks != nil:
+		return &p.Shadowsocks.Multiplex
 	}
 	return nil
 }

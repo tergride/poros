@@ -99,13 +99,15 @@ func openConnectEndpoint(p profile.Profile, tag string) option.Endpoint {
 	}}
 }
 
-func masqueEndpoint(p profile.Profile, tag string) (option.Endpoint, error) {
+func masqueEndpoint(p profile.Profile, tag string, tune Tuning) (option.Endpoint, error) {
 	m := p.MASQUE
-	tls, err := singBoxTLS(m.TLS, m.Version == 0 || m.Version == 3, false)
+	tls, err := singBoxTLS(m.TLS, p.Server, m.Version == 0 || m.Version == 3, Tuning{})
 	if err != nil {
 		return option.Endpoint{}, err
 	}
 	return option.Endpoint{Type: C.TypeMASQUEClient, Tag: tag, Options: &option.MASQUEClientEndpointOptions{
+		HTTP2Options:          tune.QUIC.HTTP2Options,
+		HTTP3Options:          tune.QUIC,
 		ServerOptions:         option.ServerOptions{Server: ace(p.Server), ServerPort: uint16(p.ServerPort)},
 		MASQUEEndpointOptions: option.MASQUEEndpointOptions{MTU: uint32(m.MTU)},
 		// MASQUE refuses dials until its tunnel is up and tells no one when; on demand they wait for it instead.

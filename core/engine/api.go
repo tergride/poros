@@ -54,6 +54,27 @@ type Settings struct {
 	IPv6 bool `json:"ipv6"`
 	// RealityOnXray runs VLESS with REALITY over TCP and gRPC on Xray rather than sing-box.
 	RealityOnXray bool `json:"realityOnXray"`
+	// The defaults of profiles that leave a choice «As by default»: the multiplex (MuxProtocol smux, yamux or h2mux,
+	// MuxConcurrency streams a connection), split TLS handshakes, the uTLS fingerprint ("" none), and a handshake
+	// forged with SpoofSNI that the server drops by SpoofMethod ("" the core's). A forged handshake takes
+	// administrator rights.
+	MuxDefault         bool   `json:"muxDefault"`
+	MuxProtocol        string `json:"muxProtocol"`
+	MuxConcurrency     int    `json:"muxConcurrency"`
+	FragmentDefault    bool   `json:"fragmentDefault"`
+	FingerprintDefault string `json:"fingerprintDefault"`
+	SpoofDefault       bool   `json:"spoofDefault"`
+	SpoofSNI           string `json:"spoofSni"`
+	SpoofMethod        string `json:"spoofMethod"`
+	// QUIC and HTTP/2 of Hysteria, Hysteria2, TUIC and MASQUE: durations such as 30s, windows such as 8MB, "" and 0
+	// for the core's own.
+	QUICIdleTimeout       string `json:"quicIdleTimeout"`
+	QUICKeepAlive         string `json:"quicKeepAlive"`
+	QUICStreamWindow      string `json:"quicStreamWindow"`
+	QUICConnectionWindow  string `json:"quicConnectionWindow"`
+	QUICMaxStreams        int    `json:"quicMaxStreams"`
+	QUICInitialPacketSize int    `json:"quicInitialPacketSize"`
+	QUICDisablePMTUD      bool   `json:"quicDisablePmtud"`
 	// DNSRemote is the DNS server of traffic through the server that presets with «By default» take: "" is
 	// Google's DoH, otherwise https://, tls:// or a plain address. DNSDirect is that of direct traffic, past the
 	// server: "" is the system's.
@@ -1014,6 +1035,9 @@ const (
 	ReasonServerUnsupported = "server_unsupported"
 	// ReasonNeedsElevation is TUN in a core without administrator rights.
 	ReasonNeedsElevation = "needs_elevation"
+	// ReasonSpoofNeedsElevation is a forged TLS handshake in a core without administrator rights: the driver that
+	// sends it takes them.
+	ReasonSpoofNeedsElevation = "spoof_needs_elevation"
 	// ReasonKillSwitchNeedsElevation is the kill switch in a core without administrator rights.
 	ReasonKillSwitchNeedsElevation = "kill_switch_needs_elevation"
 	// ReasonLogonTaskNeedsElevation is rights at sign-in asked of a core without administrator rights.

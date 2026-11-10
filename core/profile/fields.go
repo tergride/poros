@@ -157,7 +157,12 @@ func tlsFields(prefix string, mode tlsMode, reality bool) []Field {
 	}
 	fields = append(fields, on(field(prefix+".server_name", "tls.serverName", FieldText, TabSecurity)))
 	if mode != tlsQUIC {
-		fields = append(fields, on(field(prefix+".utls", "tls.fingerprint", FieldUTLS, TabSecurity).options(fingerprints...)))
+		fields = append(fields,
+			on(field(prefix+".utls", "tls.fingerprint", FieldUTLS, TabSecurity).options(fingerprints...)),
+			plain(on(field(prefix+".fragment", "tls.fragment", FieldSelect, TabSecurity).options("", SwitchOn, SwitchOff))),
+			plain(on(field(prefix+".spoof", "tls.spoof", FieldSelect, TabAdvanced).options("", SwitchOn, SwitchOff))),
+			plain(on(field(prefix+".spoof_sni", "tls.spoofSni", FieldText, TabAdvanced).unless(prefix+".spoof", SwitchOff))),
+		)
 	}
 	if reality {
 		for _, f := range []Field{
@@ -210,7 +215,7 @@ func transportFields(prefix string, xhttp bool) []Field {
 }
 
 func muxFields(prefix string) []Field {
-	fields := []Field{field(prefix+".enabled", "mux.enabled", FieldBool, TabMux)}
+	fields := []Field{field(prefix+".mode", "mux.mode", FieldSelect, TabMux).options("", SwitchOn, SwitchOff)}
 	for _, f := range []Field{
 		field(prefix+".protocol", "mux.protocol", FieldSelect, TabMux).options("", "smux", "yamux", "h2mux"),
 		field(prefix+".max_connections", "mux.maxConnections", FieldNumber, TabMux),
@@ -218,7 +223,7 @@ func muxFields(prefix string) []Field {
 		field(prefix+".max_streams", "mux.maxStreams", FieldNumber, TabMux),
 		field(prefix+".padding", "mux.padding", FieldBool, TabMux),
 	} {
-		fields = append(fields, f.when(prefix+".enabled"))
+		fields = append(fields, f.unless(prefix+".mode", SwitchOff))
 	}
 	return fields
 }

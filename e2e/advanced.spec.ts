@@ -197,6 +197,13 @@ test('a new profile comes from «New profile», and the editor greys out what do
   await expect(editor.getByTestId('profile-chip')).toHaveText('VLESS · REALITY')
   await shot(page, 'adv-profile-editor')
 
+  // The multiplex follows «Protocols and bypass» unless the profile turns it on or off; off, its settings go.
+  await editor.getByRole('tab', { name: 'Мультиплекс' }).click()
+  await expect(editor.getByRole('combobox', { name: 'Мультиплекс' })).toHaveText('Как по умолчанию')
+  await editor.getByRole('combobox', { name: 'Мультиплекс' }).click()
+  await page.getByRole('option', { name: 'Выключен' }).click()
+  await expect(editor.locator('[data-field="vless.multiplex.protocol"]')).toBeHidden()
+
   // The JSON tab shows the profile and points at the line of a mistake.
   await editor.getByRole('tab', { name: 'JSON' }).click()
   await expect(editor.getByTestId('profile-json')).toHaveValue(/"uuid": "8f3a2c1e/)
@@ -586,4 +593,24 @@ test('«TUN» sets the adapter, its addresses and the ranges it keeps out, with 
   await page.getByTestId('tun-addresses-default').click()
   await expect(page.getByTestId('tun-ipv4')).toHaveValue('172.19.1.1/24')
   await expect(page.getByTestId('savebar')).toBeVisible()
+})
+
+test('«Protocols and bypass» sets what profiles «as by default» take', async ({ page }) => {
+  await toAdvanced(page)
+  await page.getByTestId('rail-settings').click()
+  await page.getByRole('link', { name: 'Протоколы и обход', exact: true }).click()
+  await expect(page).toHaveURL(/#\/adv\/settings\/protocols$/)
+  await expect(page.getByTestId('mux-concurrency')).toHaveValue('8')
+  await page.getByTestId('mux-default').click()
+  await page.getByTestId('fragment-default').click()
+  await page.getByTestId('fingerprint-default').click()
+  await page.getByRole('option', { name: 'chrome', exact: true }).click()
+  // A forged handshake by default needs the name it forges: the core refuses it without one.
+  await page.getByTestId('spoof-default').click()
+  await page.getByTestId('settings-save').click()
+  await expect(page.getByTestId('notice')).toContainText('Неверное значение')
+  await page.getByTestId('spoof-sni').fill('www.example.com')
+  await shot(page, 'adv-settings-protocols')
+  await page.getByTestId('settings-save').click()
+  await expect(page.getByTestId('savebar')).toBeHidden()
 })

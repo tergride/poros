@@ -1277,7 +1277,7 @@ func (p *clashProxy) multiplex() (Multiplex, error) {
 	if !o.Enabled {
 		return Multiplex{}, nil
 	}
-	m := Multiplex{Enabled: true, Padding: bool(o.Padding)}
+	m := Multiplex{Mode: SwitchOn, Padding: bool(o.Padding)}
 	if protocol := strings.ToLower(strings.TrimSpace(string(o.Protocol))); slices.Contains(multiplexProtocols, protocol) {
 		m.Protocol = protocol
 	}

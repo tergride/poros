@@ -556,7 +556,7 @@ func linkMultiplex(q linkQuery) Multiplex {
 	if !linkFlag(q.get("mux")) {
 		return Multiplex{}
 	}
-	m := Multiplex{Enabled: true, Padding: linkFlag(q.get("mux_padding"))}
+	m := Multiplex{Mode: SwitchOn, Padding: linkFlag(q.get("mux_padding"))}
 	if protocol := q.trimmed("mux_protocol"); slices.Contains(multiplexProtocols, protocol) {
 		m.Protocol = protocol
 	}

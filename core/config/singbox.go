@@ -1,6 +1,7 @@
 package config
 
 import (
+	"cmp"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -30,7 +31,7 @@ const tagShadowTLS = "-shadowtls"
 
 // singBoxServer turns a server into what sing-box runs it with under tag: an endpoint for WireGuard, Shadowsocks and
 // its ShadowTLS outbound, one outbound for the rest.
-func singBoxServer(p profile.Profile, tag string, hardened bool) (boxServer, error) {
+func singBoxServer(p profile.Profile, tag string, tune Tuning) (boxServer, error) {
 	switch {
 	case p.Custom != nil:
 		return customServer(p.Custom.JSON, tag)
@@ -47,17 +48,17 @@ func singBoxServer(p profile.Profile, tag string, hardened bool) (boxServer, err
 	case p.OpenConnect != nil:
 		return boxServer{endpoints: []option.Endpoint{openConnectEndpoint(p, tag)}}, nil
 	case p.MASQUE != nil:
-		endpoint, err := masqueEndpoint(p, tag)
+		endpoint, err := masqueEndpoint(p, tag, tune)
 		return boxServer{endpoints: []option.Endpoint{endpoint}}, err
 	case p.Shadowsocks != nil && p.Shadowsocks.ShadowTLS.Version > 0:
-		ss, err := singBoxOutbound(p, tag, false)
+		ss, err := singBoxOutbound(p, tag, tune.inner())
 		if err != nil {
 			return boxServer{}, err
 		}
 		s := p.Shadowsocks.ShadowTLS
 		// ShadowTLS always runs TLS: its settings only name the site and how to greet it.
 		s.TLS.Enabled = true
-		tls, err := singBoxTLS(s.TLS, false, false)
+		tls, err := singBoxTLS(s.TLS, p.Server, false, Tuning{})
 		if err != nil {
 			return boxServer{}, err
 		}
@@ -70,7 +71,7 @@ func singBoxServer(p profile.Profile, tag string, hardened bool) (boxServer, err
 		}}
 		return boxServer{outbounds: []option.Outbound{ss, shadowTLS}}, nil
 	}
-	outbound, err := singBoxOutbound(p, tag, hardened)
+	outbound, err := singBoxOutbound(p, tag, tune)
 	return boxServer{outbounds: []option.Outbound{outbound}}, err
 }
 
@@ -107,14 +108,14 @@ func wireGuardEndpoint(p profile.Profile, tag string) (option.Endpoint, error) {
 	}}, nil
 }
 
-// singBoxOutbound turns a server into a sing-box outbound under tag. hardened fragments the TLS handshake.
-func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbound, error) {
+// singBoxOutbound turns a server into a sing-box outbound under tag, with the defaults of tune.
+func singBoxOutbound(p profile.Profile, tag string, tune Tuning) (option.Outbound, error) {
 	server := option.ServerOptions{Server: ace(p.Server), ServerPort: uint16(p.ServerPort)}
 	var options any
 	switch p.Type {
 	case profile.TypeVLESS:
 		v := p.VLESS
-		tls, transport, err := singBoxStream(v.TLS, v.Transport, hardened)
+		tls, transport, err := singBoxStream(v.TLS, p.Server, v.Transport, tune)
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -125,13 +126,13 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 			UUID:                        v.UUID,
 			Flow:                        v.Flow,
 			OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: tls},
-			Multiplex:                   singBoxMultiplex(v.Multiplex),
+			Multiplex:                   singBoxMultiplex(v.Multiplex, tune, v.Flow == ""),
 			Transport:                   transport,
 			PacketEncoding:              &encoding,
 		}
 	case profile.TypeVMess:
 		v := p.VMess
-		tls, transport, err := singBoxStream(v.TLS, v.Transport, hardened)
+		tls, transport, err := singBoxStream(v.TLS, p.Server, v.Transport, tune)
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -146,12 +147,12 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 			AlterId:                     v.AlterID,
 			OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: tls},
 			PacketEncoding:              v.PacketEncoding,
-			Multiplex:                   singBoxMultiplex(v.Multiplex),
+			Multiplex:                   singBoxMultiplex(v.Multiplex, tune, true),
 			Transport:                   transport,
 		}
 	case profile.TypeTrojan:
 		t := p.Trojan
-		tls, transport, err := singBoxStream(t.TLS, t.Transport, hardened)
+		tls, transport, err := singBoxStream(t.TLS, p.Server, t.Transport, tune)
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -159,7 +160,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 			ServerOptions:               server,
 			Password:                    t.Password,
 			OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: tls},
-			Multiplex:                   singBoxMultiplex(t.Multiplex),
+			Multiplex:                   singBoxMultiplex(t.Multiplex, tune, true),
 			Transport:                   transport,
 		}
 	case profile.TypeShadowsocks:
@@ -170,7 +171,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 			Password:      s.Password,
 			Plugin:        s.Plugin,
 			PluginOptions: s.PluginOpts,
-			Multiplex:     singBoxMultiplex(s.Multiplex),
+			Multiplex:     singBoxMultiplex(s.Multiplex, tune, true),
 		}
 		if s.UDPOverTCP {
 			ss.UDPOverTCP = &option.UDPOverTCPOptions{Enabled: true}
@@ -178,7 +179,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 		options = ss
 	case profile.TypeHysteria2:
 		h := p.Hysteria2
-		tls, err := singBoxTLS(h.TLS, true, false)
+		tls, err := singBoxTLS(h.TLS, p.Server, true, tune)
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -187,6 +188,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 			return option.Outbound{}, err
 		}
 		hy := &option.Hysteria2OutboundOptions{
+			QUICOptions:                 tune.QUIC,
 			ServerOptions:               server,
 			ServerPorts:                 h.ServerPorts,
 			HopInterval:                 hop,
@@ -206,7 +208,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 		options = hy
 	case profile.TypeHysteria:
 		h := p.Hysteria
-		tls, err := singBoxTLS(h.TLS, true, false)
+		tls, err := singBoxTLS(h.TLS, p.Server, true, tune)
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -215,6 +217,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 			return option.Outbound{}, err
 		}
 		options = &option.HysteriaOutboundOptions{
+			QUICOptions:                 tune.QUIC,
 			ServerOptions:               server,
 			ServerPorts:                 h.ServerPorts,
 			HopInterval:                 hop,
@@ -226,7 +229,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 		}
 	case profile.TypeNaive:
 		n := p.Naive
-		tls, err := singBoxTLS(n.TLS, n.QUIC, false)
+		tls, err := singBoxTLS(n.TLS, p.Server, n.QUIC, Tuning{})
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -272,7 +275,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 		options = snell
 	case profile.TypeTUIC:
 		t := p.TUIC
-		tls, err := singBoxTLS(t.TLS, true, false)
+		tls, err := singBoxTLS(t.TLS, p.Server, true, tune)
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -281,6 +284,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 			return option.Outbound{}, err
 		}
 		options = &option.TUICOutboundOptions{
+			QUICOptions:                 tune.QUIC,
 			ServerOptions:               server,
 			UUID:                        t.UUID,
 			Password:                    t.Password,
@@ -299,7 +303,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 		options = &option.SOCKSOutboundOptions{ServerOptions: server, Version: version, Username: s.Username, Password: s.Password}
 	case profile.TypeHTTP:
 		h := p.HTTP
-		tls, err := singBoxTLS(h.TLS, false, hardened)
+		tls, err := singBoxTLS(h.TLS, p.Server, false, tune)
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -313,7 +317,7 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 		}
 	case profile.TypeAnyTLS:
 		a := p.AnyTLS
-		tls, err := singBoxTLS(a.TLS, false, hardened)
+		tls, err := singBoxTLS(a.TLS, p.Server, false, tune)
 		if err != nil {
 			return option.Outbound{}, err
 		}
@@ -339,8 +343,8 @@ func singBoxOutbound(p profile.Profile, tag string, hardened bool) (option.Outbo
 	return option.Outbound{Type: p.Type, Tag: tag, Options: options}, nil
 }
 
-func singBoxStream(t profile.TLS, transport profile.Transport, hardened bool) (*option.OutboundTLSOptions, *option.V2RayTransportOptions, error) {
-	tls, err := singBoxTLS(t, transport.Type == profile.TransportQUIC, hardened)
+func singBoxStream(t profile.TLS, server string, transport profile.Transport, tune Tuning) (*option.OutboundTLSOptions, *option.V2RayTransportOptions, error) {
+	tls, err := singBoxTLS(t, server, transport.Type == profile.TransportQUIC, tune)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -348,8 +352,9 @@ func singBoxStream(t profile.TLS, transport profile.Transport, hardened bool) (*
 	return tls, v2ray, err
 }
 
-// singBoxTLS builds the TLS of a server; quic is TLS inside QUIC, where neither uTLS nor fragments exist.
-func singBoxTLS(t profile.TLS, quic, hardened bool) (*option.OutboundTLSOptions, error) {
+// singBoxTLS builds the TLS of a server at the address server; quic is TLS inside QUIC, where neither uTLS,
+// fragments nor a forged handshake exist. tune gives what the profile leaves to the defaults.
+func singBoxTLS(t profile.TLS, server string, quic bool, tune Tuning) (*option.OutboundTLSOptions, error) {
 	if !t.Enabled {
 		return nil, nil
 	}
@@ -361,9 +366,17 @@ func singBoxTLS(t profile.TLS, quic, hardened bool) (*option.OutboundTLSOptions,
 		ALPN:       t.ALPN,
 		MinVersion: t.MinVersion,
 		MaxVersion: t.MaxVersion,
-		Fragment:   hardened && !quic && !t.Reality.Enabled,
+		Fragment:   !quic && !t.Reality.Enabled && (tune.Hardened || t.Fragment == profile.SwitchOn || (t.Fragment == "" && tune.Fragment)),
 	}
 	var err error
+	if !quic {
+		if options.Spoof, err = tune.spoofSNI(t, server); err != nil {
+			return nil, err
+		}
+		if options.Spoof != "" {
+			options.SpoofMethod = tune.SpoofMethod
+		}
+	}
 	if options.CertificateSHA256, err = decodePins(t.CertificateSHA256); err != nil {
 		return nil, err
 	}
@@ -379,6 +392,8 @@ func singBoxTLS(t profile.TLS, quic, hardened bool) (*option.OutboundTLSOptions,
 			options.UTLS = &option.OutboundUTLSOptions{Enabled: true, Fingerprint: t.UTLS.Fingerprint}
 		case t.Reality.Enabled:
 			options.UTLS = &option.OutboundUTLSOptions{Enabled: true, Fingerprint: realityFingerprint}
+		case tune.Fingerprint != "":
+			options.UTLS = &option.OutboundUTLSOptions{Enabled: true, Fingerprint: tune.Fingerprint}
 		}
 	}
 	if t.Reality.Enabled {
@@ -436,18 +451,24 @@ func singBoxTransport(t profile.Transport) (*option.V2RayTransportOptions, error
 	return nil, fmt.Errorf("sing-box has no %q transport", t.Type)
 }
 
-func singBoxMultiplex(m profile.Multiplex) *option.OutboundMultiplexOptions {
-	if !m.Enabled {
+// singBoxMultiplex builds the multiplex of a server; a profile that leaves it to the default takes tune's, which can
+// be only where the protocol allows it, as not with XTLS Vision.
+func singBoxMultiplex(m profile.Multiplex, tune Tuning, allowed bool) *option.OutboundMultiplexOptions {
+	if m.Mode == profile.SwitchOff || (m.Mode == "" && (!tune.Multiplex || !allowed)) {
 		return nil
 	}
-	return &option.OutboundMultiplexOptions{
+	options := &option.OutboundMultiplexOptions{
 		Enabled:        true,
-		Protocol:       m.Protocol,
+		Protocol:       cmp.Or(m.Protocol, tune.MuxProtocol),
 		MaxConnections: m.MaxConnections,
 		MinStreams:     m.MinStreams,
 		MaxStreams:     m.MaxStreams,
 		Padding:        m.Padding,
 	}
+	if m.MaxConnections == 0 && m.MinStreams == 0 && m.MaxStreams == 0 {
+		options.MaxStreams = tune.MuxStreams
+	}
+	return options
 }
 
 // httpHeader copies headers; a non-empty host becomes the Host header.

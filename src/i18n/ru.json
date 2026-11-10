@@ -242,6 +242,7 @@
     "tryWithout": "Попробовать без прав",
     "restart": "Перезапустить с правами",
     "failed": "TUN не запустился без прав администратора.",
+    "spoofFailed": "Подмена TLS не включилась без прав администратора: их требует драйвер WinDivert.",
     "useSystemShort": "Использовать System",
     "killSwitchTitle": "Для Kill switch с TUN нужны права администратора",
     "killSwitchText": "В режиме «Всегда» Poros держит TUN и без подключения, чтобы трафик VPN не уходил мимо сервера. TUN создаёт в Windows сетевой адаптер, а это разрешено только администратору.",
@@ -311,7 +312,8 @@
       "help": "Помощь",
       "inbound": "Входящие",
       "tests": "Тесты",
-      "tun": "TUN"
+      "tun": "TUN",
+      "protocols": "Протоколы и обход"
     },
     "presets": {
       "lead": "Пресет решает, какой трафик идёт через сервер, а какой напрямую. Встроенные пресеты не меняются: чтобы добавить свои настройки, создайте копию или новый пресет.",
@@ -486,6 +488,22 @@
       "ranges": "Диапазоны",
       "bypassHint": "Идут мимо TUN, если правило не ведёт их через сервер. По одному в строке; loopback и broadcast идут мимо всегда.",
       "bypassDefault": "Вернуть диапазоны"
+    },
+    "protocols": {
+      "mux": "Мультиплекс",
+      "muxOn": "Включён по умолчанию",
+      "protocol": "Протокол",
+      "fragment": "Фрагментация TLS",
+      "byDefault": "Для профилей «как по умолчанию»",
+      "fragmentHint": "ClientHello уходит несколькими TCP-пакетами, и блокировщик не читает SNI. Не для REALITY и QUIC.",
+      "fingerprint": "Fingerprint по умолчанию",
+      "noFingerprint": "Нет",
+      "spoof": "Подмена TLS",
+      "method": "Метод",
+      "coreMethod": "По умолчанию ядра",
+      "spoofHint": "Нужны права администратора, драйвер WinDivert. Только для серверов с именем в SNI.",
+      "quic": "HTTP/2 и QUIC",
+      "quicHint": "Для Hysteria, Hysteria2, TUIC и MASQUE. Пустое — значение ядра."
     }
   },
   "linkPreset": {
@@ -742,6 +760,7 @@
     "no_server": "сервер не выбран",
     "server_unsupported": "Poros не умеет подключаться к этому серверу",
     "needs_elevation": "для TUN нужны права администратора",
+    "spoof_needs_elevation": "для подмены TLS нужны права администратора",
     "kill_switch_needs_elevation": "для Kill switch нужны права администратора",
     "logon_task_needs_elevation": "чтобы давать права при автозапуске, нужны права администратора",
     "logon_task_failed": "Windows не создала задание в Планировщике",
@@ -1171,10 +1190,13 @@
         "echServerName": "Имя для запроса ECH",
         "disableSni": "Не отправлять SNI",
         "minVersion": "TLS не ниже",
-        "maxVersion": "TLS не выше"
+        "maxVersion": "TLS не выше",
+        "fragment": "Фрагментация",
+        "spoof": "Подмена TLS",
+        "spoofSni": "Spoof SNI"
       },
       "mux": {
-        "enabled": "Мультиплекс",
+        "mode": "Мультиплекс",
         "protocol": "Протокол",
         "maxConnections": "Соединений не больше",
         "minStreams": "Потоков не меньше",
@@ -1189,7 +1211,8 @@
         "flow": "Нет"
       },
       "mux": {
-        "protocol": "По умолчанию"
+        "protocol": "Как по умолчанию",
+        "mode": "Как по умолчанию"
       },
       "openconnect": {
         "flavor": "Cisco AnyConnect"
@@ -1215,10 +1238,12 @@
         "xhttpMode": "Авто"
       },
       "tls": {
-        "fingerprint": "Нет",
+        "fingerprint": "Как по умолчанию",
         "minVersion": "Авто",
         "maxVersion": "Авто",
-        "security": "Нет"
+        "security": "Нет",
+        "fragment": "Как по умолчанию",
+        "spoof": "Как по умолчанию"
       }
     },
     "choice": {
@@ -1253,6 +1278,22 @@
           "pulse": "Pulse Secure",
           "nc": "Juniper Network Connect"
         }
+      },
+      "mux": {
+        "mode": {
+          "on": "Включён",
+          "off": "Выключен"
+        }
+      },
+      "tls": {
+        "fragment": {
+          "on": "Вкл",
+          "off": "Выкл"
+        },
+        "spoof": {
+          "on": "Вкл",
+          "off": "Выкл"
+        }
       }
     },
     "option": {
@@ -1275,7 +1316,10 @@
         "alpn": "Через запятую: h2, http/1.1",
         "certificatePin": "SHA-256 сертификата в base64, через запятую",
         "publicKeyPin": "SHA-256 ключа сервера в base64, через запятую",
-        "echConfig": "Пусто — спросить у DNS"
+        "echConfig": "Пусто — спросить у DNS",
+        "spoof": "Нужны права администратора",
+        "spoofSni": "Пустое — из «Протоколов и обхода»",
+        "disableSni": "Без SNI подмена TLS не работает."
       },
       "wireguard": {
         "address": "Через запятую: 172.16.0.2/32, fd01::2/128",

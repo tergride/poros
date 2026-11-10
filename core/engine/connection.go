@@ -312,7 +312,11 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if settings.Tun && !elevated() {
 		return ConnectionState{}, failure(ReasonNeedsElevation, "TUN needs administrator rights")
 	}
+	tune := tuningOf(settings)
 	entry := config.Entry(server, links)
+	if !elevated() && tune.Spoofs(entry, settings.RealityOnXray) {
+		return ConnectionState{}, failure(ReasonSpoofNeedsElevation, "a forged TLS handshake needs administrator rights")
+	}
 	onXray := config.RunsOnXray(entry, settings.RealityOnXray)
 	log.Printf("connection: starting %s on %s, TUN %t, System %t, kill switch %s, IPv6 %t, preset %s, %d endpoints",
 		server.Type, coreName(onXray), settings.Tun, settings.SystemProxy, settings.KillSwitch, settings.IPv6, settings.Preset, len(endpoints))
@@ -366,6 +370,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		MixedPort:     port,
 		RealityOnXray: settings.RealityOnXray,
 		LogLevel:      singBoxLogLevel(settings.DebugLog),
+		Tuning:        tune,
 	}
 	if onXray {
 		if in.Bridge, err = newBridge(); err != nil {

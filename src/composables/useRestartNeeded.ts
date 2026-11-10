@@ -43,6 +43,21 @@ const builtWith = (s: Settings) =>
     s.warpMode,
     s.warpWireGuard,
     s.warpMasque,
+    s.muxDefault,
+    s.muxProtocol,
+    s.muxConcurrency,
+    s.fragmentDefault,
+    s.fingerprintDefault,
+    s.spoofDefault,
+    s.spoofSni,
+    s.spoofMethod,
+    s.quicIdleTimeout,
+    s.quicKeepAlive,
+    s.quicStreamWindow,
+    s.quicConnectionWindow,
+    s.quicMaxStreams,
+    s.quicInitialPacketSize,
+    s.quicDisablePmtud,
   ])
 
 /**

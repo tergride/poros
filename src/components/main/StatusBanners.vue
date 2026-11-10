@@ -14,7 +14,7 @@ import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 // The lines over the servers of the simple mode and under the connection bar of the advanced one: the core, a failed
-// TUN or kill switch, the connection's failure, an update, and what the last action did.
+// TUN, TLS spoofing or kill switch, the connection's failure, an update, and what the last action did.
 const core = useCoreStore()
 const ui = useUiStore()
 const connect = useConnect()
@@ -55,6 +55,7 @@ const connectionError = computed(
   () =>
     !!core.connection.error &&
     !connect.tunFailed &&
+    !connect.spoofFailed &&
     !killSwitchReasons.includes(core.connection.error) &&
     errorClosed.value !== `${core.connection.error}:${core.connection.since}:${core.connection.errorText}`,
 )
@@ -74,6 +75,13 @@ function closeConnectionError(): void {
       <Button size="sm" @click="attempt(() => connect.elevateAndConnect())">{{ t('admin.restart') }}</Button>
       <Button size="sm" @click="attempt(() => connect.useSystemInstead())">{{ t('admin.useSystemShort') }}</Button>
       <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="connect.tunFailed = false"><X /></Button>
+    </template>
+  </Banner>
+  <Banner v-if="connect.spoofFailed && !connect.tunFailed" data-testid="spoof-failed">
+    {{ t('admin.spoofFailed') }}
+    <template #actions>
+      <Button size="sm" @click="attempt(() => connect.elevateForSpoof())">{{ t('admin.restart') }}</Button>
+      <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="connect.spoofFailed = false"><X /></Button>
     </template>
   </Banner>
   <Banner v-if="connect.killSwitchFailed && !connect.tunFailed" data-testid="kill-switch-failed">

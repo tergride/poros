@@ -71,7 +71,7 @@ func downloadLeg(extra json.RawMessage) map[string]any {
 
 // buildXray writes the Xray config of a VLESS server behind the bridge, under tag.
 func buildXray(in Input, server profile.Profile, tag string) ([]byte, error) {
-	outbound, err := xrayVLESS(server, tag, in.Interface, in.Resolved)
+	outbound, err := xrayVLESS(in.Tuning.onXray(server), tag, in.Interface, in.Resolved)
 	if err != nil {
 		return nil, err
 	}

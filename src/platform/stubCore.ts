@@ -116,6 +116,7 @@ import {
   ReasonKillSwitchNeedsElevation,
   ReasonLogonTaskNeedsElevation,
   ReasonNeedsElevation,
+  ReasonSpoofNeedsElevation,
   ReasonNoServer,
   ReasonNoServers,
   ReasonNotFound,
@@ -164,6 +165,21 @@ const defaultSettings: Settings = {
   latencyUrl: '',
   latencyTimeout: 3000,
   latencyConcurrency: 10,
+  muxDefault: false,
+  muxProtocol: 'smux',
+  muxConcurrency: 8,
+  fragmentDefault: false,
+  fingerprintDefault: '',
+  spoofDefault: false,
+  spoofSni: '',
+  spoofMethod: '',
+  quicIdleTimeout: '',
+  quicKeepAlive: '',
+  quicStreamWindow: '',
+  quicConnectionWindow: '',
+  quicMaxStreams: 0,
+  quicInitialPacketSize: 0,
+  quicDisablePmtud: false,
   ipv6: true,
   realityOnXray: true,
   dnsRemote: '',
@@ -1055,6 +1071,10 @@ export function createStubCore(): CoreClient {
         }
         if (settings.tun && !status.elevated) {
           return { ...idle, error: ReasonNeedsElevation, errorText: 'TUN needs administrator rights' }
+        }
+        // The core asks only where a server takes the forged handshake; every stub server does.
+        if (settings.spoofDefault && !status.elevated) {
+          return { ...idle, error: ReasonSpoofNeedsElevation, errorText: 'a forged TLS handshake needs administrator rights' }
         }
         if (settings.killSwitch !== KillSwitchOff) arm()
         return {

@@ -55,7 +55,7 @@ func setDetour(options any, detour string) error {
 
 // chainServer builds the links of a chain, each under its own tag and dialled through the one before; the last takes
 // tag. entry is the bridge to the first link when Xray runs it.
-func chainServer(links []profile.Profile, tag string, entry *option.Outbound, hardened bool) (boxServer, error) {
+func chainServer(links []profile.Profile, tag string, entry *option.Outbound, tune Tuning) (boxServer, error) {
 	if len(links) < 2 {
 		return boxServer{}, errors.New("a chain needs at least two servers")
 	}
@@ -79,7 +79,11 @@ func chainServer(links []profile.Profile, tag string, entry *option.Outbound, ha
 			return boxServer{}, profile.Unsupported("a server only Xray runs can be only the first in a chain: Xray dials the network itself")
 		default:
 			// Only the first link meets the network, where fragments of the TLS handshake help.
-			part, err = singBoxServer(link, current, hardened && i == 0)
+			linkTune := tune
+			if i > 0 {
+				linkTune = tune.inner()
+			}
+			part, err = singBoxServer(link, current, linkTune)
 		}
 		if err != nil {
 			return boxServer{}, err
@@ -142,14 +146,14 @@ func entryTag(p profile.Profile, tag string) string {
 }
 
 // serverParts builds a server under tag: a chain from its links, the bridge to Xray, or what sing-box runs.
-func serverParts(p profile.Profile, links []profile.Profile, tag string, bridge *option.Outbound, hardened bool) (boxServer, error) {
+func serverParts(p profile.Profile, links []profile.Profile, tag string, bridge *option.Outbound, tune Tuning) (boxServer, error) {
 	switch {
 	case p.Type == profile.TypeChain:
-		return chainServer(links, tag, bridge, hardened)
+		return chainServer(links, tag, bridge, tune)
 	case bridge != nil:
 		return boxServer{outbounds: []option.Outbound{*bridge}}, nil
 	}
-	return singBoxServer(p, tag, hardened)
+	return singBoxServer(p, tag, tune)
 }
 
 // validateServer checks a server and, for a chain, its links: the servers it names, in its order.

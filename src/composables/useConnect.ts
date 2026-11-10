@@ -11,6 +11,7 @@ import {
   MethodConnectionStop,
   ReasonKillSwitchNeedsElevation,
   ReasonNeedsElevation,
+  ReasonSpoofNeedsElevation,
 } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
@@ -33,7 +34,7 @@ function rememberModesAsked(): void {
 }
 
 /** What the core needs administrator rights for. */
-export type RightsFor = 'tun' | 'killSwitch'
+export type RightsFor = 'tun' | 'killSwitch' | 'spoof'
 
 /**
  * Start, stop and the two switches, with what the mockups put around them: the question on the first Start, the
@@ -49,6 +50,8 @@ export const useConnect = defineStore('connect', () => {
   const adminThenConnect = ref(true)
   const tunFailed = ref(false)
   const killSwitchFailed = ref(false)
+  // A forged TLS handshake needs rights only for some servers, which the core alone knows: the start tells.
+  const spoofFailed = ref(false)
   // The modes were chosen in this run; they count for the next launches once a connection came of them, so that a
   // start that failed does not make the next launch connect on its own.
   const modesChosen = ref(false)
@@ -59,8 +62,10 @@ export const useConnect = defineStore('connect', () => {
     () => core.connection,
     (state) => {
       if (state.error === ReasonNeedsElevation) tunFailed.value = true
+      if (state.error === ReasonSpoofNeedsElevation) spoofFailed.value = true
       if (state.state === ConnectionRunning) {
         tunFailed.value = false
+        spoofFailed.value = false
         if (modesChosen.value) rememberModesAsked()
       }
     },
@@ -184,12 +189,14 @@ export const useConnect = defineStore('connect', () => {
     }
     tunFailed.value = false
     killSwitchFailed.value = false
+    spoofFailed.value = false
     return true
   }
 
   function failedWithout(reason: RightsFor | null): void {
     if (reason === 'tun') tunFailed.value = true
     if (reason === 'killSwitch') killSwitchFailed.value = true
+    if (reason === 'spoof') spoofFailed.value = true
   }
 
   /**
@@ -221,6 +228,11 @@ export const useConnect = defineStore('connect', () => {
   /** The TUN banner's restart: rights, then the connection. */
   async function elevateAndConnect(): Promise<void> {
     await elevate(true, 'tun')
+  }
+
+  /** The TLS spoofing banner's restart: rights, then the connection. */
+  async function elevateForSpoof(): Promise<void> {
+    await elevate(true, 'spoof')
   }
 
   /** The kill switch banner's restart: the block comes with the new core; a running connection starts again. */
@@ -317,6 +329,7 @@ export const useConnect = defineStore('connect', () => {
     adminFor,
     tunFailed,
     killSwitchFailed,
+    spoofFailed,
     start,
     autoStart,
     stop,
@@ -324,6 +337,7 @@ export const useConnect = defineStore('connect', () => {
     elevateFromDialog,
     elevateAndConnect,
     elevateForKillSwitch,
+    elevateForSpoof,
     tryWithoutRights,
     useSystemInstead,
     setTun,

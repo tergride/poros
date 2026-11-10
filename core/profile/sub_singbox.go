@@ -201,6 +201,8 @@ type singBoxTLSOptions struct {
 	MaxVersion                 string                 `json:"max_version"`
 	CertificateSHA256          singBoxList            `json:"certificate_sha256"`
 	CertificatePublicKeySHA256 singBoxList            `json:"certificate_public_key_sha256"`
+	Fragment                   bool                   `json:"fragment"`
+	Spoof                      string                 `json:"spoof"`
 	ECH                        *singBoxECHOptions     `json:"ech"`
 	UTLS                       *singBoxUTLSOptions    `json:"utls"`
 	Reality                    *singBoxRealityOptions `json:"reality"`
@@ -242,6 +244,12 @@ func singBoxTLS(o *singBoxTLSOptions, forced bool) (TLS, error) {
 		ALPN:       linkList(strings.Join(o.ALPN, ",")),
 		MinVersion: singBoxTLSVersion(o.MinVersion),
 		MaxVersion: singBoxTLSVersion(o.MaxVersion),
+	}
+	if o.Fragment {
+		t.Fragment = SwitchOn
+	}
+	if spoof := strings.TrimSpace(o.Spoof); spoof != "" {
+		t.Spoof, t.SpoofSNI = SwitchOn, spoof
 	}
 	var err error
 	if t.CertificateSHA256, err = linkCertificatePins(strings.Join(o.CertificateSHA256, ",")); err != nil {
@@ -368,7 +376,7 @@ func singBoxMultiplex(o *singBoxMultiplexOptions) Multiplex {
 		return Multiplex{}
 	}
 	m := Multiplex{
-		Enabled:        true,
+		Mode:           SwitchOn,
 		MaxConnections: singBoxCount(o.MaxConnections),
 		MinStreams:     singBoxCount(o.MinStreams),
 		MaxStreams:     singBoxCount(o.MaxStreams),

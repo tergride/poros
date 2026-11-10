@@ -28,6 +28,7 @@ async function prepare(settings: Parameters<ReturnType<typeof useCoreStore>['upd
     autoConnect: true,
     runAsAdmin: false,
     adminAutostart: false,
+    spoofDefault: false,
     ...settings,
   })
   return core
@@ -44,6 +45,29 @@ async function declining(core: ReturnType<typeof useCoreStore>, run: () => Promi
     client.elevate = elevate
   }
 }
+
+describe('TLS spoofing', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('offers rights after a start that forges a handshake without them, and connects with them', async () => {
+    const core = await prepare({ spoofDefault: true, spoofSni: 'www.example.com' })
+    const connect = useConnect()
+    await connect.start()
+    await settle()
+    expect(connect.spoofFailed).toBe(true)
+    expect(connect.tunFailed).toBe(false)
+
+    await declining(core, () => connect.elevateForSpoof())
+    expect(connect.spoofFailed).toBe(true)
+    expect(core.connection.state).toBe(ConnectionIdle)
+
+    await connect.elevateForSpoof()
+    await settle()
+    expect(core.status.elevated).toBe(true)
+    expect(core.connection.state).not.toBe(ConnectionIdle)
+    expect(connect.spoofFailed).toBe(false)
+  })
+})
 
 describe('rights at launch', () => {
   beforeEach(() => setActivePinia(createPinia()))

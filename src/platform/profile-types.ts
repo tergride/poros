@@ -607,10 +607,26 @@ export interface TLS {
    * CertificatePublicKeySHA256 pins the server key, base64 SHA-256 of the SubjectPublicKeyInfo.
    */
   certificate_public_key_sha256?: string[];
+  /**
+   * Fragment splits the handshake into TCP segments to slip past DPI; Spoof sends a forged handshake with SpoofSNI
+   * before the real one. Each is SwitchOn, SwitchOff or "" for the default of the settings; "" SpoofSNI takes the
+   * settings' one too.
+   */
+  fragment?: string;
+  spoof?: string;
+  spoof_sni?: string;
   utls?: UTLS;
   reality?: Reality;
   ech?: ECH;
 }
+/**
+ * The state of a setting a profile may leave to the default of the settings, "".
+ */
+export const SwitchOn = "on";
+/**
+ * The state of a setting a profile may leave to the default of the settings, "".
+ */
+export const SwitchOff = "off";
 export interface UTLS {
   enabled?: boolean;
   /**
@@ -695,7 +711,10 @@ export interface XHTTP {
   extra?: unknown;
 }
 export interface Multiplex {
-  enabled?: boolean;
+  /**
+   * Mode is SwitchOn, SwitchOff or "" for the default of the settings.
+   */
+  mode?: string;
   /**
    * Protocol is "smux", "yamux" or "h2mux".
    */

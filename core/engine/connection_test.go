@@ -21,23 +21,26 @@ import (
 // page behind them. TUN and the system proxy stay off, as on any check on the host.
 
 // freePort finds a port free on loopback for TCP and UDP both: Windows keeps ranges of UDP ports for itself that
-// are free for TCP, and a server on QUIC or WireGuard would fail to start on one of them.
+// are free for TCP, and a server on QUIC or WireGuard would fail to start on one of them. The port comes from UDP,
+// since Windows hands out TCP ports in a row and twenty of them can all fall into one such range.
 func freePort(t *testing.T) uint16 {
 	t.Helper()
-	for range 20 {
-		listener, err := net.Listen("tcp", "127.0.0.1:0")
+	var last error
+	for range 50 {
+		packet, err := net.ListenPacket("udp", "127.0.0.1:0")
 		if err != nil {
 			t.Fatal(err)
 		}
-		port := listener.Addr().(*net.TCPAddr).Port
-		packet, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
-		listener.Close()
+		port := packet.LocalAddr().(*net.UDPAddr).Port
+		listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		packet.Close()
 		if err == nil {
-			packet.Close()
+			listener.Close()
 			return uint16(port)
 		}
+		last = err
 	}
-	t.Fatal("no port is free for both TCP and UDP")
+	t.Fatalf("no port is free for both TCP and UDP: %v", last)
 	return 0
 }
 
@@ -290,5 +293,17 @@ func TestConnectionRefusals(t *testing.T) {
 	e.StartConnection()
 	if state := waitState(t, states); state.Error != ReasonNeedsElevation {
 		t.Errorf("TUN without rights: %+v", state)
+	}
+
+	// A forged handshake takes the rights of its driver, and only for a server it can forge for.
+	useServer(t, e, fmt.Sprintf("trojan://secret@127.0.0.1:%d?security=tls&sni=t.example.com#tls", freePort(t)))
+	settings, _ = e.Settings()
+	settings.Tun, settings.SpoofDefault, settings.SpoofSNI = false, true, "www.example.com"
+	if _, err = e.SetSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	e.StartConnection()
+	if state := waitState(t, states); state.Error != ReasonSpoofNeedsElevation {
+		t.Errorf("a forged handshake without rights: %+v", state)
 	}
 }

@@ -80,6 +80,31 @@ export interface Settings {
    */
   realityOnXray: boolean;
   /**
+   * The defaults of profiles that leave a choice «As by default»: the multiplex (MuxProtocol smux, yamux or h2mux,
+   * MuxConcurrency streams a connection), split TLS handshakes, the uTLS fingerprint ("" none), and a handshake
+   * forged with SpoofSNI that the server drops by SpoofMethod ("" the core's). A forged handshake takes
+   * administrator rights.
+   */
+  muxDefault: boolean;
+  muxProtocol: string;
+  muxConcurrency: number /* int */;
+  fragmentDefault: boolean;
+  fingerprintDefault: string;
+  spoofDefault: boolean;
+  spoofSni: string;
+  spoofMethod: string;
+  /**
+   * QUIC and HTTP/2 of Hysteria, Hysteria2, TUIC and MASQUE: durations such as 30s, windows such as 8MB, "" and 0
+   * for the core's own.
+   */
+  quicIdleTimeout: string;
+  quicKeepAlive: string;
+  quicStreamWindow: string;
+  quicConnectionWindow: string;
+  quicMaxStreams: number /* int */;
+  quicInitialPacketSize: number /* int */;
+  quicDisablePmtud: boolean;
+  /**
    * DNSRemote is the DNS server of traffic through the server that presets with «By default» take: "" is
    * Google's DoH, otherwise https://, tls:// or a plain address. DNSDirect is that of direct traffic, past the
    * server: "" is the system's.
@@ -1616,6 +1641,11 @@ export const ReasonServerUnsupported = "server_unsupported";
  * ReasonNeedsElevation is TUN in a core without administrator rights.
  */
 export const ReasonNeedsElevation = "needs_elevation";
+/**
+ * ReasonSpoofNeedsElevation is a forged TLS handshake in a core without administrator rights: the driver that
+ * sends it takes them.
+ */
+export const ReasonSpoofNeedsElevation = "spoof_needs_elevation";
 /**
  * ReasonKillSwitchNeedsElevation is the kill switch in a core without administrator rights.
  */

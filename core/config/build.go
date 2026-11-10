@@ -124,6 +124,8 @@ type Input struct {
 	RealityOnXray bool
 	// LogLevel is sing-box's; "" is info.
 	LogLevel string
+	// Tuning is what the settings add to the server; the preset may harden it.
+	Tuning Tuning
 	// DNS is how names resolve. A connection that refuses resolves them as their traffic goes even when the
 	// settings send all of them through the server: else no direct site would open.
 	DNS DNS
@@ -203,7 +205,9 @@ func Build(in Input) (Configs, error) {
 			bridge = &b
 		}
 		var err error
-		if proxy, err = serverParts(in.Server, in.Links, TagProxy, bridge, in.Preset.Hardened); err != nil {
+		tune := in.Tuning
+		tune.Hardened = tune.Hardened || in.Preset.Hardened
+		if proxy, err = serverParts(in.Server, in.Links, TagProxy, bridge, tune); err != nil {
 			return Configs{}, err
 		}
 	}
@@ -262,7 +266,7 @@ func endpointParts(preset Preset, profiles []profile.Profile) ([]option.Endpoint
 		if err := p.Validate(); err != nil {
 			return nil, fmt.Errorf("endpoint %d: %w", i+1, err)
 		}
-		parts, err := singBoxServer(p, EndpointTag(i), false)
+		parts, err := singBoxServer(p, EndpointTag(i), Tuning{})
 		if err != nil {
 			return nil, fmt.Errorf("endpoint %d: %w", i+1, err)
 		}

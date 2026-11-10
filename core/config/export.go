@@ -29,7 +29,7 @@ func Export(p profile.Profile, links []profile.Profile, realityOnXray bool) (onX
 		data, err = stdjson.MarshalIndent(outbound, "", "  ")
 		return true, data, err
 	}
-	built, err := serverParts(p, links, TagProxy, nil, false)
+	built, err := serverParts(p, links, TagProxy, nil, Tuning{})
 	if err != nil {
 		return false, nil, err
 	}

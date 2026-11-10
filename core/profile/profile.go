@@ -337,10 +337,22 @@ type TLS struct {
 	CertificateSHA256 []string `json:"certificate_sha256,omitempty"`
 	// CertificatePublicKeySHA256 pins the server key, base64 SHA-256 of the SubjectPublicKeyInfo.
 	CertificatePublicKeySHA256 []string `json:"certificate_public_key_sha256,omitempty"`
-	UTLS                       UTLS     `json:"utls,omitzero"`
-	Reality                    Reality  `json:"reality,omitzero"`
-	ECH                        ECH      `json:"ech,omitzero"`
+	// Fragment splits the handshake into TCP segments to slip past DPI; Spoof sends a forged handshake with SpoofSNI
+	// before the real one. Each is SwitchOn, SwitchOff or "" for the default of the settings; "" SpoofSNI takes the
+	// settings' one too.
+	Fragment string  `json:"fragment,omitempty"`
+	Spoof    string  `json:"spoof,omitempty"`
+	SpoofSNI string  `json:"spoof_sni,omitempty"`
+	UTLS     UTLS    `json:"utls,omitzero"`
+	Reality  Reality `json:"reality,omitzero"`
+	ECH      ECH     `json:"ech,omitzero"`
 }
+
+// The state of a setting a profile may leave to the default of the settings, "".
+const (
+	SwitchOn  = "on"
+	SwitchOff = "off"
+)
 
 type UTLS struct {
 	Enabled bool `json:"enabled,omitempty"`
@@ -398,7 +410,8 @@ type XHTTP struct {
 }
 
 type Multiplex struct {
-	Enabled bool `json:"enabled,omitempty"`
+	// Mode is SwitchOn, SwitchOff or "" for the default of the settings.
+	Mode string `json:"mode,omitempty"`
 	// Protocol is "smux", "yamux" or "h2mux".
 	Protocol       string `json:"protocol,omitempty"`
 	MaxConnections int    `json:"max_connections,omitempty"`
