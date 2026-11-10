@@ -1121,7 +1121,11 @@ export function createStubCore(): CoreClient {
       return checkNetwork()
     },
     [MethodNetworkState]: () => ({ ...network }),
-    [MethodLogsGet]: () => [...stubLog],
+    // The stub's byte of the log is the number of its lines.
+    [MethodLogsGet]: ({ after }) => {
+      const reset = after > stubLog.length
+      return { lines: stubLog.slice(reset || after === 0 ? 0 : after), next: stubLog.length, reset }
+    },
     [MethodKillSwitchState]: () => ({ ...block }),
     [MethodUpdatesState]: () => ({ ...updates }),
     [MethodUpdatesCheck]: () => {

@@ -14,6 +14,8 @@ import type {
   Group,
   KillSwitchState,
   LinkInfo,
+  LogsChunk,
+  LogsQuery,
   NetworkState,
   OutsideLink,
   Preset,
@@ -166,7 +168,7 @@ export interface CoreMethods {
   [MethodConnectionState]: { params: undefined; result: ConnectionState }
   [MethodNetworkCheck]: { params: undefined; result: NetworkState }
   [MethodNetworkState]: { params: undefined; result: NetworkState }
-  [MethodLogsGet]: { params: undefined; result: string[] }
+  [MethodLogsGet]: { params: LogsQuery; result: LogsChunk }
   [MethodKillSwitchState]: { params: undefined; result: KillSwitchState }
   [MethodUpdatesState]: { params: undefined; result: UpdateState }
   [MethodUpdatesCheck]: { params: undefined; result: UpdateState }

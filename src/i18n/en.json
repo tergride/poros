@@ -896,6 +896,24 @@
       "title": "Save the changes?",
       "text": "The page has unsaved changes.",
       "leave": "Leave without saving"
+    },
+    "logs": {
+      "filter": "Filter the log",
+      "matchCase": "Match case",
+      "regex": "Regular expression",
+      "levelLabel": "Level",
+      "level": {
+        "all": "All levels",
+        "error": "Errors",
+        "warn": "Warnings",
+        "info": "Without debug"
+      },
+      "copy": "Copy",
+      "copied": "Copied",
+      "clear": "Clear",
+      "badRegex": "The regular expression has a mistake: all lines are shown.",
+      "empty": "The log is empty.",
+      "nothing": "Nothing matches the filter."
     }
   },
   "profiles": {

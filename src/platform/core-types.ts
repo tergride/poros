@@ -507,6 +507,22 @@ export interface ServersTested {
   done: boolean;
 }
 /**
+ * LogsQuery asks for the lines of the log written after the byte After; 0 asks for the last ones, as many as the
+ * settings say.
+ */
+export interface LogsQuery {
+  after: number /* int64 */;
+}
+/**
+ * LogsChunk is lines of the log and the byte the next query starts after. Reset says the lines do not follow those
+ * before, as when the log began anew.
+ */
+export interface LogsChunk {
+  lines: string[];
+  next: number /* int64 */;
+  reset: boolean;
+}
+/**
  * Traffic is the traffic through the server: bytes per second over the last second, and in all since the start.
  */
 export interface Traffic {
@@ -1554,7 +1570,7 @@ export const MethodPresetsReadLists = "presets.readLists";
  */
 export const MethodLinksParse = "links.parse";
 /**
- * MethodLogsGet gives the last lines of the core's log.
+ * MethodLogsGet gives the lines of the core's log after a byte, or the last ones.
  */
 export const MethodLogsGet = "logs.get";
 /**

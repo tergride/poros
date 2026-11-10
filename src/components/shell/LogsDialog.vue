@@ -15,7 +15,7 @@ const copied = ref(false)
 
 watch(open, async (shown) => {
   copied.value = false
-  if (shown) lines.value = await core.core().call(MethodLogsGet)
+  if (shown) lines.value = (await core.core().call(MethodLogsGet, { after: 0 })).lines
 })
 
 async function copy(): Promise<void> {

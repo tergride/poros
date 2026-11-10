@@ -345,6 +345,20 @@ type ServersTested struct {
 	Done    bool            `json:"done"`
 }
 
+// LogsQuery asks for the lines of the log written after the byte After; 0 asks for the last ones, as many as the
+// settings say.
+type LogsQuery struct {
+	After int64 `json:"after"`
+}
+
+// LogsChunk is lines of the log and the byte the next query starts after. Reset says the lines do not follow those
+// before, as when the log began anew.
+type LogsChunk struct {
+	Lines []string `json:"lines"`
+	Next  int64    `json:"next"`
+	Reset bool     `json:"reset"`
+}
+
 // Traffic is the traffic through the server: bytes per second over the last second, and in all since the start.
 type Traffic struct {
 	Upload        int64 `json:"upload"`
@@ -1004,7 +1018,7 @@ const (
 	MethodPresetsReadLists  = "presets.readLists"
 	// MethodLinksParse reads a poros:// link without adding anything.
 	MethodLinksParse = "links.parse"
-	// MethodLogsGet gives the last lines of the core's log.
+	// MethodLogsGet gives the lines of the core's log after a byte, or the last ones.
 	MethodLogsGet = "logs.get"
 	// MethodKillSwitchState gives what the kill switch holds; the setting, Start and Stop change it.
 	MethodKillSwitchState = "killSwitch.state"

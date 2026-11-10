@@ -61,8 +61,8 @@ func TestDeviceInfoOnlyWhenAllowed(t *testing.T) {
 func TestLogsGiveTheLastLines(t *testing.T) {
 	dir := t.TempDir()
 	e, _ := openTest(t, dir)
-	if lines, err := e.Logs(); err != nil || len(lines) != 0 {
-		t.Fatalf("no log yet: %v, %v", lines, err)
+	if chunk, err := e.Logs(LogsQuery{}); err != nil || len(chunk.Lines) != 0 {
+		t.Fatalf("no log yet: %+v, %v", chunk, err)
 	}
 	var text strings.Builder
 	for i := range 700 {
@@ -74,9 +74,29 @@ func TestLogsGiveTheLastLines(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "logs", "core.log"), []byte(text.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	lines, err := e.Logs()
-	if err != nil || len(lines) != defaultLogLines || lines[0] != "line 200" || lines[len(lines)-1] != "line 699" {
+	chunk, err := e.Logs(LogsQuery{})
+	lines := chunk.Lines
+	if err != nil || len(lines) != defaultLogLines || lines[0] != "line 200" || lines[len(lines)-1] != "line 699" || chunk.Reset {
 		t.Fatalf("logs: %d lines, %q … %q, %v", len(lines), lines[0], lines[len(lines)-1], err)
+	}
+	// What comes after: whole lines alone, the one being written with the next query.
+	log, err := os.OpenFile(filepath.Join(dir, "logs", "core.log"), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.WriteString("line 700\r\nline 7")
+	next, err := e.Logs(LogsQuery{After: chunk.Next})
+	if err != nil || len(next.Lines) != 1 || next.Lines[0] != "line 700" || next.Reset {
+		t.Fatalf("the next lines: %+v, %v", next, err)
+	}
+	log.WriteString("01\n")
+	log.Close()
+	if last, err := e.Logs(LogsQuery{After: next.Next}); err != nil || len(last.Lines) != 1 || last.Lines[0] != "line 701" {
+		t.Fatalf("the line written in two parts: %+v, %v", last, err)
+	}
+	// A log shorter than asked began anew.
+	if again, err := e.Logs(LogsQuery{After: 1 << 30}); err != nil || !again.Reset || len(again.Lines) != defaultLogLines {
+		t.Fatalf("a log begun anew: %d lines, reset %v, %v", len(again.Lines), again.Reset, err)
 	}
 	// The settings say how many.
 	settings, _ := e.Settings()
@@ -84,8 +104,8 @@ func TestLogsGiveTheLastLines(t *testing.T) {
 	if _, err = e.SetSettings(settings); err != nil {
 		t.Fatal(err)
 	}
-	if lines, err = e.Logs(); err != nil || len(lines) != 100 || lines[0] != "line 600" {
-		t.Fatalf("100 lines: %d, %v", len(lines), err)
+	if chunk, err = e.Logs(LogsQuery{}); err != nil || len(chunk.Lines) != 100 || chunk.Lines[0] != "line 602" {
+		t.Fatalf("100 lines: %d, %v", len(chunk.Lines), err)
 	}
 }
 

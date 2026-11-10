@@ -18,46 +18,61 @@ const (
 	logLineBytes = 512
 )
 
-// Logs gives the last lines of the core's log, which goes on across runs.
-func (e *Engine) Logs() ([]string, error) {
+// Logs gives the lines of the core's log, which goes on across runs: those written after the byte q.After, or with
+// 0 the last ones. Only whole lines come; one still being written comes with the next query.
+func (e *Engine) Logs(q LogsQuery) (LogsChunk, error) {
 	settings, err := e.Settings()
 	if err != nil {
 		settings = DefaultSettings()
 	}
-	logLines := settings.LogLines
-	logTail := int64(max(logLines*logLineBytes, 256<<10))
+	maxLines := settings.LogLines
+	tail := int64(max(maxLines*logLineBytes, 256<<10))
 	file, err := os.Open(filepath.Join(e.dataDir, "logs", "core.log"))
 	if errors.Is(err, os.ErrNotExist) {
-		return []string{}, nil
+		return LogsChunk{Lines: []string{}, Reset: q.After != 0}, nil
 	}
 	if err != nil {
-		return nil, err
+		return LogsChunk{}, err
 	}
 	defer file.Close()
 	info, err := file.Stat()
 	if err != nil {
-		return nil, err
+		return LogsChunk{}, err
 	}
-	start := max(0, info.Size()-logTail)
-	data, err := io.ReadAll(io.NewSectionReader(file, start, info.Size()-start))
+	size := info.Size()
+	// A log shorter than the byte asked for began anew; one that grew by more than the screen holds is read from
+	// its end, as at the first query.
+	chunk := LogsChunk{Reset: q.After > size}
+	start := q.After
+	if q.After <= 0 || q.After > size || size-q.After > tail {
+		chunk.Reset = q.After != 0
+		start = max(0, size-tail)
+	}
+	data, err := io.ReadAll(io.NewSectionReader(file, start, size-start))
 	if err != nil {
-		return nil, err
+		return LogsChunk{}, err
 	}
-	if start > 0 {
+	if start > 0 && start != q.After {
 		// The first line read is cut.
 		if newline := bytes.IndexByte(data, '\n'); newline >= 0 {
-			data = data[newline+1:]
+			data, start = data[newline+1:], start+int64(newline+1)
+		} else {
+			data = nil
 		}
 	}
-	lines := strings.Split(strings.TrimRight(string(data), "\r\n"), "\n")
-	if len(lines) == 1 && lines[0] == "" {
-		return []string{}, nil
+	whole := bytes.LastIndexByte(data, '\n') + 1
+	chunk.Next = start + int64(whole)
+	chunk.Lines = []string{}
+	if whole == 0 {
+		return chunk, nil
 	}
-	if len(lines) > logLines {
-		lines = lines[len(lines)-logLines:]
+	lines := strings.Split(string(data[:whole-1]), "\n")
+	if len(lines) > maxLines {
+		lines = lines[len(lines)-maxLines:]
 	}
 	for i, line := range lines {
 		lines[i] = strings.TrimRight(line, "\r")
 	}
-	return lines, nil
+	chunk.Lines = lines
+	return chunk, nil
 }
