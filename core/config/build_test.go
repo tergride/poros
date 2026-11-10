@@ -319,7 +319,7 @@ func TestPresetRules(t *testing.T) {
 		t.Errorf("without IPv6 the names of connections resolve to IPv4 here, so that the server does not pick IPv6: %+v", rule)
 	}
 
-	excluded := tunExcluded(preset)
+	excluded := tunExcluded(preset, TunOptions{})
 	if slices.Contains(excluded, netip.MustParsePrefix("10.0.0.0/8")) || !slices.Contains(excluded, netip.MustParsePrefix("192.168.0.0/16")) {
 		t.Errorf("a range a rule sends to the server must reach the TUN, the rest stays out: %v", excluded)
 	}
@@ -548,7 +548,7 @@ func TestAdvancedRules(t *testing.T) {
 	inverted := Preset{Name: "Not the office", DefaultOutbound: OutboundDirect, Rules: []Rule{
 		{Action: ActionRoute, Outbound: OutboundProxy, IPCIDR: []string{"10.20.0.0/16"}, Invert: true},
 	}}
-	if excluded := tunExcluded(inverted); len(excluded) != 1 {
+	if excluded := tunExcluded(inverted, TunOptions{}); len(excluded) != 1 {
 		t.Errorf("an inverted rule on addresses takes the private ranges too: %v", excluded)
 	}
 }
@@ -847,5 +847,45 @@ func TestWARP(t *testing.T) {
 	}
 	if _, err := ParseWARP(WARPMASQUE, WARPDevice{PrivateKey: testWGPrivate}, false); err == nil {
 		t.Error("MASQUE takes an ECDSA key")
+	}
+}
+
+// The TUN of the settings: its MTU, addresses and route, the ranges it keeps out, and with routing the subnets of
+// rules «Direct» on addresses alone, unless a rule above them sends some of their addresses elsewhere.
+func TestTunOptions(t *testing.T) {
+	preset := Preset{Name: "TUN", DefaultOutbound: OutboundProxy, Rules: []Rule{
+		allPreset.Rules[0],
+		{Name: "Lab", Action: ActionRoute, Outbound: OutboundProxy, IPCIDR: []string{"203.0.113.128/25"}},
+		{Name: "Office", Action: ActionRoute, Outbound: OutboundDirect, IPCIDR: []string{"203.0.113.0/24", "198.51.100.0/24"}},
+		{Name: "Games", Action: ActionRoute, Outbound: OutboundDirect, IPCIDR: []string{"192.0.2.0/24"}, ProcessName: []string{"game.exe"}},
+		allPreset.Rules[1],
+	}}
+	options := TunOptions{
+		MTU: 9000, LooseRoute: true, Routing: true,
+		Address4: netip.MustParsePrefix("172.20.1.1/24"), Address6: netip.MustParsePrefix("fdfe:dcba:9878::1/96"),
+		Bypass: []netip.Prefix{netip.MustParsePrefix("192.168.0.0/16")},
+	}
+	configs, err := Build(Input{Server: mustParse(t, sampleLinks(t)["trojan tcp"]), Preset: preset, Tun: true, TunOptions: options, MixedPort: 2090})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := configs.SingBoxJSON()
+	if err = boxmain.Check(data); err != nil {
+		t.Fatalf("sing-box refuses the config: %v", err)
+	}
+	tun := configs.SingBox.Inbounds[1].Options.(*option.TunInboundOptions)
+	if tun.MTU != 9000 || tun.StrictRoute || tun.Address[0].String() != "172.20.1.1/24" || tun.Address[1].String() != "fdfe:dcba:9878::1/96" {
+		t.Errorf("the TUN of the settings: %+v", tun)
+	}
+	want := []string{"255.255.255.255/32", "198.51.100.0/24", "192.168.0.0/16"}
+	var got []string
+	for _, prefix := range tun.RouteExcludeAddress {
+		got = append(got, prefix.String())
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("excluded: %v, want %v: a subnet a rule above sends elsewhere stays, and so does one with more conditions", got, want)
+	}
+	if excluded := tunExcluded(preset, TunOptions{Bypass: []netip.Prefix{}}); len(excluded) != 1 {
+		t.Errorf("no ranges to bypass: %v", excluded)
 	}
 }

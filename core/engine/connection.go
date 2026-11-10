@@ -358,6 +358,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		WARP:          warpOf(settings),
 		Endpoints:     endpoints,
 		Tun:           settings.Tun,
+		TunOptions:    tunOf(settings),
 		AllowLAN:      settings.AllowLAN,
 		Auth:          proxyAuthOf(settings),
 		SystemPort:    systemPort,

@@ -11,6 +11,12 @@ import { useCoreStore } from '@/stores/core'
 const builtWith = (s: Settings) =>
   JSON.stringify([
     s.tun,
+    s.tunMtu,
+    s.tunStrictRoute,
+    s.tunRouting,
+    s.tunIpv4,
+    s.tunIpv6,
+    s.tunBypass,
     s.preset,
     s.allowLan,
     s.proxyPort,

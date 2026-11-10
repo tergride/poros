@@ -310,7 +310,8 @@
       "look": "Appearance",
       "help": "Help",
       "inbound": "Inbound",
-      "tests": "Tests"
+      "tests": "Tests",
+      "tun": "TUN"
     },
     "presets": {
       "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy or a new preset.",
@@ -475,6 +476,16 @@
         "simple": "Simple download",
         "country": "Country only"
       }
+    },
+    "tun": {
+      "adapter": "Adapter",
+      "routingHint": "Subnets the preset sends direct are excluded at the level of Windows routes and go around the TUN. Rules above them by program or port no longer apply to these subnets.",
+      "addresses": "Addresses",
+      "addressesDefault": "Restore default addresses",
+      "bypass": "Private range bypass",
+      "ranges": "Ranges",
+      "bypassHint": "They go around the TUN unless a rule sends them through the server. One per line; loopback and broadcast always go around.",
+      "bypassDefault": "Restore default ranges"
     }
   },
   "linkPreset": {

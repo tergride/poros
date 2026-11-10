@@ -24,6 +24,14 @@ type Settings struct {
 	// Tun and SystemProxy are independent: both, either or neither can be on.
 	Tun         bool `json:"tun"`
 	SystemProxy bool `json:"systemProxy"`
+	// TunMTU, TunStrictRoute and the addresses of the TUN. TunRouting sends the subnets of rules «Direct» around the
+	// TUN by the routes of Windows; TunBypass are the ranges the TUN keeps out, a line each.
+	TunMTU         int    `json:"tunMtu"`
+	TunStrictRoute bool   `json:"tunStrictRoute"`
+	TunRouting     bool   `json:"tunRouting"`
+	TunIPv4        string `json:"tunIpv4"`
+	TunIPv6        string `json:"tunIpv6"`
+	TunBypass      string `json:"tunBypass"`
 	// Server is the ID of the server to connect to, "" before one is chosen.
 	Server string `json:"server"`
 	// Preset is the ID of the routing preset in use.
@@ -568,6 +576,13 @@ type PresetCopy struct {
 	// computer's profiles: a link to the preset leaves them out, and the rules to them.
 	Endpoints []string `json:"endpoints"`
 }
+
+// The TUN of Poros as it comes: its addresses, which keep clear of Throne's, and the ranges it keeps out.
+const (
+	TunIPv4Default   = "172.19.1.1/24"
+	TunIPv6Default   = "fdfe:dcba:9877::1/96"
+	TunBypassDefault = "10.0.0.0/8\n172.16.0.0/12\n192.168.0.0/16\n169.254.0.0/16\n224.0.0.0/4\nfc00::/7\nfe80::/10\nff00::/8"
+)
 
 // Which way names resolve, Settings.DNSRouting.
 const (

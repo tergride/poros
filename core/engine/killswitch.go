@@ -397,6 +397,7 @@ func (e *Engine) startRefusal(settings Settings) {
 		Preset:      withDefaultDNS(preset, settings),
 		DNS:         dnsOf(settings),
 		Tun:         tun,
+		TunOptions:  tunOf(settings),
 		AllowLAN:    settings.AllowLAN,
 		Auth:        proxyAuthOf(settings),
 		SystemPort:  systemPort,

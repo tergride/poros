@@ -20,14 +20,25 @@ import (
 // The connection tests run real cores on loopback: a server, Poros's mixed inbound on a free port, and a web
 // page behind them. TUN and the system proxy stay off, as on any check on the host.
 
+// freePort finds a port free on loopback for TCP and UDP both: Windows keeps ranges of UDP ports for itself that
+// are free for TCP, and a server on QUIC or WireGuard would fail to start on one of them.
 func freePort(t *testing.T) uint16 {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	for range 20 {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		port := listener.Addr().(*net.TCPAddr).Port
+		packet, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		listener.Close()
+		if err == nil {
+			packet.Close()
+			return uint16(port)
+		}
 	}
-	defer listener.Close()
-	return uint16(listener.Addr().(*net.TCPAddr).Port)
+	t.Fatal("no port is free for both TCP and UDP")
+	return 0
 }
 
 func openConnectionTest(t *testing.T) (*Engine, chan ConnectionState) {

@@ -4,6 +4,7 @@
 package config
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -49,6 +50,27 @@ var (
 	tunAddress6 = netip.MustParsePrefix("fdfe:dcba:9877::1/96")
 )
 
+// The MTU of the TUN unless the settings give one.
+const tunMTU = 1500
+
+// TunOptions is how the TUN is made; the zero value is Poros's own TUN.
+type TunOptions struct {
+	MTU uint32
+	// LooseRoute lets programs that bind to an interface go around the TUN; off, the route is strict.
+	LooseRoute bool
+	// Routing sends the subnets of the preset's rules «Direct» around the TUN by the routes of Windows.
+	Routing            bool
+	Address4, Address6 netip.Prefix
+	// Bypass are the ranges that stay out of the TUN unless a rule sends them elsewhere than direct; nil is
+	// PrivateRanges.
+	Bypass []netip.Prefix
+}
+
+// PrivateRanges are the ranges the TUN keeps out by default.
+func PrivateRanges() []netip.Prefix {
+	return slices.Clone(privateRanges)
+}
+
 // The remote DNS: DoH by address, so that no lookup is needed to reach it.
 const (
 	remoteDNSServer = "8.8.8.8"
@@ -86,7 +108,8 @@ type Input struct {
 	// then. A connection that refuses has none either.
 	WARP *WARP
 	// Tun and the mixed inbound always exist; SystemProxy is the engine's business, not the config's.
-	Tun bool
+	Tun        bool
+	TunOptions TunOptions
 	// AllowLAN opens the mixed inbound to other devices.
 	AllowLAN bool
 	// Auth is the name and password the mixed inbound asks for, nil for none. Windows passes no password to a
@@ -274,13 +297,15 @@ func buildInbounds(in Input, preset Preset) []option.Inbound {
 		}})
 	}
 	if in.Tun {
+		t := in.TunOptions
+		addresses := badoption.Listable[netip.Prefix]{cmpPrefix(t.Address4, tunAddress4), cmpPrefix(t.Address6, tunAddress6)}
 		inbounds = append(inbounds, option.Inbound{Type: C.TypeTun, Tag: tagTun, Options: &option.TunInboundOptions{
 			InterfaceName:       TunName,
-			MTU:                 1500,
-			Address:             badoption.Listable[netip.Prefix]{tunAddress4, tunAddress6},
+			MTU:                 cmp.Or(t.MTU, tunMTU),
+			Address:             addresses,
 			AutoRoute:           true,
-			StrictRoute:         true,
-			RouteExcludeAddress: tunExcluded(preset),
+			StrictRoute:         !t.LooseRoute,
+			RouteExcludeAddress: tunExcluded(preset, t),
 		}})
 	}
 	return inbounds
@@ -290,10 +315,21 @@ func buildInbounds(in Input, preset Preset) []option.Inbound {
 // direct: an excluded range never reaches the rules. The networks of an endpoint are known only once it is up, and
 // are mostly private ones: with endpoints, the private unicast ranges stay in the TUN, and the rule of local networks
 // sends what no endpoint takes direct.
-func tunExcluded(preset Preset) badoption.Listable[netip.Prefix] {
+//
+// With Routing the subnets of rules «Direct» on addresses alone go around the TUN too, unless a rule above them sends
+// some of their addresses elsewhere.
+func tunExcluded(preset Preset, t TunOptions) badoption.Listable[netip.Prefix] {
 	excluded := badoption.Listable[netip.Prefix]{netip.MustParsePrefix("255.255.255.255/32")}
 	var claimed []netip.Prefix
 	for _, rule := range preset.Rules {
+		if t.Routing && rule.directAddresses() {
+			for _, cidr := range rule.IPCIDR {
+				prefix, _ := parsePrefix(cidr)
+				if !slices.ContainsFunc(claimed, prefix.Overlaps) {
+					excluded = append(excluded, prefix)
+				}
+			}
+		}
 		if rule.Action == ActionHijackDNS || (rule.Action == ActionRoute && rule.Outbound == OutboundDirect) {
 			continue
 		}
@@ -309,7 +345,11 @@ func tunExcluded(preset Preset) badoption.Listable[netip.Prefix] {
 			claimed = append(claimed, prefix)
 		}
 	}
-	for _, private := range privateRanges {
+	bypass := t.Bypass
+	if bypass == nil {
+		bypass = privateRanges
+	}
+	for _, private := range bypass {
 		taken := len(preset.Endpoints) > 0 && privateUnicast(private)
 		for _, prefix := range claimed {
 			taken = taken || prefix.Overlaps(private)
@@ -603,4 +643,11 @@ func dnsRule(rule Rule, action option.DNSRuleAction) (option.DNSRule, bool) {
 		RawLogicalDNSRule: option.RawLogicalDNSRule{Mode: C.LogicalTypeAnd, Rules: parts, Invert: rule.Invert},
 		DNSRuleAction:     action,
 	}}, true
+}
+
+func cmpPrefix(prefix, fallback netip.Prefix) netip.Prefix {
+	if prefix.IsValid() {
+		return prefix
+	}
+	return fallback
 }

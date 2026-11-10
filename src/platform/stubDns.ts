@@ -82,6 +82,10 @@ export function checkDnsSettings(s: Settings): void {
   const subnet = s.dnsClientSubnet.trim()
   if (subnet && !ip.test(subnet.split('/')[0]!)) throw invalid(`dnsClientSubnet: "${subnet}" is no subnet`)
   if (s.dnsObject) checkDnsObject(s.dnsObject)
+  // As validateTun in core/engine/tun.go, the formats left to the core.
+  if (!Number.isInteger(s.tunMtu) || s.tunMtu < 1280 || s.tunMtu > 9000) throw invalid(`tunMtu must be from 1280 to 9000, not ${s.tunMtu}`)
+  if (!/^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/.test(s.tunIpv4.trim())) throw invalid(`tunIpv4: "${s.tunIpv4}" is no address of the TUN with its subnet`)
+  if (s.tunBypass.split('\n').some((line) => ['0.0.0.0/0', '::/0'].includes(line.trim()))) throw invalid('tunBypass covers every address')
   // As validateInbound in core/engine/inbound.go.
   if (!Number.isInteger(s.proxyPort) || s.proxyPort < 0 || s.proxyPort > 65535) throw invalid(`proxyPort must be from 1 to 65535, not ${s.proxyPort}`)
   if (s.proxyAuth && (!s.proxyUsername.trim() || !s.proxyPassword)) throw invalid('a local proxy with authorization needs a username and a password')

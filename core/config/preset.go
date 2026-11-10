@@ -143,6 +143,11 @@ func (p Preset) withoutWARP() Preset {
 	return p
 }
 
+// directAddresses tells a rule that sends addresses, and nothing else of a connection, direct.
+func (r Rule) directAddresses() bool {
+	return r.Action == ActionRoute && r.Outbound == OutboundDirect && !r.Invert && len(r.IPCIDR) > 0 && len(r.conditions()) == 1
+}
+
 func (p Preset) usesWARP() bool {
 	return slices.ContainsFunc(p.Rules, func(r Rule) bool { return r.Outbound == OutboundWARP })
 }

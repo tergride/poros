@@ -21,6 +21,11 @@ func DefaultSettings() Settings {
 		CheckIP:                true,
 		IPv6:                   true,
 		RealityOnXray:          true,
+		TunMTU:                 defaultTunMTU,
+		TunStrictRoute:         true,
+		TunIPv4:                TunIPv4Default,
+		TunIPv6:                TunIPv6Default,
+		TunBypass:              TunBypassDefault,
 		LatencyTimeout:         int(defaultLatencyTimeout / time.Millisecond),
 		LatencyConcurrency:     defaultLatencyConcurrency,
 		DNSRouting:             DNSRoutingAuto,
@@ -82,7 +87,7 @@ func (e *Engine) SetSettings(settings Settings) (Settings, error) {
 	if settings.KillSwitch != previous.KillSwitch {
 		go e.syncKillSwitch(previous.KillSwitch)
 	} else if settings.Tun != previous.Tun || settings.Preset != previous.Preset || settings.AllowLAN != previous.AllowLAN || settings.IPv6 != previous.IPv6 ||
-		dnsChanged(settings, previous) || proxyChanged(settings, previous) {
+		dnsChanged(settings, previous) || proxyChanged(settings, previous) || tunChanged(settings, previous) {
 		go e.restartRefusal()
 	}
 	switch {
@@ -166,6 +171,9 @@ func (e *Engine) validateSettings(settings Settings) error {
 		return err
 	}
 	if err := validateInbound(settings); err != nil {
+		return err
+	}
+	if err := validateTun(settings); err != nil {
 		return err
 	}
 	return validateDNS(settings)
