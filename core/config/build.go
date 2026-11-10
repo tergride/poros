@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/netip"
 	"slices"
+	"time"
 
 	"PorosCore/profile"
 
@@ -126,6 +127,8 @@ type Input struct {
 	LogLevel string
 	// Tuning is what the settings add to the server; the preset may harden it.
 	Tuning Tuning
+	// NTP is the clock of the core, nil for the system's.
+	NTP *NTP
 	// DNS is how names resolve. A connection that refuses resolves them as their traffic goes even when the
 	// settings send all of them through the server: else no direct site would open.
 	DNS DNS
@@ -134,6 +137,32 @@ type Input struct {
 	Bridge    Bridge
 	Interface string
 	Resolved  map[string]netip.Addr
+}
+
+// NTP is a time server the core asks for its clock, for when the system's is wrong: certificates and time-bound
+// protocols check against it.
+type NTP struct {
+	Server   string
+	Port     uint16
+	Interval time.Duration
+	// Proxy asks through the server, else directly.
+	Proxy bool
+}
+
+// ntpOptions is the clock of a connection; one that refuses has no way to the server and keeps the system's.
+func ntpOptions(in Input) *option.NTPOptions {
+	if in.NTP == nil || in.Refuse {
+		return nil
+	}
+	options := &option.NTPOptions{
+		Enabled:       true,
+		Interval:      badoption.Duration(in.NTP.Interval),
+		ServerOptions: option.ServerOptions{Server: ace(in.NTP.Server), ServerPort: in.NTP.Port},
+	}
+	if in.NTP.Proxy {
+		options.Detour = TagProxy
+	}
+	return options
 }
 
 // ProxyAuth is the name and password of the local proxy.
@@ -235,6 +264,7 @@ func Build(in Input) (Configs, error) {
 		Outbounds: append(proxy.outbounds, option.Outbound{Type: C.TypeDirect, Tag: TagDirect, Options: direct}),
 		Endpoints: slices.Concat(proxy.endpoints, endpoints),
 		Route:     buildRoute(in, preset),
+		NTP:       ntpOptions(in),
 	}
 	return configs, nil
 }

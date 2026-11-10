@@ -213,11 +213,15 @@ type subscriptionRequest struct {
 	device    http.Header
 	tls       string
 	http11    bool
+	// insecure skips the certificate check.
+	insecure bool
 }
 
 func (e *Engine) requestOf(rec groupRecord, settings Settings) subscriptionRequest {
 	gs := rec.Settings
-	req := subscriptionRequest{userAgent: e.userAgent, tls: settings.SubscriptionTLS, http11: settings.SubscriptionHTTP == "1.1"}
+	req := subscriptionRequest{
+		userAgent: e.userAgent, tls: settings.SubscriptionTLS, http11: settings.SubscriptionHTTP == "1.1", insecure: settings.IgnoreTLSErrors,
+	}
 	if agent := strings.TrimSpace(cmp.Or(gs.UserAgent, settings.SubscriptionUserAgent)); agent != "" {
 		req.userAgent = agent
 	}
@@ -246,9 +250,10 @@ func (e *Engine) requestOf(rec groupRecord, settings Settings) subscriptionReque
 	return req
 }
 
-// client gives the client to download with: Poros's own, unless the request needs a TLS or HTTP version of its own.
+// client gives the client to download with: Poros's own, unless the request needs a TLS or HTTP version of its own
+// or skips the certificate check.
 func (r subscriptionRequest) client(base *http.Client) *http.Client {
-	if r.tls == "" && !r.http11 {
+	if r.tls == "" && !r.http11 && !r.insecure {
 		return base
 	}
 	transport, ok := base.Transport.(*http.Transport)
@@ -266,6 +271,7 @@ func (r subscriptionRequest) client(base *http.Client) *http.Client {
 	case "1.3":
 		config.MinVersion, config.MaxVersion = tls.VersionTLS13, tls.VersionTLS13
 	}
+	config.InsecureSkipVerify = r.insecure
 	transport.TLSClientConfig = config
 	if r.http11 {
 		transport.ForceAttemptHTTP2 = false

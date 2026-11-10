@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -145,12 +146,16 @@ func (e *Engine) runNetworkCheck(ctx context.Context) NetworkState {
 	if err != nil {
 		settings = DefaultSettings()
 	}
+	// The settings may ask to skip the certificate check of the services.
+	checked := func(client *http.Client, done func()) (*http.Client, func()) {
+		return skipVerify(client, settings.IgnoreTLSErrors), done
+	}
 
 	switch {
 	case running != nil && running.refusing:
 		// The refusal has no way through the server; the way out is the preset's direct one, past its TUN.
 		directClient := func(family int) (*http.Client, func()) {
-			return outboundClient(running.box, config.TagDirect, config.TagDNSDirect, family)
+			return checked(outboundClient(running.box, config.TagDirect, config.TagDNSDirect, family))
 		}
 		direct, _, err := lookupAddresses(ctx, directClient, true)
 		if err != nil {
@@ -159,7 +164,8 @@ func (e *Engine) runNetworkCheck(ctx context.Context) NetworkState {
 		state.Direct = direct
 	case running == nil:
 		// Without a connection the way out is the system's; Poros's own proxy is down, so no proxy.
-		direct, _, err := lookupAddresses(ctx, e.plainClient, true)
+		plainClient := func(family int) (*http.Client, func()) { return checked(e.plainClient(family)) }
+		direct, _, err := lookupAddresses(ctx, plainClient, true)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("without the VPN: %w", err))
 		}
@@ -168,12 +174,12 @@ func (e *Engine) runNetworkCheck(ctx context.Context) NetworkState {
 		// Through the outbounds of the running connection, not its routes: with TUN, plain requests would go
 		// into the tunnel, and a preset may send the services' sites either way.
 		directClient := func(family int) (*http.Client, func()) {
-			return outboundClient(running.box, config.TagDirect, config.TagDNSDirect, family)
+			return checked(outboundClient(running.box, config.TagDirect, config.TagDNSDirect, family))
 		}
 		proxyClient := func(family int) (*http.Client, func()) {
-			return outboundClient(running.box, config.TagProxy, config.TagDNSRemote, family)
+			return checked(outboundClient(running.box, config.TagProxy, config.TagDNSRemote, family))
 		}
-		leakClient, closeLeak := outboundClient(running.box, config.TagProxy, "", 0)
+		leakClient, closeLeak := checked(outboundClient(running.box, config.TagProxy, "", 0))
 		defer closeLeak()
 		var direct, proxy IPInfo
 		var home netcheck.Info
@@ -278,6 +284,14 @@ func dnsServers(servers []netcheck.Info, home netcheck.Info) ([]DNSServer, strin
 
 func ipInfo(info netcheck.Info) IPInfo {
 	return IPInfo{IP: info.IP, CountryCode: info.CountryCode, City: info.City, ISP: info.ISP, ASN: info.ASN}
+}
+
+// skipVerify has a client of its own transport skip the certificate check when on is set.
+func skipVerify(client *http.Client, on bool) *http.Client {
+	if transport, ok := client.Transport.(*http.Transport); ok && on {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	return client
 }
 
 // plainClient sends requests past any proxy over one IP family, asking the system's DNS the way the kill switch

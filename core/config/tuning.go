@@ -35,6 +35,11 @@ type Tuning struct {
 	SpoofMethod string
 	// QUIC are the options of QUIC and HTTP/2 of Hysteria, Hysteria2, TUIC and MASQUE.
 	QUIC option.QUICOptions
+	// Insecure skips the certificate check of servers on sing-box that do not skip it themselves; pins of a
+	// profile still hold. Xray cannot skip it.
+	Insecure bool
+	// XraySystemCA has Xray trust the certificates of the system instead of its own list.
+	XraySystemCA bool
 	// noSpoof forges no handshake at all, the profile's own neither.
 	noSpoof bool
 }
@@ -62,6 +67,25 @@ func (t Tuning) onXray(p profile.Profile) profile.Profile {
 		p.VLESS = &vless
 	}
 	return p
+}
+
+// xrayOutbound adds to an Xray outbound what the settings ask of its TLS: the certificates of the system, for the
+// server and for the download leg of XHTTP.
+func (t Tuning) xrayOutbound(outbound map[string]any) {
+	if !t.XraySystemCA {
+		return
+	}
+	stream, _ := outbound["streamSettings"].(map[string]any)
+	if tls, ok := stream["tlsSettings"].(map[string]any); ok {
+		tls["useSystemCA"] = true
+	}
+	xhttp, _ := stream["xhttpSettings"].(map[string]any)
+	extra, _ := xhttp["extra"].(map[string]any)
+	if leg, _ := nestedMap(extra, "downloadSettings"); leg != nil {
+		if tls, _ := nestedMap(leg, "tlsSettings"); tls != nil {
+			tls["useSystemCA"] = true
+		}
+	}
 }
 
 // Spoofs tells whether a connection through entry, the server that meets the network, forges a handshake, which

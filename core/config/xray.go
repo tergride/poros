@@ -75,6 +75,7 @@ func buildXray(in Input, server profile.Profile, tag string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	in.Tuning.xrayOutbound(outbound)
 	return xrayConfig([]xrayEntry{{tag: tag, bridge: in.Bridge, outbound: outbound}})
 }
 

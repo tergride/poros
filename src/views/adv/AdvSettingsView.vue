@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRightLeft, Check, Gauge, Globe, Info, Layers, Link, Palette, Power, Search, Server, Signpost } from '@lucide/vue'
+import { ArrowRightLeft, Check, Gauge, Globe, Info, Layers, Link, Palette, Power, Radar, Search, Server, Shield, Signpost } from '@lucide/vue'
 import { type Component, computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
@@ -9,7 +9,9 @@ import DnsPage from '@/components/settings/DnsPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
 import InboundPage from '@/components/settings/InboundPage.vue'
 import LookPage from '@/components/settings/LookPage.vue'
+import NetPage from '@/components/settings/NetPage.vue'
 import ProtocolsPage from '@/components/settings/ProtocolsPage.vue'
+import SecurityPage from '@/components/settings/SecurityPage.vue'
 import StartPage from '@/components/settings/StartPage.vue'
 import SubsPage from '@/components/settings/SubsPage.vue'
 import TestsPage from '@/components/settings/TestsPage.vue'
@@ -52,6 +54,8 @@ const groups: { id: string; pages: Page[] }[] = [
       { id: 'tests', icon: Gauge, page: TestsPage },
       { id: 'tun', icon: ArrowRightLeft, page: TunPage },
       { id: 'protocols', icon: Layers, page: ProtocolsPage },
+      { id: 'net', icon: Radar, page: NetPage },
+      { id: 'security', icon: Shield, page: SecurityPage },
     ],
   },
 ]

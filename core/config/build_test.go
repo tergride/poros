@@ -966,3 +966,53 @@ func TestTuning(t *testing.T) {
 		}
 	}
 }
+
+// The clock of the settings asks its server directly or through the server, and a connection that refuses keeps
+// the system's; the certificate settings skip the check of sing-box servers without REALITY and have Xray trust
+// the system's certificates, its download leg too.
+func TestNTPAndCertificates(t *testing.T) {
+	links := sampleLinks(t)
+	for _, proxy := range []bool{false, true} {
+		configs, err := Build(Input{
+			Server: mustParse(t, links["vless ws tls"]), Preset: allPreset, MixedPort: 2090,
+			NTP: &NTP{Server: "time.example.com", Port: 123, Interval: 30 * time.Minute, Proxy: proxy},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, _ := configs.SingBoxJSON()
+		if err = boxmain.Check(data); err != nil {
+			t.Fatalf("sing-box refuses the clock: %v\n%s", err, data)
+		}
+		ntp := configs.SingBox.NTP
+		if ntp == nil || !ntp.Enabled || ntp.Server != "time.example.com" || ntp.ServerPort != 123 || (ntp.Detour == TagProxy) != proxy {
+			t.Errorf("the clock through the server %v: %+v", proxy, ntp)
+		}
+	}
+	refused, err := Build(Input{Refuse: true, Preset: allPreset, MixedPort: 2090, NTP: &NTP{Server: "time.example.com", Port: 123}})
+	if err != nil || refused.SingBox.NTP != nil {
+		t.Errorf("a refusal keeps the clock of the system: %+v, %v", refused.SingBox.NTP, err)
+	}
+
+	tune := Tuning{Insecure: true, XraySystemCA: true}
+	for name, want := range map[string]bool{"vless ws tls": true, "hysteria2": true, "vless reality vision": false} {
+		parts, err := serverParts(mustParse(t, links[name]), nil, TagProxy, nil, tune)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, _ := json.Marshal(parts.outbounds[0].Options)
+		if got := strings.Contains(string(data), `"insecure":true`); got != want {
+			t.Errorf("%s skips the certificate check: %v, want %v", name, got, want)
+		}
+	}
+	configs, err := Build(Input{Server: mustParse(t, links["vless xhttp download leg"]), Preset: allPreset, MixedPort: 2090, Bridge: testBridge, Tuning: tune})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = xray.CheckXrayConfig(string(configs.Xray)); err != nil {
+		t.Fatalf("Xray refuses the system's certificates: %v", err)
+	}
+	if got := strings.Count(string(configs.Xray), `"useSystemCA":true`); got != 2 {
+		t.Errorf("the server and its download leg trust the system's certificates: %d of 2\n%s", got, configs.Xray)
+	}
+}

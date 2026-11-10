@@ -58,6 +58,13 @@ const builtWith = (s: Settings) =>
     s.quicMaxStreams,
     s.quicInitialPacketSize,
     s.quicDisablePmtud,
+    s.ntp,
+    s.ntpServer,
+    s.ntpPort,
+    s.ntpInterval,
+    s.ntpOutbound,
+    s.xraySystemCerts,
+    s.insecureDefault,
   ])
 
 /**

@@ -56,5 +56,6 @@ func tuningOf(s Settings) config.Tuning {
 	tune.Multiplex, tune.MuxProtocol, tune.MuxStreams = s.MuxDefault, s.MuxProtocol, s.MuxConcurrency
 	tune.Fragment, tune.Fingerprint = s.FragmentDefault, s.FingerprintDefault
 	tune.Spoof, tune.SpoofSNI, tune.SpoofMethod = s.SpoofDefault, strings.TrimSpace(s.SpoofSNI), s.SpoofMethod
+	tune.Insecure, tune.XraySystemCA = s.InsecureDefault, s.XraySystemCerts
 	return tune
 }

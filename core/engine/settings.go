@@ -9,6 +9,7 @@ import (
 
 	"github.com/sagernet/bbolt"
 
+	"PorosCore/config"
 	"PorosCore/internal/jsonrpc"
 	"PorosCore/internal/logontask"
 )
@@ -23,6 +24,10 @@ func DefaultSettings() Settings {
 		RealityOnXray:          true,
 		MuxProtocol:            "smux",
 		MuxConcurrency:         defaultMuxConcurrency,
+		NTPServer:              defaultNTPServer,
+		NTPPort:                defaultNTPPort,
+		NTPInterval:            defaultNTPInterval,
+		NTPOutbound:            config.OutboundDirect,
 		TunMTU:                 defaultTunMTU,
 		TunStrictRoute:         true,
 		TunIPv4:                TunIPv4Default,
@@ -179,6 +184,9 @@ func (e *Engine) validateSettings(settings Settings) error {
 		return err
 	}
 	if err := validateProtocols(settings); err != nil {
+		return err
+	}
+	if err := validateNTP(settings); err != nil {
 		return err
 	}
 	return validateDNS(settings)

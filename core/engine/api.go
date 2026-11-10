@@ -75,6 +75,22 @@ type Settings struct {
 	QUICMaxStreams        int    `json:"quicMaxStreams"`
 	QUICInitialPacketSize int    `json:"quicInitialPacketSize"`
 	QUICDisablePMTUD      bool   `json:"quicDisablePmtud"`
+	// NTP gives the core a clock of its own from NTPServer:NTPPort every NTPInterval minutes, through the server
+	// or directly (NTPOutbound proxy or direct), for when the system's is wrong: certificates and time-bound
+	// protocols check against it.
+	NTP         bool   `json:"ntp"`
+	NTPServer   string `json:"ntpServer"`
+	NTPPort     int    `json:"ntpPort"`
+	NTPInterval int    `json:"ntpInterval"`
+	NTPOutbound string `json:"ntpOutbound"`
+	// IgnoreTLSErrors skips the certificate check of Poros's own requests: subscriptions and the IP check. Updates
+	// always check it, since what they download runs.
+	IgnoreTLSErrors bool `json:"ignoreTlsErrors"`
+	// XraySystemCerts has Xray trust the certificates of the system instead of its own list.
+	XraySystemCerts bool `json:"xraySystemCerts"`
+	// InsecureDefault skips the certificate check of servers on sing-box that do not skip it themselves; pins of a
+	// profile still hold.
+	InsecureDefault bool `json:"insecureDefault"`
 	// DNSRemote is the DNS server of traffic through the server that presets with «By default» take: "" is
 	// Google's DoH, otherwise https://, tls:// or a plain address. DNSDirect is that of direct traffic, past the
 	// server: "" is the system's.

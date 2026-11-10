@@ -371,6 +371,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		RealityOnXray: settings.RealityOnXray,
 		LogLevel:      singBoxLogLevel(settings.DebugLog),
 		Tuning:        tune,
+		NTP:           ntpOf(settings),
 	}
 	if onXray {
 		if in.Bridge, err = newBridge(); err != nil {

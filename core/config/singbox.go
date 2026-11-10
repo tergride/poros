@@ -362,7 +362,7 @@ func singBoxTLS(t profile.TLS, server string, quic bool, tune Tuning) (*option.O
 		Enabled:    true,
 		DisableSNI: t.DisableSNI,
 		ServerName: ace(t.ServerName),
-		Insecure:   t.Insecure,
+		Insecure:   t.Insecure || (tune.Insecure && !t.Reality.Enabled),
 		ALPN:       t.ALPN,
 		MinVersion: t.MinVersion,
 		MaxVersion: t.MaxVersion,

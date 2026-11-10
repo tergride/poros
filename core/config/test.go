@@ -62,6 +62,7 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 				configs.Failed[server.Tag] = err
 				continue
 			}
+			in.Tuning.xrayOutbound(outbound)
 			entry = &xrayEntry{tag: tag, bridge: server.Bridge, outbound: outbound}
 			b := bridgeOutbound(tag, server.Bridge)
 			bridge = &b

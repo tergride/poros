@@ -313,7 +313,9 @@
       "inbound": "Inbound",
       "tests": "Tests",
       "tun": "TUN",
-      "protocols": "Protocols and bypass"
+      "protocols": "Protocols and bypass",
+      "net": "Network",
+      "security": "Security"
     },
     "presets": {
       "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy or a new preset.",
@@ -504,6 +506,26 @@
       "spoofHint": "Needs administrator rights, the WinDivert driver. Only for servers with a name in the SNI.",
       "quic": "HTTP/2 and QUIC",
       "quicHint": "For Hysteria, Hysteria2, TUIC and MASQUE. Empty is the core’s own."
+    },
+    "net": {
+      "general": "General",
+      "ignoreTls": "Ignore TLS errors",
+      "ignoreTlsHint": "In the requests of Poros itself: subscriptions, the IP check. Updates are always checked: what they download runs.",
+      "ntpOn": "Turn on NTP",
+      "ntpHint": "A clock of the core’s own, for when the system time is wrong.",
+      "server": "Server",
+      "port": "Port",
+      "interval": "Interval, minutes",
+      "outbound": "Outbound",
+      "direct": "Directly",
+      "proxy": "Through the server"
+    },
+    "security": {
+      "protection": "Protection",
+      "systemCerts": "Trust the system certificates in Xray",
+      "systemCertsHint": "Xray takes the certificates of Windows, such as corporate ones, instead of its own list.",
+      "insecure": "Skip the TLS check by default (allowInsecure)",
+      "insecureHint": "For profiles without a check of their own; pinned certificates of a profile are still checked. Xray always checks."
     }
   },
   "linkPreset": {

@@ -101,7 +101,7 @@ func openConnectEndpoint(p profile.Profile, tag string) option.Endpoint {
 
 func masqueEndpoint(p profile.Profile, tag string, tune Tuning) (option.Endpoint, error) {
 	m := p.MASQUE
-	tls, err := singBoxTLS(m.TLS, p.Server, m.Version == 0 || m.Version == 3, Tuning{})
+	tls, err := singBoxTLS(m.TLS, p.Server, m.Version == 0 || m.Version == 3, Tuning{Insecure: tune.Insecure})
 	if err != nil {
 		return option.Endpoint{}, err
 	}

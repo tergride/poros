@@ -105,6 +105,30 @@ export interface Settings {
   quicInitialPacketSize: number /* int */;
   quicDisablePmtud: boolean;
   /**
+   * NTP gives the core a clock of its own from NTPServer:NTPPort every NTPInterval minutes, through the server
+   * or directly (NTPOutbound proxy or direct), for when the system's is wrong: certificates and time-bound
+   * protocols check against it.
+   */
+  ntp: boolean;
+  ntpServer: string;
+  ntpPort: number /* int */;
+  ntpInterval: number /* int */;
+  ntpOutbound: string;
+  /**
+   * IgnoreTLSErrors skips the certificate check of Poros's own requests: subscriptions and the IP check. Updates
+   * always check it, since what they download runs.
+   */
+  ignoreTlsErrors: boolean;
+  /**
+   * XraySystemCerts has Xray trust the certificates of the system instead of its own list.
+   */
+  xraySystemCerts: boolean;
+  /**
+   * InsecureDefault skips the certificate check of servers on sing-box that do not skip it themselves; pins of a
+   * profile still hold.
+   */
+  insecureDefault: boolean;
+  /**
    * DNSRemote is the DNS server of traffic through the server that presets with «By default» take: "" is
    * Google's DoH, otherwise https://, tls:// or a plain address. DNSDirect is that of direct traffic, past the
    * server: "" is the system's.
