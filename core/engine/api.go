@@ -185,6 +185,9 @@ type Settings struct {
 	// Stats counts the traffic of each connection and finds its program: the speed, the traffic of servers, the
 	// list of connections and the statistics come from it.
 	Stats bool `json:"stats"`
+	// TrafficHistory keeps the traffic by the hour, by profile and by program, for 90 days in a file of its own; it
+	// works with the statistics.
+	TrafficHistory bool `json:"trafficHistory"`
 	// LogLines is how many of the last lines of the log the log screen shows.
 	LogLines int `json:"logLines"`
 	// UpdateBeta takes the newest release, a pre-release too; else only the newest full one.
@@ -346,6 +349,24 @@ type ServerLatency struct {
 type ServersTested struct {
 	Results []ServerLatency `json:"results"`
 	Done    bool            `json:"done"`
+}
+
+// TrafficQuery asks for the history of the last Hours hours.
+type TrafficQuery struct {
+	Hours int `json:"hours"`
+}
+
+// TrafficItem is the traffic of a profile, Key its server ID, or of a program, Key its file name ("" the system).
+type TrafficItem struct {
+	Key      string `json:"key"`
+	Upload   int64  `json:"upload"`
+	Download int64  `json:"download"`
+}
+
+// TrafficHistory is the traffic of a period by profile, through the server alone, and by program, the most first.
+type TrafficHistory struct {
+	Profiles []TrafficItem `json:"profiles"`
+	Apps     []TrafficItem `json:"apps"`
 }
 
 // StatsNow is what «Statistics → Now» takes from the core.
@@ -1033,8 +1054,9 @@ const (
 	// without one.
 	MethodConnectionsList  = "connections.list"
 	MethodConnectionsClose = "connections.close"
-	// MethodStatsNow gives what «Statistics → Now» takes from the core.
+	// MethodStatsNow gives what «Statistics → Now» takes from the core; MethodStatsTraffic the history of traffic.
 	MethodStatsNow        = "stats.now"
+	MethodStatsTraffic    = "stats.traffic"
 	MethodConnectionState = "connection.state"
 	// MethodNetworkCheck starts a check of the addresses and DNS at once; network.changed brings the result.
 	MethodNetworkCheck = "network.check"

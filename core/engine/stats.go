@@ -51,7 +51,7 @@ func (e *Engine) StatsNow() (StatsNow, error) {
 // databasesSize is the size of the data files of the data folder.
 func (e *Engine) databasesSize() int64 {
 	var size int64
-	for _, name := range []string{DataFile} {
+	for _, name := range []string{DataFile, HistoryFile} {
 		if info, err := os.Stat(filepath.Join(e.dataDir, name)); err == nil {
 			size += info.Size()
 		}

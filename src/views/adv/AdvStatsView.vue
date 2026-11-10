@@ -4,13 +4,15 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import SpeedChart from '@/components/adv/SpeedChart.vue'
+import TrafficHistory from '@/components/adv/TrafficHistory.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui'
 import { flagOf, formatAgo, formatBytes, formatDuration, serverTitle } from '@/lib/format'
 import { ConnectionRunning, MethodStatsNow, type StatsNow } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 // «Statistics» of the advanced mode. «Now»: the core, the connection and the network, the speed of the last minute
-// and the next update of subscriptions, asked of the core every two seconds while the tab is open.
+// and the next update of subscriptions, asked of the core every two seconds while the tab is open. «Traffic»: the
+// history of traffic.
 const core = useCoreStore()
 const route = useRoute()
 const router = useRouter()
@@ -109,6 +111,6 @@ onBeforeUnmount(() => clearInterval(timer))
         <span class="font-mono text-xs" data-testid="stats-next-update">{{ nextUpdate }}</span>
       </section>
     </div>
-    <section v-else class="grid flex-1 place-items-center p-10 text-center text-t2" data-testid="stats-traffic">{{ t('adv.soon') }}</section>
+    <TrafficHistory v-else />
   </div>
 </template>

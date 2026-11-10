@@ -66,6 +66,8 @@ type connection struct {
 	tracker atomic.Pointer[trafficcontrol.Manager]
 	// onXray tells that Xray runs the server of the connection.
 	onXray atomic.Bool
+	// history counts the traffic of the connection for the history while it is kept.
+	history atomic.Pointer[historyTracker]
 }
 
 type runningConnection struct {
@@ -433,11 +435,16 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	// there are none: no speed, no traffic of the server and no list of connections.
 	counter := &trafficCounter{}
 	var tracker *trafficcontrol.Manager
+	var history *historyTracker
 	trackTraffic := func(box *boxbox.Box) {
 		if settings.Stats {
 			tracker = trafficcontrol.NewManager()
 			box.Router().AppendTracker(counter)
 			box.Router().AppendTracker(tracker)
+		}
+		if historyOn(settings) {
+			history = newHistoryTracker(settings.Server)
+			box.Router().AppendTracker(history)
 		}
 	}
 	running.box, running.cancel, err = boxmain.Create(singBox, trackTraffic)
@@ -462,6 +469,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	e.conn.running = running
 	e.conn.box.Store(running.box)
 	e.conn.tracker.Store(tracker)
+	e.conn.history.Store(history)
 	e.conn.onXray.Store(configs.Xray != nil)
 	e.setGuarding(guarded, settings.Tun)
 	if !settings.Tun {
@@ -472,6 +480,9 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	running.stopTraffic = stopTraffic
 	if settings.Stats {
 		go e.reportTraffic(trafficCtx, counter, settings.Server)
+	}
+	if history != nil {
+		go e.keepHistory(trafficCtx, history)
 	}
 	go e.pingConnection(trafficCtx, running.box, settings.Server)
 
@@ -526,6 +537,7 @@ func (e *Engine) stopRunning(keepProxy bool) error {
 	e.conn.box.Store(nil)
 	e.conn.tracker.Store(nil)
 	running.stopTraffic()
+	e.recordHistory(e.conn.history.Swap(nil))
 	done := make(chan struct{})
 	go func() {
 		running.cancel()

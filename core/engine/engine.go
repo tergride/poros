@@ -54,6 +54,7 @@ type Engine struct {
 	dataDir string
 	// started is when the engine opened, for the time the core works.
 	started   time.Time
+	history   trafficHistory
 	userAgent string
 	db        *bbolt.DB
 	notify    Notify
@@ -203,7 +204,7 @@ func (e *Engine) Close() error {
 	err := e.closeConnection()
 	e.closeKillSwitch()
 	e.saveTraffic()
-	return errors.Join(err, e.db.Close())
+	return errors.Join(err, e.closeHistory(), e.db.Close())
 }
 
 func newID() string {

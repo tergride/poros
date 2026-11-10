@@ -58,6 +58,7 @@ import {
   MethodConnectionsClose,
   MethodConnectionsList,
   MethodStatsNow,
+  MethodStatsTraffic,
   MethodGroupsAdd,
   MethodGroupsConfigure,
   MethodGroupsList,
@@ -193,6 +194,7 @@ const defaultSettings: Settings = {
   xraySystemCerts: false,
   insecureDefault: false,
   stats: true,
+  trafficHistory: true,
   deviceData: '',
   logLines: 500,
   updateBeta: false,
@@ -1166,6 +1168,16 @@ export function createStubCore(): CoreClient {
         direct: open.filter((c) => c.outbound === 'direct').length,
         other: 0,
         nextSubscriptionUpdate: startedAt + (3 * 60 + 40) * 60_000,
+      }
+    },
+    // The history of the mockup, its days for the hours asked.
+    [MethodStatsTraffic]: ({ hours }) => {
+      if (!Number.isInteger(hours) || hours < 1 || hours > 2160) throw failed(ReasonInvalidValue, `hours must be from 1 to 2160, not ${hours}`)
+      const days = Math.max(1, hours / 24)
+      const of = (key: string, download: number, upload: number) => ({ key, download: download * days, upload: upload * days })
+      return {
+        profiles: servers.slice(0, 3).map((s, i) => of(s.id, [11_200, 5_100, 1_900][i]! * 2 ** 20, [1_200, 480, 210][i]! * 2 ** 20)),
+        apps: [of('chrome.exe', 9_400 * 2 ** 20, 820 * 2 ** 20), of('steam.exe', 6_700 * 2 ** 20, 90 * 2 ** 20), of('telegram.exe', 1_100 * 2 ** 20, 300 * 2 ** 20)],
       }
     },
     [MethodConnectionsClose]: ({ id }) => {

@@ -755,3 +755,28 @@ test('«Statistics → Now» shows the core, the connection, the network and the
   await page.waitForTimeout(2500)
   await shot(page, 'adv-stats-now')
 })
+
+test('«Statistics → Traffic» sums the history by profile and by application for a period', async ({ page }) => {
+  await toAdvanced(page)
+  await page.getByTestId('rail-stats').click()
+  await page.getByRole('tab', { name: 'Трафик' }).click()
+  await expect(page).toHaveURL(/#\/adv\/stats\/traffic$/)
+  await expect(page.getByTestId('traffic-profiles').locator('tbody tr')).toHaveCount(3)
+  await expect(page.getByTestId('traffic-profiles')).toContainText('Germany')
+  await expect(page.getByTestId('traffic-apps').locator('tbody tr').first()).toContainText('chrome.exe')
+  await expect(page.getByTestId('traffic-apps')).toContainText('10 ГБ')
+  await page.getByTestId('traffic-period').click()
+  await page.getByRole('option', { name: 'Последние 7 дней' }).click()
+  await expect(page.getByTestId('traffic-apps')).toContainText('69,9 ГБ')
+  await shot(page, 'adv-stats-traffic')
+
+  // The history needs the statistics of connections.
+  await page.getByTestId('rail-settings').click()
+  await page.locator('a[href="#/adv/settings/logging"]').click()
+  await page.getByTestId('stats').click()
+  await expect(page.getByTestId('traffic-history')).toBeDisabled()
+  await page.getByTestId('settings-save').click()
+  await page.getByTestId('rail-stats').click()
+  await page.getByRole('tab', { name: 'Трафик' }).click()
+  await expect(page.getByTestId('traffic-off')).toBeVisible()
+})

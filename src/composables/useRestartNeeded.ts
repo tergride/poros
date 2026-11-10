@@ -66,6 +66,7 @@ const builtWith = (s: Settings) =>
     s.xraySystemCerts,
     s.insecureDefault,
     s.stats,
+    s.trafficHistory,
   ])
 
 /**

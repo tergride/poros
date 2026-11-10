@@ -281,6 +281,11 @@ export interface Settings {
    */
   stats: boolean;
   /**
+   * TrafficHistory keeps the traffic by the hour, by profile and by program, for 90 days in a file of its own; it
+   * works with the statistics.
+   */
+  trafficHistory: boolean;
+  /**
    * LogLines is how many of the last lines of the log the log screen shows.
    */
   logLines: number /* int */;
@@ -510,6 +515,27 @@ export interface ServerLatency {
 export interface ServersTested {
   results: ServerLatency[];
   done: boolean;
+}
+/**
+ * TrafficQuery asks for the history of the last Hours hours.
+ */
+export interface TrafficQuery {
+  hours: number /* int */;
+}
+/**
+ * TrafficItem is the traffic of a profile, Key its server ID, or of a program, Key its file name ("" the system).
+ */
+export interface TrafficItem {
+  key: string;
+  upload: number /* int64 */;
+  download: number /* int64 */;
+}
+/**
+ * TrafficHistory is the traffic of a period by profile, through the server alone, and by program, the most first.
+ */
+export interface TrafficHistory {
+  profiles: TrafficItem[];
+  apps: TrafficItem[];
 }
 /**
  * StatsNow is what «Statistics → Now» takes from the core.
@@ -1565,9 +1591,13 @@ export const MethodConnectionsList = "connections.list";
  */
 export const MethodConnectionsClose = "connections.close";
 /**
- * MethodStatsNow gives what «Statistics → Now» takes from the core.
+ * MethodStatsNow gives what «Statistics → Now» takes from the core; MethodStatsTraffic the history of traffic.
  */
 export const MethodStatsNow = "stats.now";
+/**
+ * Methods the core answers.
+ */
+export const MethodStatsTraffic = "stats.traffic";
 /**
  * Methods the core answers.
  */

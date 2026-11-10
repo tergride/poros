@@ -11,6 +11,8 @@ import type {
   ConfigureGroup,
   ConnectionList,
   StatsNow,
+  TrafficHistory,
+  TrafficQuery,
   ConnectionState,
   DNSObject,
   Group,
@@ -73,6 +75,7 @@ import {
   MethodConnectionsClose,
   MethodConnectionsList,
   MethodStatsNow,
+  MethodStatsTraffic,
   MethodGroupsAdd,
   MethodGroupsConfigure,
   MethodGroupsList,
@@ -173,6 +176,7 @@ export interface CoreMethods {
   [MethodConnectionsList]: { params: undefined; result: ConnectionList }
   [MethodConnectionsClose]: { params: ByID; result: null }
   [MethodStatsNow]: { params: undefined; result: StatsNow }
+  [MethodStatsTraffic]: { params: TrafficQuery; result: TrafficHistory }
   [MethodConnectionState]: { params: undefined; result: ConnectionState }
   [MethodNetworkCheck]: { params: undefined; result: NetworkState }
   [MethodNetworkState]: { params: undefined; result: NetworkState }

@@ -11,6 +11,7 @@ import { useSetting } from '@/composables/useSetting'
 const { t } = useI18n()
 const lines = useSetting('logLines')
 const stats = useSetting('stats')
+const history = useSetting('trafficHistory')
 
 // A number as typed; the core refuses what is out of range at «Save».
 const linesText = computed({
@@ -35,6 +36,10 @@ const linesText = computed({
     <label class="flex items-start gap-3 pt-2.5 pb-1">
       <Switch v-model="stats" :aria-label="t('settings.logging.stats')" data-testid="stats" />
       <span>{{ t('settings.logging.stats') }}<br /><span class="text-xs text-t3">{{ t('settings.logging.statsHint') }}</span></span>
+    </label>
+    <label :class="['flex items-start gap-3 pt-3 pb-1', !stats && 'opacity-55']">
+      <Switch v-model="history" :disabled="!stats" :aria-label="t('settings.logging.history')" data-testid="traffic-history" />
+      <span>{{ t('settings.logging.history') }}<br /><span class="text-xs text-t3">{{ t(stats ? 'settings.logging.historyHint' : 'settings.logging.historyNeedsStats') }}</span></span>
     </label>
   </SettingsCard>
 </template>

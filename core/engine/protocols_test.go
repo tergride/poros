@@ -147,7 +147,7 @@ func TestConnectionThroughWireGuard(t *testing.T) {
 	// to the page.
 	const inside = "192.0.2.80"
 	port := freePort(t)
-	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"wireguard","tag":"wg-in","address":["10.200.0.1/24"],`+
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"wireguard","tag":"wg-in","inet4_bind_address":"127.0.0.1","address":["10.200.0.1/24"],`+
 		`"private_key":"%s","listen_port":%d,"peers":[{"public_key":"%s","allowed_ips":["10.200.0.2/32"]}]}],`+
 		`"outbounds":[{"type":"direct","tag":"direct"}],`+
 		`"route":{"rules":[{"ip_cidr":["%s/32"],"action":"route","outbound":"direct","override_address":"127.0.0.1"}],"final":"direct"}}`,
@@ -295,7 +295,7 @@ func TestConnectionThroughWARP(t *testing.T) {
 	serverPrivate, serverPublic := keys()
 	clientPrivate, clientPublic := keys()
 	wgPort, trojanPort := freePort(t), freePort(t)
-	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"wireguard","tag":"wg-in","address":["10.200.0.1/24"],`+
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"wireguard","tag":"wg-in","inet4_bind_address":"127.0.0.1","address":["10.200.0.1/24"],`+
 		`"private_key":"%s","listen_port":%d,"peers":[{"public_key":"%s","allowed_ips":["10.200.0.2/32"]}]}],`+
 		`"outbounds":[{"type":"direct","tag":"direct"}],%s}`, serverPrivate, wgPort, clientPublic, insideRoute))
 	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"inbounds":[{"type":"trojan","listen":"127.0.0.1","listen_port":%d,`+

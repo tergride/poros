@@ -30,6 +30,7 @@ func DefaultSettings() Settings {
 		NTPOutbound:            config.OutboundDirect,
 		LogLines:               defaultLogLines,
 		Stats:                  true,
+		TrafficHistory:         true,
 		TunMTU:                 defaultTunMTU,
 		TunStrictRoute:         true,
 		TunIPv4:                TunIPv4Default,

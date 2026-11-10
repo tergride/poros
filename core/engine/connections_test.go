@@ -54,13 +54,14 @@ func TestConnectionsList(t *testing.T) {
 			t.Fatalf("the list: %+v, %v", list, err)
 		}
 		for _, c := range list.Connections {
-			if c.Destination == target.Host && c.Outbound == config.TagProxy {
+			// The fetch before may still be closing: the tunnel is the connection from this socket.
+			if c.Destination == target.Host && c.Outbound == config.TagProxy && c.Source == conn.LocalAddr().String() {
 				found = c
 			}
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if found.ID == "" || found.Network != "tcp" || found.Start == 0 || !strings.HasPrefix(found.Source, "127.0.0.1:") {
+	if found.ID == "" || found.Network != "tcp" || found.Start == 0 {
 		t.Fatalf("the tunnel is not listed as going through the server: %+v", found)
 	}
 	if now, err := e.StatsNow(); err != nil || !strings.HasPrefix(now.Core, "sing-box ") || now.ThroughServer < 1 ||

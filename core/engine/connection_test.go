@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -20,23 +21,26 @@ import (
 // The connection tests run real cores on loopback: a server, Poros's mixed inbound on a free port, and a web
 // page behind them. TUN and the system proxy stay off, as on any check on the host.
 
-// freePort finds a port free on loopback for TCP and UDP both: Windows keeps ranges of UDP ports for itself that
-// are free for TCP, and a server on QUIC or WireGuard would fail to start on one of them. The port comes from UDP,
-// since Windows hands out TCP ports in a row and twenty of them can all fall into one such range.
+// freePort finds a port free on loopback for TCP and UDP both: Windows keeps ranges of ports of one protocol for
+// itself that are free for the other, and a server on QUIC or WireGuard would fail to start on one of them. The
+// port is a random one, since Windows hands out the ports of either protocol in a row and a run of them can fall
+// into one such range.
 func freePort(t *testing.T) uint16 {
 	t.Helper()
 	var last error
-	for range 50 {
-		packet, err := net.ListenPacket("udp", "127.0.0.1:0")
+	for range 200 {
+		port := strconv.Itoa(20000 + rand.IntN(40000))
+		packet, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", port))
 		if err != nil {
-			t.Fatal(err)
+			last = err
+			continue
 		}
-		port := packet.LocalAddr().(*net.UDPAddr).Port
-		listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", port))
 		packet.Close()
 		if err == nil {
 			listener.Close()
-			return uint16(port)
+			value, _ := strconv.Atoi(port)
+			return uint16(value)
 		}
 		last = err
 	}

@@ -552,7 +552,10 @@
       "linesHint": "From 100 to 20,000. How much the log records, “Detailed log” in “Help” says.",
       "statsTitle": "Statistics",
       "stats": "Statistics of connections",
-      "statsHint": "Traffic counters for “Connections”, “Statistics” and the speed. Turned off, there are none. Takes effect with the next connection."
+      "statsHint": "Traffic counters for “Connections”, “Statistics” and the speed. Turned off, there are none. Takes effect with the next connection.",
+      "history": "Keep the traffic history",
+      "historyHint": "By profile and application, 90 days, in a database of its own, for “Statistics → Traffic”.",
+      "historyNeedsStats": "Works with the statistics of connections."
     }
   },
   "linkPreset": {
@@ -969,6 +972,25 @@
       "nextUpdate": "Next update of subscriptions",
       "soon": "any moment",
       "ms": "{n} ms"
+    },
+    "traffic": {
+      "period": "Period",
+      "day": "The last 24 hours",
+      "week": "The last 7 days",
+      "month": "The last 30 days",
+      "quarter": "The last 90 days",
+      "refresh": "Refresh",
+      "byProfile": "By profile",
+      "byApp": "By application",
+      "profile": "Profile",
+      "group": "Group",
+      "app": "Application",
+      "download": "Download",
+      "upload": "Upload",
+      "total": "Total",
+      "removed": "A removed profile",
+      "empty": "No traffic in this period.",
+      "off": "The traffic history is off: new traffic does not come here."
     }
   },
   "profiles": {
