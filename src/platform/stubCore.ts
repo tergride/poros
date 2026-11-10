@@ -50,6 +50,7 @@ import {
   GroupSubscription,
   LeakNone,
   LinkServer,
+  MethodAppDebugInfo,
   MethodAppInfo,
   MethodConnectionStart,
   MethodConnectionState,
@@ -188,6 +189,9 @@ const defaultSettings: Settings = {
   ignoreTlsErrors: false,
   xraySystemCerts: false,
   insecureDefault: false,
+  deviceData: '',
+  logLines: 500,
+  updateBeta: false,
   ipv6: true,
   realityOnXray: true,
   dnsRemote: '',
@@ -779,6 +783,7 @@ export function createStubCore(): CoreClient {
 
   const methods: { [M in CoreMethod]: (params: CoreMethods[M]['params']) => CoreMethods[M]['result'] } = {
     [MethodAppInfo]: () => ({ singBox: 'stub', xray: 'stub', dataDir: 'browser', elevated: status.elevated }),
+    [MethodAppDebugInfo]: () => `Poros stub\nsing-box stub, Xray stub\nSettings: ${JSON.stringify({ ...settings, proxyPassword: '' }, null, 2)}\n`,
     [MethodSettingsGet]: () => ({ ...settings }),
     [MethodSettingsSet]: (next) => {
       if (!presetList().some((p) => p.id === next.preset)) throw failed(ReasonUnknownPreset, `there is no preset "${next.preset}"`)

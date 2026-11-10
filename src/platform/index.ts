@@ -62,6 +62,8 @@ export const appControls = {
   },
   /** Opens the folder of the logs in Explorer. */
   openLogs: (): Promise<void> => (inTauri ? invoke('app_open_logs') : Promise.resolve()),
+  /** Opens the data folder in Explorer. */
+  openData: (): Promise<void> => (inTauri ? invoke('app_open_data') : Promise.resolve()),
 }
 
 export async function setTray(items: TrayItem[], tooltip: string): Promise<void> {

@@ -245,7 +245,8 @@ func (e *Engine) requestOf(rec groupRecord, settings Settings) subscriptionReque
 		send = false
 	}
 	if send {
-		req.device = e.deviceHeadersOf(gs)
+		own, _ := parseDeviceData(settings.DeviceData)
+		req.device = e.deviceHeadersOf(gs, own)
 	}
 	return req
 }

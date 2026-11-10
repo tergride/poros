@@ -151,6 +151,9 @@ type Settings struct {
 	SpeedTestURL  string `json:"speedTestUrl"`
 	// SendDeviceInfo sends providers a device ID and the system's version, for those that limit devices.
 	SendDeviceInfo bool `json:"sendDeviceInfo"`
+	// DeviceData replaces what Poros tells providers about the device, as "hwid=…, os=…, osVersion=…, model=…";
+	// a group's own data replaces it in turn.
+	DeviceData string `json:"deviceData"`
 	// ShowChanges shows what a subscription update by hand added and removed.
 	ShowChanges bool `json:"showChanges"`
 	// AutoConnect connects to the chosen server when Poros starts.
@@ -179,6 +182,10 @@ type Settings struct {
 	UpdateCheck bool `json:"updateCheck"`
 	// DebugLog adds every connection and more of what the core does to the log; errors are always there.
 	DebugLog bool `json:"debugLog"`
+	// LogLines is how many of the last lines of the log the log screen shows.
+	LogLines int `json:"logLines"`
+	// UpdateBeta takes the newest release, a pre-release too; else only the newest full one.
+	UpdateBeta bool `json:"updateBeta"`
 }
 
 // Kinds of groups.
@@ -910,6 +917,9 @@ type ServersChanged struct {
 // Methods the core answers.
 const (
 	MethodAppInfo = "app.info"
+	// MethodAppDebugInfo gives the versions, the system and the settings as text for a report, without links,
+	// keys and the user's addresses.
+	MethodAppDebugInfo = "app.debugInfo"
 	// MethodAppHandOver tells the core that the shell replaces it with another core: it leaves the system proxy
 	// and what the kill switch holds to the next one.
 	MethodAppHandOver  = "app.handOver"

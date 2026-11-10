@@ -106,6 +106,18 @@ fn now() -> String {
 pub fn open_dir() -> Result<(), String> {
     let dir = dir().ok_or("the logs folder is not known yet")?;
     fs::create_dir_all(dir).map_err(|err| err.to_string())?;
+    open_in_file_manager(dir)
+}
+
+/// Opens the data folder, the one the logs folder is in, in the file manager.
+pub fn open_data_dir() -> Result<(), String> {
+    let dir = dir()
+        .and_then(|logs| logs.parent())
+        .ok_or("the data folder is not known yet")?;
+    open_in_file_manager(dir)
+}
+
+fn open_in_file_manager(dir: &Path) -> Result<(), String> {
     #[cfg(windows)]
     let program = "explorer.exe";
     #[cfg(not(windows))]

@@ -42,10 +42,12 @@ type Config struct {
 	// Window is the PID of the Poros window the core serves, 0 without one: what the kill switch held goes on with
 	// the next core of the same window.
 	Window int
-	// UpdateFeed is latest.json of the releases, "" for those of tergride/poros; ProgramDir is the folder with
-	// updater.exe, "" for the folder of this program.
-	UpdateFeed string
-	ProgramDir string
+	// UpdateFeed is latest.json of the releases, "" for those of tergride/poros, and UpdateReleases the Atom list
+	// of all of them, pre-releases too, that beta versions come from; ProgramDir is the folder with updater.exe, ""
+	// for the folder of this program.
+	UpdateFeed     string
+	UpdateReleases string
+	ProgramDir     string
 }
 
 type Engine struct {

@@ -10,14 +10,22 @@ import (
 )
 
 const (
-	// logLines is what the log window shows and the support copy carries.
-	logLines = 500
-	// logTail is how much of the end of the file is read for them.
-	logTail = 256 << 10
+	// The log screen shows the last lines of the log, as many as the settings say.
+	defaultLogLines = 500
+	minLogLines     = 100
+	maxLogLines     = 20000
+	// logLineBytes is how much of the end of the file is read for each of them.
+	logLineBytes = 512
 )
 
 // Logs gives the last lines of the core's log, which goes on across runs.
 func (e *Engine) Logs() ([]string, error) {
+	settings, err := e.Settings()
+	if err != nil {
+		settings = DefaultSettings()
+	}
+	logLines := settings.LogLines
+	logTail := int64(max(logLines*logLineBytes, 256<<10))
 	file, err := os.Open(filepath.Join(e.dataDir, "logs", "core.log"))
 	if errors.Is(err, os.ErrNotExist) {
 		return []string{}, nil

@@ -148,6 +148,12 @@ fn app_open_logs() -> Result<(), String> {
     applog::open_dir()
 }
 
+/// Opens the data folder in Explorer.
+#[tauri::command]
+fn app_open_data() -> Result<(), String> {
+    applog::open_data_dir()
+}
+
 #[tauri::command]
 fn url_scheme_get() -> Result<UrlScheme, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -419,6 +425,7 @@ pub fn run() {
             app_update,
             app_log,
             app_open_logs,
+            app_open_data,
             take_links,
             url_scheme_get,
             url_scheme_set,

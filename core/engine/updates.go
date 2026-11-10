@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -29,11 +30,15 @@ const (
 	// 404 until the first release. Updates never come from Throne.
 	releasesFeed     = "https://github.com/tergride/poros/releases/latest/download/latest.json"
 	releasesDownload = "https://github.com/tergride/poros/releases/download/v%s/%s"
-	updateInterval   = 4 * time.Hour
-	feedMaxBytes     = 1 << 20
-	archiveMaxBytes  = 512 << 20
-	downloadTimeout  = 30 * time.Minute
-	updateFolder     = "update"
+	// releasesAtom lists the releases of tergride/poros, pre-releases too, newest first; a beta version is a
+	// pre-release of the usual X.Y.Z with the same files.
+	releasesAtom    = "https://github.com/tergride/poros/releases.atom"
+	releasesGitHub  = "https://github.com/tergride/poros/releases/"
+	updateInterval  = 4 * time.Hour
+	feedMaxBytes    = 1 << 20
+	archiveMaxBytes = 512 << 20
+	downloadTimeout = 30 * time.Minute
+	updateFolder    = "update"
 	// installErrorFile is what updater.exe leaves next to the archive when an install failed.
 	installErrorFile = "install-error.txt"
 	updaterName      = "updater.exe"
@@ -93,10 +98,11 @@ func newerVersion(candidate, current string) bool {
 }
 
 type updates struct {
-	feedURL string
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
+	feedURL     string
+	releasesURL string
+	ctx         context.Context
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
 
 	// mu guards the fields below; events leave under it, in the order of the changes.
 	mu      sync.Mutex
@@ -123,6 +129,7 @@ func (e *Engine) openUpdates(cfg Config) {
 		State:     UpdateIdle,
 	}
 	e.upd.feedURL = cmp.Or(cfg.UpdateFeed, releasesFeed)
+	e.upd.releasesURL = cmp.Or(cfg.UpdateReleases, releasesAtom)
 	e.upd.ctx, e.upd.cancel = context.WithCancel(context.Background())
 	e.readInstallError()
 	e.readReady()
@@ -242,10 +249,14 @@ func (e *Engine) startUpdateCheck() {
 
 func (e *Engine) runUpdateCheck(ctx context.Context) {
 	current := e.UpdatesState().Current
-	feed, err := e.fetchFeed(ctx)
+	feedURL, err := e.feedURL(ctx)
+	var feed *releaseFeed
+	if err == nil && feedURL != "" {
+		feed, err = e.fetchFeed(ctx, feedURL)
+	}
 	newer := err == nil && feed != nil && newerVersion(feed.Version, current)
 	if newer {
-		err = e.fetchArchive(ctx, *feed)
+		err = e.fetchArchive(ctx, *feed, feedURL)
 	}
 	e.upd.mu.Lock()
 	defer e.upd.mu.Unlock()
@@ -270,9 +281,74 @@ func (e *Engine) runUpdateCheck(ctx context.Context) {
 	}
 }
 
-// fetchFeed reads latest.json; nil is no release yet.
-func (e *Engine) fetchFeed(ctx context.Context) (*releaseFeed, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, e.upd.feedURL, nil)
+// feedURL is latest.json of the release to check: the newest full one, or with beta versions the newest of all;
+// "" is no release yet.
+func (e *Engine) feedURL(ctx context.Context) (string, error) {
+	settings, err := e.Settings()
+	if err != nil || !settings.UpdateBeta {
+		return e.upd.feedURL, nil
+	}
+	version, err := e.newestRelease(ctx)
+	if err != nil || version == "" {
+		return "", err
+	}
+	if e.upd.releasesURL == releasesAtom {
+		return releasesGitHub + "download/v" + version + "/latest.json", nil
+	}
+	base, err := url.Parse(e.upd.releasesURL)
+	if err != nil {
+		return "", err
+	}
+	return base.ResolveReference(&url.URL{Path: "download/v" + version + "/latest.json"}).String(), nil
+}
+
+// releasesList is the part of the Atom list of releases a check reads: the page of each release, which ends with
+// its tag.
+type releasesList struct {
+	Entries []struct {
+		Links []struct {
+			Href string `xml:"href,attr"`
+		} `xml:"link"`
+	} `xml:"entry"`
+}
+
+// newestRelease finds the highest X.Y.Z among the releases, pre-releases too; "" is none.
+func (e *Engine) newestRelease(ctx context.Context) (string, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, e.upd.releasesURL, nil)
+	if err != nil {
+		return "", err
+	}
+	request.Header.Set("User-Agent", e.userAgent)
+	response, err := e.client.Do(request)
+	if err != nil {
+		return "", fmt.Errorf("check for updates: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusNotFound {
+		return "", nil
+	}
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("check for updates: %s", response.Status)
+	}
+	var list releasesList
+	if err = xml.NewDecoder(io.LimitReader(response.Body, feedMaxBytes)).Decode(&list); err != nil {
+		return "", fmt.Errorf("the list of releases could not be read: %w", err)
+	}
+	newest := ""
+	for _, entry := range list.Entries {
+		for _, link := range entry.Links {
+			_, tag, found := strings.Cut(link.Href, "/releases/tag/v")
+			if found && versionPattern.MatchString(tag) && (newest == "" || newerVersion(tag, newest)) {
+				newest = tag
+			}
+		}
+	}
+	return newest, nil
+}
+
+// fetchFeed reads the latest.json at link; nil is no release yet.
+func (e *Engine) fetchFeed(ctx context.Context, link string) (*releaseFeed, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -299,12 +375,12 @@ func (e *Engine) fetchFeed(ctx context.Context) (*releaseFeed, error) {
 	return &feed, err
 }
 
-// archiveURL is the release's archive: on GitHub by its tag, elsewhere next to the feed.
-func (e *Engine) archiveURL(feed releaseFeed) (string, error) {
-	if e.upd.feedURL == releasesFeed {
+// archiveURL is the release's archive: on GitHub by its tag, elsewhere next to the feed at feedURL.
+func archiveURL(feed releaseFeed, feedURL string) (string, error) {
+	if strings.HasPrefix(feedURL, releasesGitHub) {
 		return fmt.Sprintf(releasesDownload, feed.Version, feed.File), nil
 	}
-	base, err := url.Parse(e.upd.feedURL)
+	base, err := url.Parse(feedURL)
 	if err != nil {
 		return "", err
 	}
@@ -313,7 +389,7 @@ func (e *Engine) archiveURL(feed releaseFeed) (string, error) {
 
 // fetchArchive downloads the release into the update folder of the data, unless an earlier run left it whole, and
 // checks its size and SHA-256.
-func (e *Engine) fetchArchive(ctx context.Context, feed releaseFeed) error {
+func (e *Engine) fetchArchive(ctx context.Context, feed releaseFeed, feedURL string) error {
 	dir := e.updateDir()
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
@@ -331,7 +407,7 @@ func (e *Engine) fetchArchive(ctx context.Context, feed releaseFeed) error {
 	e.setUpdates(func(s *UpdateState) { s.State, s.Version = UpdateDownloading, feed.Version })
 	e.upd.mu.Unlock()
 
-	link, err := e.archiveURL(feed)
+	link, err := archiveURL(feed, feedURL)
 	if err != nil {
 		return err
 	}

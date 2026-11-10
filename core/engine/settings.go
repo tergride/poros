@@ -28,6 +28,7 @@ func DefaultSettings() Settings {
 		NTPPort:                defaultNTPPort,
 		NTPInterval:            defaultNTPInterval,
 		NTPOutbound:            config.OutboundDirect,
+		LogLines:               defaultLogLines,
 		TunMTU:                 defaultTunMTU,
 		TunStrictRoute:         true,
 		TunIPv4:                TunIPv4Default,
@@ -188,6 +189,12 @@ func (e *Engine) validateSettings(settings Settings) error {
 	}
 	if err := validateNTP(settings); err != nil {
 		return err
+	}
+	if _, err := parseDeviceData(settings.DeviceData); err != nil {
+		return jsonrpc.Failed(ReasonInvalidValue, "deviceData: %v", err)
+	}
+	if settings.LogLines < minLogLines || settings.LogLines > maxLogLines {
+		return jsonrpc.Failed(ReasonInvalidValue, "logLines must be from %d to %d, not %d", minLogLines, maxLogLines, settings.LogLines)
 	}
 	return validateDNS(settings)
 }

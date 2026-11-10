@@ -75,8 +75,17 @@ func TestLogsGiveTheLastLines(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines, err := e.Logs()
-	if err != nil || len(lines) != logLines || lines[0] != "line 200" || lines[len(lines)-1] != "line 699" {
+	if err != nil || len(lines) != defaultLogLines || lines[0] != "line 200" || lines[len(lines)-1] != "line 699" {
 		t.Fatalf("logs: %d lines, %q … %q, %v", len(lines), lines[0], lines[len(lines)-1], err)
+	}
+	// The settings say how many.
+	settings, _ := e.Settings()
+	settings.LogLines = 100
+	if _, err = e.SetSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	if lines, err = e.Logs(); err != nil || len(lines) != 100 || lines[0] != "line 600" {
+		t.Fatalf("100 lines: %d, %v", len(lines), err)
 	}
 }
 

@@ -104,6 +104,12 @@ export function checkDnsSettings(s: Settings): void {
   if ((s.ntp && !s.ntpServer.trim()) || /[\s/\\@]/.test(s.ntpServer.trim())) throw invalid(`the NTP server "${s.ntpServer}" is no host name or address`)
   if (!Number.isInteger(s.ntpPort) || s.ntpPort < 1 || s.ntpPort > 65535) throw invalid(`ntpPort must be from 1 to 65535, not ${s.ntpPort}`)
   if (!Number.isInteger(s.ntpInterval) || s.ntpInterval < 1 || s.ntpInterval > 1440) throw invalid(`ntpInterval must be from 1 to 1440 minutes, not ${s.ntpInterval}`)
+  // As parseDeviceData in core/engine/device.go and the lines of the log screen.
+  for (const part of s.deviceData.split(',').map((p) => p.trim()).filter(Boolean)) {
+    const [key = '', value = ''] = part.split('=', 2).map((p) => p.trim())
+    if (!part.includes('=') || !value || !['hwid', 'os', 'osversion', 'model'].includes(key.toLowerCase())) throw invalid(`deviceData: "${part}"`)
+  }
+  if (!Number.isInteger(s.logLines) || s.logLines < 100 || s.logLines > 20000) throw invalid(`logLines must be from 100 to 20000, not ${s.logLines}`)
   // As validateWARP in core/engine/warp.go, the formats left to the core.
   if (!['wireguard', 'masque'].includes(s.warpMode)) throw invalid(`warpMode must be wireguard or masque, not "${s.warpMode}"`)
   const device = s.warpMode === 'masque' ? s.warpMasque : s.warpWireGuard

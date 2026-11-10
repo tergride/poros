@@ -225,6 +225,11 @@ export interface Settings {
    */
   sendDeviceInfo: boolean;
   /**
+   * DeviceData replaces what Poros tells providers about the device, as "hwid=…, os=…, osVersion=…, model=…";
+   * a group's own data replaces it in turn.
+   */
+  deviceData: string;
+  /**
    * ShowChanges shows what a subscription update by hand added and removed.
    */
   showChanges: boolean;
@@ -270,6 +275,14 @@ export interface Settings {
    * DebugLog adds every connection and more of what the core does to the log; errors are always there.
    */
   debugLog: boolean;
+  /**
+   * LogLines is how many of the last lines of the log the log screen shows.
+   */
+  logLines: number /* int */;
+  /**
+   * UpdateBeta takes the newest release, a pre-release too; else only the newest full one.
+   */
+  updateBeta: boolean;
 }
 /**
  * Kinds of groups.
@@ -1336,6 +1349,11 @@ export interface ServersChanged {
  * Methods the core answers.
  */
 export const MethodAppInfo = "app.info";
+/**
+ * MethodAppDebugInfo gives the versions, the system and the settings as text for a report, without links,
+ * keys and the user's addresses.
+ */
+export const MethodAppDebugInfo = "app.debugInfo";
 /**
  * MethodAppHandOver tells the core that the shell replaces it with another core: it leaves the system proxy
  * and what the kill switch holds to the next one.

@@ -61,6 +61,7 @@ import {
   EventGroupsChanged,
   EventSettingsChanged,
   EventUpdatesChanged,
+  MethodAppDebugInfo,
   MethodAppInfo,
   MethodConnectionStart,
   MethodConnectionState,
@@ -118,6 +119,7 @@ import {
 /** What each method of core/engine/api.go takes and returns. */
 export interface CoreMethods {
   [MethodAppInfo]: { params: undefined; result: AppInfo }
+  [MethodAppDebugInfo]: { params: undefined; result: string }
   [MethodSettingsGet]: { params: undefined; result: Settings }
   [MethodSettingsSet]: { params: Settings; result: Settings }
   [MethodGroupsList]: { params: undefined; result: Group[] }

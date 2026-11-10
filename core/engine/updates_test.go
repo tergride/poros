@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -304,5 +306,60 @@ func TestParseFeed(t *testing.T) {
 		if newerVersion(tc.a, tc.b) != tc.newer {
 			t.Errorf("newerVersion(%s, %s) = %v", tc.a, tc.b, !tc.newer)
 		}
+	}
+}
+
+// Beta versions come from the list of all releases: the highest X.Y.Z among them, a pre-release too, and its
+// archive next to its latest.json; without them the newest full release counts.
+func TestUpdatesBeta(t *testing.T) {
+	stable := newReleaseServer(t, "0.2.0")
+	beta := []byte("the archive of 0.3.0")
+	sum := sha256.Sum256(beta)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/releases.atom":
+			io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">`+
+				`<entry><link rel="alternate" type="text/html" href="https://github.com/tergride/poros/releases/tag/v0.2.0"/></entry>`+
+				`<entry><link rel="alternate" type="text/html" href="https://github.com/tergride/poros/releases/tag/v0.3.0"/></entry>`+
+				`<entry><link rel="alternate" type="text/html" href="https://github.com/tergride/poros/releases/tag/nightly"/></entry>`+
+				`</feed>`)
+		case "/download/v0.3.0/latest.json":
+			json.NewEncoder(w).Encode(map[string]any{
+				"version": "0.3.0", "file": "Poros-0.3.0-windows-amd64.zip", "size": len(beta), "sha256": hex.EncodeToString(sum[:]),
+			})
+		case "/download/v0.3.0/Poros-0.3.0-windows-amd64.zip":
+			w.Write(beta)
+		default:
+			http.NotFound(w, req)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	program := t.TempDir()
+	if err := os.WriteFile(filepath.Join(program, updaterName), []byte("updater"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	open := func(betas bool) *Engine {
+		e, err := Open(Config{DataDir: t.TempDir(), Version: "0.1.0", UpdateFeed: stable.url, UpdateReleases: server.URL + "/releases.atom", ProgramDir: program})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { e.Close() })
+		settings, _ := e.Settings()
+		settings.UpdateBeta = betas
+		if _, err = e.SetSettings(settings); err != nil {
+			t.Fatal(err)
+		}
+		e.CheckUpdates()
+		return e
+	}
+	if state := waitUpdates(t, open(false), settled); state.State != UpdateReady || state.Version != "0.2.0" {
+		t.Errorf("without beta versions: %+v", state)
+	}
+	if state := waitUpdates(t, open(true), settled); state.State != UpdateReady || state.Version != "0.3.0" {
+		t.Errorf("with beta versions: %+v", state)
+	}
+	if url, _ := archiveURL(releaseFeed{Version: "0.3.0", File: "Poros-0.3.0-windows-amd64.zip"}, releasesGitHub+"download/v0.3.0/latest.json"); url != fmt.Sprintf(releasesDownload, "0.3.0", "Poros-0.3.0-windows-amd64.zip") {
+		t.Errorf("the archive of a GitHub release: %s", url)
 	}
 }

@@ -1,67 +1,43 @@
 <script setup lang="ts">
-import { Download, FolderOpen, RefreshCw, ScrollText, Zap } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { Check, Copy, FolderOpen, RefreshCw, ScrollText, Zap } from '@lucide/vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
+import UpdateRows from '@/components/settings/UpdateRows.vue'
 import { Button, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
-import { useClock } from '@/composables/useClock'
 import { useConnect } from '@/composables/useConnect'
-import { useReason } from '@/composables/useReason'
 import { useSetting } from '@/composables/useSetting'
-import { useUpdates } from '@/composables/useUpdates'
-import { formatAgo } from '@/lib/format'
+import { useSettingsDraft } from '@/composables/useSettingsDraft'
 import { appControls } from '@/platform'
-import { UpdateChecking, UpdateDownloading, UpdateReady } from '@/platform/core-types'
+import { MethodAppDebugInfo } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
+// «Help»: what to do when something does not work, and updates. The advanced mode splits them into two cards and
+// adds the debug information for a report, the data folder and beta versions.
 const core = useCoreStore()
 const ui = useUiStore()
 const connect = useConnect()
-const updates = useUpdates()
 const router = useRouter()
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const advanced = useSettingsDraft() !== null
 const resetting = ref(false)
-const updateCheck = useSetting('updateCheck')
 const debugLog = useSetting('debugLog')
-const now = useClock(60_000)
-const reason = useReason()
+const beta = useSetting('updateBeta')
 const attempt = useAttempt()
 const openLogs = () => attempt(() => appControls.openLogs())
-// Why "Restart and update" did not hand over to the updater; Poros runs on.
-const installFailure = ref('')
+const openData = () => attempt(() => appControls.openData())
+const copied = ref(false)
 
-async function install(): Promise<void> {
-  installFailure.value = ''
-  try {
-    await updates.install()
-  } catch (error) {
-    installFailure.value = t('updates.installFailed', { reason: reason(error) })
-  }
+async function copyDebugInfo(): Promise<void> {
+  await navigator.clipboard.writeText(await core.core().call(MethodAppDebugInfo))
+  copied.value = true
+  setTimeout(() => (copied.value = false), 2000)
 }
-
-// The mockup's line under "Updates": what this build is and what the last check found.
-const updateHint = computed(() => {
-  const state = core.updates
-  if (installFailure.value) return installFailure.value
-  const current = state.current
-  if (!current) return t('settings.help.local')
-  if (!state.available) return t('settings.help.noUpdater', { version: current })
-  if (state.state === UpdateChecking) return t('settings.help.checking')
-  if (state.state === UpdateDownloading) return t('settings.help.downloading', { version: state.version })
-  if (state.state === UpdateReady) return t('settings.help.ready', { version: state.version })
-  if (state.error) return t('settings.help.checkFailed', { version: current })
-  if (state.checkedAt && updates.checkedByHand) return t('settings.help.latest', { version: current })
-  if (state.checkedAt) {
-    return t('settings.help.checked', { version: current, when: formatAgo(state.checkedAt, now.value, locale.value) })
-  }
-  return t('settings.help.version', { version: current })
-})
-const busy = computed(() => core.updates.state === UpdateChecking || core.updates.state === UpdateDownloading)
 
 /** A new core with the same rights, and the connection back if there was one. */
 async function reset(): Promise<void> {
@@ -88,9 +64,9 @@ async function reset(): Promise<void> {
 </script>
 
 <template>
-  <h2 class="mb-1 font-disp text-[19px] font-normal">{{ t('settings.nav.help') }}</h2>
-  <p class="mb-4 max-w-[640px] text-t2">{{ t('settings.help.lead') }}</p>
-  <SettingsCard>
+  <h2 :class="['font-disp text-[19px] font-normal', advanced ? 'mb-4' : 'mb-1']">{{ t('settings.nav.help') }}</h2>
+  <p v-if="!advanced" class="mb-4 max-w-[640px] text-t2">{{ t('settings.help.lead') }}</p>
+  <SettingsCard :title="advanced ? t('settings.help.trouble') : undefined">
     <OptionRow :title="t('settings.help.wizard')" :hint="t('settings.help.wizardHint')">
       <Button @click="router.push('/wizard/1')"><Zap />{{ t('settings.help.run') }}</Button>
     </OptionRow>
@@ -104,16 +80,22 @@ async function reset(): Promise<void> {
     <OptionRow :title="t('settings.help.reset')" :hint="t('settings.help.resetHint')">
       <Button :disabled="resetting" @click="attempt(reset)"><RefreshCw :class="resetting && 'animate-spin'" />{{ t('settings.help.resetButton') }}</Button>
     </OptionRow>
-    <OptionRow :title="t('settings.help.updates')" :hint="updateHint" data-testid="updates">
-      <Button v-if="core.updates.state === UpdateReady" variant="primary" @click="install()">
-        <RefreshCw />{{ t('updates.install') }}
-      </Button>
-      <Button v-else :disabled="!core.updates.available || busy" @click="attempt(() => updates.check())">
-        <Download />{{ t('settings.help.check') }}
-      </Button>
-    </OptionRow>
-    <OptionRow :title="t('settings.help.autoCheck')" :hint="t('settings.help.autoCheckHint')">
-      <Switch v-model="updateCheck" />
+    <template v-if="advanced">
+      <OptionRow :title="t('settings.help.debugInfo')" :hint="t('settings.help.debugInfoHint')">
+        <Button data-testid="debug-info" @click="attempt(copyDebugInfo)">
+          <Check v-if="copied" /><Copy v-else />{{ t(copied ? 'settings.help.copied' : 'settings.help.copy') }}
+        </Button>
+      </OptionRow>
+      <OptionRow :title="t('settings.help.dataFolder')" :hint="t('settings.help.dataFolderHint')">
+        <Button @click="openData"><FolderOpen />{{ t('settings.help.open') }}</Button>
+      </OptionRow>
+    </template>
+    <UpdateRows v-else />
+  </SettingsCard>
+  <SettingsCard v-if="advanced" :title="t('settings.help.updatesTitle')">
+    <UpdateRows :title="t('settings.help.poros')" />
+    <OptionRow :title="t('settings.help.beta')" :hint="t('settings.help.betaHint')">
+      <Switch v-model="beta" data-testid="update-beta" />
     </OptionRow>
   </SettingsCard>
 </template>

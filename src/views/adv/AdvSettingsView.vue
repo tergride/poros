@@ -1,5 +1,21 @@
 <script setup lang="ts">
-import { ArrowRightLeft, Check, Gauge, Globe, Info, Layers, Link, Palette, Power, Radar, Search, Server, Shield, Signpost } from '@lucide/vue'
+import {
+  ArrowRightLeft,
+  Check,
+  Gauge,
+  Globe,
+  Info,
+  Layers,
+  Link,
+  Palette,
+  Power,
+  Radar,
+  ScrollText,
+  Search,
+  Server,
+  Shield,
+  Signpost,
+} from '@lucide/vue'
 import { type Component, computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
@@ -8,6 +24,7 @@ import ConnPage from '@/components/settings/ConnPage.vue'
 import DnsPage from '@/components/settings/DnsPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
 import InboundPage from '@/components/settings/InboundPage.vue'
+import LogPage from '@/components/settings/LogPage.vue'
 import LookPage from '@/components/settings/LookPage.vue'
 import NetPage from '@/components/settings/NetPage.vue'
 import ProtocolsPage from '@/components/settings/ProtocolsPage.vue'
@@ -56,6 +73,7 @@ const groups: { id: string; pages: Page[] }[] = [
       { id: 'protocols', icon: Layers, page: ProtocolsPage },
       { id: 'net', icon: Radar, page: NetPage },
       { id: 'security', icon: Shield, page: SecurityPage },
+      { id: 'logging', icon: ScrollText, page: LogPage },
     ],
   },
 ]

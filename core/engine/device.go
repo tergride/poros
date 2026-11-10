@@ -4,7 +4,10 @@ import (
 	"cmp"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"net/http"
+	"strings"
+	"unicode"
 
 	"github.com/sagernet/bbolt"
 
@@ -26,9 +29,9 @@ func (e *Engine) fetchClient() (*http.Client, func()) {
 }
 
 // deviceHeadersOf tell providers that limit devices which device asks: a random ID of this Poros, kept with its
-// data, and the system, or what the group says instead.
-func (e *Engine) deviceHeadersOf(gs GroupSettings) http.Header {
-	id := gs.DeviceID
+// data, and the system, or what the group says instead, or what the settings say.
+func (e *Engine) deviceHeadersOf(gs GroupSettings, own deviceData) http.Header {
+	id := cmp.Or(gs.DeviceID, own.hwid)
 	if id == "" {
 		var err error
 		if id, err = e.deviceID(); err != nil {
@@ -37,14 +40,51 @@ func (e *Engine) deviceHeadersOf(gs GroupSettings) http.Header {
 	}
 	headers := http.Header{}
 	headers.Set("X-Hwid", id)
-	headers.Set("X-Device-Os", cmp.Or(gs.OS, osName))
-	if version := cmp.Or(gs.OSVersion, osVersion()); version != "" {
+	headers.Set("X-Device-Os", cmp.Or(gs.OS, own.os, osName))
+	if version := cmp.Or(gs.OSVersion, own.osVersion, osVersion()); version != "" {
 		headers.Set("X-Ver-Os", version)
 	}
-	if gs.DeviceModel != "" {
-		headers.Set("X-Device-Model", gs.DeviceModel)
+	if model := cmp.Or(gs.DeviceModel, own.model); model != "" {
+		headers.Set("X-Device-Model", model)
 	}
 	return headers
+}
+
+// deviceData is what the settings tell providers about the device instead of Poros; "" leaves Poros's own.
+type deviceData struct {
+	hwid, os, osVersion, model string
+}
+
+// parseDeviceData reads "hwid=…, os=…, osVersion=…, model=…": any of the four, in any order and case.
+func parseDeviceData(text string) (deviceData, error) {
+	var data deviceData
+	for part := range strings.SplitSeq(text, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		key, value, found := strings.Cut(part, "=")
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+		if !found || value == "" {
+			return data, fmt.Errorf("%q is no key=value", part)
+		}
+		if strings.ContainsFunc(value, unicode.IsControl) {
+			return data, fmt.Errorf("the value of %s holds a control character", key)
+		}
+		switch strings.ToLower(key) {
+		case "hwid":
+			data.hwid = value
+		case "os":
+			data.os = value
+		case "osversion":
+			data.osVersion = value
+		case "model":
+			data.model = value
+		default:
+			return data, fmt.Errorf("unknown key %q: hwid, os, osVersion or model", key)
+		}
+	}
+	return data, nil
 }
 
 func (e *Engine) deviceID() (id string, err error) {

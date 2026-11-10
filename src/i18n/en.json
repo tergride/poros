@@ -315,7 +315,8 @@
       "tun": "TUN",
       "protocols": "Protocols and bypass",
       "net": "Network",
-      "security": "Security"
+      "security": "Security",
+      "logging": "Log"
     },
     "presets": {
       "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy or a new preset.",
@@ -398,7 +399,14 @@
       "showChanges": "Show changes",
       "showChangesHint": "After an update by hand, show which servers came and went.",
       "deviceInfo": "Send device information",
-      "deviceInfoHint": "Needed by providers that limit the number of devices."
+      "deviceInfoHint": "Needed by providers that limit the number of devices.",
+      "update": "Updates",
+      "request": "Request",
+      "auto": "Auto",
+      "tls": "TLS version",
+      "http": "HTTP version",
+      "deviceData": "Own device data",
+      "deviceDataHint": "Replace what Poros tells providers with “Send device data”. A group may have its own."
     },
     "start": {
       "lead": "The same as the Start step of quick setup.",
@@ -453,7 +461,18 @@
       "autoCheckHint": "At launch and every 4 hours. An update installs only when you press the button.",
       "logsFolder": "Folder",
       "debugLog": "Detailed log",
-      "debugLogHint": "Records every connection through Poros. Errors are always recorded. Takes effect with the next connection."
+      "debugLogHint": "Records every connection through Poros. Errors are always recorded. Takes effect with the next connection.",
+      "trouble": "If something does not work",
+      "debugInfo": "Debug information",
+      "debugInfoHint": "Versions of the cores, the system and the settings, without links and keys.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "dataFolder": "Data folder",
+      "dataFolderHint": "Poros keeps its data next to the program.",
+      "updatesTitle": "Updates",
+      "beta": "Get beta versions",
+      "betaHint": "Beta versions come out earlier and may work worse.",
+      "poros": "Poros version"
     },
     "inbound": {
       "port": "Local port",
@@ -526,6 +545,11 @@
       "systemCertsHint": "Xray takes the certificates of Windows, such as corporate ones, instead of its own list.",
       "insecure": "Skip the TLS check by default (allowInsecure)",
       "insecureHint": "For profiles without a check of their own; pinned certificates of a profile are still checked. Xray always checks."
+    },
+    "logging": {
+      "screen": "Log screen",
+      "lines": "Lines at most",
+      "linesHint": "From 100 to 20,000. How much the log records, “Detailed log” in “Help” says."
     }
   },
   "linkPreset": {

@@ -20,6 +20,7 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 	return map[string]jsonrpc.Handler{
 		MethodAppInfo:             noParams(func() (AppInfo, error) { return e.Info(), nil }),
 		MethodAppHandOver:         noParams(func() (any, error) { e.HandOver(); return nil, nil }),
+		MethodAppDebugInfo:        noParams(e.DebugInfo),
 		MethodSettingsGet:         noParams(e.Settings),
 		MethodSettingsSet:         withParams(e.SetSettings),
 		MethodDNSCheck:            withParams(func(p DNSObject) (any, error) { return nil, checkDNSObject(p.Object) }),
