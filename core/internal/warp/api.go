@@ -92,19 +92,16 @@ type client struct {
 	httpClient *http.Client
 }
 
-func newClient(proxy string) (*client, error) {
+// newClient asks the API with httpClient, or directly without one.
+func newClient(httpClient *http.Client) *client {
+	if httpClient != nil {
+		return &client{httpClient: httpClient}
+	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	transport.DialContext = (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second}).DialContext
 	transport.TLSHandshakeTimeout = tlsHandshakeTimeout
-	if proxy != "" {
-		proxyURL, err := url.Parse(proxy)
-		if err != nil {
-			return nil, E.Cause(err, "parse proxy")
-		}
-		transport.Proxy = http.ProxyURL(proxyURL)
-	}
-	return &client{httpClient: &http.Client{Transport: transport}}, nil
+	return &client{httpClient: &http.Client{Transport: transport}}
 }
 
 func (c *client) Close() {

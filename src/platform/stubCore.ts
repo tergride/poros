@@ -15,6 +15,7 @@ import type {
   SkipReason,
   SubscriptionUpdate,
   UpdateState,
+  WARPDevice,
 } from './core-types'
 import {
   ActionBlock,
@@ -24,6 +25,8 @@ import {
   ConnectionIdle,
   ConnectionRunning,
   DNSRoutingAuto,
+  WARPModeMASQUE,
+  WARPModeWireGuard,
   ConnectionStarting,
   ConnectionStopping,
   CoreSingBox,
@@ -59,6 +62,7 @@ import {
   MethodNetworkState,
   MethodDNSCheck,
   MethodPresetsCheck,
+  MethodWARPRegister,
   MethodPresetsExport,
   MethodPresetsGet,
   MethodLinksParse,
@@ -132,6 +136,8 @@ import stubForms from './stubForms.json'
 import { checkDnsObject, checkDnsSettings } from './stubDns'
 import { checkRules, readLists, writeLists } from './stubPresets'
 
+const noWarpDevice: WARPDevice = { endpoint: '', privateKey: '', peerKey: '', addresses: '', reserved: '', serverName: '', http: '', registeredAt: 0 }
+
 const defaultSettings: Settings = {
   uiMode: 'simple',
   language: '',
@@ -158,6 +164,11 @@ const defaultSettings: Settings = {
   dnsClientSubnet: '',
   dnsObject: '',
   addressFirst: '',
+  warp: false,
+  warpMode: WARPModeWireGuard,
+  warpWireGuard: noWarpDevice,
+  warpMasque: noWarpDevice,
+  warpHosts: '',
   subscriptionAutoUpdate: true,
   subscriptionUpdateHours: 0,
   subscriptionViaProxy: false,
@@ -995,6 +1006,21 @@ export function createStubCore(): CoreClient {
     [MethodPresetsImport]: ({ link }) => {
       const copy = decodeLink(link)
       return saveCopy({ ...copy, name: freeName(copy.name) })
+    },
+    // A device made up as Cloudflare would give it: the stub asks no one.
+    [MethodWARPRegister]: ({ mode }) => {
+      if (![WARPModeWireGuard, WARPModeMASQUE].includes(mode)) throw failed(ReasonInvalidValue, `mode must be wireguard or masque, not "${mode}"`)
+      const key = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
+      const common = { privateKey: key, addresses: '172.16.0.2/32, 2606:4700:110:8a2c::2/128', registeredAt: Date.now() }
+      settings =
+        mode === WARPModeWireGuard
+          ? {
+              ...settings,
+              warpWireGuard: { ...noWarpDevice, ...common, endpoint: '162.159.192.1:2408', peerKey: 'bmQzcGxhY2Vob2xkZXJwbGFjZWhvbGRlcnBsYWNlaG8=', reserved: '12, 85, 201' },
+            }
+          : { ...settings, warpMasque: { ...settings.warpMasque, ...common, endpoint: '162.159.198.2:443', peerKey: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE' } }
+      emit(EventSettingsChanged, { ...settings })
+      return { ...settings }
     },
     [MethodDNSCheck]: ({ object }) => {
       if (!object.trim()) throw failed(ReasonInvalidValue, 'the dns object is empty')

@@ -21,7 +21,7 @@ var (
 		CondSuffix, CondDomain, CondKeyword, CondRegex, CondIP, CondPrivate, CondPort, CondProcessName, CondProcessPath,
 		CondProcessPathRegex, CondProtocol, CondNetwork, CondIPVersion, CondSourceIP,
 	}
-	ruleActions = []string{ActionProxy, ActionDirect, ActionBlock}
+	ruleActions = []string{ActionProxy, ActionDirect, ActionBlock, ActionWARP}
 	// protocols are those sing-box sniffs.
 	protocols     = []string{"tls", "http", "quic", "dns", "stun", "bittorrent", "dtls", "ssh", "rdp", "ntp"}
 	fileExtension = regexp.MustCompile(`\.[A-Za-z0-9]+$`)
@@ -62,12 +62,12 @@ func checkRules(advanced bool, endpoints []string, rules []PresetRule) ([]Preset
 func checkRule(advanced bool, endpoints []string, i int, rule PresetRule) (PresetRule, error) {
 	problem := func(reason string) RuleProblem { return RuleProblem{Reason: reason, Rule: i} }
 	switch {
-	case rule.Action == ActionEndpoint && !advanced:
-		return rule, ruleFailure(problem(ReasonAdvancedOnly), "rule %d: only an advanced preset has endpoints", i+1)
+	case (rule.Action == ActionEndpoint || rule.Action == ActionWARP) && !advanced:
+		return rule, ruleFailure(problem(ReasonAdvancedOnly), "rule %d: only an advanced preset sends traffic to %s", i+1, rule.Action)
 	case rule.Action == ActionEndpoint && !slices.Contains(endpoints, rule.Endpoint):
 		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the preset has no endpoint %q", i+1, rule.Endpoint)
 	case rule.Action != ActionEndpoint && !slices.Contains(ruleActions, rule.Action):
-		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the action must be proxy, direct, block or endpoint, not %q", i+1, rule.Action)
+		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the action must be proxy, direct, block, warp or endpoint, not %q", i+1, rule.Action)
 	case rule.Action != ActionEndpoint:
 		rule.Endpoint = ""
 	}
@@ -295,6 +295,8 @@ func configRule(rule PresetRule, endpoints []string) config.Rule {
 		out.Action = config.ActionReject
 	case ActionEndpoint:
 		out.Action, out.Outbound = config.ActionRoute, config.EndpointTag(slices.Index(endpoints, rule.Endpoint))
+	case ActionWARP:
+		out.Action, out.Outbound = config.ActionRoute, config.OutboundWARP
 	default:
 		out.Action, out.Outbound = config.ActionRoute, rule.Action
 	}

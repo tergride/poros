@@ -38,14 +38,12 @@ type Identity struct {
 	Reserved      []byte
 }
 
-func Register(ctx context.Context, tunnelType string, proxy string, apiHosts []string) (*Identity, error) {
+// Register makes a new device of WARP at Cloudflare, asking the API through httpClient, or directly without one.
+func Register(ctx context.Context, tunnelType string, httpClient *http.Client, apiHosts []string) (*Identity, error) {
 	if tunnelType != TunnelWireGuard && tunnelType != TunnelMASQUE {
 		return nil, E.New("unknown tunnel type: ", tunnelType)
 	}
-	apiClient, err := newClient(proxy)
-	if err != nil {
-		return nil, err
-	}
+	apiClient := newClient(httpClient)
 	defer apiClient.Close()
 
 	wgKey, err := GeneratePrivateKey()

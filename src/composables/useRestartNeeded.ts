@@ -29,6 +29,10 @@ const builtWith = (s: Settings) =>
     s.dnsClientSubnet,
     s.dnsObject,
     s.addressFirst,
+    s.warp,
+    s.warpMode,
+    s.warpWireGuard,
+    s.warpMasque,
   ])
 
 /**

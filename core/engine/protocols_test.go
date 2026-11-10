@@ -280,3 +280,37 @@ func TestEndpointRefusalFailsTheStart(t *testing.T) {
 		t.Fatalf("a refused endpoint: %+v", state)
 	}
 }
+
+// WARP is a WireGuard behind the server: a rule sends an address through it, and its packets go out through the
+// trojan server to a WireGuard server on loopback, which reaches the page.
+func TestConnectionThroughWARP(t *testing.T) {
+	e, states := openConnectionTest(t)
+	keys := func() (private, public string) {
+		key, err := ecdh.X25519().GenerateKey(rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return base64.StdEncoding.EncodeToString(key.Bytes()), base64.StdEncoding.EncodeToString(key.PublicKey().Bytes())
+	}
+	serverPrivate, serverPublic := keys()
+	clientPrivate, clientPublic := keys()
+	wgPort, trojanPort := freePort(t), freePort(t)
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"wireguard","tag":"wg-in","address":["10.200.0.1/24"],`+
+		`"private_key":"%s","listen_port":%d,"peers":[{"public_key":"%s","allowed_ips":["10.200.0.2/32"]}]}],`+
+		`"outbounds":[{"type":"direct","tag":"direct"}],%s}`, serverPrivate, wgPort, clientPublic, insideRoute))
+	runServer(t, fmt.Sprintf(`{"log":{"level":"warn"},"inbounds":[{"type":"trojan","listen":"127.0.0.1","listen_port":%d,`+
+		`"users":[{"password":"secret"}]}],"outbounds":[{"type":"direct","tag":"direct"}]}`, trojanPort))
+	useServer(t, e, fmt.Sprintf("trojan://secret@127.0.0.1:%d?security=none#local", trojanPort))
+	ai := PresetRule{Conditions: []RuleCondition{{Kind: CondIP, Values: []string{"192.0.2.80"}}}, Action: ActionWARP}
+	preset, err := e.SavePreset(PresetCopy{BasedOn: "all", Name: "WARP", Advanced: true, Rules: []PresetRule{ai}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings, _ := e.Settings()
+	settings.Preset, settings.WARP = preset.ID, true
+	settings.WARPWireGuard = WARPDevice{Endpoint: fmt.Sprintf("127.0.0.1:%d", wgPort), PrivateKey: clientPrivate, PeerKey: serverPublic, Addresses: "10.200.0.2/32"}
+	if _, err = e.SetSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	connectAndFetch(t, e, states, insidePage(t))
+}

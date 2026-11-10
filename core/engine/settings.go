@@ -25,6 +25,7 @@ func DefaultSettings() Settings {
 		DNSCache:               true,
 		DNSCacheSize:           defaultDNSCacheSize,
 		DNSTimeout:             defaultDNSTimeout,
+		WARPMode:               WARPModeWireGuard,
 		SubscriptionAutoUpdate: true,
 		ShowChanges:            true,
 		AutoConnect:            true,
@@ -157,6 +158,9 @@ func (e *Engine) validateSettings(settings Settings) error {
 	}
 	if !slices.Contains([]string{"", "1.1"}, settings.SubscriptionHTTP) {
 		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionHttp must be empty or 1.1, not %q", settings.SubscriptionHTTP)
+	}
+	if err := validateWARP(settings); err != nil {
+		return err
 	}
 	return validateDNS(settings)
 }

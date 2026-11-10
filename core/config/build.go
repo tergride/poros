@@ -79,6 +79,9 @@ type Input struct {
 	// Endpoints are the profiles of Preset.Endpoints, in its order. A connection that refuses has none: what the
 	// preset sends to them is refused with the rest of the server's traffic.
 	Endpoints []profile.Profile
+	// WARP is the exit of the rules to OutboundWARP, nil while WARP is off: their traffic goes through the server
+	// then. A connection that refuses has none either.
+	WARP *WARP
 	// Tun and the mixed inbound always exist; SystemProxy is the engine's business, not the config's.
 	Tun bool
 	// AllowLAN opens the mixed inbound to other devices.
@@ -134,6 +137,15 @@ func Build(in Input) (Configs, error) {
 		if endpoints, err = endpointParts(preset, profiles); err != nil {
 			return Configs{}, err
 		}
+	}
+	if in.Refuse || in.WARP == nil {
+		preset = preset.withoutWARP()
+	} else if preset.usesWARP() {
+		warp, err := warpEndpoint(in.WARP)
+		if err != nil {
+			return Configs{}, fmt.Errorf("WARP: %w", err)
+		}
+		endpoints = append(endpoints, warp)
 	}
 	var configs Configs
 	var proxy boxServer

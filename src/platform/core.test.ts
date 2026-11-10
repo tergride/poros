@@ -61,6 +61,7 @@ import {
   MethodUpdatesCheck,
   MethodUpdatesInstall,
   MethodUpdatesState,
+  MethodWARPRegister,
   ReasonAdvancedOnly,
   ReasonCheckOff,
   ReasonDuplicate,
@@ -449,7 +450,7 @@ ${vless('se.example.com', 'Sweden')}` })
     games.conditions.push({ kind: 'network', values: ['udp'] })
     const rules = [rule('suffix', 'example.org', 'block'), games, rule('ip', '10.0.0.0/8', 'direct')]
     const lists = await core.call(MethodPresetsWriteLists, { advanced: true, rules })
-    expect(lists.lists).toEqual({ proxy: '', direct: 'ip:10.0.0.0/8', block: 'suffix:example.org' })
+    expect(lists.lists).toEqual({ proxy: '', direct: 'ip:10.0.0.0/8', block: 'suffix:example.org', warp: '' })
     const back = await core.call(MethodPresetsReadLists, { advanced: true, rules, lists: { ...lists.lists, proxy: 'suffix:x.example.org' } })
     expect(back.rules.map((r) => r.conditions[0]!.values[0])).toEqual(['x.example.org', 'example.org', 'game.exe', '10.0.0.0/8'])
   })
@@ -479,10 +480,25 @@ trojan://p@de.example.com:443#Germany`,
     const imported = await core.call(MethodPresetsImport, { link })
     expect(await core.call(MethodPresetsGet, { id: imported.id })).toMatchObject({ endpoints: [], rules: [{ conditions: [{ values: ['example.org'] }] }] })
     const stored = await core.call(MethodPresetsGet, { id: saved.id })
-    expect((await core.call(MethodPresetsWriteLists, { advanced: true, rules: stored.rules })).lists).toEqual({ proxy: '', direct: 'suffix:example.org', block: '' })
+    expect((await core.call(MethodPresetsWriteLists, { advanced: true, rules: stored.rules })).lists).toEqual({ proxy: '', direct: 'suffix:example.org', block: '', warp: '' })
     const read = await core.call(MethodPresetsReadLists, { advanced: true, rules: stored.rules, lists: { proxy: 'suffix:Wiki.example', direct: 'suffix:example.org' } })
     expect(read.problems).toEqual([{ action: 'proxy', line: 1, text: 'suffix:Wiki.example', reason: ReasonDuplicate, other: 'endpoint' }])
     expect(read.rules).toEqual(stored.rules)
+  })
+
+  it('keeps WARP in the settings and its rules in an advanced preset, as the engine does', async () => {
+    const core = createStubCore()
+    const settings = await core.call(MethodSettingsGet)
+    expect(settings).toMatchObject({ warp: false, warpMode: 'wireguard', warpHosts: '' })
+    expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, warp: true }))).toBe(ReasonInvalidValue)
+    const registered = await core.call(MethodWARPRegister, { mode: 'wireguard' })
+    expect(registered.warpWireGuard).toMatchObject({ endpoint: '162.159.192.1:2408', reserved: '12, 85, 201' })
+    expect(await core.call(MethodSettingsSet, { ...registered, warp: true })).toMatchObject({ warp: true })
+
+    const ai = rule('suffix', 'chatgpt.com', 'warp')
+    expect(await reasonOf(core.call(MethodPresetsCheck, { advanced: false, rules: [ai] }))).toBe(ReasonAdvancedOnly)
+    expect((await core.call(MethodPresetsWriteLists, { advanced: true, rules: [ai] })).lists.warp).toBe('suffix:chatgpt.com')
+    expect(await reasonOf(core.call(MethodPresetsReadLists, { advanced: false, rules: [], lists: { warp: '' } }))).toBe(ReasonInvalidValue)
   })
 
   it('checks the DNS settings and an own dns object as the engine does', async () => {

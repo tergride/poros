@@ -105,7 +105,8 @@
     "direct": "Directly",
     "block": "Block",
     "dns": "Poros answers",
-    "endpoint": "Endpoint"
+    "endpoint": "Endpoint",
+    "warp": "Through WARP"
   },
   "wizard": {
     "tagline": "Quick setup takes less than a minute.",
@@ -486,7 +487,9 @@
     "builtinNote": "A built-in preset does not change. To add rules of your own, make a copy.",
     "remove": "Remove the preset",
     "unsaved": "The preset “{name}” has unsaved changes.",
-    "dnsObject": "An own DNS object is set: the DNS of presets does not apply."
+    "dnsObject": "An own DNS object is set: the DNS of presets does not apply.",
+    "warpOff": "WARP is off, so “Through WARP” goes through the server for now. It turns on in “Routing → WARP”.",
+    "warpOffSimple": "WARP is off, so “Through WARP” goes through the server for now. It turns on in “Routing → WARP” of the advanced mode."
   },
   "presetLists": {
     "open": "Edit as lists",
@@ -661,6 +664,32 @@
       "auto": "As the core decides",
       "preset": "Preset",
       "presetHint": "The same choice as in the connection bar."
+    },
+    "warp": {
+      "title": "WARP",
+      "use": "Use WARP",
+      "useHint": "Traffic with the “Through WARP” action goes out to the internet through Cloudflare WARP after the server: the site sees an address of Cloudflare. Helps with services that do not accept VPN addresses. Turned off, this traffic goes through the server.",
+      "config": "Configuration",
+      "registered": "Configuration received on {date}.",
+      "none": "No configuration: get one from Cloudflare or enter your own.",
+      "mode": "Mode",
+      "modeHint": "MASQUE goes over HTTP/3 or HTTP/2 and helps when UDP does not pass through the server.",
+      "privateKey": "Private key",
+      "peerKey": "Server public key",
+      "addresses": "Interface addresses",
+      "http": "HTTP version",
+      "httpBoth": "HTTP/3, falling back to HTTP/2",
+      "http3": "HTTP/3 only",
+      "http2": "HTTP/2 only",
+      "register": "Get a WARP configuration",
+      "hosts": "Registration domains…",
+      "termsTitle": "Get a WARP configuration?",
+      "termsText": "Poros will register a new WARP device with Cloudflare and write its keys to this page. While Poros is connected, the request goes through the server.",
+      "termsTextReplace": "Poros will register a new WARP device with Cloudflare and write its keys to this page instead of the current ones. While Poros is connected, the request goes through the server.",
+      "terms": "This requires accepting the Cloudflare WARP terms of use:",
+      "accept": "Accept and get",
+      "hostsTitle": "Registration domains",
+      "hostsHint": "One per line. Poros tries them in order if the first is unreachable. Empty means api.cloudflareclient.com."
     }
   },
   "reason": {
@@ -708,7 +737,8 @@
     "advanced_only": "only an advanced preset has this",
     "no_condition": "the rule has no conditions",
     "empty_condition": "the condition has no values",
-    "endpoint_failed": "an endpoint of the preset did not connect"
+    "endpoint_failed": "an endpoint of the preset did not connect",
+    "warp_failed": "Cloudflare gave no WARP configuration"
   },
   "units": {
     "B": "B",

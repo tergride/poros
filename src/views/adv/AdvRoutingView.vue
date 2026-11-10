@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ClipboardPaste, Copy, Hammer, Layers, Link, Lock, Plus, Route, Trash2 } from '@lucide/vue'
+import { Check, ClipboardPaste, Copy, Layers, Link, Lock, Plus, Route, Trash2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -7,6 +7,8 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vu
 import NewPresetDialog from '@/components/presets/NewPresetDialog.vue'
 import PresetEditor from '@/components/presets/PresetEditor.vue'
 import RoutingCommon from '@/components/presets/RoutingCommon.vue'
+import RoutingDraftPage from '@/components/presets/RoutingDraftPage.vue'
+import RoutingWarp from '@/components/presets/RoutingWarp.vue'
 import { Banner, Button, Dialog, Input, Tabs, TabsList, TabsTrigger } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { providePresetDraft } from '@/composables/usePresetDraft'
@@ -18,8 +20,8 @@ import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 // «Routing» of the advanced mode. «Presets and rules» lists the presets and edits the chosen one beside the list:
-// a change waits for «Save», and leaving with one asks first, as on the settings pages. «General» is the family of
-// addresses first and the preset in use; WARP comes with a later part of the stage.
+// a change waits for «Save», and leaving with one asks first, as on the settings pages. WARP and «General» are
+// settings: WARP after the server, and the family of addresses first and the preset in use.
 const core = useCoreStore()
 const ui = useUiStore()
 const restart = useRestartNeeded()
@@ -187,13 +189,8 @@ onBeforeRouteUpdate(ask)
         </div>
       </div>
     </div>
-    <RoutingCommon v-else-if="tab === 'common'" />
-    <section v-else class="grid flex-1 place-items-center p-10 text-center" data-testid="section-soon">
-      <div class="grid max-w-[420px] justify-items-center gap-3">
-        <Hammer class="size-8 text-t3" />
-        <p class="text-t2">{{ t('adv.soon') }}</p>
-      </div>
-    </section>
+    <RoutingDraftPage v-else-if="tab === 'common'"><RoutingCommon /></RoutingDraftPage>
+    <RoutingDraftPage v-else><RoutingWarp /></RoutingDraftPage>
 
     <NewPresetDialog :based-on="making" @close="making = null" @created="open" />
     <Dialog :open="removing !== null" :title="t('settings.presets.removeTitle')" @update:open="(o) => !o && (removing = null)">

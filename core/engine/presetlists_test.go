@@ -79,7 +79,7 @@ func TestPresetListsKeepPlaces(t *testing.T) {
 	rules := []PresetRule{games, named, rule(CondIP, "10.0.0.0/8", ActionDirect), private, inverted, rule(CondSuffix, "b.example", ActionBlock)}
 
 	lists, err := WritePresetLists(PresetRules{Advanced: true, Rules: rules})
-	want := map[string]string{ActionProxy: "suffix:a.example", ActionDirect: "ip:10.0.0.0/8", ActionBlock: "suffix:b.example"}
+	want := map[string]string{ActionProxy: "suffix:a.example", ActionDirect: "ip:10.0.0.0/8", ActionBlock: "suffix:b.example", ActionWARP: ""}
 	if err != nil || !reflect.DeepEqual(lists.Lists, want) {
 		t.Fatalf("lists: %q, %v", lists.Lists, err)
 	}

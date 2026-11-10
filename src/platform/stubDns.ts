@@ -82,4 +82,10 @@ export function checkDnsSettings(s: Settings): void {
   const subnet = s.dnsClientSubnet.trim()
   if (subnet && !ip.test(subnet.split('/')[0]!)) throw invalid(`dnsClientSubnet: "${subnet}" is no subnet`)
   if (s.dnsObject) checkDnsObject(s.dnsObject)
+  // As validateWARP in core/engine/warp.go, the formats left to the core.
+  if (!['wireguard', 'masque'].includes(s.warpMode)) throw invalid(`warpMode must be wireguard or masque, not "${s.warpMode}"`)
+  const device = s.warpMode === 'masque' ? s.warpMasque : s.warpWireGuard
+  if (s.warp && (!device.endpoint || !device.privateKey || !device.peerKey || !device.addresses)) throw invalid('the device of WARP is not whole')
+  const reserved = s.warpWireGuard.reserved.split(',').map((b) => b.trim()).filter(Boolean)
+  if (reserved.length !== 0 && (reserved.length !== 3 || reserved.some((b) => !/^\d+$/.test(b) || Number(b) > 255))) throw invalid('WARP takes three reserved bytes')
 }

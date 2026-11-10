@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, TextAlignStart } from '@lucide/vue'
+import { Info, Plus, TextAlignStart } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -14,7 +14,7 @@ import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui'
 import { usePresetDraft } from '@/composables/usePresetDraft'
 import type { PresetRule } from '@/platform/core-types'
-import { DNSLocal } from '@/platform/core-types'
+import { ActionWARP, DNSLocal } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 // The editor of a preset under its name, the same in both modes: its kind, not the mode, decides what it has. A simple
@@ -27,6 +27,8 @@ const core = useCoreStore()
 const { t } = useI18n()
 // An own dns object of the settings replaces the DNS of every preset.
 const dnsObject = computed(() => !!core.settings?.dnsObject)
+// While WARP is off, its rules send their traffic through the server: the editor says so where it has them.
+const warpOff = computed(() => !core.settings?.warp && (draft.value?.rules.some((r) => r.action === ActionWARP) ?? false))
 const tab = ref('list')
 
 const remoteChoices = computed(() => [
@@ -76,6 +78,9 @@ function applyLists(rules: PresetRule[]): void {
           <Button size="sm" data-testid="rule-new" @click="ruleOpen = -1"><Plus />{{ t('rules.withConditions') }}</Button>
           <Button size="sm" data-testid="preset-lists" @click="listsOpen = true"><TextAlignStart />{{ t('presetLists.open') }}</Button>
         </div>
+        <p v-if="warpOff" class="mb-2.5 flex items-center gap-1.5 text-xs text-t3" data-testid="warp-off">
+          <Info class="size-3.5" />{{ t(core.settings?.uiMode === 'simple' ? 'presetEdit.warpOffSimple' : 'presetEdit.warpOff') }}
+        </p>
         <DefaultCard />
         <RuleList advanced />
       </TabsContent>

@@ -64,6 +64,16 @@ type Settings struct {
 	// AddressFirst is which address of a site with both a connection takes first: "" as the core decides, ipv4 or
 	// ipv6. Without IPv6 it is IPv4 alone.
 	AddressFirst string `json:"addressFirst"`
+	// WARP sends what rules send «Through WARP» out through Cloudflare WARP after the server, so that sites see an
+	// address of Cloudflare; off, that traffic goes through the server. WARPMode is wireguard or masque, and each
+	// mode keeps a device of its own: its keys are data, kept whether WARP is on or not.
+	WARP          bool       `json:"warp"`
+	WARPMode      string     `json:"warpMode"`
+	WARPWireGuard WARPDevice `json:"warpWireGuard"`
+	WARPMASQUE    WARPDevice `json:"warpMasque"`
+	// WARPHosts are the hosts of Cloudflare's API to register at, a line each, tried in turn; "" is
+	// api.cloudflareclient.com.
+	WARPHosts string `json:"warpHosts"`
 	// SubscriptionAutoUpdate updates the subscriptions on a schedule, every SubscriptionUpdateHours hours; 0 hours
 	// is what each provider advises, or 6 hours.
 	SubscriptionAutoUpdate  bool `json:"subscriptionAutoUpdate"`
@@ -441,12 +451,13 @@ type Preset struct {
 	Endpoints int `json:"endpoints"`
 }
 
-// Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
-// Endpoint names.
+// Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
+// server, and the endpoint the rule's Endpoint names.
 const (
 	ActionProxy    = "proxy"
 	ActionDirect   = "direct"
 	ActionBlock    = "block"
+	ActionWARP     = "warp"
 	ActionEndpoint = "endpoint"
 )
 
@@ -558,6 +569,39 @@ const (
 	AddressFirstIPv4 = "ipv4"
 	AddressFirstIPv6 = "ipv6"
 )
+
+// WARPDevice is a device of Cloudflare WARP: what registration gives, or what the user types in.
+type WARPDevice struct {
+	// Endpoint is host:port.
+	Endpoint string `json:"endpoint"`
+	// PrivateKey is the device's: WireGuard's key in base64, or MASQUE's ECDSA key in base64 DER. PeerKey is the
+	// server's public key, written the same way.
+	PrivateKey string `json:"privateKey"`
+	PeerKey    string `json:"peerKey"`
+	// Addresses are those of the device, split by commas.
+	Addresses string `json:"addresses"`
+	// Reserved are WireGuard's three reserved bytes, split by commas.
+	Reserved string `json:"reserved"`
+	// ServerName is MASQUE's SNI, "" for Cloudflare's. HTTP is MASQUE's version of HTTP: "" HTTP/3 and then
+	// HTTP/2, h3 or h2 alone.
+	ServerName string `json:"serverName"`
+	HTTP       string `json:"http"`
+	// RegisteredAt is when Cloudflare gave the device, Unix milliseconds; 0 for one typed in.
+	RegisteredAt int64 `json:"registeredAt"`
+}
+
+// Modes of WARP and versions of HTTP of MASQUE.
+const (
+	WARPModeWireGuard = "wireguard"
+	WARPModeMASQUE    = "masque"
+	WARPHTTP3         = "h3"
+	WARPHTTP2         = "h2"
+)
+
+// WARPRegister asks Cloudflare for a new device of a mode.
+type WARPRegister struct {
+	Mode string `json:"mode"`
+}
 
 // DNSObject is an own dns object of sing-box as JSON.
 type DNSObject struct {
@@ -877,6 +921,9 @@ const (
 	MethodPresetsCheck = "presets.check"
 	// MethodDNSCheck has sing-box read an own dns object in a connection, as settings.set does, without saving it.
 	MethodDNSCheck = "dns.check"
+	// MethodWARPRegister registers a new device of WARP at Cloudflare, through the running connection when there is
+	// one, and keeps it in the settings for its mode: the settings come back.
+	MethodWARPRegister = "warp.register"
 	// MethodPresetsWriteLists gives the rules of a preset as the text of the lists window, MethodPresetsReadLists
 	// the rules with that text and the lines it could not read; neither saves anything.
 	MethodPresetsWriteLists = "presets.writeLists"
@@ -923,6 +970,8 @@ const (
 	ReasonSingleServer = "single_server"
 	// ReasonFetchFailed is a subscription that did not download: no network, an error page, a timeout.
 	ReasonFetchFailed = "fetch_failed"
+	// ReasonWARPFailed is a registration of WARP that Cloudflare did not complete; ErrorText says why.
+	ReasonWARPFailed = "warp_failed"
 	// ReasonInvalidSubscription is a download that is no subscription format Poros reads.
 	ReasonInvalidSubscription = "invalid_subscription"
 	// ReasonNoServers is a subscription, or a text to add servers from, without a server Poros can run.

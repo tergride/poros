@@ -2,6 +2,10 @@ package config
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -347,7 +351,7 @@ func TestParsePreset(t *testing.T) {
 	bad := map[string]string{
 		"unknown key":      strings.Replace(good, `"domain_suffix"`, `"geosite"`, 1),
 		"no condition":     strings.Replace(good, `,"domain_suffix":["example.com"]`, ``, 1),
-		"unknown outbound": strings.Replace(good, `"outbound":"proxy"`, `"outbound":"warp"`, 1),
+		"unknown outbound": strings.Replace(good, `"outbound":"proxy"`, `"outbound":"tor"`, 1),
 		"bad cidr":         strings.Replace(good, `"domain_suffix":["example.com"]`, `"ip_cidr":["10.0.0.0/33"]`, 1),
 		"bad port range":   strings.Replace(good, `"domain_suffix":["example.com"]`, `"port_range":["9000:80"]`, 1),
 		"bad regex":        strings.Replace(good, `"domain_suffix":["example.com"]`, `"domain_regex":["(ads"]`, 1),
@@ -755,5 +759,93 @@ func TestDNSSettings(t *testing.T) {
 		if _, err := Build(in); err == nil {
 			t.Errorf("%s must be refused", wrong)
 		}
+	}
+}
+
+// WARP is the exit of the rules to it, behind the server: WireGuard with its reserved bytes, or MASQUE that shows
+// Cloudflare a certificate of its key and trusts Cloudflare's key alone. Off, or in a refusal, the rules to it go
+// to the server.
+func TestWARP(t *testing.T) {
+	preset := Preset{Name: "WARP", DefaultOutbound: OutboundProxy, Rules: []Rule{
+		allPreset.Rules[0],
+		{Name: "AI", Action: ActionRoute, Outbound: OutboundWARP, DomainSuffix: []string{"chatgpt.com"}},
+		allPreset.Rules[1],
+	}}
+	in := Input{Server: mustParse(t, sampleLinks(t)["trojan tcp"]), Preset: preset, Tun: true, MixedPort: 2090}
+	wireGuard, err := ParseWARP(WARPWireGuard, WARPDevice{
+		Endpoint: "162.159.192.1:2408", PrivateKey: testWGPrivate, PeerKey: testWGPublic,
+		Addresses: "172.16.0.2/32, 2606:4700:110:8a2c::2/128", Reserved: "12, 85, 201",
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	build := func(in Input) option.Options {
+		t.Helper()
+		configs, err := Build(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, _ := configs.SingBoxJSON()
+		if err = boxmain.Check(data); err != nil {
+			t.Fatalf("sing-box refuses the config: %v\n%s", err, data)
+		}
+		return configs.SingBox
+	}
+	in.WARP = wireGuard
+	options := build(in)
+	warp := options.Endpoints[len(options.Endpoints)-1]
+	wg, ok := warp.Options.(*option.WireGuardEndpointOptions)
+	if warp.Tag != TagWARP || !ok || wg.Detour != TagProxy || len(wg.Peers) != 1 || !slices.Equal(wg.Peers[0].Reserved, []uint8{12, 85, 201}) || wg.MTU != 1280 {
+		t.Fatalf("WireGuard behind the server: %+v", warp)
+	}
+	if rule := options.Route.Rules[2].DefaultOptions; rule.RouteOptions.Outbound != TagWARP {
+		t.Errorf("a rule sends a site through WARP: %+v", rule)
+	}
+
+	private, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	keyDER, _ := x509.MarshalECPrivateKey(private)
+	peerDER, _ := x509.MarshalPKIXPublicKey(&server.PublicKey)
+	in.WARP, err = ParseWARP(WARPMASQUE, WARPDevice{
+		Endpoint: "162.159.198.2:443", PrivateKey: base64.StdEncoding.EncodeToString(keyDER), PeerKey: base64.StdEncoding.EncodeToString(peerDER),
+		Addresses: "172.16.0.2/32", HTTP: WARPHTTP3,
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options = build(in)
+	masque, ok := options.Endpoints[len(options.Endpoints)-1].Options.(*option.MASQUEClientEndpointOptions)
+	if !ok || masque.Detour != TagProxy || masque.TLS.ServerName != warpServerName || len(masque.TLS.ClientCertificate) != 1 ||
+		len(masque.TLS.CertificatePublicKeySHA256) != 1 || masque.Version != 3 || !masque.DisableVersionFallback {
+		t.Fatalf("MASQUE behind the server: %+v", masque)
+	}
+
+	// Off, and in a refusal, WARP's rules go to the server.
+	in.WARP = nil
+	if options = build(in); options.Route.Rules[2].DefaultOptions.RouteOptions.Outbound != TagProxy || len(options.Endpoints) != 0 {
+		t.Errorf("without WARP: %+v", options.Route.Rules[2])
+	}
+	in.WARP, in.Refuse, in.Server = wireGuard, true, profile.Profile{}
+	if options = build(in); len(options.Endpoints) != 0 {
+		t.Errorf("a refusal has no WARP: %+v", options.Endpoints)
+	}
+
+	for name, device := range map[string]WARPDevice{
+		"no port":          {Endpoint: "162.159.192.1"},
+		"no key":           {PrivateKey: "short"},
+		"two reserved":     {Reserved: "1, 2"},
+		"a reserved byte":  {Reserved: "1, 2, 300"},
+		"no address":       {Addresses: "172.16.0.300/32"},
+		"missing in whole": {Endpoint: "162.159.192.1:2408"},
+	} {
+		if _, err := ParseWARP(WARPWireGuard, device, name == "missing in whole"); err == nil {
+			t.Errorf("%s must be refused", name)
+		}
+	}
+	if _, err := ParseWARP(WARPMASQUE, WARPDevice{PrivateKey: testWGPrivate}, false); err == nil {
+		t.Error("MASQUE takes an ECDSA key")
 	}
 }

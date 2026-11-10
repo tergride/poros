@@ -32,8 +32,8 @@ export function provideSettingsDraft(): SettingsDraft {
     },
     set(key, value) {
       const next = { ...changes.value }
-      // Back to what is saved is no change.
-      if (core.settings?.[key] === value) delete next[key]
+      // Back to what is saved is no change; a part of the settings that is an object counts by its contents.
+      if (JSON.stringify(core.settings?.[key]) === JSON.stringify(value)) delete next[key]
       else next[key] = value
       changes.value = next
     },

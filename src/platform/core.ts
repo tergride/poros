@@ -46,6 +46,7 @@ import type {
   Traffic,
   UpdateInstall,
   UpdateState,
+  WARPRegister,
 } from './core-types'
 import {
   EventConnectionChanged,
@@ -76,6 +77,7 @@ import {
   MethodNetworkState,
   MethodDNSCheck,
   MethodPresetsCheck,
+  MethodWARPRegister,
   MethodPresetsExport,
   MethodPresetsGet,
   MethodPresetsImport,
@@ -153,6 +155,7 @@ export interface CoreMethods {
   [MethodPresetsImport]: { params: PresetLink; result: Preset }
   [MethodPresetsCheck]: { params: PresetRules; result: PresetRules }
   [MethodDNSCheck]: { params: DNSObject; result: null }
+  [MethodWARPRegister]: { params: WARPRegister; result: Settings }
   [MethodPresetsWriteLists]: { params: PresetRules; result: PresetLists }
   [MethodPresetsReadLists]: { params: PresetListsInput; result: PresetListsRead }
   [MethodLinksParse]: { params: OutsideLink; result: LinkInfo }

@@ -7,9 +7,14 @@ import (
 	"PorosCore/internal/jsonrpc"
 )
 
-// listActions are the tabs of the lists window in the order it shows them; a line on two tabs is a problem of the
-// later one.
-var listActions = []string{ActionProxy, ActionDirect, ActionBlock}
+// listActions are the tabs of the lists window of a preset in the order it shows them; a line on two tabs is a
+// problem of the later one. An advanced preset has «Through WARP» too.
+func listActions(advanced bool) []string {
+	if advanced {
+		return []string{ActionProxy, ActionDirect, ActionBlock, ActionWARP}
+	}
+	return []string{ActionProxy, ActionDirect, ActionBlock}
+}
 
 // listKind gives the kind of a prefix of the lists window, whatever its case. The private networks have no line.
 func listKind(prefix string) (string, bool) {
@@ -35,14 +40,14 @@ func WritePresetLists(p PresetRules) (PresetLists, error) {
 		if !inList(rule) {
 			continue
 		}
-		if !slices.Contains(listActions, rule.Action) {
+		if !slices.Contains(listActions(p.Advanced), rule.Action) {
 			return PresetLists{}, jsonrpc.Failed(ReasonInvalidValue, "the action must be proxy, direct or block, not %q", rule.Action)
 		}
 		condition := rule.Conditions[0]
 		lines[rule.Action] = append(lines[rule.Action], condition.Kind+":"+condition.Values[0])
 	}
 	lists := PresetLists{Lists: map[string]string{}}
-	for _, action := range listActions {
+	for _, action := range listActions(p.Advanced) {
 		lists.Lists[action] = strings.Join(lines[action], "\n")
 	}
 	return lists, nil
@@ -52,7 +57,7 @@ func WritePresetLists(p PresetRules) (PresetLists, error) {
 // became no rule. Empty lines and lines starting with # are skipped; a line repeated on its own tab counts once.
 func ReadPresetLists(p PresetListsInput) (PresetListsRead, error) {
 	for action := range p.Lists {
-		if !slices.Contains(listActions, action) {
+		if !slices.Contains(listActions(p.Advanced), action) {
 			return PresetListsRead{}, jsonrpc.Failed(ReasonInvalidValue, "there is no list %q", action)
 		}
 	}
@@ -72,7 +77,7 @@ func ReadPresetLists(p PresetListsInput) (PresetListsRead, error) {
 			tabOf[valueKey(condition.Kind, value)] = ActionEndpoint
 		}
 	}
-	for _, action := range listActions {
+	for _, action := range listActions(p.Advanced) {
 		for i, raw := range strings.Split(p.Lists[action], "\n") {
 			text := strings.TrimSpace(raw)
 			if text == "" || strings.HasPrefix(text, "#") {

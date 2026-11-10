@@ -339,6 +339,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		Links:         links,
 		Preset:        withDefaultDNS(preset, settings),
 		DNS:           dnsOf(settings),
+		WARP:          warpOf(settings),
 		Endpoints:     endpoints,
 		Tun:           settings.Tun,
 		AllowLAN:      settings.AllowLAN,

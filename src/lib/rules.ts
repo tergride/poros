@@ -4,6 +4,7 @@ import {
   ActionDirect,
   ActionEndpoint,
   ActionProxy,
+  ActionWARP,
   CondDomain,
   CondIP,
   CondIPVersion,
@@ -41,8 +42,9 @@ export const advancedKinds: string[] = [
   CondPrivate,
 ]
 
-/** Where a rule sends its traffic; an advanced preset adds its endpoints, and WARP later. */
+/** Where a rule sends its traffic; an advanced preset adds WARP and its endpoints. */
 export const ruleActions: string[] = [ActionProxy, ActionDirect, ActionBlock]
+export const advancedActions: string[] = [...ruleActions, ActionWARP]
 
 /** Where a rule sends its traffic as one choice of a list: an action, or an endpoint of the preset by its profile. */
 export function targetOf(rule: Pick<PresetRule, 'action' | 'endpoint'>): string {

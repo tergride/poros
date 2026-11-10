@@ -75,7 +75,7 @@ type Preset struct {
 // Invert takes what the conditions do not match.
 type Rule struct {
 	Name string `json:"name,omitempty"`
-	// Action is route, reject or hijack-dns; Outbound is proxy, direct or an EndpointTag and goes with route.
+	// Action is route, reject or hijack-dns; Outbound is proxy, direct, warp or an EndpointTag and goes with route.
 	Action        string   `json:"action"`
 	Outbound      string   `json:"outbound,omitempty"`
 	Invert        bool     `json:"invert,omitempty"`
@@ -132,6 +132,21 @@ func (p Preset) withoutEndpoints() Preset {
 	return p
 }
 
+// withoutWARP sends what the preset sends through WARP to the server instead.
+func (p Preset) withoutWARP() Preset {
+	p.Rules = slices.Clone(p.Rules)
+	for i := range p.Rules {
+		if p.Rules[i].Outbound == OutboundWARP {
+			p.Rules[i].Outbound = OutboundProxy
+		}
+	}
+	return p
+}
+
+func (p Preset) usesWARP() bool {
+	return slices.ContainsFunc(p.Rules, func(r Rule) bool { return r.Outbound == OutboundWARP })
+}
+
 // Validate checks what the config builder relies on.
 func (p Preset) Validate() error {
 	if strings.TrimSpace(p.Name) == "" {
@@ -164,7 +179,7 @@ func (p Preset) Validate() error {
 func (r Rule) validate() error {
 	switch r.Action {
 	case ActionRoute:
-		if _, endpoint := endpointIndex(r.Outbound); r.Outbound != OutboundProxy && r.Outbound != OutboundDirect && !endpoint {
+		if _, endpoint := endpointIndex(r.Outbound); r.Outbound != OutboundProxy && r.Outbound != OutboundDirect && r.Outbound != OutboundWARP && !endpoint {
 			return fmt.Errorf("unknown outbound %q", r.Outbound)
 		}
 	case ActionReject, ActionHijackDNS:

@@ -12,6 +12,7 @@ import {
   ActionBlock,
   ActionDirect,
   ActionProxy,
+  ActionWARP,
   MethodPresetsReadLists,
   MethodPresetsWriteLists,
   ReasonAdvancedOnly,
@@ -31,7 +32,7 @@ const core = useCoreStore()
 const reason = useFailure()
 const { t } = useI18n()
 
-const tabs = [ActionProxy, ActionDirect, ActionBlock]
+const tabs = computed(() => (props.advanced ? [ActionProxy, ActionDirect, ActionBlock, ActionWARP] : [ActionProxy, ActionDirect, ActionBlock]))
 const tab = ref<string>(ActionProxy)
 const lists = ref<Record<string, string> | null>(null)
 const read = ref<PresetListsRead | null>(null)

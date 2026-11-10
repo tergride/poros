@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 
 import { sentence, useFailure } from '@/composables/useReason'
 import { protocolName } from '@/lib/format'
-import { endpointTarget, problemText, ruleActions } from '@/lib/rules'
+import { advancedActions, endpointTarget, problemText, ruleActions } from '@/lib/rules'
 import { isCoreError } from '@/platform'
 import type { Preset, PresetCopy, PresetRule } from '@/platform/core-types'
 import { MethodPresetsCheck, MethodPresetsGet, MethodPresetsSave } from '@/platform/core-types'
@@ -135,7 +135,7 @@ export function providePresetDraft(): PresetDraft {
     shownName,
     endpointOf,
     targets(withType) {
-      const actions = ruleActions.map((action) => ({ value: action, label: t(`action.${action}`) }))
+      const actions = (draft.value?.advanced ? advancedActions : ruleActions).map((action) => ({ value: action, label: t(`action.${action}`) }))
       if (!draft.value?.advanced) return actions
       const endpoints = draft.value.endpoints.map((id) => {
         const endpoint = endpointOf(id)

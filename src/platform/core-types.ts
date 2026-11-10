@@ -104,6 +104,20 @@ export interface Settings {
    */
   addressFirst: string;
   /**
+   * WARP sends what rules send «Through WARP» out through Cloudflare WARP after the server, so that sites see an
+   * address of Cloudflare; off, that traffic goes through the server. WARPMode is wireguard or masque, and each
+   * mode keeps a device of its own: its keys are data, kept whether WARP is on or not.
+   */
+  warp: boolean;
+  warpMode: string;
+  warpWireGuard: WARPDevice;
+  warpMasque: WARPDevice;
+  /**
+   * WARPHosts are the hosts of Cloudflare's API to register at, a line each, tried in turn; "" is
+   * api.cloudflareclient.com.
+   */
+  warpHosts: string;
+  /**
    * SubscriptionAutoUpdate updates the subscriptions on a schedule, every SubscriptionUpdateHours hours; 0 hours
    * is what each provider advises, or 6 hours.
    */
@@ -671,23 +685,28 @@ export interface Preset {
   endpoints: number /* int */;
 }
 /**
- * Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
- * Endpoint names.
+ * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
+ * server, and the endpoint the rule's Endpoint names.
  */
 export const ActionProxy = "proxy";
 /**
- * Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
- * Endpoint names.
+ * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
+ * server, and the endpoint the rule's Endpoint names.
  */
 export const ActionDirect = "direct";
 /**
- * Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
- * Endpoint names.
+ * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
+ * server, and the endpoint the rule's Endpoint names.
  */
 export const ActionBlock = "block";
 /**
- * Where the traffic of a preset rule goes. ActionEndpoint is an endpoint of an advanced preset, the one the rule's
- * Endpoint names.
+ * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
+ * server, and the endpoint the rule's Endpoint names.
+ */
+export const ActionWARP = "warp";
+/**
+ * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
+ * server, and the endpoint the rule's Endpoint names.
  */
 export const ActionEndpoint = "endpoint";
 /**
@@ -864,6 +883,61 @@ export const AddressFirstIPv4 = "ipv4";
  * Which address of a site a connection takes first, Settings.AddressFirst; "" is as the core decides.
  */
 export const AddressFirstIPv6 = "ipv6";
+/**
+ * WARPDevice is a device of Cloudflare WARP: what registration gives, or what the user types in.
+ */
+export interface WARPDevice {
+  /**
+   * Endpoint is host:port.
+   */
+  endpoint: string;
+  /**
+   * PrivateKey is the device's: WireGuard's key in base64, or MASQUE's ECDSA key in base64 DER. PeerKey is the
+   * server's public key, written the same way.
+   */
+  privateKey: string;
+  peerKey: string;
+  /**
+   * Addresses are those of the device, split by commas.
+   */
+  addresses: string;
+  /**
+   * Reserved are WireGuard's three reserved bytes, split by commas.
+   */
+  reserved: string;
+  /**
+   * ServerName is MASQUE's SNI, "" for Cloudflare's. HTTP is MASQUE's version of HTTP: "" HTTP/3 and then
+   * HTTP/2, h3 or h2 alone.
+   */
+  serverName: string;
+  http: string;
+  /**
+   * RegisteredAt is when Cloudflare gave the device, Unix milliseconds; 0 for one typed in.
+   */
+  registeredAt: number /* int64 */;
+}
+/**
+ * Modes of WARP and versions of HTTP of MASQUE.
+ */
+export const WARPModeWireGuard = "wireguard";
+/**
+ * Modes of WARP and versions of HTTP of MASQUE.
+ */
+export const WARPModeMASQUE = "masque";
+/**
+ * Modes of WARP and versions of HTTP of MASQUE.
+ */
+export const WARPHTTP3 = "h3";
+/**
+ * Modes of WARP and versions of HTTP of MASQUE.
+ */
+export const WARPHTTP2 = "h2";
+/**
+ * WARPRegister asks Cloudflare for a new device of a mode.
+ */
+export interface WARPRegister {
+  mode: string;
+}
 /**
  * DNSObject is an own dns object of sing-box as JSON.
  */
@@ -1357,6 +1431,11 @@ export const MethodPresetsCheck = "presets.check";
  */
 export const MethodDNSCheck = "dns.check";
 /**
+ * MethodWARPRegister registers a new device of WARP at Cloudflare, through the running connection when there is
+ * one, and keeps it in the settings for its mode: the settings come back.
+ */
+export const MethodWARPRegister = "warp.register";
+/**
  * MethodPresetsWriteLists gives the rules of a preset as the text of the lists window, MethodPresetsReadLists
  * the rules with that text and the lines it could not read; neither saves anything.
  */
@@ -1466,6 +1545,10 @@ export const ReasonSingleServer = "single_server";
  * ReasonFetchFailed is a subscription that did not download: no network, an error page, a timeout.
  */
 export const ReasonFetchFailed = "fetch_failed";
+/**
+ * ReasonWARPFailed is a registration of WARP that Cloudflare did not complete; ErrorText says why.
+ */
+export const ReasonWARPFailed = "warp_failed";
 /**
  * ReasonInvalidSubscription is a download that is no subscription format Poros reads.
  */
