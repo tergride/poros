@@ -20,6 +20,11 @@ func DefaultSettings() Settings {
 		CheckIP:                true,
 		IPv6:                   true,
 		RealityOnXray:          true,
+		DNSRouting:             DNSRoutingAuto,
+		DNSHosts:               true,
+		DNSCache:               true,
+		DNSCacheSize:           defaultDNSCacheSize,
+		DNSTimeout:             defaultDNSTimeout,
 		SubscriptionAutoUpdate: true,
 		ShowChanges:            true,
 		AutoConnect:            true,
@@ -72,7 +77,8 @@ func (e *Engine) SetSettings(settings Settings) (Settings, error) {
 	go e.syncSystemProxy()
 	if settings.KillSwitch != previous.KillSwitch {
 		go e.syncKillSwitch(previous.KillSwitch)
-	} else if settings.Tun != previous.Tun || settings.Preset != previous.Preset || settings.AllowLAN != previous.AllowLAN || settings.IPv6 != previous.IPv6 {
+	} else if settings.Tun != previous.Tun || settings.Preset != previous.Preset || settings.AllowLAN != previous.AllowLAN || settings.IPv6 != previous.IPv6 ||
+		dnsChanged(settings, previous) {
 		go e.restartRefusal()
 	}
 	switch {
@@ -152,5 +158,5 @@ func (e *Engine) validateSettings(settings Settings) error {
 	if !slices.Contains([]string{"", "1.1"}, settings.SubscriptionHTTP) {
 		return jsonrpc.Failed(ReasonInvalidValue, "subscriptionHttp must be empty or 1.1, not %q", settings.SubscriptionHTTP)
 	}
-	return nil
+	return validateDNS(settings)
 }

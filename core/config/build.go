@@ -28,6 +28,14 @@ const (
 	TagDNSDirect = "dns-direct"
 	// tagDNSSystem resolves the name of a direct DNS server of the user's.
 	tagDNSSystem = "dns-system"
+	tagDNSHosts  = "dns-hosts"
+	tagDNSFake   = "dns-fake"
+)
+
+// The ranges of FakeIP. IPv6 takes a documentation range: the TUN keeps fc00::/7 out.
+var (
+	fakeIPRange4 = netip.MustParsePrefix("198.18.0.0/15")
+	fakeIPRange6 = netip.MustParsePrefix("2001:db8::/32")
 )
 
 // The TUN of Poros. Throne, which may run alongside, keeps 172.19.0.1/24.
@@ -83,6 +91,9 @@ type Input struct {
 	RealityOnXray bool
 	// LogLevel is sing-box's; "" is info.
 	LogLevel string
+	// DNS is how names resolve. A connection that refuses resolves them as their traffic goes even when the
+	// settings send all of them through the server: else no direct site would open.
+	DNS DNS
 
 	// For a server on Xray: the bridge, the default interface Xray binds to, and the addresses of XrayHosts.
 	Bridge    Bridge
@@ -154,15 +165,41 @@ func Build(in Input) (Configs, error) {
 	if logLevel == "" {
 		logLevel = "info"
 	}
+	if in.Refuse && in.DNS.Routing == RoutingProxy {
+		in.DNS.Routing = RoutingAuto
+	}
+	dns, err := buildDNS(in, preset, profiles)
+	if err != nil {
+		return Configs{}, err
+	}
+	direct := &option.DirectOutboundOptions{}
+	// All names through the server: so are those of direct connections the local proxy is asked for by name.
+	if in.DNS.Routing == RoutingProxy && in.DNS.Object == "" {
+		direct.DomainResolver = &option.DomainResolveOptions{Server: TagDNSRemote, Strategy: addressStrategy(in)}
+	}
 	configs.SingBox = option.Options{
 		Log:       &option.LogOptions{Level: logLevel},
-		DNS:       buildDNS(preset, profiles, in.DisableIPv6),
+		DNS:       dns,
 		Inbounds:  buildInbounds(in, preset),
-		Outbounds: append(proxy.outbounds, option.Outbound{Type: C.TypeDirect, Tag: TagDirect, Options: &option.DirectOutboundOptions{}}),
+		Outbounds: append(proxy.outbounds, option.Outbound{Type: C.TypeDirect, Tag: TagDirect, Options: direct}),
 		Endpoints: slices.Concat(proxy.endpoints, endpoints),
 		Route:     buildRoute(in, preset),
 	}
 	return configs, nil
+}
+
+// addressStrategy is which address of a name a connection takes: IPv4 alone without IPv6, else the family the
+// settings put first.
+func addressStrategy(in Input) option.DomainStrategy {
+	switch {
+	case in.DisableIPv6:
+		return option.DomainStrategy(C.DomainStrategyIPv4Only)
+	case in.DNS.AddressFirst == AddressIPv4:
+		return option.DomainStrategy(C.DomainStrategyPreferIPv4)
+	case in.DNS.AddressFirst == AddressIPv6:
+		return option.DomainStrategy(C.DomainStrategyPreferIPv6)
+	}
+	return option.DomainStrategy(C.DomainStrategyAsIS)
 }
 
 // endpointParts builds the endpoints of a preset. They dial their servers directly, not through the server.
@@ -285,10 +322,7 @@ func buildRoute(in Input, preset Preset) *option.RouteOptions {
 		final = TagDirect
 		rules = append(rules, actionRule(option.RawDefaultRule{}, option.RuleAction{Action: C.RuleActionTypeReject}))
 	}
-	resolver := &option.DomainResolveOptions{Server: TagDNSDirect}
-	if in.DisableIPv6 {
-		resolver.Strategy = option.DomainStrategy(C.DomainStrategyIPv4Only)
-	}
+	resolver := &option.DomainResolveOptions{Server: TagDNSDirect, Strategy: addressStrategy(in)}
 	return &option.RouteOptions{
 		Rules:                 rules,
 		Final:                 final,
@@ -377,11 +411,23 @@ func prefixables(prefixes []netip.Prefix) badoption.Listable[*badoption.Prefixab
 	return result
 }
 
-// buildDNS resolves the names of direct traffic with the direct DNS, the system's unless the preset has its own,
-// the names an endpoint's rules send to it with the DNS it was given, and the rest with the remote DNS through the
-// server, in the order of the rules, so that a name follows the same rule as its connection. The names of an
-// endpoint's own domains go to its DNS before any rule.
-func buildDNS(preset Preset, endpoints []profile.Profile, disableIPv6 bool) *option.DNSOptions {
+// buildDNS resolves names the way the settings say. As their traffic goes: the names of direct traffic with the
+// direct DNS, the system's unless the preset has its own, the names an endpoint's rules send to it with the DNS it was
+// given, and the rest with the remote DNS through the server, in the order of the rules, so that a name follows the
+// same rule as its connection. Before any rule, ready answers, the hosts file, the domains of the endpoints and
+// FakeIP answer what they have. An own dns object of the settings replaces all of it.
+func buildDNS(in Input, preset Preset, endpoints []profile.Profile) (*option.DNSOptions, error) {
+	if in.DNS.Object != "" {
+		options, err := parseDNSObject(in.DNS.Object)
+		if err != nil {
+			return nil, err
+		}
+		// The addresses of servers resolve with dns-direct: the system's DNS unless the object has its own.
+		if !slices.ContainsFunc(options.Servers, func(s option.DNSServerOptions) bool { return s.Tag == TagDNSDirect }) {
+			options.Servers = append(options.Servers, option.DNSServerOptions{Type: C.DNSTypeLocal, Tag: TagDNSDirect, Options: &option.LocalDNSServerOptions{}})
+		}
+		return options, nil
+	}
 	text := preset.DNS
 	if text == "" {
 		text = "https://" + remoteDNSServer + remoteDNSPath
@@ -389,44 +435,82 @@ func buildDNS(preset Preset, endpoints []profile.Profile, disableIPv6 bool) *opt
 	// Validate has read both already.
 	remote, _ := remoteDNS(text)
 	servers := []option.DNSServerOptions{remote}
-	if preset.DirectDNS == "" {
+	if preset.DirectDNS == "" || preset.DirectDNS == SystemDNS {
 		servers = append(servers, option.DNSServerOptions{Type: C.DNSTypeLocal, Tag: TagDNSDirect, Options: &option.LocalDNSServerOptions{}})
 	} else {
 		direct, _ := directDNS(preset.DirectDNS)
 		servers = append(servers, direct, option.DNSServerOptions{Type: C.DNSTypeLocal, Tag: tagDNSSystem, Options: &option.LocalDNSServerOptions{}})
 	}
-	var rules []option.DNSRule
+	addresses := badoption.Listable[option.DNSQueryType]{option.DNSQueryType(1), option.DNSQueryType(28)}
+	route := func(server string) option.DNSRuleAction {
+		return option.DNSRuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.DNSRouteActionOptions{Server: server}}
+	}
+	rules := answerRules(in.DNS.Answers)
+	if in.DNS.Hosts {
+		// The hosts server answers no name it lacks, so only those it has go to it.
+		servers = append(servers, option.DNSServerOptions{Type: C.DNSTypeHosts, Tag: tagDNSHosts, Options: &option.HostsDNSServerOptions{}})
+		rules = append(rules, option.DNSRule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{
+			RawDefaultDNSRule: option.RawDefaultDNSRule{PreferredBy: badoption.Listable[string]{tagDNSHosts}, QueryType: addresses},
+			DNSRuleAction:     route(tagDNSHosts),
+		}})
+	}
 	for i, p := range endpoints {
 		tag := dnsEndpointTag(i)
 		servers = append(servers, endpointDNS(p, i))
 		rules = append(rules, option.DNSRule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{
 			RawDefaultDNSRule: option.RawDefaultDNSRule{PreferredBy: badoption.Listable[string]{tag}},
-			DNSRuleAction:     option.DNSRuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.DNSRouteActionOptions{Server: tag}},
+			DNSRuleAction:     route(tag),
 		}})
 	}
-	for _, rule := range preset.Rules {
-		if rule.Action != ActionRoute {
-			continue
+	// Only the queries of programs get fake addresses: sing-box resolves its own connections with real ones.
+	if in.DNS.FakeIP && in.Tun {
+		fake := &option.FakeIPDNSServerOptions{Inet4Range: (*badoption.Prefix)(&fakeIPRange4)}
+		if !in.DisableIPv6 {
+			fake.Inet6Range = (*badoption.Prefix)(&fakeIPRange6)
 		}
-		server := TagDNSRemote
-		if rule.Outbound == OutboundDirect {
-			server = TagDNSDirect
-		} else if n, ok := endpointIndex(rule.Outbound); ok {
-			server = dnsEndpointTag(n)
-		}
-		if dns, ok := dnsRule(rule, option.DNSRuleAction{Action: C.RuleActionTypeRoute, RouteOptions: option.DNSRouteActionOptions{Server: server}}); ok {
-			rules = append(rules, dns)
-		}
+		servers = append(servers, option.DNSServerOptions{Type: C.DNSTypeFakeIP, Tag: tagDNSFake, Options: fake})
+		rules = append(rules, option.DNSRule{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{
+			RawDefaultDNSRule: option.RawDefaultDNSRule{QueryType: addresses},
+			DNSRuleAction:     route(tagDNSFake),
+		}})
 	}
 	final := TagDNSRemote
-	if preset.DefaultOutbound == OutboundDirect {
+	switch in.DNS.Routing {
+	case RoutingProxy:
+	case RoutingDirect:
 		final = TagDNSDirect
+	default:
+		for _, rule := range preset.Rules {
+			if rule.Action != ActionRoute {
+				continue
+			}
+			server := TagDNSRemote
+			if rule.Outbound == OutboundDirect {
+				server = TagDNSDirect
+			} else if n, ok := endpointIndex(rule.Outbound); ok {
+				server = dnsEndpointTag(n)
+			}
+			if dns, ok := dnsRule(rule, route(server)); ok {
+				rules = append(rules, dns)
+			}
+		}
+		if preset.DefaultOutbound == OutboundDirect {
+			final = TagDNSDirect
+		}
 	}
 	options := &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: servers, Rules: rules, Final: final}}
-	if disableIPv6 {
-		options.Strategy = option.DomainStrategy(C.DomainStrategyIPv4Only)
+	client := &options.DNSClientOptions
+	client.Strategy = addressStrategy(in)
+	client.DisableCache, client.CacheCapacity, client.DisableExpire = in.DNS.NoCache, in.DNS.CacheSize, in.DNS.IgnoreTTL
+	if in.DNS.Optimistic && !in.DNS.NoCache && !in.DNS.IgnoreTTL {
+		client.Optimistic = &option.OptimisticDNSOptions{Enabled: true}
 	}
-	return options
+	client.Timeout = badoption.Duration(in.DNS.Timeout)
+	if in.DNS.ClientSubnet.IsValid() {
+		subnet := in.DNS.ClientSubnet
+		client.ClientSubnet = (*badoption.Prefixable)(&subnet)
+	}
+	return options, nil
 }
 
 func dnsEndpointTag(i int) string {

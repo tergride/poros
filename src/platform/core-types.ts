@@ -54,6 +54,56 @@ export interface Settings {
    */
   realityOnXray: boolean;
   /**
+   * DNSRemote is the DNS server of traffic through the server that presets with «By default» take: "" is
+   * Google's DoH, otherwise https://, tls:// or a plain address. DNSDirect is that of direct traffic, past the
+   * server: "" is the system's.
+   */
+  dnsRemote: string;
+  dnsDirect: string;
+  /**
+   * DNSRouting is which way names resolve: auto as their traffic goes, proxy all through the server, direct all
+   * past it.
+   */
+  dnsRouting: string;
+  /**
+   * FakeIP answers the names programs ask through the TUN with fake addresses, by which Poros knows the site.
+   */
+  fakeIp: boolean;
+  /**
+   * DNSHosts answers the names of the hosts file of Windows from it.
+   */
+  dnsHosts: boolean;
+  /**
+   * DNSAnswers answer names before the hosts file and the servers: a line each, a name and its addresses.
+   */
+  dnsAnswers: string;
+  /**
+   * DNSCache keeps answers: up to DNSCacheSize of them, for as long as they live unless DNSIgnoreTTL keeps them
+   * until newer ones push them out. DNSOptimistic gives an outdated answer at once and asks for a fresh one.
+   */
+  dnsCache: boolean;
+  dnsCacheSize: number /* int */;
+  dnsIgnoreTtl: boolean;
+  dnsOptimistic: boolean;
+  /**
+   * DNSTimeout is how many seconds a query waits for its server.
+   */
+  dnsTimeout: number /* int */;
+  /**
+   * DNSClientSubnet tells DNS servers the subnet queries come from (ECS); "" for none.
+   */
+  dnsClientSubnet: string;
+  /**
+   * DNSObject is an own dns object of sing-box as JSON, "" for none. It replaces the DNS settings above and the
+   * DNS of presets.
+   */
+  dnsObject: string;
+  /**
+   * AddressFirst is which address of a site with both a connection takes first: "" as the core decides, ipv4 or
+   * ipv6. Without IPv6 it is IPv4 alone.
+   */
+  addressFirst: string;
+  /**
    * SubscriptionAutoUpdate updates the subscriptions on a schedule, every SubscriptionUpdateHours hours; 0 hours
    * is what each provider advises, or 6 hours.
    */
@@ -795,6 +845,32 @@ export interface PresetCopy {
   endpoints: string[];
 }
 /**
+ * Which way names resolve, Settings.DNSRouting.
+ */
+export const DNSRoutingAuto = "auto";
+/**
+ * Which way names resolve, Settings.DNSRouting.
+ */
+export const DNSRoutingProxy = "proxy";
+/**
+ * Which way names resolve, Settings.DNSRouting.
+ */
+export const DNSRoutingDirect = "direct";
+/**
+ * Which address of a site a connection takes first, Settings.AddressFirst; "" is as the core decides.
+ */
+export const AddressFirstIPv4 = "ipv4";
+/**
+ * Which address of a site a connection takes first, Settings.AddressFirst; "" is as the core decides.
+ */
+export const AddressFirstIPv6 = "ipv6";
+/**
+ * DNSObject is an own dns object of sing-box as JSON.
+ */
+export interface DNSObject {
+  object: string;
+}
+/**
  * DNSLocal is the system's DNS as the direct DNS of a preset.
  */
 export const DNSLocal = "local";
@@ -1276,6 +1352,10 @@ export const MethodPresetsImport = "presets.import";
  * the data of the error.
  */
 export const MethodPresetsCheck = "presets.check";
+/**
+ * MethodDNSCheck has sing-box read an own dns object in a connection, as settings.set does, without saving it.
+ */
+export const MethodDNSCheck = "dns.check";
 /**
  * MethodPresetsWriteLists gives the rules of a preset as the text of the lists window, MethodPresetsReadLists
  * the rules with that text and the lines it could not read; neither saves anything.

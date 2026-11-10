@@ -117,6 +117,35 @@ test('the settings open from the portal, and a list of choices picks a value', a
   await shot(page, 'select-open-large')
 })
 
+test('the DNS page saves the default servers and the way of names at once', async ({ page }) => {
+  await throughWizard(page)
+  await page.getByTestId('portal-settings').click()
+  await page.getByRole('link', { name: 'DNS', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'DNS', exact: true })).toBeVisible()
+  await page.getByRole('combobox', { name: 'Для трафика через сервер' }).click()
+  await page.getByRole('option', { name: 'Cloudflare' }).click()
+  await page.getByRole('combobox', { name: 'Для прямого трафика' }).click()
+  await page.getByRole('option', { name: 'Свой…' }).click()
+  const own = page.getByRole('textbox', { name: 'Для прямого трафика: свой сервер' })
+  await own.fill('dns.example')
+  await own.press('Enter')
+  await expect(page.getByTestId('notice')).toContainText('dns.example')
+  await own.fill('tls://dns.example')
+  await own.press('Enter')
+  await page.getByTestId('dns-routing').getByTestId('segment-proxy').click()
+  await page.getByTestId('fake-ip').click()
+  await shot(page, 'settings-dns')
+  // The hosts file, ready answers and the rest belong to the advanced mode.
+  await expect(page.getByTestId('dns-answers')).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'Подключение', exact: true }).click()
+  await page.getByRole('link', { name: 'DNS', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: 'Для трафика через сервер' })).toHaveText('Cloudflare')
+  await expect(own).toHaveValue('tls://dns.example')
+  await expect(page.getByTestId('dns-routing').getByTestId('segment-proxy')).toHaveAttribute('data-state', 'checked')
+  await expect(page.getByTestId('fake-ip')).toHaveAttribute('data-state', 'checked')
+})
+
 test('rights at autostart come with autostart and ask for rights first', async ({ page }) => {
   await throughWizard(page)
   await page.getByTestId('portal-settings').click()

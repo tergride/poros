@@ -15,6 +15,7 @@ import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/u
 import { usePresetDraft } from '@/composables/usePresetDraft'
 import type { PresetRule } from '@/platform/core-types'
 import { DNSLocal } from '@/platform/core-types'
+import { useCoreStore } from '@/stores/core'
 
 // The editor of a preset under its name, the same in both modes: its kind, not the mode, decides what it has. A simple
 // preset is one page: where traffic goes by default, the rules and the remote DNS. An advanced one has tabs: the rules
@@ -22,7 +23,10 @@ import { DNSLocal } from '@/platform/core-types'
 // listsButton puts «Edit as a list» over a simple preset, for a host that has no place for it of its own.
 defineProps<{ listsButton?: boolean }>()
 const { draft, listsOpen, ruleOpen } = usePresetDraft()
+const core = useCoreStore()
 const { t } = useI18n()
+// An own dns object of the settings replaces the DNS of every preset.
+const dnsObject = computed(() => !!core.settings?.dnsObject)
 const tab = ref('list')
 
 const remoteChoices = computed(() => [
@@ -51,7 +55,14 @@ function applyLists(rules: PresetRule[]): void {
       <DefaultCard />
       <RuleList :advanced="false" />
       <SettingsCard :title="t('presetEdit.dns')" class="max-w-[520px]">
-        <DnsChoice v-model="draft.dns" :title="t('presetEdit.dnsRemote')" :hint="t('presetEdit.dnsRemoteHint')" :choices="remoteChoices" :disabled="draft.builtin" />
+        <p v-if="dnsObject" class="mt-1.5 text-xs text-warn" data-testid="preset-dns-object">{{ t('presetEdit.dnsObject') }}</p>
+        <DnsChoice
+          v-model="draft.dns"
+          :title="t('presetEdit.dnsRemote')"
+          :hint="t('presetEdit.dnsRemoteHint')"
+          :choices="remoteChoices"
+          :disabled="draft.builtin || dnsObject"
+        />
       </SettingsCard>
     </template>
     <Tabs v-else v-model="tab">
@@ -73,8 +84,9 @@ function applyLists(rules: PresetRule[]): void {
       </TabsContent>
       <TabsContent value="dns">
         <SettingsCard :title="t('presetEdit.dnsServers')" class="max-w-[640px]">
-          <DnsChoice v-model="draft.dns" :title="t('presetEdit.dnsRemote')" :hint="t('presetEdit.dnsRemoteHint')" :choices="remoteChoices" />
-          <DnsChoice v-model="draft.directDns" :title="t('presetEdit.dnsDirect')" :hint="t('presetEdit.dnsDirectHint')" :choices="directChoices" />
+          <p v-if="dnsObject" class="mt-1.5 text-xs text-warn" data-testid="preset-dns-object">{{ t('presetEdit.dnsObject') }}</p>
+          <DnsChoice v-model="draft.dns" :title="t('presetEdit.dnsRemote')" :hint="t('presetEdit.dnsRemoteHint')" :choices="remoteChoices" :disabled="dnsObject" />
+          <DnsChoice v-model="draft.directDns" :title="t('presetEdit.dnsDirect')" :hint="t('presetEdit.dnsDirectHint')" :choices="directChoices" :disabled="dnsObject" />
         </SettingsCard>
       </TabsContent>
     </Tabs>

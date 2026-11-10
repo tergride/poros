@@ -22,6 +22,7 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodAppHandOver:         noParams(func() (any, error) { e.HandOver(); return nil, nil }),
 		MethodSettingsGet:         noParams(e.Settings),
 		MethodSettingsSet:         withParams(e.SetSettings),
+		MethodDNSCheck:            withParams(func(p DNSObject) (any, error) { return nil, checkDNSObject(p.Object) }),
 		MethodGroupsList:          noParams(e.Groups),
 		MethodGroupsAdd:           withParams(e.AddGroup),
 		MethodGroupsRename:        withParams(e.RenameGroup),

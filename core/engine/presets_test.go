@@ -352,12 +352,14 @@ func TestAdvancedPreset(t *testing.T) {
 		t.Errorf("IPv6 blocked: %+v", r)
 	}
 
-	// The system's DNS as the direct one is the same as none of the user's.
+	// The system's DNS as the direct one stays the system's whatever the settings put by default.
 	draft.ID, draft.DirectDNS = saved.ID, DNSLocal
 	if _, err = e.SavePreset(draft); err != nil {
 		t.Fatal(err)
 	}
-	if preset, _, _ = e.preset(saved.ID); preset.DirectDNS != "" {
+	settings := DefaultSettings()
+	settings.DNSDirect = "tls://dns.example:853"
+	if preset, _, _ = e.preset(saved.ID); withDefaultDNS(preset, settings).DirectDNS != config.SystemDNS {
 		t.Errorf("the system's DNS: %q", preset.DirectDNS)
 	}
 	link, _ := e.ExportPreset(saved.ID)

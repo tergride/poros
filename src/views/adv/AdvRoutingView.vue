@@ -6,6 +6,7 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vu
 
 import NewPresetDialog from '@/components/presets/NewPresetDialog.vue'
 import PresetEditor from '@/components/presets/PresetEditor.vue'
+import RoutingCommon from '@/components/presets/RoutingCommon.vue'
 import { Banner, Button, Dialog, Input, Tabs, TabsList, TabsTrigger } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { providePresetDraft } from '@/composables/usePresetDraft'
@@ -17,8 +18,8 @@ import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 // «Routing» of the advanced mode. «Presets and rules» lists the presets and edits the chosen one beside the list:
-// a change waits for «Save», and leaving with one asks first, as on the settings pages. WARP and «General» come with
-// later parts of the stage.
+// a change waits for «Save», and leaving with one asks first, as on the settings pages. «General» is the family of
+// addresses first and the preset in use; WARP comes with a later part of the stage.
 const core = useCoreStore()
 const ui = useUiStore()
 const restart = useRestartNeeded()
@@ -186,6 +187,7 @@ onBeforeRouteUpdate(ask)
         </div>
       </div>
     </div>
+    <RoutingCommon v-else-if="tab === 'common'" />
     <section v-else class="grid flex-1 place-items-center p-10 text-center" data-testid="section-soon">
       <div class="grid max-w-[420px] justify-items-center gap-3">
         <Hammer class="size-8 text-t3" />

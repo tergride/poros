@@ -8,7 +8,28 @@ import { useCoreStore } from '@/stores/core'
 
 // The settings a running connection was built with; System and the kill switch apply on the fly, and the server
 // restarts by itself.
-const builtWith = (s: Settings) => JSON.stringify([s.tun, s.preset, s.allowLan, s.ipv6, s.realityOnXray])
+const builtWith = (s: Settings) =>
+  JSON.stringify([
+    s.tun,
+    s.preset,
+    s.allowLan,
+    s.ipv6,
+    s.realityOnXray,
+    s.dnsRemote,
+    s.dnsDirect,
+    s.dnsRouting,
+    s.fakeIp,
+    s.dnsHosts,
+    s.dnsAnswers,
+    s.dnsCache,
+    s.dnsCacheSize,
+    s.dnsIgnoreTtl,
+    s.dnsOptimistic,
+    s.dnsTimeout,
+    s.dnsClientSubnet,
+    s.dnsObject,
+    s.addressFirst,
+  ])
 
 /**
  * Note 6: a saved setting the running connection depends on waits for a restart instead of breaking the connection.

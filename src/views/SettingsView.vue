@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ArrowLeft, Globe, Info, Layers, Link, Palette, Power, X } from '@lucide/vue'
+import { ArrowLeft, Globe, Info, Layers, Link, Palette, Power, Signpost, X } from '@lucide/vue'
 import { type Component, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import CoreBanner from '@/components/main/CoreBanner.vue'
 import ConnPage from '@/components/settings/ConnPage.vue'
+import DnsPage from '@/components/settings/DnsPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
 import LookPage from '@/components/settings/LookPage.vue'
 import PresetsPage from '@/components/settings/PresetsPage.vue'
@@ -23,6 +24,7 @@ const { t } = useI18n()
 const pages: { id: string; icon: Component; page: Component }[] = [
   { id: 'presets', icon: Layers, page: PresetsPage },
   { id: 'conn', icon: Globe, page: ConnPage },
+  { id: 'dns', icon: Signpost, page: DnsPage },
   { id: 'subs', icon: Link, page: SubsPage },
   { id: 'start', icon: Power, page: StartPage },
   { id: 'look', icon: Palette, page: LookPage },

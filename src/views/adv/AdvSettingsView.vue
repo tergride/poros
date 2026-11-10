@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Check, Globe, Info, Link, Palette, Power, Search } from '@lucide/vue'
+import { Check, Globe, Info, Link, Palette, Power, Search, Signpost } from '@lucide/vue'
 import { type Component, computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 
 import ConnPage from '@/components/settings/ConnPage.vue'
+import DnsPage from '@/components/settings/DnsPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
 import LookPage from '@/components/settings/LookPage.vue'
 import StartPage from '@/components/settings/StartPage.vue'
@@ -24,6 +25,7 @@ const draft = provideSettingsDraft()
 
 const pages: { id: string; icon: Component; page: Component }[] = [
   { id: 'conn', icon: Globe, page: ConnPage },
+  { id: 'dns', icon: Signpost, page: DnsPage },
   { id: 'subs', icon: Link, page: SubsPage },
   { id: 'start', icon: Power, page: StartPage },
   { id: 'look', icon: Palette, page: LookPage },

@@ -10,6 +10,7 @@ import type {
   CleanServers,
   ConfigureGroup,
   ConnectionState,
+  DNSObject,
   Group,
   KillSwitchState,
   LinkInfo,
@@ -73,6 +74,7 @@ import {
   MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
+  MethodDNSCheck,
   MethodPresetsCheck,
   MethodPresetsExport,
   MethodPresetsGet,
@@ -150,6 +152,7 @@ export interface CoreMethods {
   [MethodPresetsExport]: { params: ByID; result: PresetLink }
   [MethodPresetsImport]: { params: PresetLink; result: Preset }
   [MethodPresetsCheck]: { params: PresetRules; result: PresetRules }
+  [MethodDNSCheck]: { params: DNSObject; result: null }
   [MethodPresetsWriteLists]: { params: PresetRules; result: PresetLists }
   [MethodPresetsReadLists]: { params: PresetListsInput; result: PresetListsRead }
   [MethodLinksParse]: { params: OutsideLink; result: LinkInfo }

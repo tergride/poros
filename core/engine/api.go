@@ -34,6 +34,36 @@ type Settings struct {
 	IPv6 bool `json:"ipv6"`
 	// RealityOnXray runs VLESS with REALITY over TCP and gRPC on Xray rather than sing-box.
 	RealityOnXray bool `json:"realityOnXray"`
+	// DNSRemote is the DNS server of traffic through the server that presets with «By default» take: "" is
+	// Google's DoH, otherwise https://, tls:// or a plain address. DNSDirect is that of direct traffic, past the
+	// server: "" is the system's.
+	DNSRemote string `json:"dnsRemote"`
+	DNSDirect string `json:"dnsDirect"`
+	// DNSRouting is which way names resolve: auto as their traffic goes, proxy all through the server, direct all
+	// past it.
+	DNSRouting string `json:"dnsRouting"`
+	// FakeIP answers the names programs ask through the TUN with fake addresses, by which Poros knows the site.
+	FakeIP bool `json:"fakeIp"`
+	// DNSHosts answers the names of the hosts file of Windows from it.
+	DNSHosts bool `json:"dnsHosts"`
+	// DNSAnswers answer names before the hosts file and the servers: a line each, a name and its addresses.
+	DNSAnswers string `json:"dnsAnswers"`
+	// DNSCache keeps answers: up to DNSCacheSize of them, for as long as they live unless DNSIgnoreTTL keeps them
+	// until newer ones push them out. DNSOptimistic gives an outdated answer at once and asks for a fresh one.
+	DNSCache      bool `json:"dnsCache"`
+	DNSCacheSize  int  `json:"dnsCacheSize"`
+	DNSIgnoreTTL  bool `json:"dnsIgnoreTtl"`
+	DNSOptimistic bool `json:"dnsOptimistic"`
+	// DNSTimeout is how many seconds a query waits for its server.
+	DNSTimeout int `json:"dnsTimeout"`
+	// DNSClientSubnet tells DNS servers the subnet queries come from (ECS); "" for none.
+	DNSClientSubnet string `json:"dnsClientSubnet"`
+	// DNSObject is an own dns object of sing-box as JSON, "" for none. It replaces the DNS settings above and the
+	// DNS of presets.
+	DNSObject string `json:"dnsObject"`
+	// AddressFirst is which address of a site with both a connection takes first: "" as the core decides, ipv4 or
+	// ipv6. Without IPv6 it is IPv4 alone.
+	AddressFirst string `json:"addressFirst"`
 	// SubscriptionAutoUpdate updates the subscriptions on a schedule, every SubscriptionUpdateHours hours; 0 hours
 	// is what each provider advises, or 6 hours.
 	SubscriptionAutoUpdate  bool `json:"subscriptionAutoUpdate"`
@@ -516,6 +546,24 @@ type PresetCopy struct {
 	Endpoints []string `json:"endpoints"`
 }
 
+// Which way names resolve, Settings.DNSRouting.
+const (
+	DNSRoutingAuto   = "auto"
+	DNSRoutingProxy  = "proxy"
+	DNSRoutingDirect = "direct"
+)
+
+// Which address of a site a connection takes first, Settings.AddressFirst; "" is as the core decides.
+const (
+	AddressFirstIPv4 = "ipv4"
+	AddressFirstIPv6 = "ipv6"
+)
+
+// DNSObject is an own dns object of sing-box as JSON.
+type DNSObject struct {
+	Object string `json:"object"`
+}
+
 // DNSLocal is the system's DNS as the direct DNS of a preset.
 const DNSLocal = "local"
 
@@ -827,6 +875,8 @@ const (
 	// MethodPresetsCheck checks the rules of a preset without saving them; a wrong one fails with a RuleProblem as
 	// the data of the error.
 	MethodPresetsCheck = "presets.check"
+	// MethodDNSCheck has sing-box read an own dns object in a connection, as settings.set does, without saving it.
+	MethodDNSCheck = "dns.check"
 	// MethodPresetsWriteLists gives the rules of a preset as the text of the lists window, MethodPresetsReadLists
 	// the rules with that text and the lines it could not read; neither saves anything.
 	MethodPresetsWriteLists = "presets.writeLists"

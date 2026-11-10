@@ -303,6 +303,7 @@
     "nav": {
       "presets": "Presets",
       "conn": "Connection",
+      "dns": "DNS",
       "subs": "Subscriptions",
       "start": "Start",
       "look": "Appearance",
@@ -344,6 +345,37 @@
       "reality": "REALITY on Xray",
       "realityHint": "VLESS servers with REALITY run on Xray. Off, they run on sing-box.",
       "killSwitchNote": "How the kill switch works: VPN traffic is what the preset sends through the server. If the connection breaks, Poros keeps TUN and System on and refuses in place of the server: sites and programs the preset sends directly still work. With TUN, while the Poros core restarts, Windows closes the whole internet except Poros and the local network. Stop lifts the kill switch in the While connected mode, and so does choosing Off."
+    },
+    "dns": {
+      "lead": "How Poros learns the addresses of sites and who sees these queries.",
+      "servers": "DNS servers",
+      "serversHint": "Presets with “Default” take them, the built-in ones too. A preset may choose its own.",
+      "remoteHint": "Queries go through the server; your provider does not see them.",
+      "directHint": "Queries go past the server.",
+      "how": "How names resolve",
+      "routing": "DNS queries",
+      "routingHint": "Which way Poros learns the addresses of sites.",
+      "routingNote": "“As traffic”: a site’s name resolves the way its traffic goes, through the server for sites over VPN and directly for direct ones. “All through the server”: your provider sees no name, but direct sites may get CDN addresses far from you. “All direct”: faster, but your provider sees every name, those of sites over VPN too. While the kill switch holds back the server’s traffic, “All through the server” works as “As traffic”: otherwise direct sites would not open either.",
+      "routingAuto": "As traffic",
+      "routingProxy": "All through the server",
+      "routingDirect": "All direct",
+      "fakeIp": "Fake addresses (FakeIP)",
+      "fakeIpHint": "Works with TUN. Rules by site name match more precisely.",
+      "fakeIpNote": "Programs get an address of 198.18.0.0/15 at once instead of the real one, and Poros knows the site by it and routes it by the rules. Sites open a little faster. Some programs do not work with such addresses; then turn FakeIP off.",
+      "hostsTitle": "Hosts file",
+      "hosts": "Use the hosts file",
+      "hostsHint": "Names of the Windows hosts file are answered as without Poros, with TUN too.",
+      "answers": "Ready answers",
+      "answersHint": "One per line: a name and one or more addresses separated by spaces. They answer before hosts and DNS servers.",
+      "more": "More",
+      "cache": "Cache and timeouts",
+      "cacheHint": "How many answers to keep and how long to wait for a server.",
+      "object": "Own DNS object",
+      "objectHint": "A whole sing-box dns object instead of the settings of this page.",
+      "change": "Change…",
+      "set": "Set…",
+      "objectSet": "An own DNS object is set: the settings of this page and the DNS of presets do not apply.",
+      "objectSetSimple": "An own DNS object is set in the advanced mode: the settings of this page and the DNS of presets do not apply."
     },
     "subs": {
       "lead": "How the server list is updated.",
@@ -443,9 +475,9 @@
     "dnsDefault": "Default",
     "dnsSystem": "System",
     "dnsRemote": "For traffic through the server",
-    "dnsRemoteHint": "Queries go through the server. “Default” is Google.",
+    "dnsRemoteHint": "Queries go through the server. “Default” is as in “Settings → DNS”.",
     "dnsDirect": "For direct traffic",
-    "dnsDirectHint": "Queries go past the server. “Default” is the system DNS.",
+    "dnsDirectHint": "Queries go past the server. “Default” is as in “Settings → DNS”.",
     "dnsCustomHint": "https://, tls:// or an IP address",
     "dnsOwn": "{title}: own server",
     "tabRules": "Rules",
@@ -453,7 +485,8 @@
     "tabDns": "DNS",
     "builtinNote": "A built-in preset does not change. To add rules of your own, make a copy.",
     "remove": "Remove the preset",
-    "unsaved": "The preset “{name}” has unsaved changes."
+    "unsaved": "The preset “{name}” has unsaved changes.",
+    "dnsObject": "An own DNS object is set: the DNS of presets does not apply."
   },
   "presetLists": {
     "open": "Edit as lists",
@@ -573,6 +606,30 @@
     "removeTitle": "Remove the endpoint?",
     "removeText": "{n} rules to “{name}” will send their traffic through the server. | {n} rule to “{name}” will send its traffic through the server. | {n} rules to “{name}” will send their traffic through the server."
   },
+  "dnsCache": {
+    "title": "Cache and timeouts",
+    "cache": "Cache answers",
+    "cacheHint": "A repeated query of the same name does not go to the DNS server.",
+    "size": "Cache size",
+    "sizeHint": "How many answers to keep.",
+    "ignoreTtl": "Ignore the lifetime of answers",
+    "ignoreTtlHint": "An answer stays in the cache until newer ones push it out.",
+    "optimistic": "Optimistic cache",
+    "optimisticHint": "An outdated answer is given at once, and a fresh one is asked for in the background.",
+    "optimisticOff": "Not together with “Ignore the lifetime of answers”: answers do not get outdated then.",
+    "timeout": "Query timeout",
+    "timeoutHint": "How many seconds to wait for a DNS server to answer.",
+    "subnet": "Client subnet (ECS)",
+    "subnetHint": "Optional. Tells DNS servers where a query comes from, so that CDNs give near addresses.",
+    "wrongSize": "The cache size is a whole number from 1 to 1048576.",
+    "wrongTimeout": "The timeout is a whole number of seconds from 1 to 60."
+  },
+  "dnsObject": {
+    "title": "Own DNS object",
+    "hint": "The whole dns object of a sing-box config. While it is set, the settings of the DNS page and the DNS of presets do not apply. Servers with \"detour\": \"proxy\" go through the VPN. The addresses of servers resolve with the dns-direct server, or with the system DNS without one.",
+    "label": "DNS object",
+    "remove": "Remove the object"
+  },
   "newPreset": {
     "title": "New preset",
     "copyTitle": "Copy of the preset “{name}”",
@@ -596,7 +653,15 @@
       "common": "General"
     },
     "presets": "Presets",
-    "mine": "Mine"
+    "mine": "Mine",
+    "common": {
+      "title": "General",
+      "addressFirst": "Which address of a site to take first",
+      "addressFirstHint": "If a site has both. With IPv6 off on the “Connection” page, IPv4 only.",
+      "auto": "As the core decides",
+      "preset": "Preset",
+      "presetHint": "The same choice as in the connection bar."
+    }
   },
   "reason": {
     "start_failed": "the core could not connect",

@@ -61,8 +61,8 @@ type Preset struct {
 	// DNS is the remote DNS server, reached through the server: https://host[:port][/path], tls://host[:port] or
 	// a plain address over UDP. Empty is Google's DoH.
 	DNS string `json:"dns,omitempty"`
-	// DirectDNS is the DNS server of direct traffic, reached past the server and written as DNS is. Empty is the
-	// system's DNS.
+	// DirectDNS is the DNS server of direct traffic, reached past the server and written as DNS is. Empty and
+	// SystemDNS are the system's DNS.
 	DirectDNS string `json:"direct_dns,omitempty"`
 	Rules     []Rule `json:"rules"`
 	// Endpoints are the IDs of the OpenVPN and OpenConnect profiles that connect alongside the server: the
@@ -153,7 +153,7 @@ func (p Preset) Validate() error {
 			return err
 		}
 	}
-	if p.DirectDNS != "" {
+	if p.DirectDNS != "" && p.DirectDNS != SystemDNS {
 		if _, err := directDNS(p.DirectDNS); err != nil {
 			return err
 		}

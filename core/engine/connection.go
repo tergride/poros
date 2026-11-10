@@ -337,7 +337,8 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	in := config.Input{
 		Server:        server,
 		Links:         links,
-		Preset:        preset,
+		Preset:        withDefaultDNS(preset, settings),
+		DNS:           dnsOf(settings),
 		Endpoints:     endpoints,
 		Tun:           settings.Tun,
 		AllowLAN:      settings.AllowLAN,

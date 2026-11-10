@@ -13,9 +13,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json/badoption"
 
 	"PorosCore/internal/boxmain"
 	"PorosCore/internal/xray"
@@ -635,6 +637,123 @@ func TestEndpoints(t *testing.T) {
 	} {
 		if _, err := Build(wrong); err == nil {
 			t.Errorf("%s must be refused", name)
+		}
+	}
+}
+
+// The DNS page of the settings: ready answers, the hosts file and FakeIP before the rules of the preset, the cache
+// and the family first; all names through the server or past it without rules; an own dns object instead of it all.
+func TestDNSSettings(t *testing.T) {
+	answers, err := ParseAnswers("# home\nNAS.home 192.168.1.20 fd00::20\n\nprinter.lan 192.168.1.30")
+	if err != nil || len(answers) != 2 || answers[0].Name != "nas.home" || len(answers[0].Addresses) != 2 {
+		t.Fatalf("ParseAnswers: %+v, %v", answers, err)
+	}
+	for _, wrong := range []string{"nas.home", "nas.home 192.168.1.300", "a.home 10.0.0.1\nA.home 10.0.0.2"} {
+		if _, err := ParseAnswers(wrong); err == nil {
+			t.Errorf("%q must be refused", wrong)
+		}
+	}
+	preset := Preset{Name: "Mine", DefaultOutbound: OutboundProxy, Rules: []Rule{
+		allPreset.Rules[0],
+		{Name: "Bank", Action: ActionRoute, Outbound: OutboundDirect, DomainSuffix: []string{"bank.example"}},
+		allPreset.Rules[1],
+	}}
+	server := mustParse(t, sampleLinks(t)["trojan tcp"])
+	in := Input{Server: server, Preset: preset, Tun: true, MixedPort: 2090, DNS: DNS{
+		FakeIP: true, Hosts: true, Answers: answers, CacheSize: 4096, IgnoreTTL: true, Optimistic: true, Timeout: 5 * time.Second,
+		ClientSubnet: netip.MustParsePrefix("203.0.113.0/24"), AddressFirst: AddressIPv6,
+	}}
+	build := func(in Input) option.Options {
+		t.Helper()
+		configs, err := Build(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, _ := configs.SingBoxJSON()
+		if err = boxmain.Check(data); err != nil {
+			t.Fatalf("sing-box refuses the config: %v\n%s", err, data)
+		}
+		return configs.SingBox
+	}
+	options := build(in)
+	dns := options.DNS
+	// Two answers of two families, the hosts file, FakeIP, then the rule of the preset.
+	if len(dns.Rules) != 7 || dns.Rules[0].DefaultOptions.Action != C.RuleActionTypePredefined || dns.Rules[0].DefaultOptions.Domain[0] != "nas.home" ||
+		dns.Rules[4].DefaultOptions.RouteOptions.Server != tagDNSHosts || dns.Rules[5].DefaultOptions.RouteOptions.Server != tagDNSFake ||
+		dns.Rules[6].DefaultOptions.RouteOptions.Server != TagDNSDirect {
+		t.Fatalf("answers, hosts and FakeIP come before the rules: %+v", dns.Rules)
+	}
+	if answer := dns.Rules[1].DefaultOptions.PredefinedOptions.Answer; len(answer) != 1 || !strings.Contains(answer[0].String(), "fd00::20") {
+		t.Errorf("an AAAA query gets the IPv6 address alone: %+v", answer)
+	}
+	fake := dns.Servers[len(dns.Servers)-1].Options.(*option.FakeIPDNSServerOptions)
+	if fake.Inet4Range.Build(netip.Prefix{}) != fakeIPRange4 || fake.Inet6Range == nil {
+		t.Errorf("FakeIP ranges: %+v", fake)
+	}
+	client := dns.DNSClientOptions
+	// An optimistic cache needs answers that get outdated.
+	if client.CacheCapacity != 4096 || !client.DisableExpire || client.Optimistic != nil || client.Timeout != badoption.Duration(5*time.Second) ||
+		client.ClientSubnet == nil || client.Strategy != option.DomainStrategy(C.DomainStrategyPreferIPv6) {
+		t.Errorf("the cache, the wait, ECS and IPv6 first: %+v", client)
+	}
+	in.DNS.IgnoreTTL = false
+	if client := build(in).DNS.DNSClientOptions; client.Optimistic == nil || !client.Optimistic.Enabled {
+		t.Errorf("an optimistic cache: %+v", client)
+	}
+	if options.Route.DefaultDomainResolver.Strategy != option.DomainStrategy(C.DomainStrategyPreferIPv6) {
+		t.Errorf("connections take IPv6 first too: %+v", options.Route.DefaultDomainResolver)
+	}
+
+	// FakeIP needs the TUN; without IPv6 it has no IPv6 range, and IPv4 is all there is.
+	in.Tun, in.DNS.Hosts, in.DNS.Answers = false, false, nil
+	if servers := build(in).DNS.Servers; len(servers) != 2 {
+		t.Errorf("FakeIP without the TUN: %+v", servers)
+	}
+	in.Tun, in.DisableIPv6 = true, true
+	options = build(in)
+	if fake := options.DNS.Servers[2].Options.(*option.FakeIPDNSServerOptions); fake.Inet6Range != nil ||
+		options.DNS.Strategy != option.DomainStrategy(C.DomainStrategyIPv4Only) {
+		t.Errorf("without IPv6: %+v, %v", fake, options.DNS.Strategy)
+	}
+
+	// All names one way: no rules of the preset. Through the server, the local proxy's direct names go there too;
+	// a refusal resolves as the traffic goes.
+	in.DNS = DNS{Routing: RoutingProxy}
+	options = build(in)
+	if len(options.DNS.Rules) != 0 || options.DNS.Final != TagDNSRemote {
+		t.Errorf("all through the server: %+v", options.DNS)
+	}
+	if direct := options.Outbounds[len(options.Outbounds)-1].Options.(*option.DirectOutboundOptions); direct.DomainResolver == nil ||
+		direct.DomainResolver.Server != TagDNSRemote {
+		t.Errorf("direct names through the server: %+v", direct)
+	}
+	in.DNS.Routing = RoutingDirect
+	if options = build(in); len(options.DNS.Rules) != 0 || options.DNS.Final != TagDNSDirect {
+		t.Errorf("all past the server: %+v", options.DNS)
+	}
+	refusal := in
+	refusal.Refuse, refusal.Server, refusal.DNS.Routing = true, profile.Profile{}, RoutingProxy
+	if options = build(refusal); len(options.DNS.Rules) != 1 {
+		t.Errorf("a refusal resolves as the traffic goes: %+v", options.DNS.Rules)
+	}
+
+	// An own dns object replaces it all; the addresses of servers resolve with the system's DNS.
+	in.DNS = DNS{Object: `{"servers":[{"type":"https","tag":"remote","server":"1.1.1.1","detour":"proxy"},{"type":"local","tag":"local"}],` +
+		`"rules":[{"domain_suffix":["lan"],"server":"local"}],"final":"remote"}`}
+	options = build(in)
+	if len(options.DNS.Servers) != 3 || options.DNS.Servers[2].Tag != TagDNSDirect || options.DNS.Final != "remote" {
+		t.Errorf("the own object: %+v", options.DNS)
+	}
+	for _, wrong := range []string{
+		`{"servers":[{"type":"https","tag":"remote","server":"1.1.1.1","oops":1}]}`,
+		`{"servers":[{"type":"https","tag":"remote","server":"1.1.1.1","detour":"proxi"}]}`,
+		`{"servers":[{"type":"https","tag":"remote","server":"1.1.1.1"}],"final":"nowhere"}`,
+		`{"servers":[{"type":"local","tag":"local"}],"rules":[{"type":"logical","mode":"and","rules":[{"domain":["a.lan"]},{"query_type":["A"]}],"server":"lan"}]}`,
+		`not json`,
+	} {
+		in.DNS.Object = wrong
+		if _, err := Build(in); err == nil {
+			t.Errorf("%s must be refused", wrong)
 		}
 	}
 }

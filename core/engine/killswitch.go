@@ -388,7 +388,8 @@ func (e *Engine) startRefusal(settings Settings) {
 	}
 	configs, err := config.Build(config.Input{
 		Refuse:      true,
-		Preset:      preset,
+		Preset:      withDefaultDNS(preset, settings),
+		DNS:         dnsOf(settings),
 		Tun:         tun,
 		AllowLAN:    settings.AllowLAN,
 		DisableIPv6: !settings.IPv6,

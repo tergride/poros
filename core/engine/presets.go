@@ -159,7 +159,7 @@ func (e *Engine) compose(record copyRecord) (config.Preset, error) {
 	}
 	preset := base.Preset
 	preset.Name, preset.DNS = record.Name, record.DNS
-	if record.Advanced && record.DirectDNS != DNSLocal {
+	if record.Advanced {
 		preset.DirectDNS = record.DirectDNS
 	}
 	if record.Default != "" {

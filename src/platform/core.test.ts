@@ -25,6 +25,7 @@ import {
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
+  MethodDNSCheck,
   MethodGroupsAdd,
   MethodGroupsConfigure,
   MethodGroupsList,
@@ -482,6 +483,23 @@ trojan://p@de.example.com:443#Germany`,
     const read = await core.call(MethodPresetsReadLists, { advanced: true, rules: stored.rules, lists: { proxy: 'suffix:Wiki.example', direct: 'suffix:example.org' } })
     expect(read.problems).toEqual([{ action: 'proxy', line: 1, text: 'suffix:Wiki.example', reason: ReasonDuplicate, other: 'endpoint' }])
     expect(read.rules).toEqual(stored.rules)
+  })
+
+  it('checks the DNS settings and an own dns object as the engine does', async () => {
+    const core = createStubCore()
+    const settings = await core.call(MethodSettingsGet)
+    expect(settings).toMatchObject({ dnsRouting: 'auto', dnsHosts: true, dnsCache: true, dnsCacheSize: 4096, dnsTimeout: 10, fakeIp: false })
+    expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, dnsRemote: 'dns.example' }))).toBe(ReasonInvalidValue)
+    expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, dnsAnswers: 'nas.home' }))).toBe(ReasonInvalidValue)
+    expect(await reasonOf(core.call(MethodSettingsSet, { ...settings, dnsIgnoreTtl: true, dnsOptimistic: true }))).toBe(ReasonInvalidValue)
+    const saved = await core.call(MethodSettingsSet, { ...settings, dnsRemote: 'tls://1.1.1.1', dnsAnswers: 'nas.home 192.168.1.20', dnsRouting: 'proxy' })
+    expect(saved).toMatchObject({ dnsRemote: 'tls://1.1.1.1', dnsRouting: 'proxy' })
+
+    const object = (detour: string) => JSON.stringify({ servers: [{ type: 'https', tag: 'remote', server: '1.1.1.1', detour }], final: 'remote' })
+    expect(await core.call(MethodDNSCheck, { object: object('proxy') })).toBeNull()
+    const wrong = await core.call(MethodDNSCheck, { object: object('proxi') }).catch((error: unknown) => error)
+    expect(isCoreError(wrong) && wrong.message).toContain('unknown outbound "proxi"')
+    expect(await reasonOf(core.call(MethodDNSCheck, { object: '{"final":"remote"}' }))).toBe(ReasonInvalidValue)
   })
 
   it('reads poros:// links as the engine does and adds nothing', async () => {

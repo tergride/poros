@@ -23,6 +23,7 @@ import {
   ActionProxy,
   ConnectionIdle,
   ConnectionRunning,
+  DNSRoutingAuto,
   ConnectionStarting,
   ConnectionStopping,
   CoreSingBox,
@@ -56,6 +57,7 @@ import {
   MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
+  MethodDNSCheck,
   MethodPresetsCheck,
   MethodPresetsExport,
   MethodPresetsGet,
@@ -127,6 +129,7 @@ import {
 import type { CoreClient, CoreError, CoreEvent, CoreEvents, CoreMethod, CoreMethods, CoreStatus } from './core'
 import type { Profile } from './profile-types'
 import stubForms from './stubForms.json'
+import { checkDnsObject, checkDnsSettings } from './stubDns'
 import { checkRules, readLists, writeLists } from './stubPresets'
 
 const defaultSettings: Settings = {
@@ -141,6 +144,20 @@ const defaultSettings: Settings = {
   allowLan: false,
   ipv6: true,
   realityOnXray: true,
+  dnsRemote: '',
+  dnsDirect: '',
+  dnsRouting: DNSRoutingAuto,
+  fakeIp: false,
+  dnsHosts: true,
+  dnsAnswers: '',
+  dnsCache: true,
+  dnsCacheSize: 4096,
+  dnsIgnoreTtl: false,
+  dnsOptimistic: false,
+  dnsTimeout: 10,
+  dnsClientSubnet: '',
+  dnsObject: '',
+  addressFirst: '',
   subscriptionAutoUpdate: true,
   subscriptionUpdateHours: 0,
   subscriptionViaProxy: false,
@@ -722,6 +739,7 @@ export function createStubCore(): CoreClient {
       if (next.adminAutostart && !settings.adminAutostart && !status.elevated) {
         throw failed(ReasonLogonTaskNeedsElevation, 'the sign-in task takes administrator rights')
       }
+      checkDnsSettings(next)
       const previous = settings.killSwitch
       settings = { ...next }
       emit(EventSettingsChanged, { ...settings })
@@ -977,6 +995,11 @@ export function createStubCore(): CoreClient {
     [MethodPresetsImport]: ({ link }) => {
       const copy = decodeLink(link)
       return saveCopy({ ...copy, name: freeName(copy.name) })
+    },
+    [MethodDNSCheck]: ({ object }) => {
+      if (!object.trim()) throw failed(ReasonInvalidValue, 'the dns object is empty')
+      checkDnsObject(object)
+      return null
     },
     [MethodPresetsCheck]: (rules) => ({ advanced: rules.advanced, rules: checkRules(rules), endpoints: rules.endpoints }),
     [MethodPresetsWriteLists]: (rules) => writeLists(rules),
