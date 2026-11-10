@@ -64,6 +64,8 @@ type connection struct {
 	box atomic.Pointer[boxbox.Box]
 	// tracker follows its connections while the statistics are on, for lists that must not wait for a start either.
 	tracker atomic.Pointer[trafficcontrol.Manager]
+	// onXray tells that Xray runs the server of the connection.
+	onXray atomic.Bool
 }
 
 type runningConnection struct {
@@ -460,6 +462,7 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	e.conn.running = running
 	e.conn.box.Store(running.box)
 	e.conn.tracker.Store(tracker)
+	e.conn.onXray.Store(configs.Xray != nil)
 	e.setGuarding(guarded, settings.Tun)
 	if !settings.Tun {
 		// A block for the TUN of before is no longer needed: without the TUN the kill switch is the system proxy.

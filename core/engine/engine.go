@@ -51,7 +51,9 @@ type Config struct {
 }
 
 type Engine struct {
-	dataDir   string
+	dataDir string
+	// started is when the engine opened, for the time the core works.
+	started   time.Time
 	userAgent string
 	db        *bbolt.DB
 	notify    Notify
@@ -139,6 +141,7 @@ func Open(cfg Config) (*Engine, error) {
 	}
 	e := &Engine{
 		dataDir:     cfg.DataDir,
+		started:     time.Now(),
 		userAgent:   userAgent,
 		db:          db,
 		notify:      notify,

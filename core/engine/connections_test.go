@@ -63,6 +63,10 @@ func TestConnectionsList(t *testing.T) {
 	if found.ID == "" || found.Network != "tcp" || found.Start == 0 || !strings.HasPrefix(found.Source, "127.0.0.1:") {
 		t.Fatalf("the tunnel is not listed as going through the server: %+v", found)
 	}
+	if now, err := e.StatsNow(); err != nil || !strings.HasPrefix(now.Core, "sing-box ") || now.ThroughServer < 1 ||
+		now.Memory <= 0 || now.Uptime <= 0 || now.Databases <= 0 {
+		t.Errorf("the statistics of now: %+v, %v", now, err)
+	}
 	if err = e.CloseConnections(ByID{ID: found.ID}); err != nil {
 		t.Fatal(err)
 	}
@@ -83,5 +87,23 @@ func TestConnectionsList(t *testing.T) {
 	connectAndFetch(t, e, states, page)
 	if list, _ := e.Connections(); list.Tracked || len(list.Connections) != 0 {
 		t.Errorf("statistics off: %+v", list)
+	}
+}
+
+// The next update of subscriptions is the soonest of those the schedule updates.
+func TestStatsNowSchedule(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	if now, _ := e.StatsNow(); now.NextSubscriptionUpdate != 0 || now.Core != "" {
+		t.Fatalf("no subscription, no connection: %+v", now)
+	}
+	p := newProvider(t)
+	p.serve(http.StatusOK, vless("v.example.com", "One"))
+	added, err := e.AddSubscription(t.Context(), AddSubscription{URL: p.url})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := added.Group.UpdatedAt + defaultUpdateInterval.Milliseconds()
+	if now, _ := e.StatsNow(); now.NextSubscriptionUpdate != want {
+		t.Errorf("next update %d, want %d", now.NextSubscriptionUpdate, want)
 	}
 }

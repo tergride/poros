@@ -57,6 +57,7 @@ import {
   MethodConnectionStop,
   MethodConnectionsClose,
   MethodConnectionsList,
+  MethodStatsNow,
   MethodGroupsAdd,
   MethodGroupsConfigure,
   MethodGroupsList,
@@ -343,6 +344,7 @@ const stubConnections = [
   { ...stubConnection, id: 'c5', start: 1600, process: '', destination: '1.1.1.1:53', network: 'udp', protocol: 'dns', outbound: 'direct', source: '172.19.0.1:61000', upload: 200, download: 1_000 },
 ].map((c) => ({ ...c, processPath: c.process ? `C:\\Program Files\\${c.process}` : '' }))
 const closedConnections = new Set<string>()
+const startedAt = Date.now()
 
 const presetLinkPrefix = 'poros://route/'
 
@@ -1148,6 +1150,22 @@ export function createStubCore(): CoreClient {
         connections: stubConnections
           .filter((c) => !closedConnections.has(c.id))
           .map((c) => ({ ...c, start: connection.since + c.start, upload: Math.round(c.upload * (1 + seconds)), download: Math.round(c.download * (1 + seconds)) })),
+      }
+    },
+    [MethodStatsNow]: () => {
+      const running = connection.state === ConnectionRunning
+      const open = running && settings.stats ? stubConnections.filter((c) => !closedConnections.has(c.id)) : []
+      return {
+        core: running ? 'sing-box stub' : '',
+        memory: 88 << 20,
+        uptime: Date.now() - startedAt,
+        databases: 2_200_000,
+        online: true,
+        network: 'Ethernet',
+        throughServer: open.filter((c) => c.outbound === 'proxy').length,
+        direct: open.filter((c) => c.outbound === 'direct').length,
+        other: 0,
+        nextSubscriptionUpdate: startedAt + (3 * 60 + 40) * 60_000,
       }
     },
     [MethodConnectionsClose]: ({ id }) => {

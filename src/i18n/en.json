@@ -942,6 +942,33 @@
       "close": "Close the connection",
       "closeProcess": "Close the connections of the process",
       "closeAll": "Close all connections"
+    },
+    "stats": {
+      "now": "Now",
+      "traffic": "Traffic",
+      "process": "Process",
+      "config": "Configuration",
+      "network": "Network",
+      "core": "Core",
+      "memory": "Memory",
+      "uptime": "Running for",
+      "databases": "Databases",
+      "profile": "Profile",
+      "country": "Country",
+      "ip": "External IP",
+      "latency": "Delay",
+      "endpoint": "Server address",
+      "state": "State",
+      "online": "online",
+      "offline": "offline",
+      "adapter": "Adapter",
+      "throughServer": "Through the server",
+      "direct": "Directly",
+      "other": "Endpoints and WARP",
+      "speed": "Speed",
+      "nextUpdate": "Next update of subscriptions",
+      "soon": "any moment",
+      "ms": "{n} ms"
     }
   },
   "profiles": {

@@ -348,6 +348,27 @@ type ServersTested struct {
 	Done    bool            `json:"done"`
 }
 
+// StatsNow is what «Statistics → Now» takes from the core.
+type StatsNow struct {
+	// Core runs the server, with its version; "" while there is no connection.
+	Core string `json:"core"`
+	// Memory is the bytes the core took from the system, Uptime the milliseconds it works, Databases the bytes of
+	// its data files.
+	Memory    int64 `json:"memory"`
+	Uptime    int64 `json:"uptime"`
+	Databases int64 `json:"databases"`
+	// Online tells that the system has a network to go out by; Network is the name of its adapter.
+	Online  bool   `json:"online"`
+	Network string `json:"network"`
+	// The open connections through the server, directly and elsewhere (endpoints of the preset, WARP), while the
+	// statistics are on.
+	ThroughServer int `json:"throughServer"`
+	Direct        int `json:"direct"`
+	Other         int `json:"other"`
+	// NextSubscriptionUpdate is when the schedule updates a subscription next, Unix milliseconds; 0 is never.
+	NextSubscriptionUpdate int64 `json:"nextSubscriptionUpdate"`
+}
+
 // Connection is one open connection through Poros while the statistics are on.
 type Connection struct {
 	ID string `json:"id"`
@@ -1012,7 +1033,9 @@ const (
 	// without one.
 	MethodConnectionsList  = "connections.list"
 	MethodConnectionsClose = "connections.close"
-	MethodConnectionState  = "connection.state"
+	// MethodStatsNow gives what «Statistics → Now» takes from the core.
+	MethodStatsNow        = "stats.now"
+	MethodConnectionState = "connection.state"
 	// MethodNetworkCheck starts a check of the addresses and DNS at once; network.changed brings the result.
 	MethodNetworkCheck = "network.check"
 	MethodNetworkState = "network.state"

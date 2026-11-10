@@ -512,6 +512,38 @@ export interface ServersTested {
   done: boolean;
 }
 /**
+ * StatsNow is what «Statistics → Now» takes from the core.
+ */
+export interface StatsNow {
+  /**
+   * Core runs the server, with its version; "" while there is no connection.
+   */
+  core: string;
+  /**
+   * Memory is the bytes the core took from the system, Uptime the milliseconds it works, Databases the bytes of
+   * its data files.
+   */
+  memory: number /* int64 */;
+  uptime: number /* int64 */;
+  databases: number /* int64 */;
+  /**
+   * Online tells that the system has a network to go out by; Network is the name of its adapter.
+   */
+  online: boolean;
+  network: string;
+  /**
+   * The open connections through the server, directly and elsewhere (endpoints of the preset, WARP), while the
+   * statistics are on.
+   */
+  throughServer: number /* int */;
+  direct: number /* int */;
+  other: number /* int */;
+  /**
+   * NextSubscriptionUpdate is when the schedule updates a subscription next, Unix milliseconds; 0 is never.
+   */
+  nextSubscriptionUpdate: number /* int64 */;
+}
+/**
  * Connection is one open connection through Poros while the statistics are on.
  */
 export interface Connection {
@@ -1532,6 +1564,10 @@ export const MethodConnectionsList = "connections.list";
  * Methods the core answers.
  */
 export const MethodConnectionsClose = "connections.close";
+/**
+ * MethodStatsNow gives what «Statistics → Now» takes from the core.
+ */
+export const MethodStatsNow = "stats.now";
 /**
  * Methods the core answers.
  */

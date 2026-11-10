@@ -10,6 +10,7 @@ import type {
   CleanServers,
   ConfigureGroup,
   ConnectionList,
+  StatsNow,
   ConnectionState,
   DNSObject,
   Group,
@@ -71,6 +72,7 @@ import {
   MethodConnectionStop,
   MethodConnectionsClose,
   MethodConnectionsList,
+  MethodStatsNow,
   MethodGroupsAdd,
   MethodGroupsConfigure,
   MethodGroupsList,
@@ -170,6 +172,7 @@ export interface CoreMethods {
   [MethodConnectionStop]: { params: undefined; result: ConnectionState }
   [MethodConnectionsList]: { params: undefined; result: ConnectionList }
   [MethodConnectionsClose]: { params: ByID; result: null }
+  [MethodStatsNow]: { params: undefined; result: StatsNow }
   [MethodConnectionState]: { params: undefined; result: ConnectionState }
   [MethodNetworkCheck]: { params: undefined; result: NetworkState }
   [MethodNetworkState]: { params: undefined; result: NetworkState }
