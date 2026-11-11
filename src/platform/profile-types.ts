@@ -57,6 +57,10 @@ export const FieldSecurity = "security";
  */
 export const FieldServers = "servers";
 /**
+ * FieldOTP is the ID of a code of «Tools → OTP», "" for none.
+ */
+export const FieldOTP = "otp";
+/**
  * Tabs of the editor, in their order.
  */
 export const TabCommon = "common";
@@ -445,6 +449,10 @@ export interface OpenVPN {
   remote_random?: boolean;
   username?: string;
   password?: string;
+  /**
+   * OTP is the ID of a code of «Tools → OTP»: {otp} in Username or Password stands for its current code.
+   */
+  otp?: string;
   static_challenge?: string;
   static_challenge_echo?: boolean;
   /**
@@ -519,6 +527,10 @@ export interface OpenConnect {
   path?: string;
   username?: string;
   password?: string;
+  /**
+   * OTP is the ID of a code of «Tools → OTP»: {otp} in Username or Password stands for its current code.
+   */
+  otp?: string;
   auth_group?: string;
   /**
    * PeerFingerprint pins the gateway's key, "pin-sha256:..." as openconnect --servercert writes it.

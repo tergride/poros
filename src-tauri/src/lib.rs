@@ -1,4 +1,5 @@
 mod applog;
+mod clipboard;
 mod core_launch;
 mod core_process;
 mod data_dir;
@@ -152,6 +153,12 @@ fn app_open_logs() -> Result<(), String> {
 #[tauri::command]
 fn app_open_data() -> Result<(), String> {
     applog::open_data_dir()
+}
+
+/// Puts text on the clipboard; the tray copies codes of OTP with it while the window is hidden.
+#[tauri::command]
+fn app_copy(text: String) -> Result<(), String> {
+    clipboard::write(&text).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -426,6 +433,7 @@ pub fn run() {
             app_log,
             app_open_logs,
             app_open_data,
+            app_copy,
             take_links,
             url_scheme_get,
             url_scheme_set,

@@ -1469,6 +1469,131 @@ export interface ServersChanged {
   groupId: string;
 }
 /**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPKindTOTP = "totp";
+/**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPKindHOTP = "hotp";
+/**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPSHA1 = "SHA1";
+/**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPSHA256 = "SHA256";
+/**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPSHA512 = "SHA512";
+/**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPMinDigits = 4;
+/**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPMaxDigits = 10;
+/**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPMinPeriod = 1;
+/**
+ * Kinds and algorithms of codes of OTP.
+ */
+export const OTPMaxPeriod = 3600;
+/**
+ * OTPEntry is a code of the user's sign-ins in «Tools → OTP». TOTP counts steps of Period seconds; HOTP counts with
+ * Counter, the counter of its next code, which grows with each one. Secret is base32, upper case and without
+ * padding. A new entry has no ID.
+ */
+export interface OTPEntry {
+  id: string;
+  /**
+   * Name is the service, Account the user's name there.
+   */
+  name: string;
+  account: string;
+  secret: string;
+  kind: string;
+  algorithm: string;
+  digits: number /* int */;
+  period: number /* int */;
+  counter: number /* uint64 */;
+}
+/**
+ * OTPCode is an entry as the list shows it, without its secret. A TOTP code comes with the time it gives way to the
+ * next one; a HOTP code comes from otp.code alone, since each one moves the counter of the server.
+ */
+export interface OTPCode {
+  id: string;
+  name: string;
+  account: string;
+  kind: string;
+  digits: number /* int */;
+  period: number /* int */;
+  code: string;
+  /**
+   * Until is when Code stops, in Unix milliseconds; 0 without a code.
+   */
+  until: number /* int64 */;
+}
+/**
+ * OTPText is text with codes: otpauth:// and otpauth-migration:// links and bare base32 secrets by line, or JSON.
+ */
+export interface OTPText {
+  text: string;
+}
+/**
+ * OTPProblem is why an entry or a line of text cannot be taken: Line counts from 1, 0 for JSON and for an entry being
+ * saved. Reason is no_secret, bad_secret, short_secret, bad_kind, bad_algorithm, bad_digits, bad_period,
+ * bad_counter, bad_link, bad_json or unknown (a line that is no link, JSON or secret); Value is the wrong value,
+ * never a secret.
+ */
+export interface OTPProblem {
+  line: number /* int */;
+  name: string;
+  reason: string;
+  value: string;
+}
+/**
+ * OTPFailure is the data of an entry otp.save refuses: Reason is invalid_otp, Problem tells why.
+ */
+export interface OTPFailure {
+  reason: string;
+  problem: OTPProblem;
+}
+/**
+ * OTPParsed is what text holds, before anything is added; the entries have no IDs.
+ */
+export interface OTPParsed {
+  entries: OTPEntry[];
+  problems: OTPProblem[];
+}
+/**
+ * OTPImported counts the entries added from text; one Poros has already is skipped as a duplicate.
+ */
+export interface OTPImported {
+  added: number /* int */;
+  duplicates: number /* int */;
+  problems: OTPProblem[];
+}
+/**
+ * OTPMove moves an entry up (-1) or down (1) the list.
+ */
+export interface OTPMove {
+  id: string;
+  offset: number /* int */;
+}
+/**
+ * OTPLink is an entry as an otpauth:// link, for an authenticator app.
+ */
+export interface OTPLink {
+  link: string;
+}
+/**
  * Methods the core answers.
  */
 export const MethodAppInfo = "app.info";
@@ -1715,6 +1840,42 @@ export const MethodUpdatesState = "updates.state";
  */
 export const MethodUpdatesInstall = "updates.install";
 /**
+ * MethodOTPList gives the codes of «Tools → OTP» in their order; MethodOTPGet one entry with its secret.
+ */
+export const MethodOTPList = "otp.list";
+/**
+ * Methods the core answers.
+ */
+export const MethodOTPGet = "otp.get";
+/**
+ * MethodOTPParse reads text with codes without adding anything; MethodOTPImport adds what it reads.
+ */
+export const MethodOTPParse = "otp.parse";
+/**
+ * Methods the core answers.
+ */
+export const MethodOTPImport = "otp.import";
+/**
+ * MethodOTPSave adds an entry without an ID at the end, or replaces the one with its ID.
+ */
+export const MethodOTPSave = "otp.save";
+/**
+ * Methods the core answers.
+ */
+export const MethodOTPRemove = "otp.remove";
+/**
+ * Methods the core answers.
+ */
+export const MethodOTPMove = "otp.move";
+/**
+ * MethodOTPCode gives the code to use now: TOTP's of the moment, or HOTP's next one, which moves its counter.
+ */
+export const MethodOTPCode = "otp.code";
+/**
+ * Methods the core answers.
+ */
+export const MethodOTPLink = "otp.link";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -1762,6 +1923,10 @@ export const EventKillSwitchChanged = "killSwitch.changed";
  * Events the core sends without a request.
  */
 export const EventUpdatesChanged = "updates.changed";
+/**
+ * EventOTPChanged brings the list of codes, as otp.list gives it, after an entry changed.
+ */
+export const EventOTPChanged = "otp.changed";
 /**
  * Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
  */
@@ -1933,3 +2098,12 @@ export const ReasonUpdateNotReady = "update_not_ready";
  * them apart.
  */
 export const ReasonPresetNameTaken = "preset_name_taken";
+/**
+ * ReasonOTPMissing is a server whose sign-in has {otp} but no code of «Tools → OTP» chosen, or one that is
+ * gone.
+ */
+export const ReasonOTPMissing = "otp_missing";
+/**
+ * ReasonInvalidOTP is an entry of OTP that cannot be saved; the data is an OTPFailure.
+ */
+export const ReasonInvalidOTP = "invalid_otp";

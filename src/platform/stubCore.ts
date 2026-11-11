@@ -46,6 +46,7 @@ import {
   EventGroupsChanged,
   EventSettingsChanged,
   EventUpdatesChanged,
+  EventOTPChanged,
   GroupManual,
   GroupSubscription,
   LeakNone,
@@ -68,6 +69,15 @@ import {
   MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
+  MethodOTPCode,
+  MethodOTPGet,
+  MethodOTPImport,
+  MethodOTPLink,
+  MethodOTPList,
+  MethodOTPMove,
+  MethodOTPParse,
+  MethodOTPRemove,
+  MethodOTPSave,
   MethodDNSCheck,
   MethodPresetsCheck,
   MethodWARPRegister,
@@ -143,6 +153,7 @@ import type { CoreClient, CoreError, CoreEvent, CoreEvents, CoreMethod, CoreMeth
 import type { Profile } from './profile-types'
 import stubForms from './stubForms.json'
 import { checkDnsObject, checkDnsSettings } from './stubDns'
+import { createStubOtp } from './stubOtp'
 import { checkRules, readLists, writeLists } from './stubPresets'
 
 const noWarpDevice: WARPDevice = { endpoint: '', privateKey: '', peerKey: '', addresses: '', reserved: '', serverName: '', http: '', registeredAt: 0 }
@@ -573,6 +584,7 @@ export function createStubCore(): CoreClient {
   const statusHandlers = new Set<(status: CoreStatus) => void>()
   const emit = <E extends CoreEvent>(event: E, params: CoreEvents[E]) =>
     handlers.get(event)?.forEach((handler) => handler(params as never))
+  const otp = createStubOtp((codes) => emit(EventOTPChanged, codes), () => String(nextId++))
   // As core/engine/groups.go: subscriptions first, each kind in the order it was added; each counts its servers.
   const groupList = (): Group[] =>
     [...groups]
@@ -1103,6 +1115,15 @@ export function createStubCore(): CoreClient {
     [MethodPresetsWriteLists]: (rules) => writeLists(rules),
     [MethodPresetsReadLists]: (input) => readLists(input),
     [MethodLinksParse]: ({ link }) => parseOutsideLink(link),
+    [MethodOTPList]: () => otp.list(),
+    [MethodOTPGet]: ({ id }) => otp.get(id),
+    [MethodOTPParse]: ({ text }) => otp.parse(text),
+    [MethodOTPImport]: ({ text }) => otp.import(text),
+    [MethodOTPSave]: (entry) => otp.save(entry),
+    [MethodOTPRemove]: ({ id }) => otp.remove(id),
+    [MethodOTPMove]: (move) => otp.move(move),
+    [MethodOTPCode]: ({ id }) => otp.code(id),
+    [MethodOTPLink]: ({ id }) => ({ link: otp.link(id) }),
     [MethodConnectionStart]: () => {
       setConnection({ ...idle, state: ConnectionStarting })
       settle(() => {

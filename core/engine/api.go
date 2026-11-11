@@ -1003,6 +1003,95 @@ type ServersChanged struct {
 	GroupID string `json:"groupId"`
 }
 
+// Kinds and algorithms of codes of OTP.
+const (
+	OTPKindTOTP  = "totp"
+	OTPKindHOTP  = "hotp"
+	OTPSHA1      = "SHA1"
+	OTPSHA256    = "SHA256"
+	OTPSHA512    = "SHA512"
+	OTPMinDigits = 4
+	OTPMaxDigits = 10
+	OTPMinPeriod = 1
+	OTPMaxPeriod = 3600
+)
+
+// OTPEntry is a code of the user's sign-ins in «Tools → OTP». TOTP counts steps of Period seconds; HOTP counts with
+// Counter, the counter of its next code, which grows with each one. Secret is base32, upper case and without
+// padding. A new entry has no ID.
+type OTPEntry struct {
+	ID string `json:"id"`
+	// Name is the service, Account the user's name there.
+	Name      string `json:"name"`
+	Account   string `json:"account"`
+	Secret    string `json:"secret"`
+	Kind      string `json:"kind"`
+	Algorithm string `json:"algorithm"`
+	Digits    int    `json:"digits"`
+	Period    int    `json:"period"`
+	Counter   uint64 `json:"counter"`
+}
+
+// OTPCode is an entry as the list shows it, without its secret. A TOTP code comes with the time it gives way to the
+// next one; a HOTP code comes from otp.code alone, since each one moves the counter of the server.
+type OTPCode struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Account string `json:"account"`
+	Kind    string `json:"kind"`
+	Digits  int    `json:"digits"`
+	Period  int    `json:"period"`
+	Code    string `json:"code"`
+	// Until is when Code stops, in Unix milliseconds; 0 without a code.
+	Until int64 `json:"until"`
+}
+
+// OTPText is text with codes: otpauth:// and otpauth-migration:// links and bare base32 secrets by line, or JSON.
+type OTPText struct {
+	Text string `json:"text"`
+}
+
+// OTPProblem is why an entry or a line of text cannot be taken: Line counts from 1, 0 for JSON and for an entry being
+// saved. Reason is no_secret, bad_secret, short_secret, bad_kind, bad_algorithm, bad_digits, bad_period,
+// bad_counter, bad_link, bad_json or unknown (a line that is no link, JSON or secret); Value is the wrong value,
+// never a secret.
+type OTPProblem struct {
+	Line   int    `json:"line"`
+	Name   string `json:"name"`
+	Reason string `json:"reason"`
+	Value  string `json:"value"`
+}
+
+// OTPFailure is the data of an entry otp.save refuses: Reason is invalid_otp, Problem tells why.
+type OTPFailure struct {
+	Reason  string     `json:"reason"`
+	Problem OTPProblem `json:"problem"`
+}
+
+// OTPParsed is what text holds, before anything is added; the entries have no IDs.
+type OTPParsed struct {
+	Entries  []OTPEntry   `json:"entries"`
+	Problems []OTPProblem `json:"problems"`
+}
+
+// OTPImported counts the entries added from text; one Poros has already is skipped as a duplicate.
+type OTPImported struct {
+	Added      int          `json:"added"`
+	Duplicates int          `json:"duplicates"`
+	Problems   []OTPProblem `json:"problems"`
+}
+
+// OTPMove moves an entry up (-1) or down (1) the list.
+type OTPMove struct {
+	ID     string `json:"id"`
+	Offset int    `json:"offset"`
+}
+
+// OTPLink is an entry as an otpauth:// link, for an authenticator app.
+type OTPLink struct {
+	Link string `json:"link"`
+}
+
 // Methods the core answers.
 const (
 	MethodAppInfo = "app.info"
@@ -1110,6 +1199,19 @@ const (
 	MethodUpdatesState = "updates.state"
 	// MethodUpdatesInstall gives the shell the downloaded release for the updater, after checking it again.
 	MethodUpdatesInstall = "updates.install"
+	// MethodOTPList gives the codes of «Tools → OTP» in their order; MethodOTPGet one entry with its secret.
+	MethodOTPList = "otp.list"
+	MethodOTPGet  = "otp.get"
+	// MethodOTPParse reads text with codes without adding anything; MethodOTPImport adds what it reads.
+	MethodOTPParse  = "otp.parse"
+	MethodOTPImport = "otp.import"
+	// MethodOTPSave adds an entry without an ID at the end, or replaces the one with its ID.
+	MethodOTPSave   = "otp.save"
+	MethodOTPRemove = "otp.remove"
+	MethodOTPMove   = "otp.move"
+	// MethodOTPCode gives the code to use now: TOTP's of the moment, or HOTP's next one, which moves its counter.
+	MethodOTPCode = "otp.code"
+	MethodOTPLink = "otp.link"
 )
 
 // Events the core sends without a request.
@@ -1127,6 +1229,8 @@ const (
 	EventPresetsChanged    = "presets.changed"
 	EventKillSwitchChanged = "killSwitch.changed"
 	EventUpdatesChanged    = "updates.changed"
+	// EventOTPChanged brings the list of codes, as otp.list gives it, after an entry changed.
+	EventOTPChanged = "otp.changed"
 )
 
 // Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
@@ -1214,4 +1318,9 @@ const (
 	// ReasonPresetNameTaken is a preset saved under the name of another one: the tray and the lists would not tell
 	// them apart.
 	ReasonPresetNameTaken = "preset_name_taken"
+	// ReasonOTPMissing is a server whose sign-in has {otp} but no code of «Tools → OTP» chosen, or one that is
+	// gone.
+	ReasonOTPMissing = "otp_missing"
+	// ReasonInvalidOTP is an entry of OTP that cannot be saved; the data is an OTPFailure.
+	ReasonInvalidOTP = "invalid_otp"
 )

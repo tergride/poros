@@ -1,5 +1,5 @@
 import { serverTitle } from '@/lib/format'
-import type { ConnectionState, Preset, Server, Settings } from '@/platform/core-types'
+import type { ConnectionState, OTPCode, Preset, Server, Settings } from '@/platform/core-types'
 import {
   ConnectionIdle,
   ConnectionRunning,
@@ -20,6 +20,8 @@ export interface TrayState {
   settings: Settings
   servers: Server[]
   presets: Preset[]
+  /** The codes of «Tools → OTP»: a click copies one. */
+  otp?: OTPCode[]
   /** The kill switch holds: after a lost connection until Stop, or in Always without one. */
   blocked?: boolean
   /** Windows blocks everything, not just VPN traffic: Poros's TUN is down. */
@@ -33,6 +35,7 @@ export interface TrayActions {
   disconnect(): void
   choosePreset(id: string): void
   showPresets(): void
+  copyOtp(id: string): void
   setTun(on: boolean): void
   setSystemProxy(on: boolean): void
   show(): void
@@ -52,6 +55,9 @@ export interface TrayWords {
   stop(): string
   route(preset: string): string
   presets(): string
+  otp(): string
+  otpHint(): string
+  otpName(code: OTPCode): string
   show(): string
   exit(): string
   presetName(preset: Preset): string
@@ -87,9 +93,17 @@ export function trayFallback(down: boolean, actions: Pick<TrayActions, 'show' | 
 }
 
 /**
- * The menu of the mockup: the state, Start or Stop, the route, TUN and System. Servers are chosen in the window: a
- * subscription may hold hundreds of them, too many for a menu.
+ * The menu of the mockup: the state, Start or Stop, the route, the codes of OTP while there are any, TUN and System.
+ * Servers are chosen in the window: a subscription may hold hundreds of them, too many for a menu. A code itself is not
+ * in the menu, which would have to change every 30 seconds: a click copies the current one.
  */
+function otpMenu(state: TrayState, actions: TrayActions, words: TrayWords): TrayItem[] {
+  const codes = state.otp ?? []
+  if (codes.length === 0) return []
+  const items: TrayItem[] = codes.map((code) => ({ kind: 'item', text: words.otpName(code), enabled: !state.coreDown, action: () => actions.copyOtp(code.id) }))
+  return [{ kind: 'submenu', text: words.otp(), items: [...items, separator, { kind: 'item', text: words.otpHint(), enabled: false }] }]
+}
+
 export function trayMenu(state: TrayState, actions: TrayActions, words: TrayWords): TrayItem[] {
   const { connection, settings } = state
   const active = connection.state !== ConnectionIdle
@@ -121,6 +135,7 @@ export function trayMenu(state: TrayState, actions: TrayActions, words: TrayWord
     main,
     separator,
     { kind: 'submenu', text: words.route(current ? words.presetName(current) : ''), items: presetItems },
+    ...otpMenu(state, actions, words),
     separator,
     { kind: 'check', text: 'TUN', checked: settings.tun, action: () => actions.setTun(!settings.tun) },
     { kind: 'check', text: 'System', checked: settings.systemProxy, action: () => actions.setSystemProxy(!settings.systemProxy) },

@@ -57,7 +57,9 @@
     "blockedAlways": "VPN traffic closed until you connect",
     "blockedAlwaysFull": "Internet closed until you connect",
     "coreDown": "The Poros core has stopped",
-    "stop": "Stop"
+    "stop": "Stop",
+    "otp": "OTP codes",
+    "otpHint": "A click copies the code"
   },
   "boot": {
     "starting": "Starting the core…",
@@ -848,7 +850,9 @@
     "no_condition": "the rule has no conditions",
     "empty_condition": "the condition has no values",
     "endpoint_failed": "an endpoint of the preset did not connect",
-    "warp_failed": "Cloudflare gave no WARP configuration"
+    "warp_failed": "Cloudflare gave no WARP configuration",
+    "otp_missing": "the server has {'{otp}'} in its user name or password, but no OTP code is chosen, or the chosen one is gone. Choose a code in the «OTP code» field of the profile",
+    "invalid_otp": "the OTP code was not saved"
   },
   "units": {
     "B": "B",
@@ -991,6 +995,70 @@
       "removed": "A removed profile",
       "empty": "No traffic in this period.",
       "off": "The traffic history is off: new traffic does not come here."
+    },
+    "tools": {
+      "otp": "OTP",
+      "misc": "Other",
+      "import": "Import",
+      "importTitle": "Import OTP codes",
+      "importPlaceholder": "Paste links or secrets",
+      "importHint": "One per line: otpauth:// and otpauth-migration:// links (transfer from Google Authenticator), JSON with Poros codes, or a Base32 secret.",
+      "importButton": "Import",
+      "fromFile": "From file…",
+      "found": "No codes found. | {n} code found. | {n} codes found.",
+      "moreProblems": "And {n} more lines. | And {n} more line. | And {n} more lines.",
+      "added": "No new codes. | {n} code added. | {n} codes added.",
+      "duplicates": "Already there: {n}. | Already there: {n}. | Already there: {n}.",
+      "emptyTitle": "No codes yet",
+      "emptyText": "Add a secret or an otpauth:// link, or import codes from Google Authenticator.",
+      "note": "In an OpenVPN or OpenConnect profile, choose a code in the «OTP code» field and put {'{otp}'} in the user name or password: Poros puts the current code there at every connection. The codes are in the tray menu too — a click copies the code.",
+      "next": "Next code",
+      "seconds": "{n} s",
+      "copy": "Copy code",
+      "actions": "Code actions",
+      "edit": "Edit…",
+      "up": "Up",
+      "down": "Down",
+      "removeTitle": "Remove the code?",
+      "removeText": "The secret of «{name}» leaves Poros. If you need it to sign in, set the code up at the service again.",
+      "unnamed": "Unnamed",
+      "totp": "TOTP — by time",
+      "hotp": "HOTP",
+      "hotpChoice": "HOTP — by counter",
+      "newTitle": "New OTP code",
+      "editTitle": "OTP code",
+      "secret": "Secret",
+      "secretHint": "Base32, as the service gave it.",
+      "linkOrSecret": "otpauth:// link or secret",
+      "linkPlaceholder": "otpauth://totp/… or JBSWY3DPEHPK3PXP",
+      "linkHint": "Poros takes the name and the settings from a link.",
+      "name": "Name",
+      "namePlaceholder": "For example, GitHub",
+      "account": "Account",
+      "optional": "Optional",
+      "more": "More",
+      "moreHint": "Usually there is nothing to change: most services use these.",
+      "kind": "Type",
+      "algorithm": "Algorithm",
+      "digits": "Digits",
+      "counter": "Counter",
+      "period": "Period, s",
+      "many": "There are several codes here. Add them with «Import».",
+      "problemLine": "Line {line}: {text}.",
+      "problemNamed": "«{name}»: {text}.",
+      "problem": {
+        "no_secret": "the link has no secret",
+        "bad_secret": "the secret is not Base32: it has only letters A–Z and digits 2–7",
+        "short_secret": "the secret is too short",
+        "bad_kind": "type «{value}» is not supported, only TOTP and HOTP",
+        "bad_algorithm": "algorithm «{value}» is not supported, only SHA-1, SHA-256 and SHA-512",
+        "bad_digits": "there must be 4 to 10 digits, not {value}",
+        "bad_period": "the period must be 1 to 3600 seconds, not {value}",
+        "bad_counter": "counter «{value}» is not a whole number from 0",
+        "bad_link": "the link cannot be read",
+        "bad_json": "the JSON cannot be read",
+        "unknown": "this is no otpauth:// link, JSON or secret"
+      }
     }
   },
   "profiles": {
@@ -1343,7 +1411,8 @@
         "minStreams": "At least streams",
         "maxStreams": "At most streams",
         "padding": "Padding"
-      }
+      },
+      "otp": "OTP code"
     },
     "empty": {
       "congestion": "Default",
@@ -1483,7 +1552,9 @@
       },
       "custom": {
         "json": "One sing-box outbound or endpoint with its own type, server and server_port"
-      }
-    }
+      },
+      "otp": "{'{otp}'} in the user name or password becomes the current code at every connection. The codes are in «Tools → OTP»."
+    },
+    "otpGone": "Code removed"
   }
 }

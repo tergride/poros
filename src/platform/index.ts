@@ -64,6 +64,8 @@ export const appControls = {
   openLogs: (): Promise<void> => (inTauri ? invoke('app_open_logs') : Promise.resolve()),
   /** Opens the data folder in Explorer. */
   openData: (): Promise<void> => (inTauri ? invoke('app_open_data') : Promise.resolve()),
+  /** Puts text on the clipboard through the shell, which works while the window is hidden, as for the tray. */
+  copy: (text: string): Promise<void> => (inTauri ? invoke('app_copy', { text }) : navigator.clipboard.writeText(text)),
 }
 
 export async function setTray(items: TrayItem[], tooltip: string): Promise<void> {

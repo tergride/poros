@@ -120,11 +120,19 @@ func (e *Engine) testServersOf(query ServersQuery) ([]config.TestServer, error) 
 		if err != nil {
 			return err
 		}
+		entries, err := loadOTP(tx)
+		if err != nil {
+			return err
+		}
+		codes := &otpCodes{entries: entries, now: e.now(), test: true}
 		for _, id := range queryIDs(store, query) {
 			p, links, _, err := resolveServer(store, id)
+			if err == nil {
+				p, links, err = codes.fillServer(p, links)
+			}
 			if err != nil {
-				// A server of a chain, or a proxy of the group, is gone: an empty profile fails the test, as the
-				// start would fail.
+				// A server of a chain, or a proxy of the group, is gone, or a code of OTP: an empty profile fails
+				// the test, as the start would fail.
 				p, links = profile.Profile{}, nil
 			}
 			servers = append(servers, config.TestServer{Tag: id, Server: p, Links: links})

@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { type TrayActions, type TrayWords, statusText, trayFallback, trayMenu } from '@/lib/trayMenu'
 import { useAttempt } from '@/composables/useAttempt'
 import { appControls, setTray } from '@/platform'
-import type { Preset } from '@/platform/core-types'
+import { MethodOTPCode, type OTPCode, type Preset } from '@/platform/core-types'
 import { useConnect } from '@/composables/useConnect'
 import { useCoreStore } from '@/stores/core'
 
@@ -36,6 +36,9 @@ export function useTray(): void {
     stop: () => t('tray.stop'),
     route: (preset) => t('tray.route', { preset }),
     presets: () => t('tray.presets'),
+    otp: () => t('tray.otp'),
+    otpHint: () => t('tray.otpHint'),
+    otpName: (code: OTPCode) => [code.name, code.account].filter(Boolean).join(' · ') || t('adv.tools.unnamed'),
     show: () => t('tray.show'),
     exit: () => t('tray.exit'),
     presetName,
@@ -57,6 +60,12 @@ export function useTray(): void {
     disconnect: () => void withWindow(connect.stop),
     choosePreset: (id) => void withWindow(() => connect.choosePreset(id)),
     showPresets: () => void showAt('/settings/presets'),
+    // The code of the moment, or the next HOTP one; the shell writes the clipboard, as the window may be hidden.
+    copyOtp: (id) =>
+      void withWindow(async () => {
+        const code = await core.core().call(MethodOTPCode, { id })
+        await appControls.copy(code.code)
+      }),
     setTun: (on) => void withWindow(() => connect.setTun(on)),
     setSystemProxy: (on) => void withWindow(() => connect.setSystemProxy(on)),
     show: () => void appControls.show(),
@@ -64,7 +73,7 @@ export function useTray(): void {
   }
 
   watchDebounced(
-    () => [core.loaded, core.settings, core.connection, core.servers, core.presets, core.killSwitch, core.status, locale.value],
+    () => [core.loaded, core.settings, core.connection, core.servers, core.presets, core.otp, core.killSwitch, core.status, locale.value],
     () => {
       const settings = core.settings
       if (!core.loaded || !settings) {
@@ -76,6 +85,7 @@ export function useTray(): void {
         settings,
         servers: core.servers,
         presets: core.presets,
+        otp: core.otp,
         blocked: core.killSwitch.on,
         full: core.killSwitch.full,
         coreDown: !core.ready,

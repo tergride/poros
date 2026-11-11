@@ -3775,6 +3775,12 @@
           "tab": "common"
         },
         {
+          "path": "openvpn.otp",
+          "label": "otp",
+          "kind": "otp",
+          "tab": "common"
+        },
+        {
           "path": "openvpn.ca",
           "label": "pem.ca",
           "kind": "lines",
@@ -4022,6 +4028,12 @@
           "path": "openconnect.password",
           "label": "password",
           "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "openconnect.otp",
+          "label": "otp",
+          "kind": "otp",
           "tab": "common"
         },
         {

@@ -20,7 +20,7 @@ var (
 
 func createBuckets(db *bbolt.DB) error {
 	return db.Update(func(tx *bbolt.Tx) error {
-		for _, name := range [][]byte{bucketSettings, bucketGroups, bucketServers, bucketPresets, bucketTraffic} {
+		for _, name := range [][]byte{bucketSettings, bucketGroups, bucketServers, bucketPresets, bucketTraffic, bucketOTP} {
 			if _, err := tx.CreateBucketIfNotExists(name); err != nil {
 				return fmt.Errorf("create bucket %s: %w", name, err)
 			}

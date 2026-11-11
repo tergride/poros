@@ -78,6 +78,15 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodUpdatesState:        noParams(func() (UpdateState, error) { return e.UpdatesState(), nil }),
 		MethodUpdatesCheck:        noParams(e.CheckUpdates),
 		MethodUpdatesInstall:      noParams(e.InstallUpdate),
+		MethodOTPList:             noParams(e.OTPCodes),
+		MethodOTPGet:              withParams(func(p ByID) (OTPEntry, error) { return e.OTPEntry(p.ID) }),
+		MethodOTPParse:            withParams(e.ParseOTP),
+		MethodOTPImport:           withParams(e.ImportOTP),
+		MethodOTPSave:             withParams(e.SaveOTP),
+		MethodOTPRemove:           withParams(func(p ByID) (any, error) { return nil, e.RemoveOTP(p.ID) }),
+		MethodOTPMove:             withParams(func(p OTPMove) (any, error) { return nil, e.MoveOTP(p) }),
+		MethodOTPCode:             withParams(func(p ByID) (OTPCode, error) { return e.OTPCodeNow(p.ID) }),
+		MethodOTPLink:             withParams(func(p ByID) (OTPLink, error) { return e.OTPLink(p.ID) }),
 	}
 }
 

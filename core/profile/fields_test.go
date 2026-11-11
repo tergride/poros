@@ -43,6 +43,7 @@ var fieldTypes = map[string]reflect.Type{
 	FieldBool:     reflect.TypeFor[bool](),
 	FieldList:     reflect.TypeFor[[]string](),
 	FieldServers:  reflect.TypeFor[[]string](),
+	FieldOTP:      reflect.TypeFor[string](),
 	FieldJSON:     reflect.TypeFor[json.RawMessage](),
 	FieldHeaders:  reflect.TypeFor[map[string]string](),
 	FieldBytes:    reflect.TypeFor[[]int](),

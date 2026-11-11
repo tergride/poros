@@ -21,6 +21,14 @@ import type {
   LogsChunk,
   LogsQuery,
   NetworkState,
+  OTPCode,
+  OTPEntry,
+  OTPImported,
+  OTPLink,
+  OTPMove,
+  OTPParsed,
+  OTPProblem,
+  OTPText,
   OutsideLink,
   Preset,
   PresetCopy,
@@ -67,6 +75,7 @@ import {
   EventGroupsChanged,
   EventSettingsChanged,
   EventUpdatesChanged,
+  EventOTPChanged,
   MethodAppDebugInfo,
   MethodAppInfo,
   MethodConnectionStart,
@@ -86,6 +95,15 @@ import {
   MethodLogsGet,
   MethodNetworkCheck,
   MethodNetworkState,
+  MethodOTPCode,
+  MethodOTPGet,
+  MethodOTPImport,
+  MethodOTPLink,
+  MethodOTPList,
+  MethodOTPMove,
+  MethodOTPParse,
+  MethodOTPRemove,
+  MethodOTPSave,
   MethodDNSCheck,
   MethodPresetsCheck,
   MethodWARPRegister,
@@ -185,6 +203,15 @@ export interface CoreMethods {
   [MethodUpdatesState]: { params: undefined; result: UpdateState }
   [MethodUpdatesCheck]: { params: undefined; result: UpdateState }
   [MethodUpdatesInstall]: { params: undefined; result: UpdateInstall }
+  [MethodOTPList]: { params: undefined; result: OTPCode[] }
+  [MethodOTPGet]: { params: ByID; result: OTPEntry }
+  [MethodOTPParse]: { params: OTPText; result: OTPParsed }
+  [MethodOTPImport]: { params: OTPText; result: OTPImported }
+  [MethodOTPSave]: { params: OTPEntry; result: OTPEntry }
+  [MethodOTPRemove]: { params: ByID; result: null }
+  [MethodOTPMove]: { params: OTPMove; result: null }
+  [MethodOTPCode]: { params: ByID; result: OTPCode }
+  [MethodOTPLink]: { params: ByID; result: OTPLink }
 }
 
 export interface CoreEvents {
@@ -200,6 +227,7 @@ export interface CoreEvents {
   [EventNetworkChanged]: NetworkState
   [EventKillSwitchChanged]: KillSwitchState
   [EventUpdatesChanged]: UpdateState
+  [EventOTPChanged]: OTPCode[]
 }
 
 export type CoreMethod = keyof CoreMethods
@@ -224,8 +252,8 @@ export const StatusNotAnswering = 'not_answering'
 export interface CoreError {
   code: number
   message: string
-  /** A failure about a rule of a preset carries the whole RuleProblem. */
-  data?: { reason?: string } & Partial<RuleProblem>
+  /** A failure about a rule of a preset carries the whole RuleProblem, one about a code of OTP its OTPProblem. */
+  data?: { reason?: string; problem?: OTPProblem } & Partial<RuleProblem>
 }
 
 /** The local proxy of the core, HTTP and SOCKS5 on one port: DefaultMixedPort of core/engine/connection.go. */

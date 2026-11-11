@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { ConnectionState, Preset, Server, Settings } from '@/platform/core-types'
+import type { ConnectionState, OTPCode, Preset, Server, Settings } from '@/platform/core-types'
 
 import { type TrayActions, type TrayItem, type TrayState, type TrayWords, trayFallback, trayMenu } from './trayMenu'
 
@@ -19,6 +19,9 @@ const words: TrayWords = {
   stop: () => 'Stop',
   route: (p) => `Route: ${p}`,
   presets: () => 'Presets…',
+  otp: () => 'Codes',
+  otpHint: () => 'A click copies',
+  otpName: (c) => c.name,
   show: () => 'Show',
   exit: () => 'Exit',
   presetName: (p) => p.name,
@@ -39,6 +42,7 @@ function actions(): TrayActions {
     disconnect: vi.fn(),
     choosePreset: vi.fn(),
     showPresets: vi.fn(),
+    copyOtp: vi.fn(),
     setTun: vi.fn(),
     setSystemProxy: vi.fn(),
     show: vi.fn(),
@@ -55,6 +59,21 @@ describe('the tray menu', () => {
     const route = items[3]
     if (route?.kind !== 'submenu') throw new Error('no route submenu')
     expect(texts(route.items)).toEqual(['all', 'hardened', '—', 'home', '—', 'Presets…'])
+  })
+
+  it('lists the codes of OTP while there are any, and a click copies one', () => {
+    const codes = [{ id: 'o1', name: 'GitHub' }, { id: 'o2', name: 'Office' }] as OTPCode[]
+    const act = actions()
+    const items = trayMenu({ ...state(), otp: codes }, act, words)
+    expect(texts(items)).toEqual(['off', 'Connect', '—', 'Route: home', 'Codes', '—', 'TUN', 'System', '—', 'Show', 'Exit'])
+    const menu = items[4]
+    if (menu?.kind !== 'submenu') throw new Error('no codes submenu')
+    expect(texts(menu.items)).toEqual(['GitHub', 'Office', '—', 'A click copies'])
+    const office = menu.items[1]
+    if (office?.kind !== 'item') throw new Error('no item')
+    office.action?.()
+    expect(act.copyOtp).toHaveBeenCalledWith('o2')
+    expect(menu.items[3]).toMatchObject({ enabled: false })
   })
 
   it('marks what is chosen and acts on it', () => {

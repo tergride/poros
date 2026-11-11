@@ -142,6 +142,15 @@ function moveServer(index: number, by: number): void {
   put(list)
 }
 
+// The code of «Tools → OTP» that {otp} in the sign-in stands for; one removed since is named so.
+const otpChoices = computed(() => {
+  const codes = core.otp.map((c) => ({ value: c.id, label: [c.name, c.account].filter(Boolean).join(' · ') || t('adv.tools.unnamed') }))
+  const id = String(value.value ?? '')
+  const gone = id && !core.otp.some((c) => c.id === id) ? [{ value: id, label: t('profileEditor.otpGone') }] : []
+  return [{ value: '', label: t('profileEditor.none') }, ...codes, ...gone]
+})
+const otpChoice = computed({ get: () => String(value.value ?? ''), set: (next: string) => put(next || undefined) })
+
 const wide = computed(() => ['lines', 'json', 'headers', FieldServers].includes(kind.value))
 </script>
 
@@ -163,6 +172,7 @@ const wide = computed(() => ['lines', 'json', 'headers', FieldServers].includes(
       class="w-full"
       :aria-label="label"
     />
+    <Select v-else-if="kind === 'otp'" v-model="otpChoice" :options="otpChoices" :disabled="inactive" class="w-full" :aria-label="label" />
     <Textarea
       v-else-if="kind === 'lines' || kind === 'json' || kind === 'headers'"
       :model-value="kind === 'lines' ? String(value ?? '') : text"

@@ -27,6 +27,8 @@ const (
 	FieldSecurity = "security"
 	// FieldServers is a list of IDs of other servers, in order.
 	FieldServers = "servers"
+	// FieldOTP is the ID of a code of «Tools → OTP», "" for none.
+	FieldOTP = "otp"
 )
 
 // Tabs of the editor, in their order.
@@ -378,6 +380,7 @@ func Forms() []ProfileForm {
 			field("openvpn.network", "openvpn.network", FieldSelect, TabCommon).options(openVPNNetworks...),
 			field("openvpn.username", "username", FieldText, TabCommon),
 			field("openvpn.password", "password", FieldSecret, TabCommon),
+			field("openvpn.otp", "otp", FieldOTP, TabCommon),
 		}, pemFields("openvpn"), []Field{
 			field("openvpn.peer_fingerprint", "openvpn.fingerprint", FieldList, TabSecurity),
 			field("openvpn.control_wrap.type", "openvpn.wrap", FieldSelect, TabSecurity).options("", "tls_auth", "tls_crypt", "tls_crypt_v2"),
@@ -404,6 +407,7 @@ func Forms() []ProfileForm {
 			field("openconnect.path", "transport.path", FieldText, TabCommon),
 			field("openconnect.username", "username", FieldText, TabCommon),
 			field("openconnect.password", "password", FieldSecret, TabCommon),
+			field("openconnect.otp", "otp", FieldOTP, TabCommon),
 			field("openconnect.auth_group", "openconnect.group", FieldText, TabCommon),
 			field("openconnect.peer_fingerprint", "openconnect.fingerprint", FieldList, TabSecurity),
 			field("openconnect.insecure", "tls.insecure", FieldBool, TabSecurity).unless("openconnect.peer_fingerprint"),

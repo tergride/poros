@@ -204,12 +204,14 @@ type OpenVPN struct {
 	// Network is "udp" or "tcp", with 4 or 6 for one address family; "" is udp.
 	Network string `json:"network,omitempty"`
 	// Remotes are further servers, tried in turn after the first.
-	Remotes             []OpenVPNRemote `json:"remotes,omitempty"`
-	RemoteRandom        bool            `json:"remote_random,omitempty"`
-	Username            string          `json:"username,omitempty"`
-	Password            string          `json:"password,omitempty"`
-	StaticChallenge     string          `json:"static_challenge,omitempty"`
-	StaticChallengeEcho bool            `json:"static_challenge_echo,omitempty"`
+	Remotes      []OpenVPNRemote `json:"remotes,omitempty"`
+	RemoteRandom bool            `json:"remote_random,omitempty"`
+	Username     string          `json:"username,omitempty"`
+	Password     string          `json:"password,omitempty"`
+	// OTP is the ID of a code of «Tools → OTP»: {otp} in Username or Password stands for its current code.
+	OTP                 string `json:"otp,omitempty"`
+	StaticChallenge     string `json:"static_challenge,omitempty"`
+	StaticChallengeEcho bool   `json:"static_challenge_echo,omitempty"`
 	// CA, Cert and Key are PEM blocks: the authority of the server's certificate, and the client's own pair.
 	CA              string             `json:"ca,omitempty"`
 	Cert            string             `json:"cert,omitempty"`
@@ -260,9 +262,11 @@ type OpenConnect struct {
 	// Flavor is "", "anyconnect", "gp", "fortinet", "f5", "pulse" or "nc"; "" is AnyConnect.
 	Flavor string `json:"flavor,omitempty"`
 	// Path follows the host in the gateway's address, such as a group: /employees.
-	Path      string `json:"path,omitempty"`
-	Username  string `json:"username,omitempty"`
-	Password  string `json:"password,omitempty"`
+	Path     string `json:"path,omitempty"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	// OTP is the ID of a code of «Tools → OTP»: {otp} in Username or Password stands for its current code.
+	OTP       string `json:"otp,omitempty"`
 	AuthGroup string `json:"auth_group,omitempty"`
 	// PeerFingerprint pins the gateway's key, "pin-sha256:..." as openconnect --servercert writes it.
 	PeerFingerprint []string `json:"peer_fingerprint,omitempty"`

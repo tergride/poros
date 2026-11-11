@@ -41,6 +41,8 @@ func reason(err error) string {
 		return data["reason"]
 	case RuleProblem:
 		return data.Reason
+	case OTPFailure:
+		return data.Reason
 	}
 	return ""
 }

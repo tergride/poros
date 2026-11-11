@@ -361,6 +361,13 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		}
 	}
 
+	// The codes of OTP go in last: a HOTP code spent on a start that fails before would be lost.
+	signIns := []profile.Profile{server}
+	if err = e.fillOTP(signIns, links, endpoints); err != nil {
+		return ConnectionState{}, err
+	}
+	server = signIns[0]
+
 	in := config.Input{
 		Server:        server,
 		Links:         links,
