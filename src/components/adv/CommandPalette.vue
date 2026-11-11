@@ -5,13 +5,9 @@ import { type Component, computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-import { useAttempt } from '@/composables/useAttempt'
-import { useProfileActions } from '@/composables/useProfileActions'
-import { useResetConnection } from '@/composables/useResetConnection'
-import { useUpdates } from '@/composables/useUpdates'
+import { useAppActions } from '@/composables/useAppActions'
 import { serverTitle } from '@/lib/format'
 import { score, settingLabels } from '@/lib/palette'
-import { GroupManual, MethodSubscriptionsUpdate } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
@@ -21,10 +17,7 @@ const open = defineModel<boolean>('open', { default: false })
 const core = useCoreStore()
 const ui = useUiStore()
 const router = useRouter()
-const attempt = useAttempt()
-const actions = useProfileActions()
-const updates = useUpdates()
-const { reset } = useResetConnection()
+const app = useAppActions()
 const { t, te, locale, getLocaleMessage } = useI18n()
 
 type GroupId = 'settings' | 'actions' | 'profiles' | 'presets'
@@ -41,7 +34,7 @@ interface Item {
 
 // The pages of «Settings» of the advanced mode, in the order of their list.
 const basicPages = ['conn', 'dns', 'subs', 'start', 'look', 'help']
-const morePages = ['inbound', 'tests', 'tun', 'protocols', 'net', 'security', 'logging']
+const morePages = ['inbound', 'tests', 'tun', 'protocols', 'net', 'security', 'logging', 'hotkeys']
 // Names the pages show as they are, untranslated: the terms of sing-box.
 const literals: Record<string, string[]> = {
   tun: ['MTU', 'Strict Route', 'TUN Routing', 'IPv4 CIDR', 'IPv6 CIDR'],
@@ -56,10 +49,10 @@ watch(open, (now) => {
 })
 
 // Actions close the palette first: what they open or say shows over the window.
-function closed(action: () => Promise<unknown>): () => Promise<void> {
-  return async () => {
+function closed(action: () => unknown): () => void {
+  return () => {
     open.value = false
-    await attempt(action)
+    void action()
   }
 }
 
@@ -83,33 +76,15 @@ const settingItems = computed<Item[]>(() => {
   return items
 })
 
+// An action shows its shortcut of the window, when it has one.
+const keys = computed(() => core.settings?.menuKeys)
 const actionItems = computed<Item[]>(() => [
-  {
-    key: 'new-profile',
-    group: 'actions',
-    icon: Plus,
-    title: t('profileEditor.newProfile'),
-    hint: '',
-    run: () => {
-      go('/adv/profiles')
-      actions.newProfile(null)
-    },
-  },
-  {
-    key: 'update-all',
-    group: 'actions',
-    icon: Radar,
-    title: t('profiles.updateAll'),
-    hint: '',
-    run: closed(async () => {
-      // One subscription that fails does not keep the others from their update.
-      for (const g of core.groups.filter((g) => g.kind !== GroupManual)) await attempt(() => core.core().call(MethodSubscriptionsUpdate, { id: g.id }))
-    }),
-  },
-  { key: 'test-all', group: 'actions', icon: Gauge, title: t('adv.palette.testAll'), hint: '', run: closed(() => core.testServers('')) },
-  { key: 'wizard', group: 'actions', icon: Zap, title: t('menu.wizard'), hint: '', run: () => go('/wizard/1') },
-  { key: 'reset', group: 'actions', icon: RefreshCw, title: t('settings.help.reset'), hint: '', run: closed(reset) },
-  { key: 'updates', group: 'actions', icon: Download, title: t('menu.checkUpdates'), hint: '', run: closed(() => updates.check()) },
+  { key: 'new-profile', group: 'actions', icon: Plus, title: t('profileEditor.newProfile'), hint: keys.value?.newProfile ?? '', run: closed(app.newProfile) },
+  { key: 'update-all', group: 'actions', icon: Radar, title: t('profiles.updateAll'), hint: keys.value?.updateAll ?? '', run: closed(app.updateAll) },
+  { key: 'test-all', group: 'actions', icon: Gauge, title: t('adv.palette.testAll'), hint: '', run: closed(app.testAll) },
+  { key: 'wizard', group: 'actions', icon: Zap, title: t('menu.wizard'), hint: keys.value?.wizard ?? '', run: closed(app.wizard) },
+  { key: 'reset', group: 'actions', icon: RefreshCw, title: t('settings.help.reset'), hint: keys.value?.reset ?? '', run: closed(app.reset) },
+  { key: 'updates', group: 'actions', icon: Download, title: t('menu.checkUpdates'), hint: '', run: closed(app.checkUpdates) },
 ])
 
 const profileItems = computed<Item[]>(() =>

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Activity, ChartColumn, Route, ScrollText, Search, Server, Settings, Wrench } from '@lucide/vue'
 import { useEventListener } from '@vueuse/core'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import CommandPalette from '@/components/adv/CommandPalette.vue'
 import ConnBar from '@/components/adv/ConnBar.vue'
+import { useAppActions } from '@/composables/useAppActions'
+import { inField, isShortcut } from '@/lib/shortcuts'
 import LinkServerDialog from '@/components/adv/LinkServerDialog.vue'
 import ProfileEditor from '@/components/adv/ProfileEditor.vue'
 import ProfilePicker from '@/components/adv/ProfilePicker.vue'
@@ -24,12 +26,34 @@ const { t } = useI18n()
 const ipOpen = ref(false)
 const paletteOpen = ref(false)
 
-// Ctrl+K opens the search anywhere in the advanced mode, unless a dialog holds the window.
+// The shortcuts of the window («Settings → Hotkeys»): the search opens anywhere unless a dialog holds the window;
+// the other actions wait while the cursor is in a field. Those of «Profiles» are that screen's own.
+const app = useAppActions()
+const keys = computed(() => core.settings?.menuKeys)
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
-  if (!event.ctrlKey || event.altKey || event.shiftKey || event.code !== 'KeyK') return
-  if (!paletteOpen.value && document.querySelector('[role="dialog"]')) return
+  const k = keys.value
+  if (!k || event.defaultPrevented) return
+  const dialog = document.querySelector('[role="dialog"]') !== null
+  if (isShortcut(event, k.search)) {
+    if (!paletteOpen.value && dialog) return
+    event.preventDefault()
+    paletteOpen.value = !paletteOpen.value
+    return
+  }
+  if (dialog || inField(event.target)) return
+  const actions: [string, () => unknown][] = [
+    [k.newProfile, app.newProfile],
+    [k.updateAll, app.updateAll],
+    [k.startStop, app.startStop],
+    [k.reset, app.reset],
+    [k.settings, app.settings],
+    [k.logs, app.logs],
+    [k.wizard, app.wizard],
+  ]
+  const action = actions.find(([shortcut]) => isShortcut(event, shortcut))?.[1]
+  if (!action) return
   event.preventDefault()
-  paletteOpen.value = !paletteOpen.value
+  void action()
 })
 
 const sections = [
@@ -73,7 +97,8 @@ onMounted(() => {
         data-testid="rail-search"
         @click="paletteOpen = true"
       >
-        <Search class="size-4" />{{ t('adv.palette.button') }}<kbd class="ml-auto font-mono text-[10.5px] font-medium">Ctrl K</kbd>
+        <Search class="size-4" />{{ t('adv.palette.button') }}
+        <kbd v-if="keys?.search" class="ml-auto font-mono text-[10.5px] font-medium">{{ keys.search.replaceAll('+', ' ') }}</kbd>
       </button>
     </nav>
     <div class="flex min-h-0 min-w-0 flex-1 flex-col bg-s1">

@@ -4,6 +4,7 @@ mod core_launch;
 mod core_process;
 mod data_dir;
 mod fatal;
+mod hotkeys;
 mod instance;
 mod screen;
 mod system;
@@ -46,6 +47,8 @@ struct Shell {
     /// The server that takes the arguments of later starts; it closes first on the way out, so that a start in
     /// the meantime runs as a Poros of its own instead of handing its links to one that is going away.
     instance: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+    /// The shortcuts of Windows from the settings.
+    hotkeys: hotkeys::Hotkeys,
 }
 
 #[tauri::command]
@@ -163,6 +166,12 @@ fn app_capture_exclude(app: AppHandle, on: bool) -> Result<(), String> {
         .get_webview_window("main")
         .ok_or_else(|| "there is no window".to_string())?;
     screen::exclude_from_capture(&window, on).map_err(|e| e.to_string())
+}
+
+/// The actions whose shortcut Windows refused: another program holds it.
+#[tauri::command]
+fn hotkeys_failed(shell: tauri::State<'_, Shell>) -> Vec<String> {
+    shell.hotkeys.failed()
 }
 
 /// Puts text on the clipboard; the tray copies codes of OTP with it while the window is hidden.
@@ -323,6 +332,19 @@ fn apply_settings(app: &AppHandle, settings: &Value) {
     shell
         .close_to_tray
         .store(flag("closeToTray"), Ordering::Relaxed);
+    let keys = settings.get("hotkeys");
+    shell.hotkeys.set(
+        hotkeys::ACTIONS
+            .iter()
+            .map(|action| {
+                let text = keys
+                    .and_then(|k| k.get(*action))
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                (action.to_string(), text.to_string())
+            })
+            .collect(),
+    );
     if !flag("onboardingDone") {
         return;
     }
@@ -445,6 +467,7 @@ pub fn run() {
             app_open_data,
             app_copy,
             app_capture_exclude,
+            hotkeys_failed,
             take_links,
             url_scheme_get,
             url_scheme_set,
@@ -486,6 +509,22 @@ pub fn run() {
                     ""
                 }
             ));
+            // «Show the window» is the shell's own; the other actions are the interface's, as the items of the tray.
+            let on_action = app.handle().clone();
+            let on_failed = app.handle().clone();
+            let hotkeys = hotkeys::Hotkeys::start(
+                move |action| {
+                    if action == "show" {
+                        let app = on_action.clone();
+                        let _ = on_action.run_on_main_thread(move || show_window(&app));
+                    } else {
+                        let _ = on_action.emit("hotkey", action);
+                    }
+                },
+                move |failed| {
+                    let _ = on_failed.emit("hotkeys-failed", failed);
+                },
+            );
             app.manage(Shell {
                 close_to_tray: AtomicBool::new(false),
                 links: Mutex::new(Vec::new()),
@@ -493,6 +532,7 @@ pub fn run() {
                 reconnect: AtomicBool::new(reconnect),
                 exiting: AtomicBool::new(false),
                 instance: Mutex::new(None),
+                hotkeys,
             });
             add_links(app.handle(), &args);
             tray::create(app.handle(), show_window)?;

@@ -318,7 +318,8 @@
       "protocols": "Protocols and bypass",
       "net": "Network",
       "security": "Security",
-      "logging": "Log"
+      "logging": "Log",
+      "hotkeys": "Hotkeys"
     },
     "presets": {
       "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy or a new preset.",
@@ -558,6 +559,45 @@
       "history": "Keep the traffic history",
       "historyHint": "By profile and application, 90 days, in a database of its own, for “Statistics → Traffic”.",
       "historyNeedsStats": "Works with the statistics of connections."
+    },
+    "hotkeys": {
+      "global": "Global",
+      "globalHint": "They work in both modes, with the Poros window hidden too. Click a field and press a shortcut with Ctrl, Alt, Shift or Win; Backspace removes it.",
+      "action": {
+        "show": "Show the window",
+        "presets": "Preset list",
+        "system": "System on/off",
+        "tun": "TUN on/off",
+        "start": "Start/stop"
+      },
+      "presetsHint": "The menu of presets at the pointer, as in the tray.",
+      "menuTitle": "Menu shortcuts",
+      "menuRow": "Shortcuts in the Poros window",
+      "menuHint": "Search, paste from the clipboard and other actions of the window. They work while the window has the focus.",
+      "assign": "Assign…",
+      "menuDialogHint": "They act while the Poros window has the focus and the cursor is in no field; the menus show them next to their items. Global shortcuts and those of another action cannot be taken.",
+      "menu": {
+        "search": "Search",
+        "paste": "Paste from the clipboard",
+        "newProfile": "New profile",
+        "scanQr": "Scan QR code",
+        "updateAll": "Update all subscriptions",
+        "testGroup": "Test the delay of the group",
+        "startStop": "Start/stop",
+        "reset": "Reset the connection",
+        "settings": "Settings",
+        "logs": "Log",
+        "wizard": "Quick setup"
+      },
+      "onProfiles": "On the «Profiles» screen",
+      "defaults": "Restore defaults",
+      "press": "Press a shortcut…",
+      "none": "Not assigned",
+      "clear": "Remove the shortcut",
+      "needsModifier": "It needs Ctrl, Alt, Shift or Win.",
+      "needsCtrl": "It needs Ctrl or Alt, or it would type. Without them, only the keys F1–F24.",
+      "takenBy": "This shortcut is taken by «{name}».",
+      "takenOutside": "Another program holds {keys}. Choose another shortcut."
     }
   },
   "linkPreset": {

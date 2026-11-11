@@ -22,7 +22,7 @@ export function settingLabels(messages: unknown): string[] {
   const labels: string[] = []
   const walk = (value: unknown, key: string) => {
     if (typeof value === 'string') {
-      if (!/hint|text|lead|note|title|placeholder|button|error|empty|ask|desc|failed|saved|copied/i.test(key) && value.length <= 48 && !/[{|]/.test(value)) {
+      if (!/hint|text|lead|note|title|placeholder|button|error|empty|ask|desc|failed|saved|copied|press|none|clear|needs|taken|assign|defaults|onProfiles/i.test(key) && value.length <= 48 && !/[{|]/.test(value)) {
         labels.push(value)
       }
     } else if (value && typeof value === 'object') {

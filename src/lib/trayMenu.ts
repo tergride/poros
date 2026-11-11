@@ -104,24 +104,29 @@ function otpMenu(state: TrayState, actions: TrayActions, words: TrayWords): Tray
   return [{ kind: 'submenu', text: words.otp(), items: [...items, separator, { kind: 'item', text: words.otpHint(), enabled: false }] }]
 }
 
-export function trayMenu(state: TrayState, actions: TrayActions, words: TrayWords): TrayItem[] {
-  const { connection, settings } = state
-  const active = connection.state !== ConnectionIdle
-
+/** The presets to choose from, built-in first, and the way to their settings: the route of the tray and its shortcut. */
+export function presetMenu(state: TrayState, actions: TrayActions, words: TrayWords): TrayItem[] {
   const builtin = state.presets.filter((p) => p.builtin)
   const mine = state.presets.filter((p) => !p.builtin)
   const presetItem = (p: Preset): TrayItem => ({
     kind: 'check',
     text: words.presetName(p),
-    checked: p.id === settings.preset,
+    checked: p.id === state.settings.preset,
     action: () => actions.choosePreset(p.id),
   })
-  const presetItems: TrayItem[] = [
+  return [
     ...builtin.map(presetItem),
     ...(mine.length ? [separator, ...mine.map(presetItem)] : []),
     separator,
     { kind: 'item', text: words.presets(), action: actions.showPresets },
   ]
+}
+
+export function trayMenu(state: TrayState, actions: TrayActions, words: TrayWords): TrayItem[] {
+  const { connection, settings } = state
+  const active = connection.state !== ConnectionIdle
+
+  const presetItems = presetMenu(state, actions, words)
   const current = state.presets.find((p) => p.id === settings.preset)
 
   const main: TrayItem = held(state)

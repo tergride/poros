@@ -293,6 +293,40 @@ export interface Settings {
    * UpdateBeta takes the newest release, a pre-release too; else only the newest full one.
    */
   updateBeta: boolean;
+  /**
+   * Hotkeys are the shortcuts of Windows that act while Poros runs, its window hidden too; MenuKeys those of the
+   * window's own actions, while it has the focus.
+   */
+  hotkeys: Hotkeys;
+  menuKeys: MenuKeys;
+}
+/**
+ * Hotkeys are shortcuts as "Ctrl+Alt+P": modifiers in the order Ctrl, Alt, Shift, Win, then the key; "" is none.
+ * A global one needs a modifier. Presets opens the menu of presets at the pointer, as the tray's.
+ */
+export interface Hotkeys {
+  show: string;
+  presets: string;
+  system: string;
+  tun: string;
+  start: string;
+}
+/**
+ * MenuKeys are the shortcuts of the window's actions, written as Hotkeys: Ctrl or Alt with a key, or a function key
+ * alone. Paste and TestGroup act on «Profiles».
+ */
+export interface MenuKeys {
+  search: string;
+  paste: string;
+  newProfile: string;
+  scanQr: string;
+  updateAll: string;
+  testGroup: string;
+  startStop: string;
+  reset: string;
+  settings: string;
+  logs: string;
+  wizard: string;
 }
 /**
  * Kinds of groups.

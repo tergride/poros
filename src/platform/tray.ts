@@ -18,6 +18,17 @@ function entry(item: TrayItem): MenuEntry {
   }
 }
 
+let popup: Menu | undefined
+
+/** Opens a menu at the pointer, for a shortcut of Windows; the window may be hidden. */
+export async function popupTrayMenu(items: TrayItem[]): Promise<void> {
+  const menu = await Menu.new({ items: items.map(entry) })
+  const previous = popup
+  popup = menu
+  await previous?.close()
+  await menu.popup()
+}
+
 let icon: Promise<TrayIcon | null> | undefined
 let shown: Menu | undefined
 

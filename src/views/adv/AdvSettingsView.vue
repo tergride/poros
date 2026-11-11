@@ -5,6 +5,7 @@ import {
   Gauge,
   Globe,
   Info,
+  Keyboard,
   Layers,
   Link,
   Palette,
@@ -23,6 +24,7 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import ConnPage from '@/components/settings/ConnPage.vue'
 import DnsPage from '@/components/settings/DnsPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
+import HotkeysPage from '@/components/settings/HotkeysPage.vue'
 import InboundPage from '@/components/settings/InboundPage.vue'
 import LogPage from '@/components/settings/LogPage.vue'
 import LookPage from '@/components/settings/LookPage.vue'
@@ -74,6 +76,7 @@ const groups: { id: string; pages: Page[] }[] = [
       { id: 'net', icon: Radar, page: NetPage },
       { id: 'security', icon: Shield, page: SecurityPage },
       { id: 'logging', icon: ScrollText, page: LogPage },
+      { id: 'hotkeys', icon: Keyboard, page: HotkeysPage },
     ],
   },
 ]

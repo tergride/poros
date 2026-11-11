@@ -2,16 +2,17 @@ import { watchDebounced } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-import { type TrayActions, type TrayWords, statusText, trayFallback, trayMenu } from '@/lib/trayMenu'
+import { type TrayActions, type TrayState, type TrayWords, presetMenu, statusText, trayFallback, trayMenu } from '@/lib/trayMenu'
 import { useAttempt } from '@/composables/useAttempt'
-import { appControls, setTray } from '@/platform'
-import { MethodOTPCode, type OTPCode, type Preset } from '@/platform/core-types'
+import { appControls, hotkeys, popupMenu, setTray } from '@/platform'
+import { ConnectionIdle, KillSwitchConnected, MethodOTPCode, type OTPCode, type Preset } from '@/platform/core-types'
 import { useConnect } from '@/composables/useConnect'
 import { useCoreStore } from '@/stores/core'
 
 /**
  * Keeps the tray menu in step with the core; actions that need a question show the window first. Until the core has
- * given its data, and when it never does, the menu still shows the window and quits.
+ * given its data, and when it never does, the menu still shows the window and quits. The shortcuts of Windows act as
+ * its items: the shell shows the window itself, the rest comes here.
  */
 export function useTray(): void {
   const core = useCoreStore()
@@ -72,23 +73,51 @@ export function useTray(): void {
     exit: () => void appControls.exit(),
   }
 
+  const trayState = (): TrayState | null =>
+    core.loaded && core.settings
+      ? {
+          connection: core.connection,
+          settings: core.settings,
+          servers: core.servers,
+          presets: core.presets,
+          otp: core.otp,
+          blocked: core.killSwitch.on,
+          full: core.killSwitch.full,
+          coreDown: !core.ready,
+        }
+      : null
+
+  void hotkeys.onAction((action) => {
+    const state = trayState()
+    if (!state || state.coreDown) return
+    const { settings, connection } = state
+    switch (action) {
+      case 'presets':
+        void popupMenu(presetMenu(state, actions, words)).catch(() => undefined)
+        break
+      case 'system':
+        actions.setSystemProxy(!settings.systemProxy)
+        break
+      case 'tun':
+        actions.setTun(!settings.tun)
+        break
+      case 'start': {
+        // As the first item of the tray: Stop while a connection runs or the kill switch holds after a lost one.
+        const held = !!state.blocked && connection.state === ConnectionIdle && settings.killSwitch === KillSwitchConnected
+        if (held || connection.state !== ConnectionIdle) actions.disconnect()
+        else if (settings.server) actions.connect()
+        break
+      }
+    }
+  })
+
   watchDebounced(
     () => [core.loaded, core.settings, core.connection, core.servers, core.presets, core.otp, core.killSwitch, core.status, locale.value],
     () => {
-      const settings = core.settings
-      if (!core.loaded || !settings) {
+      const state = trayState()
+      if (!state) {
         void setTray(trayFallback(core.status.state === 'down', actions, words), 'Poros').catch(() => undefined)
         return
-      }
-      const state = {
-        connection: core.connection,
-        settings,
-        servers: core.servers,
-        presets: core.presets,
-        otp: core.otp,
-        blocked: core.killSwitch.on,
-        full: core.killSwitch.full,
-        coreDown: !core.ready,
       }
       void setTray(trayMenu(state, actions, words), `Poros · ${statusText(state, words)}`).catch(() => undefined)
     },

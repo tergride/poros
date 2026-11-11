@@ -192,6 +192,36 @@ type Settings struct {
 	LogLines int `json:"logLines"`
 	// UpdateBeta takes the newest release, a pre-release too; else only the newest full one.
 	UpdateBeta bool `json:"updateBeta"`
+	// Hotkeys are the shortcuts of Windows that act while Poros runs, its window hidden too; MenuKeys those of the
+	// window's own actions, while it has the focus.
+	Hotkeys  Hotkeys  `json:"hotkeys"`
+	MenuKeys MenuKeys `json:"menuKeys"`
+}
+
+// Hotkeys are shortcuts as "Ctrl+Alt+P": modifiers in the order Ctrl, Alt, Shift, Win, then the key; "" is none.
+// A global one needs a modifier. Presets opens the menu of presets at the pointer, as the tray's.
+type Hotkeys struct {
+	Show    string `json:"show"`
+	Presets string `json:"presets"`
+	System  string `json:"system"`
+	Tun     string `json:"tun"`
+	Start   string `json:"start"`
+}
+
+// MenuKeys are the shortcuts of the window's actions, written as Hotkeys: Ctrl or Alt with a key, or a function key
+// alone. Paste and TestGroup act on «Profiles».
+type MenuKeys struct {
+	Search     string `json:"search"`
+	Paste      string `json:"paste"`
+	NewProfile string `json:"newProfile"`
+	ScanQR     string `json:"scanQr"`
+	UpdateAll  string `json:"updateAll"`
+	TestGroup  string `json:"testGroup"`
+	StartStop  string `json:"startStop"`
+	Reset      string `json:"reset"`
+	Settings   string `json:"settings"`
+	Logs       string `json:"logs"`
+	Wizard     string `json:"wizard"`
 }
 
 // Kinds of groups.

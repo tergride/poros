@@ -212,6 +212,8 @@ const defaultSettings: Settings = {
   deviceData: '',
   logLines: 500,
   updateBeta: false,
+  hotkeys: { show: '', presets: '', system: '', tun: '', start: '' },
+  menuKeys: { search: 'Ctrl+K', paste: 'Ctrl+V', newProfile: '', scanQr: '', updateAll: '', testGroup: '', startStop: '', reset: '', settings: '', logs: '', wizard: '' },
   ipv6: true,
   realityOnXray: true,
   dnsRemote: '',

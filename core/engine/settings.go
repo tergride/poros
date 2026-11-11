@@ -53,6 +53,7 @@ func DefaultSettings() Settings {
 		UpdateCheck:            true,
 		SpeedTestMode:          SpeedTestFull,
 		SpeedTestURL:           defaultSpeedTestURL,
+		MenuKeys:               MenuKeys{Search: "Ctrl+K", Paste: "Ctrl+V"},
 	}
 }
 
@@ -197,6 +198,9 @@ func (e *Engine) validateSettings(settings Settings) error {
 	}
 	if settings.LogLines < minLogLines || settings.LogLines > maxLogLines {
 		return jsonrpc.Failed(ReasonInvalidValue, "logLines must be from %d to %d, not %d", minLogLines, maxLogLines, settings.LogLines)
+	}
+	if err := checkKeys(settings.Hotkeys, settings.MenuKeys); err != nil {
+		return err
 	}
 	return validateDNS(settings)
 }

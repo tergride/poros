@@ -30,6 +30,7 @@ import {
   X,
   Zap,
 } from '@lucide/vue'
+import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -45,6 +46,7 @@ import { useProfileActions } from '@/composables/useProfileActions'
 import { useReason } from '@/composables/useReason'
 import { useScanScreen } from '@/composables/useScanScreen'
 import { useSelection } from '@/composables/useSelection'
+import { inField, isShortcut } from '@/lib/shortcuts'
 import { formatAgo, formatBytes, latencyTone, protocolName, serverTitle } from '@/lib/format'
 import type { Group, Server } from '@/platform/core-types'
 import { GroupManual, MethodGroupsRemove, MethodServersClean, MethodServersLinks, MethodSubscriptionsUpdate } from '@/platform/core-types'
@@ -160,6 +162,20 @@ function clean(kind: 'unavailable' | 'duplicates' | 'insecure'): Promise<void> {
 function onRowClick(event: MouseEvent, s: Server): void {
   selection.click(s.id, { ctrl: event.ctrlKey || event.metaKey, shift: event.shiftKey })
 }
+// The shortcuts of the window that act on this screen, while no field has the cursor and no dialog is open.
+const keys = computed(() => core.settings?.menuKeys)
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+  const k = keys.value
+  if (!k || event.defaultPrevented || inField(event.target) || document.querySelector('[role="dialog"]')) return
+  const action = isShortcut(event, k.paste) ? fromClipboard : isShortcut(event, k.scanQr) ? fromScreen : isShortcut(event, k.testGroup) ? testGroup : null
+  if (!action) return
+  event.preventDefault()
+  void action()
+})
+function testGroup(): Promise<void> {
+  return attempt(() => core.testServers(group.value?.id ?? ''))
+}
+
 function onKey(event: KeyboardEvent): void {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
     event.preventDefault()
@@ -306,7 +322,7 @@ async function importEntered(): Promise<void> {
             <MenuItem v-if="!manual" @select="attempt(() => actions.copyText(group!.url))"><Copy />{{ t('list.copyLink') }}</MenuItem>
             <MenuItem @select="editing = group"><SquarePen />{{ t('profiles.editGroupMenu') }}</MenuItem>
             <MenuSeparator />
-            <MenuItem @select="updateAll()"><Radar />{{ t('profiles.updateAll') }}</MenuItem>
+            <MenuItem :shortcut="keys?.updateAll" @select="updateAll()"><Radar />{{ t('profiles.updateAll') }}</MenuItem>
             <MenuSeparator />
             <MenuItem danger @select="removingGroup = group"><Trash2 />{{ t(manual ? 'list.removeGroup' : 'list.removeSubscription') }}</MenuItem>
           </Menu>
@@ -322,16 +338,16 @@ async function importEntered(): Promise<void> {
             <template #trigger>
               <Button size="sm"><Download />{{ t('profiles.import') }}<ChevronDown class="size-3.5" /></Button>
             </template>
-            <MenuItem @select="fromClipboard()"><ClipboardPaste />{{ t('profiles.fromClipboard') }}</MenuItem>
+            <MenuItem :shortcut="keys?.paste" @select="fromClipboard()"><ClipboardPaste />{{ t('profiles.fromClipboard') }}</MenuItem>
             <MenuItem @select="fileInput?.click()"><FileUp />{{ t('profiles.fromFiles') }}</MenuItem>
-            <MenuItem :disabled="scanning || !core.ready" data-testid="import-scan" @select="fromScreen()"><ScanLine />{{ t('qr.scan') }}</MenuItem>
+            <MenuItem :disabled="scanning || !core.ready" :shortcut="keys?.scanQr" data-testid="import-scan" @select="fromScreen()"><ScanLine />{{ t('qr.scan') }}</MenuItem>
             <MenuItem @select="importOpen = true"><SquarePen />{{ t('profiles.enterLink') }}</MenuItem>
           </Menu>
           <Menu align="end">
             <template #trigger>
               <Button size="sm"><LoaderCircle v-if="core.testing || core.speedTesting || core.ipTesting" class="animate-spin" /><Gauge v-else />{{ t('profiles.tests') }}<ChevronDown class="size-3.5" /></Button>
             </template>
-            <MenuItem @select="attempt(() => core.testServers(group!.id))"><Gauge />{{ t('profiles.testLatencyGroup') }}</MenuItem>
+            <MenuItem :shortcut="keys?.testGroup" @select="attempt(() => core.testServers(group!.id))"><Gauge />{{ t('profiles.testLatencyGroup') }}</MenuItem>
             <MenuItem @select="attempt(() => core.speedTestServers(group!.id))"><Zap />{{ t('profiles.testSpeedGroup') }}</MenuItem>
             <MenuItem @select="attempt(() => core.ipTestServers(group!.id))"><Globe />{{ t('profiles.testIpGroup') }}</MenuItem>
             <MenuItem @select="actions.resolve(rows.map((s) => s.id))"><Search />{{ t('profiles.resolveGroup') }}</MenuItem>

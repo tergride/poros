@@ -70,6 +70,28 @@ export const appControls = {
   excludeFromCapture: (on: boolean): Promise<void> => (inTauri ? invoke('app_capture_exclude', { on }) : Promise.resolve()),
 }
 
+/** The shortcuts of Windows: their actions as they are pressed, and the ones another program holds. */
+export const hotkeys = {
+  /** The shell shows the window itself; the other actions come here. Outside Tauri a `poros-hotkey` event stands in. */
+  onAction: async (handler: (action: string) => void): Promise<void> => {
+    if (!inTauri) {
+      window.addEventListener('poros-hotkey', (event) => handler((event as CustomEvent<string>).detail))
+      return
+    }
+    await listen<string>('hotkey', ({ payload }) => handler(payload))
+  },
+  failed: (): Promise<string[]> => (inTauri ? invoke<string[]>('hotkeys_failed') : Promise.resolve([])),
+  onFailed: async (handler: (actions: string[]) => void): Promise<() => void> =>
+    inTauri ? await listen<string[]>('hotkeys-failed', ({ payload }) => handler(payload)) : () => undefined,
+}
+
+/** A menu at the pointer, as the tray's; outside Tauri there is none. */
+export async function popupMenu(items: TrayItem[]): Promise<void> {
+  if (!inTauri) return
+  const { popupTrayMenu } = await import('./tray')
+  await popupTrayMenu(items)
+}
+
 export async function setTray(items: TrayItem[], tooltip: string): Promise<void> {
   if (!inTauri) return
   const { setTrayMenu } = await import('./tray')
