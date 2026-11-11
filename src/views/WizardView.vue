@@ -98,7 +98,7 @@ async function finish(): Promise<void> {
         <template v-if="step === 1">
           <h1 class="font-disp text-2xl leading-snug font-normal">{{ t('wizard.subscription.title') }}</h1>
           <p class="max-w-[560px] text-t2">{{ t('wizard.subscription.text') }}</p>
-          <SubscriptionLink ref="link" large @added="replaceEarlier" />
+          <SubscriptionLink ref="link" large scan @added="replaceEarlier" />
         </template>
 
         <template v-else-if="step === 2 && core.settings">

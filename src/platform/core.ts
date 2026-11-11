@@ -30,6 +30,9 @@ import type {
   OTPProblem,
   OTPText,
   OutsideLink,
+  QRCode,
+  QRScan,
+  QRText,
   Preset,
   PresetCopy,
   PresetLink,
@@ -104,6 +107,8 @@ import {
   MethodOTPParse,
   MethodOTPRemove,
   MethodOTPSave,
+  MethodQREncode,
+  MethodQRScan,
   MethodDNSCheck,
   MethodPresetsCheck,
   MethodWARPRegister,
@@ -212,6 +217,8 @@ export interface CoreMethods {
   [MethodOTPMove]: { params: OTPMove; result: null }
   [MethodOTPCode]: { params: ByID; result: OTPCode }
   [MethodOTPLink]: { params: ByID; result: OTPLink }
+  [MethodQREncode]: { params: QRText; result: QRCode }
+  [MethodQRScan]: { params: undefined; result: QRScan }
 }
 
 export interface CoreEvents {

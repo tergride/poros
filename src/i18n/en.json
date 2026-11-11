@@ -852,7 +852,10 @@
     "endpoint_failed": "an endpoint of the preset did not connect",
     "warp_failed": "Cloudflare gave no WARP configuration",
     "otp_missing": "the server has {'{otp}'} in its user name or password, but no OTP code is chosen, or the chosen one is gone. Choose a code in the «OTP code» field of the profile",
-    "invalid_otp": "the OTP code was not saved"
+    "invalid_otp": "the OTP code was not saved",
+    "qr_too_long": "the link is longer than a QR code holds",
+    "scan_unsupported": "Poros cannot take a snapshot of the screen on this system yet",
+    "scan_failed": "Windows refused a snapshot of the screen"
   },
   "units": {
     "B": "B",
@@ -1010,7 +1013,7 @@
       "added": "No new codes. | {n} code added. | {n} codes added.",
       "duplicates": "Already there: {n}. | Already there: {n}. | Already there: {n}.",
       "emptyTitle": "No codes yet",
-      "emptyText": "Add a secret or an otpauth:// link, or import codes from Google Authenticator.",
+      "emptyText": "Add a secret or an otpauth:// link, import codes from Google Authenticator, or scan a QR code on the screen.",
       "note": "In an OpenVPN or OpenConnect profile, choose a code in the «OTP code» field and put {'{otp}'} in the user name or password: Poros puts the current code there at every connection. The codes are in the tray menu too — a click copies the code.",
       "next": "Next code",
       "seconds": "{n} s",
@@ -1058,7 +1061,8 @@
         "bad_link": "the link cannot be read",
         "bad_json": "the JSON cannot be read",
         "unknown": "this is no otpauth:// link, JSON or secret"
-      }
+      },
+      "qrTitle": "QR code «{name}»"
     }
   },
   "profiles": {
@@ -1556,5 +1560,18 @@
       "otp": "{'{otp}'} in the user name or password becomes the current code at every connection. The codes are in «Tools → OTP»."
     },
     "otpGone": "Code removed"
+  },
+  "qr": {
+    "picture": "QR code",
+    "tooLong": "The link is longer than a QR code holds. Pass it on as text.",
+    "link": "Link",
+    "secret": "Anyone who sees this QR code gets your sign-in codes. Show it to your own phone only.",
+    "copy": "Copy link",
+    "menu": "QR code and link",
+    "scan": "Scan QR code",
+    "scanScreen": "Scan a QR code on the screen",
+    "notFound": "No QR code found on the screen. Show it whole on the screen and try again.",
+    "notFoundWizard": "No QR code found on the screen. Show it whole on the screen and press the button again.",
+    "profileNote": "Scan it with the camera of a phone in a client that reads such links, or copy the link."
   }
 }

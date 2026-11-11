@@ -1594,6 +1594,24 @@ export interface OTPLink {
   link: string;
 }
 /**
+ * QRText is text to draw as a QR code.
+ */
+export interface QRText {
+  text: string;
+}
+/**
+ * QRCode is the modules of a QR code, a row of '1' and '0' each, without the quiet zone around it.
+ */
+export interface QRCode {
+  rows: string[];
+}
+/**
+ * QRScan is what the QR codes on the screen hold, each text once; none found is no error.
+ */
+export interface QRScan {
+  texts: string[];
+}
+/**
  * Methods the core answers.
  */
 export const MethodAppInfo = "app.info";
@@ -1876,6 +1894,15 @@ export const MethodOTPCode = "otp.code";
  */
 export const MethodOTPLink = "otp.link";
 /**
+ * MethodQREncode draws text as a QR code; MethodQRScan reads the QR codes on all monitors. The window of Poros
+ * keeps itself out of the snapshot while it scans.
+ */
+export const MethodQREncode = "qr.encode";
+/**
+ * Methods the core answers.
+ */
+export const MethodQRScan = "qr.scan";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -2107,3 +2134,16 @@ export const ReasonOTPMissing = "otp_missing";
  * ReasonInvalidOTP is an entry of OTP that cannot be saved; the data is an OTPFailure.
  */
 export const ReasonInvalidOTP = "invalid_otp";
+/**
+ * ReasonQRTooLong is text longer than the largest QR code holds.
+ */
+export const ReasonQRTooLong = "qr_too_long";
+/**
+ * ReasonScanUnsupported is a scan of the screen on a system Poros cannot take a snapshot on yet,
+ * ReasonScanFailed one the system refused.
+ */
+export const ReasonScanUnsupported = "scan_unsupported";
+/**
+ * Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
+ */
+export const ReasonScanFailed = "scan_failed";

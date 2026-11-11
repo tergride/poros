@@ -1092,6 +1092,21 @@ type OTPLink struct {
 	Link string `json:"link"`
 }
 
+// QRText is text to draw as a QR code.
+type QRText struct {
+	Text string `json:"text"`
+}
+
+// QRCode is the modules of a QR code, a row of '1' and '0' each, without the quiet zone around it.
+type QRCode struct {
+	Rows []string `json:"rows"`
+}
+
+// QRScan is what the QR codes on the screen hold, each text once; none found is no error.
+type QRScan struct {
+	Texts []string `json:"texts"`
+}
+
 // Methods the core answers.
 const (
 	MethodAppInfo = "app.info"
@@ -1212,6 +1227,10 @@ const (
 	// MethodOTPCode gives the code to use now: TOTP's of the moment, or HOTP's next one, which moves its counter.
 	MethodOTPCode = "otp.code"
 	MethodOTPLink = "otp.link"
+	// MethodQREncode draws text as a QR code; MethodQRScan reads the QR codes on all monitors. The window of Poros
+	// keeps itself out of the snapshot while it scans.
+	MethodQREncode = "qr.encode"
+	MethodQRScan   = "qr.scan"
 )
 
 // Events the core sends without a request.
@@ -1323,4 +1342,10 @@ const (
 	ReasonOTPMissing = "otp_missing"
 	// ReasonInvalidOTP is an entry of OTP that cannot be saved; the data is an OTPFailure.
 	ReasonInvalidOTP = "invalid_otp"
+	// ReasonQRTooLong is text longer than the largest QR code holds.
+	ReasonQRTooLong = "qr_too_long"
+	// ReasonScanUnsupported is a scan of the screen on a system Poros cannot take a snapshot on yet,
+	// ReasonScanFailed one the system refused.
+	ReasonScanUnsupported = "scan_unsupported"
+	ReasonScanFailed      = "scan_failed"
 )

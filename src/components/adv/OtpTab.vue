@@ -1,22 +1,27 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Check, Copy, Download, MoreHorizontal, Plus, RefreshCw, SquarePen, Trash2 } from '@lucide/vue'
+import { ArrowDown, ArrowUp, Check, Copy, Download, MoreHorizontal, Plus, QrCode, RefreshCw, ScanLine, SquarePen, Trash2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import OtpDialog from '@/components/adv/OtpDialog.vue'
 import OtpImportDialog from '@/components/adv/OtpImportDialog.vue'
+import QrDialog from '@/components/adv/QrDialog.vue'
 import { Button, Dialog, Menu, MenuItem, MenuSeparator } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useClock } from '@/composables/useClock'
+import { useScanScreen } from '@/composables/useScanScreen'
 import { groupCode, hiddenCode, secondsLeft } from '@/lib/otp'
 import { appControls } from '@/platform'
-import { MethodOTPCode, MethodOTPList, MethodOTPMove, MethodOTPRemove, OTPKindHOTP, type OTPCode } from '@/platform/core-types'
+import { MethodOTPCode, MethodOTPImport, MethodOTPLink, MethodOTPList, MethodOTPMove, MethodOTPRemove, OTPKindHOTP, type OTPCode } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
+import { useUiStore } from '@/stores/ui'
 
 // «Tools → OTP»: the codes of the user's sign-ins. A TOTP code counts down and the list asks the core again when one
 // runs out; a HOTP code shows on «Next code», since each one moves the counter of the server.
 const core = useCoreStore()
+const ui = useUiStore()
 const attempt = useAttempt()
+const scanScreen = useScanScreen()
 const { t } = useI18n()
 const now = useClock(1000)
 
@@ -26,6 +31,10 @@ const editId = ref('')
 const editing = ref(false)
 const removing = ref<OTPCode | null>(null)
 const copied = ref('')
+// The code shown as a QR code, for an authenticator on a phone.
+const qr = ref<{ title: string; link: string } | null>(null)
+const qrOpen = computed({ get: () => qr.value !== null, set: (v: boolean) => !v && (qr.value = null) })
+const scanning = ref(false)
 // The HOTP codes taken here, until the list is left.
 const shown = ref<Record<string, string>>({})
 
@@ -68,6 +77,32 @@ function add(): void {
   adding.value = true
 }
 
+async function showQr(c: OTPCode): Promise<void> {
+  await attempt(async () => {
+    const { link } = await core.core().call(MethodOTPLink, { id: c.id })
+    qr.value = { title: t('adv.tools.qrTitle', { name: title(c) }), link }
+  })
+}
+
+// The otpauth links of the QR codes on the screen; whatever else is there is not a code.
+async function scan(): Promise<void> {
+  scanning.value = true
+  try {
+    await attempt(async () => {
+      const links = (await scanScreen()).filter((text) => /^otpauth(-migration)?:\/\//i.test(text))
+      if (links.length === 0) {
+        ui.notice = { tone: 'warn', text: t('qr.notFound') }
+        return
+      }
+      const result = await core.core().call(MethodOTPImport, { text: links.join('\n') })
+      const added = t('adv.tools.added', result.added)
+      ui.notice = { tone: 'info', text: result.duplicates ? `${added} ${t('adv.tools.duplicates', result.duplicates)}` : added }
+    })
+  } finally {
+    scanning.value = false
+  }
+}
+
 const move = (c: OTPCode, offset: number) => attempt(() => core.core().call(MethodOTPMove, { id: c.id, offset }))
 
 async function remove(): Promise<void> {
@@ -82,6 +117,7 @@ async function remove(): Promise<void> {
     <div class="flex flex-none items-center gap-2 border-b border-line px-3.5 py-2.5">
       <Button variant="primary" size="sm" data-testid="otp-add" @click="add()"><Plus />{{ t('common.add') }}</Button>
       <Button size="sm" data-testid="otp-import-open" @click="importing = true"><Download />{{ t('adv.tools.import') }}</Button>
+      <Button size="sm" :disabled="scanning || !core.ready" data-testid="otp-scan" @click="scan()"><ScanLine />{{ t('qr.scan') }}</Button>
     </div>
     <div class="min-h-0 flex-1 overflow-auto px-3.5 py-3.5">
       <section class="rounded-xl border border-line bg-s2 px-4" data-testid="otp-list">
@@ -115,6 +151,7 @@ async function remove(): Promise<void> {
                 <Button variant="ghost" size="icon-sm" :aria-label="t('adv.tools.actions')" data-testid="otp-menu"><MoreHorizontal /></Button>
               </template>
               <MenuItem :disabled="!codeOf(c)" @select="copy(c)"><Copy />{{ t('adv.tools.copy') }}</MenuItem>
+              <MenuItem data-testid="otp-qr" @select="showQr(c)"><QrCode />{{ t('qr.menu') }}</MenuItem>
               <MenuItem data-testid="otp-edit" @select="edit(c)"><SquarePen />{{ t('adv.tools.edit') }}</MenuItem>
               <MenuSeparator />
               <MenuItem :disabled="i === 0" data-testid="otp-up" @select="move(c, -1)"><ArrowUp />{{ t('adv.tools.up') }}</MenuItem>
@@ -131,6 +168,7 @@ async function remove(): Promise<void> {
     <OtpDialog v-model:open="adding" edit-id="" />
     <OtpDialog v-model:open="editing" :edit-id="editId" />
     <OtpImportDialog v-model:open="importing" />
+    <QrDialog v-model:open="qrOpen" :title="qr?.title ?? ''" :link="qr?.link ?? ''" secret />
     <Dialog :open="removing !== null" :title="t('adv.tools.removeTitle')" @update:open="(v: boolean) => !v && (removing = null)">
       <p class="text-t2">{{ t('adv.tools.removeText', { name: removing ? title(removing) : '' }) }}</p>
       <template #footer>

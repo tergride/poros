@@ -1,22 +1,25 @@
 <script setup lang="ts">
-import { Check, ClipboardPaste, Info, LoaderCircle } from '@lucide/vue'
+import { Check, ClipboardPaste, Info, LoaderCircle, QrCode } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { Button, Input } from '@/components/ui'
 import { useFailure } from '@/composables/useReason'
+import { useScanScreen } from '@/composables/useScanScreen'
 import type { SubscriptionUpdate } from '@/platform/core-types'
 import { MethodServersList, MethodSubscriptionsAdd } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 // The link field of the wizard and of the add dialog: it adds the subscription as soon as the link is in and says
 // what came of it. A server is chosen if there was none.
-// manual leaves the adding to the caller's button instead of doing it on paste and Enter.
-const props = defineProps<{ large?: boolean; name?: string; manual?: boolean }>()
+// manual leaves the adding to the caller's button instead of doing it on paste and Enter; scan reads the link from a QR
+// code on the screen.
+const props = defineProps<{ large?: boolean; name?: string; manual?: boolean; scan?: boolean }>()
 const emit = defineEmits<{ added: [update: SubscriptionUpdate] }>()
 
 const core = useCoreStore()
 const describe = useFailure()
+const scanScreen = useScanScreen()
 const { t } = useI18n()
 const link = ref('')
 const busy = ref(false)
@@ -57,6 +60,23 @@ async function paste(): Promise<void> {
   if (!props.manual) await add()
 }
 
+// The first link of the QR codes on the screen, as if pasted.
+async function fromScreen(): Promise<void> {
+  if (busy.value) return
+  failure.value = ''
+  try {
+    const found = (await scanScreen()).find((text) => /^[a-z][\w+.-]*:\/\//i.test(text.trim()))
+    if (!found) {
+      failure.value = t('qr.notFoundWizard')
+      return
+    }
+    link.value = found.trim()
+    if (!props.manual) await add()
+  } catch (error) {
+    failure.value = describe(error)
+  }
+}
+
 /** Puts a link in from outside, such as a poros:// link. */
 function fill(text: string): void {
   link.value = text
@@ -78,6 +98,18 @@ defineExpose({ add, fill, busy, added })
         @blur="manual || add(false)"
       />
       <Button :size="large ? 'lg' : 'default'" @click="paste"><ClipboardPaste />{{ t('common.paste') }}</Button>
+      <Button
+        v-if="scan"
+        :size="large ? 'lg' : 'default'"
+        :class="large ? 'w-[46px] px-0' : 'w-9 px-0'"
+        :disabled="busy || !core.ready"
+        :aria-label="t('qr.scanScreen')"
+        :title="t('qr.scanScreen')"
+        data-testid="link-scan"
+        @click="fromScreen"
+      >
+        <QrCode />
+      </Button>
     </div>
     <div v-if="busy" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3">
       <LoaderCircle class="size-4 animate-spin text-blue" /><span>{{ t('wizard.subscription.checking') }}</span>

@@ -845,3 +845,49 @@ test('«Tools → OTP» adds codes from a link or by import, shows HOTP on reque
   await expect(editor.locator('[data-field="openvpn.otp"]')).toContainText('{otp} в имени пользователя или пароле')
   await shot(page, 'adv-profile-otp')
 })
+
+test('QR codes show the link of a profile and of a code, and a scan of the screen adds what it finds', async ({ page }) => {
+  await toAdvanced(page)
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.getByTestId('profile-row').first().click({ button: 'right' })
+  await page.getByTestId('profile-qr').click()
+  const qr = page.getByTestId('qr-dialog')
+  await expect(qr.getByTestId('qr-picture')).toBeVisible()
+  await expect(qr.getByTestId('qr-link')).toHaveValue(/:\/\//)
+  await shot(page, 'adv-profile-qr')
+  await page.getByTestId('qr-copy').click()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/:\/\//)
+  await page.keyboard.press('Escape')
+
+  // Nothing on the screen: said so, nothing added.
+  await page.getByRole('button', { name: 'Импорт' }).click()
+  await page.getByTestId('import-scan').click()
+  await expect(page.getByTestId('notice')).toContainText('QR-код на экране не найден')
+
+  // A code of OTP and a site on the screen: the code is taken, the site is not.
+  await page.evaluate(() => {
+    ;(window as { porosScreenQr?: string[] }).porosScreenQr = ['https://example.com/', 'otpauth://totp/GitHub:poros-dev?secret=JBSWY3DPEHPK3PXP&issuer=GitHub']
+  })
+  await page.getByTestId('rail-tools').click()
+  await page.getByTestId('otp-scan').click()
+  await expect(page.getByTestId('notice')).toContainText('Добавлен 1 код.')
+  await expect(page.getByTestId('otp-row')).toHaveCount(1)
+  await page.getByTestId('otp-menu').click()
+  await page.getByTestId('otp-qr').click()
+  await expect(page.getByRole('dialog', { name: 'QR-код «GitHub»' })).toContainText('По этому QR-коду любой получит ваши коды входа')
+  await expect(page.getByTestId('qr-link')).toHaveValue(/^otpauth:\/\/totp\//)
+  await shot(page, 'adv-otp-qr')
+})
+
+test('the wizard reads the link of a subscription from a QR code on the screen', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('link-scan').click()
+  await expect(page.getByTestId('link-failure')).toContainText('QR-код на экране не найден')
+  await shot(page, 'wizard-scan-none')
+  await page.evaluate(() => {
+    ;(window as { porosScreenQr?: string[] }).porosScreenQr = ['https://sub.example.com/u/8f3a2c']
+  })
+  await page.getByTestId('link-scan').click()
+  await expect(page.getByLabel('Ссылка подписки')).toHaveValue('https://sub.example.com/u/8f3a2c')
+  await expect(page.getByTestId('link-found')).toBeVisible()
+})

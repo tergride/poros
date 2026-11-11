@@ -78,6 +78,8 @@ import {
   MethodOTPParse,
   MethodOTPRemove,
   MethodOTPSave,
+  MethodQREncode,
+  MethodQRScan,
   MethodDNSCheck,
   MethodPresetsCheck,
   MethodWARPRegister,
@@ -154,6 +156,7 @@ import type { Profile } from './profile-types'
 import stubForms from './stubForms.json'
 import { checkDnsObject, checkDnsSettings } from './stubDns'
 import { createStubOtp } from './stubOtp'
+import { stubQrEncode, stubQrScan } from './stubQr'
 import { checkRules, readLists, writeLists } from './stubPresets'
 
 const noWarpDevice: WARPDevice = { endpoint: '', privateKey: '', peerKey: '', addresses: '', reserved: '', serverName: '', http: '', registeredAt: 0 }
@@ -1124,6 +1127,8 @@ export function createStubCore(): CoreClient {
     [MethodOTPMove]: (move) => otp.move(move),
     [MethodOTPCode]: ({ id }) => otp.code(id),
     [MethodOTPLink]: ({ id }) => ({ link: otp.link(id) }),
+    [MethodQREncode]: ({ text }) => stubQrEncode(text),
+    [MethodQRScan]: () => stubQrScan(),
     [MethodConnectionStart]: () => {
       setConnection({ ...idle, state: ConnectionStarting })
       settle(() => {

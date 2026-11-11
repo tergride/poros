@@ -5,6 +5,7 @@ mod core_process;
 mod data_dir;
 mod fatal;
 mod instance;
+mod screen;
 mod system;
 mod tray;
 
@@ -153,6 +154,15 @@ fn app_open_logs() -> Result<(), String> {
 #[tauri::command]
 fn app_open_data() -> Result<(), String> {
     applog::open_data_dir()
+}
+
+/// Keeps the window out of snapshots of the screen while the core scans it for QR codes, and lets it back in.
+#[tauri::command]
+fn app_capture_exclude(app: AppHandle, on: bool) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "there is no window".to_string())?;
+    screen::exclude_from_capture(&window, on).map_err(|e| e.to_string())
 }
 
 /// Puts text on the clipboard; the tray copies codes of OTP with it while the window is hidden.
@@ -434,6 +444,7 @@ pub fn run() {
             app_open_logs,
             app_open_data,
             app_copy,
+            app_capture_exclude,
             take_links,
             url_scheme_get,
             url_scheme_set,

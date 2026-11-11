@@ -66,6 +66,8 @@ export const appControls = {
   openData: (): Promise<void> => (inTauri ? invoke('app_open_data') : Promise.resolve()),
   /** Puts text on the clipboard through the shell, which works while the window is hidden, as for the tray. */
   copy: (text: string): Promise<void> => (inTauri ? invoke('app_copy', { text }) : navigator.clipboard.writeText(text)),
+  /** Keeps the window out of snapshots of the screen, while the core reads the QR codes on it, or lets it back in. */
+  excludeFromCapture: (on: boolean): Promise<void> => (inTauri ? invoke('app_capture_exclude', { on }) : Promise.resolve()),
 }
 
 export async function setTray(items: TrayItem[], tooltip: string): Promise<void> {

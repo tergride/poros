@@ -15,9 +15,11 @@ import {
   Pencil,
   Play,
   Plus,
+  QrCode,
   Radar,
   RefreshCw,
   RotateCcw,
+  ScanLine,
   Search,
   Share2,
   ShieldAlert,
@@ -33,6 +35,7 @@ import { useI18n } from 'vue-i18n'
 
 import GroupEditor from '@/components/adv/GroupEditor.vue'
 import NewGroupDialog from '@/components/adv/NewGroupDialog.vue'
+import QrDialog from '@/components/adv/QrDialog.vue'
 import SubscriptionQuota from '@/components/main/SubscriptionQuota.vue'
 import { Button, ContextMenu, ContextMenuItem, ContextMenuSeparator, Dialog, Flag, Input, Menu, MenuItem, MenuSeparator, Select, Textarea } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
@@ -40,10 +43,11 @@ import { useClock } from '@/composables/useClock'
 import { useConnect } from '@/composables/useConnect'
 import { useProfileActions } from '@/composables/useProfileActions'
 import { useReason } from '@/composables/useReason'
+import { useScanScreen } from '@/composables/useScanScreen'
 import { useSelection } from '@/composables/useSelection'
 import { formatAgo, formatBytes, latencyTone, protocolName, serverTitle } from '@/lib/format'
 import type { Group, Server } from '@/platform/core-types'
-import { GroupManual, MethodGroupsRemove, MethodServersClean, MethodSubscriptionsUpdate } from '@/platform/core-types'
+import { GroupManual, MethodGroupsRemove, MethodServersClean, MethodServersLinks, MethodSubscriptionsUpdate } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
@@ -55,6 +59,7 @@ const connect = useConnect()
 const attempt = useAttempt()
 const reason = useReason()
 const actions = useProfileActions()
+const scanScreen = useScanScreen()
 const { t, locale } = useI18n()
 const now = useClock(60_000)
 
@@ -188,6 +193,31 @@ async function fromClipboard(): Promise<void> {
   }
   await addFrom(text)
 }
+// The links of the QR codes on the screen go as from the clipboard.
+const scanning = ref(false)
+async function fromScreen(): Promise<void> {
+  scanning.value = true
+  try {
+    await attempt(async () => {
+      const texts = await scanScreen()
+      if (texts.length === 0) ui.notice = { tone: 'warn', text: t('qr.notFound') }
+      else await addFrom(texts.join('\n'))
+    })
+  } finally {
+    scanning.value = false
+  }
+}
+
+// A profile's link as a QR code: the same link as «Copy links».
+const qr = ref<{ title: string; link: string; chip: string } | null>(null)
+const qrOpen = computed({ get: () => qr.value !== null, set: (v: boolean) => !v && (qr.value = null) })
+async function showQr(server: Server): Promise<void> {
+  await attempt(async () => {
+    const [link] = (await core.core().call(MethodServersLinks, { ids: [server.id] })).links
+    qr.value = { title: serverTitle(server.name, server.country), link: link ?? '', chip: protocolName(server.protocol, t) }
+  })
+}
+
 // A subscription's link goes to the dialog of subscriptions, anything else to the servers of a group.
 async function addFrom(text: string): Promise<void> {
   const trimmed = text.trim()
@@ -279,6 +309,7 @@ async function importEntered(): Promise<void> {
             </template>
             <MenuItem @select="fromClipboard()"><ClipboardPaste />{{ t('profiles.fromClipboard') }}</MenuItem>
             <MenuItem @select="fileInput?.click()"><FileUp />{{ t('profiles.fromFiles') }}</MenuItem>
+            <MenuItem :disabled="scanning || !core.ready" data-testid="import-scan" @select="fromScreen()"><ScanLine />{{ t('qr.scan') }}</MenuItem>
             <MenuItem @select="importOpen = true"><SquarePen />{{ t('profiles.enterLink') }}</MenuItem>
           </Menu>
           <Menu align="end">
@@ -380,6 +411,7 @@ async function importEntered(): Promise<void> {
             <ContextMenuItem data-testid="edit-profile" @select="actions.edit(one!.id)"><SquarePen />{{ t('profiles.edit') }}</ContextMenuItem>
             <ContextMenuItem @select="actions.clone([one!.id])"><Copy />{{ t('profiles.clone') }}</ContextMenuItem>
             <ContextMenuSeparator :label="t('profiles.share')" />
+            <ContextMenuItem data-testid="profile-qr" @select="showQr(one!)"><QrCode />{{ t('qr.menu') }}</ContextMenuItem>
             <ContextMenuItem @select="actions.exportConfigs([one!.id])"><Download />{{ t('profiles.exportConfig') }}</ContextMenuItem>
             <ContextMenuItem @select="actions.copyLinks([one!.id])"><Link />{{ t('profiles.copyLinks') }}</ContextMenuItem>
             <ContextMenuItem @select="actions.copyDeepLinks([one!.id])"><Share2 />{{ t('profiles.copyDeepLink') }}</ContextMenuItem>
@@ -482,5 +514,6 @@ async function importEntered(): Promise<void> {
         </Button>
       </template>
     </Dialog>
+    <QrDialog v-model:open="qrOpen" :title="qr?.title ?? ''" :link="qr?.link ?? ''" :chip="qr?.chip" :note="t('qr.profileNote')" />
   </div>
 </template>
