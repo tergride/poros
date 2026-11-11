@@ -104,7 +104,7 @@ func TestDeviceDataAndDebugInfo(t *testing.T) {
 			t.Errorf("the debug information shows %q:\n%s", private, text)
 		}
 	}
-	for _, shown := range []string{"Poros 0.1.0", "sing-box", `"proxyPassword": "(set)"`, `"proxyUsername": ""`, `"tunMtu": 1500`} {
+	for _, shown := range []string{"Poros 0.1.0", "sing-box", " goroutines, heap ", `"proxyPassword": "(set)"`, `"proxyUsername": ""`, `"tunMtu": 1500`} {
 		if !strings.Contains(text, shown) {
 			t.Errorf("the debug information lacks %q:\n%s", shown, text)
 		}

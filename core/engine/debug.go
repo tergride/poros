@@ -60,6 +60,11 @@ func (e *Engine) DebugInfo() (string, error) {
 		fmt.Fprintf(&text, ", error %s", state.Error)
 	}
 	fmt.Fprintf(&text, "\nGroups: %d, servers: %d\n", len(groups), servers)
+	// Long runs of the tests read this line to see whether the core leaks.
+	var memory runtime.MemStats
+	runtime.ReadMemStats(&memory)
+	fmt.Fprintf(&text, "Runtime: %d goroutines, heap %d MiB, %d MiB from the system\n",
+		runtime.NumGoroutine(), memory.HeapAlloc>>20, memory.Sys>>20)
 	fmt.Fprintf(&text, "Settings: %s\n", shown)
 	return text.String(), nil
 }
