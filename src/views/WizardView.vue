@@ -8,19 +8,28 @@ import portal from '@/assets/img/portal.jpg'
 import wordmark from '@/assets/img/wordmark.png'
 import SubscriptionLink from '@/components/main/SubscriptionLink.vue'
 import { Button, Checkbox, RadioGroup, RadioItem } from '@/components/ui'
+import type { UiMode } from '@/composables/useUiMode'
 import { urlScheme } from '@/platform'
-import type { SubscriptionUpdate } from '@/platform/core-types'
-import { MethodGroupsRemove } from '@/platform/core-types'
+import type { ServersAdded, SubscriptionUpdate } from '@/platform/core-types'
+import { MethodGroupsRemove, MethodServersRemove } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 const core = useCoreStore()
 const route = useRoute()
 const router = useRouter()
-const { t, te } = useI18n()
+const { t, te, tm, rt } = useI18n()
 
-const steps = ['subscription', 'start', 'routing'] as const
+const steps = ['mode', 'subscription', 'start', 'routing'] as const
 const step = computed(() => Math.min(Math.max(Number(route.params.step) || 1, 1), steps.length))
 const link = ref<InstanceType<typeof SubscriptionLink> | null>(null)
+
+// The mode applies at once: the wizard belongs to both, and the next steps already follow it.
+const modes: UiMode[] = ['simple', 'advanced']
+const uiMode = computed({
+  get: (): UiMode => (core.settings?.uiMode === 'advanced' ? 'advanced' : 'simple'),
+  set: (mode: string) => void core.updateSettings({ uiMode: mode }).catch(() => undefined),
+})
+const modeItems = (mode: UiMode): string[] => (tm(`wizard.mode.${mode}Items`) as unknown as string[]).map((item) => rt(item))
 
 const startOptions = [
   { key: 'autostart', label: 'wizard.start.autostart', hint: 'wizard.start.autostartHint' },
@@ -37,18 +46,26 @@ const preset = computed({
   set: (id: string) => void core.updateSettings({ preset: id }).catch(() => undefined),
 })
 
-// The wizard shows one subscription: a link put in after another one that worked replaces it, so that a mistaken
-// link does not stay behind unseen.
-let earlier = ''
+// The wizard shows one subscription or server: a link put in after another one that worked replaces it, so that a
+// mistaken link does not stay behind unseen. A server goes alone: its group may hold the user's other servers.
+let earlier: { group?: string; servers?: string[] } = {}
+async function dropEarlier(): Promise<void> {
+  const { group, servers } = earlier
+  if (group) await core.core().call(MethodGroupsRemove, { id: group }).catch(() => undefined)
+  if (servers?.length) await core.core().call(MethodServersRemove, { ids: servers }).catch(() => undefined)
+}
 async function replaceEarlier(update: SubscriptionUpdate): Promise<void> {
-  const id = update.group.id
-  if (earlier && earlier !== id) await core.core().call(MethodGroupsRemove, { id: earlier }).catch(() => undefined)
-  earlier = id
+  await dropEarlier()
+  earlier = { group: update.group.id }
+}
+async function replaceEarlierServer(added: ServersAdded): Promise<void> {
+  await dropEarlier()
+  earlier = { servers: added.ids }
 }
 
 async function next(): Promise<void> {
   // A link typed but not yet confirmed counts as given.
-  if (step.value === 1) await link.value?.add()
+  if (step.value === 2) await link.value?.add()
   await router.push(`/wizard/${step.value + 1}`)
 }
 
@@ -95,13 +112,53 @@ async function finish(): Promise<void> {
       </nav>
 
       <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-11 pt-10 pb-5">
-        <template v-if="step === 1">
-          <h1 class="font-disp text-2xl leading-snug font-normal">{{ t('wizard.subscription.title') }}</h1>
-          <p class="max-w-[560px] text-t2">{{ t('wizard.subscription.text') }}</p>
-          <SubscriptionLink ref="link" large scan @added="replaceEarlier" />
+        <template v-if="step === 1 && core.settings">
+          <h1 class="font-disp text-2xl leading-snug font-normal">{{ t('wizard.mode.title') }}</h1>
+          <RadioGroup v-model="uiMode" class="grid grid-cols-2 gap-3" :aria-label="t('mode.menuLabel')">
+            <label
+              v-for="mode in modes"
+              :key="mode"
+              :class="[
+                'flex cursor-pointer flex-col gap-2.5 rounded-xl border p-4 text-[13px] transition-colors',
+                uiMode === mode
+                  ? 'border-blue bg-s3 text-t2 shadow-[0_0_0_1px_var(--blue)]'
+                  : 'border-line bg-s2 text-t3 hover:border-line2 hover:bg-s3',
+              ]"
+              :data-testid="`wizard-mode-${mode}`"
+            >
+              <span class="flex items-center justify-between gap-2.5">
+                <strong class="text-sm font-semibold text-t1">{{ t(`wizard.mode.${mode}`) }}</strong>
+                <RadioItem :value="mode" />
+              </span>
+              <span class="grid gap-1">
+                <span
+                  v-for="item in modeItems(mode)"
+                  :key="item"
+                  class="relative pl-3.5 before:absolute before:top-[.6em] before:left-0.5 before:size-1 before:rounded-full before:bg-current"
+                >
+                  {{ item }}
+                </span>
+              </span>
+            </label>
+          </RadioGroup>
+          <p class="text-xs text-t3">{{ t('wizard.mode.note') }}</p>
         </template>
 
-        <template v-else-if="step === 2 && core.settings">
+        <template v-else-if="step === 2">
+          <h1 class="font-disp text-2xl leading-snug font-normal">{{ t('wizard.subscription.title') }}</h1>
+          <p class="max-w-[560px] text-t2">{{ t('wizard.subscription.text') }}</p>
+          <SubscriptionLink
+            ref="link"
+            large
+            scan
+            :servers="uiMode === 'advanced'"
+            :single-hint="t('wizard.subscription.singleServer')"
+            @added="replaceEarlier"
+            @server="replaceEarlierServer"
+          />
+        </template>
+
+        <template v-else-if="step === 3 && core.settings">
           <h1 class="font-disp text-2xl leading-snug font-normal">{{ t('wizard.start.title') }}</h1>
           <div class="grid gap-2.5">
             <label
@@ -129,7 +186,7 @@ async function finish(): Promise<void> {
           <p class="text-xs text-t3">{{ t('wizard.start.note') }}</p>
         </template>
 
-        <template v-else-if="step === 3">
+        <template v-else-if="step === 4">
           <h1 class="font-disp text-2xl leading-snug font-normal">{{ t('wizard.routing.title') }}</h1>
           <RadioGroup v-model="preset" class="grid gap-2.5" :aria-label="t('wizard.steps.routing')">
             <label

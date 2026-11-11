@@ -113,16 +113,27 @@
   "wizard": {
     "tagline": "Quick setup takes less than a minute.",
     "steps": {
+      "mode": "Mode",
       "subscription": "Subscription",
       "start": "Start",
       "routing": "Routing"
+    },
+    "mode": {
+      "title": "Choose the interface mode",
+      "simple": "Simple",
+      "advanced": "Advanced",
+      "simpleItems": ["A list of servers and a Start button", "Subscriptions in groups", "Ready presets and your own copies", "Only the settings you need"],
+      "advancedItems": ["Everything of the simple mode", "Your own groups and profiles added by hand", "Routing rules, DNS, WARP", "Log, connections, tools"],
+      "note": "The mode can be changed at any time in the app menu."
     },
     "subscription": {
       "title": "Add a subscription",
       "text": "Paste the link from your provider, and Poros will load its servers. It usually comes in an email or from a bot after payment.",
       "label": "Subscription link",
       "checking": "Loading the subscription…",
-      "found": "Subscription found: {servers}, “{name}”"
+      "found": "Subscription found: {servers}, “{name}”",
+      "server": "This is a link to one server. Poros added it as a profile to “{group}”.",
+      "singleServer": "This is a link to one server, not a subscription. Servers are added by hand in the advanced mode, which you can choose in step 1."
     },
     "start": {
       "title": "How to start Poros",
@@ -258,6 +269,9 @@
     "killSwitch": "The kill switch is off during the restart.",
     "reconnect": "The connection comes back by itself.",
     "install": "Restart and update",
+    "confirmTitle": "Restart and update?",
+    "confirmText": "Poros will close, install version {version} and start again. Meanwhile the VPN connection drops and traffic goes directly. Poros reconnects by itself once it starts.",
+    "confirmKillSwitch": "The kill switch is off during the restart too.",
     "installFailed": "The update did not start: {reason}.",
     "failed": {
       "busy": "The update to {version} did not install: a file is held by another program. Poros runs the previous version.",
@@ -908,7 +922,7 @@
     "no_servers": "the subscription has no servers Poros can connect to",
     "invalid_url": "a subscription link starts with http:// or https://",
     "duplicate": "this subscription is already added",
-    "single_server": "This is a link to one server, not a subscription. Poros adds subscriptions only for now.",
+    "single_server": "This is a link to one server, not a subscription. Servers are added by hand in the advanced mode.",
     "subscription_url": "this is a subscription link: add it as a subscription",
     "not_manual": "servers go only to a group of your own, not to a subscription",
     "check_failed": "a part of the check failed",

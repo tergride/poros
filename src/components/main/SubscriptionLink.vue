@@ -6,16 +6,31 @@ import { useI18n } from 'vue-i18n'
 import { Button, Input } from '@/components/ui'
 import { useFailure } from '@/composables/useReason'
 import { useScanScreen } from '@/composables/useScanScreen'
-import type { SubscriptionUpdate } from '@/platform/core-types'
-import { MethodServersList, MethodSubscriptionsAdd } from '@/platform/core-types'
+import { isCoreError } from '@/platform'
+import type { ServersAdded, SubscriptionUpdate } from '@/platform/core-types'
+import {
+  GroupManual,
+  MethodServersAdd,
+  MethodServersList,
+  MethodSubscriptionsAdd,
+  ReasonSingleServer,
+} from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 // The link field of the wizard and of the add dialog: it adds the subscription as soon as the link is in and says
 // what came of it. A server is chosen if there was none.
 // manual leaves the adding to the caller's button instead of doing it on paste and Enter; scan reads the link from a QR
-// code on the screen.
-const props = defineProps<{ large?: boolean; name?: string; manual?: boolean; scan?: boolean }>()
-const emit = defineEmits<{ added: [update: SubscriptionUpdate] }>()
+// code on the screen. servers adds a link to one server as a profile, to the first group of the user's or a new «My
+// servers», instead of refusing it; singleHint is what the refusal says otherwise.
+const props = defineProps<{
+  large?: boolean
+  name?: string
+  manual?: boolean
+  scan?: boolean
+  servers?: boolean
+  singleHint?: string
+}>()
+const emit = defineEmits<{ added: [update: SubscriptionUpdate]; server: [added: ServersAdded] }>()
 
 const core = useCoreStore()
 const describe = useFailure()
@@ -24,6 +39,7 @@ const { t } = useI18n()
 const link = ref('')
 const busy = ref(false)
 const added = ref<SubscriptionUpdate | null>(null)
+const addedServer = ref<ServersAdded | null>(null)
 const failure = ref('')
 // The link tried last: leaving the field does not try it twice. Enter or Add try a failed one again.
 let last = ''
@@ -39,6 +55,7 @@ async function add(again = true): Promise<void> {
   busy.value = true
   failure.value = ''
   added.value = null
+  addedServer.value = null
   try {
     const update = await core.core().call(MethodSubscriptionsAdd, { url: text, name: props.name ?? '' })
     added.value = update
@@ -48,11 +65,27 @@ async function add(again = true): Promise<void> {
     }
     emit('added', update)
   } catch (error) {
-    lastFailed = true
-    failure.value = describe(error)
+    const single = isCoreError(error) && error.data?.reason === ReasonSingleServer
+    try {
+      if (!single || !props.servers) throw error
+      await addServer(text)
+    } catch (refused) {
+      lastFailed = true
+      failure.value = single && !props.servers && props.singleHint ? props.singleHint : describe(refused)
+    }
   } finally {
     busy.value = false
   }
+}
+
+async function addServer(text: string): Promise<void> {
+  const own = core.groups.find((g) => g.kind === GroupManual)
+  const result = await core
+    .core()
+    .call(MethodServersAdd, own ? { groupId: own.id, newGroup: '', text } : { groupId: '', newGroup: t('profiles.myServers'), text })
+  addedServer.value = result
+  if (!core.server && result.ids[0]) await core.updateSettings({ server: result.ids[0] })
+  emit('server', result)
 }
 
 async function paste(): Promise<void> {
@@ -82,7 +115,7 @@ function fill(text: string): void {
   link.value = text
 }
 
-defineExpose({ add, fill, busy, added })
+defineExpose({ add, fill, busy, added, addedServer })
 </script>
 
 <template>
@@ -117,6 +150,10 @@ defineExpose({ add, fill, busy, added })
     <div v-else-if="added" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3" data-testid="link-found">
       <Check class="size-4 text-ok" />
       <span>{{ t('wizard.subscription.found', { servers, name: added.group.name }) }}</span>
+    </div>
+    <div v-else-if="addedServer" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3" data-testid="link-server">
+      <Check class="size-4 text-ok" />
+      <span>{{ t('wizard.subscription.server', { group: addedServer.group.name }) }}</span>
     </div>
     <div v-else-if="failure" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3" data-testid="link-failure">
       <Info class="size-4 flex-none text-warn" /><span>{{ failure }}</span>

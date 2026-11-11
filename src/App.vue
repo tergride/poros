@@ -8,6 +8,7 @@ import LinkPresetDialog from '@/components/main/LinkPresetDialog.vue'
 import LogsDialog from '@/components/shell/LogsDialog.vue'
 import ModeDialog from '@/components/shell/ModeDialog.vue'
 import RestartDialog from '@/components/shell/RestartDialog.vue'
+import UpdateDialog from '@/components/shell/UpdateDialog.vue'
 import TitleBar from '@/components/shell/TitleBar.vue'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
@@ -113,5 +114,6 @@ async function addSubscription(): Promise<void> {
     <LinkPresetDialog />
     <RestartDialog />
     <ModeDialog />
+    <UpdateDialog />
   </div>
 </template>

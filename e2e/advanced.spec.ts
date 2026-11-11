@@ -8,6 +8,7 @@ const shot = (page: Page, name: string) =>
 
 async function throughWizard(page: Page): Promise<void> {
   await page.goto('/')
+  await page.getByRole('button', { name: 'Далее' }).click()
   await page.getByLabel('Ссылка подписки').fill('https://sub.example.com/u/8f3a2c')
   await page.getByLabel('Ссылка подписки').press('Enter')
   await expect(page.getByTestId('link-found')).toBeVisible()
@@ -879,8 +880,32 @@ test('QR codes show the link of a profile and of a code, and a scan of the scree
   await shot(page, 'adv-otp-qr')
 })
 
+test('the wizard in the advanced mode adds a link to one server as a profile and ends on the profiles', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('wizard-mode-advanced').click()
+  await expect(page.getByTestId('wizard-mode-advanced').getByRole('radio')).toBeChecked()
+  await shot(page, 'wizard-mode-advanced')
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByLabel('Ссылка подписки').fill('trojan://p@tr.example.com:443#Home')
+  await page.getByLabel('Ссылка подписки').press('Enter')
+  await expect(page.getByTestId('link-server')).toHaveText('Это ссылка на один сервер. Poros добавил её как профиль в «Мои серверы».')
+  await shot(page, 'wizard-server')
+  // Another link replaces the server the wizard added, rather than leaving it behind.
+  await page.getByLabel('Ссылка подписки').fill('trojan://p@nl.example.com:443#Office')
+  await page.getByLabel('Ссылка подписки').press('Enter')
+  await expect(page.getByTestId('link-server')).toBeVisible()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByRole('button', { name: 'Готово' }).click()
+  await expect(page.getByTestId('profiles-table')).toBeVisible()
+  await expect(page.getByTestId('profile-row')).toHaveCount(1)
+  await expect(page.getByTestId('profile-row')).toContainText('Office')
+  await expect(page.getByTestId('mode-chip')).toHaveText('Расширенный режим')
+})
+
 test('the wizard reads the link of a subscription from a QR code on the screen', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('button', { name: 'Далее' }).click()
   await page.getByTestId('link-scan').click()
   await expect(page.getByTestId('link-failure')).toContainText('QR-код на экране не найден')
   await shot(page, 'wizard-scan-none')

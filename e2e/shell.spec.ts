@@ -8,6 +8,10 @@ const shot = (page: Page, name: string) =>
 
 async function throughWizard(page: Page): Promise<void> {
   await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Выберите режим интерфейса' })).toBeVisible()
+  await expect(page.getByTestId('wizard-mode-simple').getByRole('radio')).toBeChecked()
+  await shot(page, 'wizard-0-mode')
+  await page.getByRole('button', { name: 'Далее' }).click()
   await expect(page.getByRole('heading', { name: 'Добавьте подписку' })).toBeVisible()
   await shot(page, 'wizard-1')
   await page.getByLabel('Ссылка подписки').fill('https://sub.example.com/u/8f3a2c')
@@ -45,6 +49,17 @@ test('a first start goes through the wizard to the servers', async ({ page }) =>
   await page.getByRole('button', { name: 'Проверить серверы' }).click()
   await expect(page.getByTestId('server').first()).toContainText('42 мс')
   await expect(page.getByTestId('server').nth(2)).toContainText('нет ответа')
+})
+
+test('the wizard of the simple mode points a link to one server to the advanced mode', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Далее' }).click()
+  await page.getByLabel('Ссылка подписки').fill('trojan://p@tr.example.com:443#Home')
+  await page.getByLabel('Ссылка подписки').press('Enter')
+  await expect(page.getByTestId('link-failure')).toHaveText(
+    'Это ссылка на один сервер, а не подписка. Серверы вручную добавляются в расширенном режиме, его можно выбрать на шаге 1.',
+  )
+  await shot(page, 'wizard-1-single')
 })
 
 test('the address of the local proxy says what it is and copies its links', async ({ page }) => {
@@ -443,6 +458,9 @@ test('an update is checked from the menu, downloaded and offered over the server
   await expect(page.getByTestId('updates').getByRole('button', { name: 'Перезапустить и обновить' })).toBeVisible()
   await expect(page.getByText('Проверять обновления автоматически')).toBeVisible()
   await shot(page, 'settings-help-ready')
+  // Without a connection the update installs at once, without a question.
+  await page.getByTestId('updates').getByRole('button', { name: 'Перезапустить и обновить' }).click()
+  await expect(page.getByRole('dialog', { name: 'Перезапустить и обновить?' })).toBeHidden()
 
   await page.getByRole('link', { name: 'К серверам' }).click()
   await expect(page.getByTestId('update-ready')).toHaveText(/Готово обновление Poros 0\.1\.1\./)
@@ -451,6 +469,18 @@ test('an update is checked from the menu, downloaded and offered over the server
   await page.getByTestId('start').click()
   await expect(page.getByTestId('update-ready')).toContainText('Подключение вернётся само.')
   await shot(page, 'main-update-ready')
+  // A running connection drops for the restart: Poros asks first, and Cancel leaves everything as it was.
+  await page.getByTestId('update-ready').getByRole('button', { name: 'Перезапустить и обновить' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Перезапустить и обновить?' })
+  await expect(confirm).toContainText('подключение к VPN прервётся, и трафик пойдёт напрямую')
+  await expect(confirm).not.toContainText('Kill switch')
+  await shot(page, 'main-update-confirm')
+  await confirm.getByRole('button', { name: 'Отмена' }).click()
+  await expect(confirm).toBeHidden()
+  await expect(page.getByTestId('portal-state')).toContainText('Подключено')
+  await page.getByTestId('update-ready').getByRole('button', { name: 'Перезапустить и обновить' }).click()
+  await page.getByTestId('update-confirm').click()
+  await expect(confirm).toBeHidden()
   await page.getByTestId('update-ready').getByRole('button', { name: 'Позже' }).click()
   await expect(page.getByTestId('update-ready')).toBeHidden()
 })
