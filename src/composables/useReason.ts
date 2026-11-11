@@ -24,6 +24,7 @@ const detailed = new Set([
   'logon_task_failed',
   'update_failed',
   'check_failed',
+  'invalid_backup',
 ])
 
 /** A reason as a sentence of its own: the strings are written to go inside a phrase. */

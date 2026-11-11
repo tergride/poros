@@ -89,6 +89,9 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodOTPLink:             withParams(func(p ByID) (OTPLink, error) { return e.OTPLink(p.ID) }),
 		MethodQREncode:            withParams(e.EncodeQR),
 		MethodQRScan:              noParams(e.ScanQR),
+		MethodBackupCreate:        withParams(e.CreateBackup),
+		MethodBackupInspect:       withParams(e.InspectBackup),
+		MethodBackupRestore:       withParams(e.RestoreBackup),
 	}
 }
 

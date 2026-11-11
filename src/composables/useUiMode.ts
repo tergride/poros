@@ -7,8 +7,8 @@ import { useCoreStore } from '@/stores/core'
 export type UiMode = 'simple' | 'advanced'
 
 /** The settings pages each mode has, by the id in its routes. */
-const simpleSettings = ['presets', 'conn', 'subs', 'start', 'look', 'help']
-export const advancedSettings = ['conn', 'subs', 'start', 'look', 'help']
+const simpleSettings = ['presets', 'conn', 'subs', 'start', 'look', 'backup', 'help']
+export const advancedSettings = ['conn', 'subs', 'start', 'look', 'help', 'backup']
 
 /**
  * The screen of a mode that stands for path: the same settings page, the profiles for the servers, the same preset in

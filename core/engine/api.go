@@ -1137,6 +1137,50 @@ type QRScan struct {
 	Texts []string `json:"texts"`
 }
 
+// Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
+// all settings of the core, otp the codes of «Tools → OTP».
+const (
+	BackupProfiles = "profiles"
+	BackupRouting  = "routing"
+	BackupSettings = "settings"
+	BackupOTP      = "otp"
+)
+
+// BackupParts picks the parts of a backup.
+type BackupParts struct {
+	Parts []string `json:"parts"`
+}
+
+// BackupFile is a backup to save: its JSON and a name for the file.
+type BackupFile struct {
+	Name string `json:"name"`
+	Text string `json:"text"`
+}
+
+// BackupText is a backup read from a file.
+type BackupText struct {
+	Text string `json:"text"`
+}
+
+// BackupRestore is a backup read from a file and the parts of it to put in place of the current ones; no parts are
+// all it has.
+type BackupRestore struct {
+	Text  string   `json:"text"`
+	Parts []string `json:"parts"`
+}
+
+// BackupInfo is what a backup holds: when and by which Poros it was made, its parts and how much of each.
+type BackupInfo struct {
+	// Created is in Unix milliseconds.
+	Created int64    `json:"created"`
+	Version string   `json:"version"`
+	Parts   []string `json:"parts"`
+	Groups  int      `json:"groups"`
+	Servers int      `json:"servers"`
+	Presets int      `json:"presets"`
+	Codes   int      `json:"codes"`
+}
+
 // Methods the core answers.
 const (
 	MethodAppInfo = "app.info"
@@ -1261,6 +1305,11 @@ const (
 	// keeps itself out of the snapshot while it scans.
 	MethodQREncode = "qr.encode"
 	MethodQRScan   = "qr.scan"
+	// MethodBackupCreate gives a backup of the parts asked for; MethodBackupInspect tells what a backup holds, and
+	// MethodBackupRestore checks it whole, stops the connection and puts its parts in place, each whole.
+	MethodBackupCreate  = "backup.create"
+	MethodBackupInspect = "backup.inspect"
+	MethodBackupRestore = "backup.restore"
 )
 
 // Events the core sends without a request.
@@ -1378,4 +1427,7 @@ const (
 	// ReasonScanFailed one the system refused.
 	ReasonScanUnsupported = "scan_unsupported"
 	ReasonScanFailed      = "scan_failed"
+	// ReasonInvalidBackup is a file that is no backup of Poros, or one with a part that cannot be taken; the message
+	// says what.
+	ReasonInvalidBackup = "invalid_backup"
 )

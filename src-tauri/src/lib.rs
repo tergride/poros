@@ -6,6 +6,7 @@ mod data_dir;
 mod fatal;
 mod hotkeys;
 mod instance;
+mod savefile;
 mod screen;
 mod system;
 mod tray;
@@ -166,6 +167,34 @@ fn app_capture_exclude(app: AppHandle, on: bool) -> Result<(), String> {
         .get_webview_window("main")
         .ok_or_else(|| "there is no window".to_string())?;
     screen::exclude_from_capture(&window, on).map_err(|e| e.to_string())
+}
+
+/// Asks where to save a file the interface made, a backup, and writes it there: the path, or None when the user
+/// cancels. The window of the system waits for the user off the main thread.
+#[tauri::command]
+async fn app_save_file(
+    app: AppHandle,
+    name: String,
+    kind: String,
+    text: String,
+) -> Result<Option<String>, String> {
+    #[cfg(windows)]
+    let owner = app
+        .get_webview_window("main")
+        .and_then(|w| w.hwnd().ok())
+        .map_or(0, |h| h.0 as isize);
+    #[cfg(not(windows))]
+    let owner = {
+        let _ = &app;
+        0
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        savefile::save(owner, &name, &kind, "*.json", &text)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map(|path| path.map(|p| p.display().to_string()))
+    .map_err(|e| e.to_string())
 }
 
 /// The actions whose shortcut Windows refused: another program holds it.
@@ -468,6 +497,7 @@ pub fn run() {
             app_copy,
             app_capture_exclude,
             hotkeys_failed,
+            app_save_file,
             take_links,
             url_scheme_get,
             url_scheme_set,

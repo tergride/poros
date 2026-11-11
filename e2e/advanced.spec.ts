@@ -989,3 +989,56 @@ test('«Hotkeys» records shortcuts, names the wrong ones, and the window and Wi
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('poros-hotkey', { detail: 'system' })))
   await expect(page.getByTestId('system')).toHaveAttribute('aria-checked', 'true')
 })
+
+test('«Backup» saves the chosen parts in a file and restores them after showing what it holds', async ({ page }) => {
+  await toAdvanced(page)
+  await page.getByTestId('rail-settings').click()
+  await page.locator('a[href="#/adv/settings/backup"]').click()
+  await page.getByTestId('backup-part-otp').getByRole('switch').click()
+  await shot(page, 'adv-backup')
+  const saving = page.waitForEvent('download')
+  await page.getByTestId('backup-create').click()
+  const download = await saving
+  expect(download.suggestedFilename()).toMatch(/^poros-backup-\d{4}-\d{2}-\d{2}\.json$/)
+  const file = (await download.path())!
+  const text = (await import('node:fs')).readFileSync(file, 'utf8')
+  expect(JSON.parse(text).parts).toEqual(['profiles', 'routing', 'settings'])
+
+  // A setting changed since, put back by the backup.
+  await page.locator('a[href="#/adv/settings/logging"]').click()
+  await page.getByTestId('log-lines').fill('900')
+  await page.getByTestId('settings-save').click()
+  await page.locator('a[href="#/adv/settings/backup"]').click()
+  await page.getByTestId('backup-file').setInputFiles(file)
+  const dialog = page.getByTestId('restore-dialog')
+  await expect(dialog).toContainText('серверов: 3')
+  await expect(dialog.getByTestId('restore-part-otp')).toHaveCount(0)
+  await dialog.getByTestId('restore-part-profiles').click()
+  await shot(page, 'adv-backup-restore')
+  await page.getByTestId('restore-confirm').click()
+  await expect(page.getByTestId('backup-restored')).toContainText('Восстановлено из копии от')
+  await page.locator('a[href="#/adv/settings/logging"]').click()
+  await expect(page.getByTestId('log-lines')).toHaveValue('500')
+
+  // A file of something else is refused, nothing changes.
+  await page.locator('a[href="#/adv/settings/backup"]').click()
+  await page.getByTestId('backup-file').setInputFiles({ name: 'other.json', mimeType: 'application/json', buffer: Buffer.from('{"kind":"poros-route"}') })
+  await expect(page.getByTestId('notice')).toContainText('Это не резервная копия Poros')
+})
+
+test('the simple mode keeps all of its data in one backup and puts all of it back', async ({ page }) => {
+  await throughWizard(page)
+  await page.getByTestId('portal-settings').click()
+  await page.locator('a[href="#/settings/backup"]').click()
+  const saving = page.waitForEvent('download')
+  await page.getByTestId('backup-create').click()
+  const file = (await (await saving).path())!
+  await page.getByTestId('backup-file').setInputFiles(file)
+  const dialog = page.getByTestId('restore-dialog')
+  await expect(dialog).toContainText('Профили')
+  await expect(dialog).toContainText('Текущие данные заменятся данными из файла.')
+  await expect(dialog.getByRole('checkbox')).toHaveCount(0)
+  await shot(page, 'simple-backup-restore')
+  await page.getByTestId('restore-confirm').click()
+  await expect(page.getByTestId('backup-restored')).toBeVisible()
+})

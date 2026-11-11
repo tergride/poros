@@ -68,6 +68,19 @@ export const appControls = {
   copy: (text: string): Promise<void> => (inTauri ? invoke('app_copy', { text }) : navigator.clipboard.writeText(text)),
   /** Keeps the window out of snapshots of the screen, while the core reads the QR codes on it, or lets it back in. */
   excludeFromCapture: (on: boolean): Promise<void> => (inTauri ? invoke('app_capture_exclude', { on }) : Promise.resolve()),
+  /**
+   * Asks where to save a file the interface made, as a backup, and writes it: the path, or null when the user cancels.
+   * Outside Tauri the browser downloads it.
+   */
+  saveFile: async (name: string, kind: string, text: string): Promise<string | null> => {
+    if (inTauri) return invoke<string | null>('app_save_file', { name, kind, text })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+    link.download = name
+    link.click()
+    URL.revokeObjectURL(link.href)
+    return name
+  },
 }
 
 /** The shortcuts of Windows: their actions as they are pressed, and the ones another program holds. */

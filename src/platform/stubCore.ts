@@ -16,9 +16,12 @@ import type {
   SubscriptionUpdate,
   UpdateState,
   WARPDevice,
+  BackupInfo,
+  OTPEntry,
 } from './core-types'
 import {
   ActionBlock,
+  ReasonInvalidBackup,
   ActionDirect,
   ActionEndpoint,
   ActionProxy,
@@ -53,6 +56,9 @@ import {
   LinkServer,
   MethodAppDebugInfo,
   MethodAppInfo,
+  MethodBackupCreate,
+  MethodBackupInspect,
+  MethodBackupRestore,
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
@@ -365,6 +371,45 @@ const closedConnections = new Set<string>()
 const startedAt = Date.now()
 
 const presetLinkPrefix = 'poros://route/'
+
+const backupParts = ['profiles', 'routing', 'settings', 'otp']
+
+/** A backup as the stub writes it: as the core's, but servers with their profiles side by side. */
+interface StubBackup {
+  kind: string
+  v: number
+  version: string
+  created: number
+  parts: string[]
+  groups?: Group[]
+  servers?: { server: Server; profile: Profile }[]
+  presets?: PresetCopy[]
+  settings?: Settings
+  otp?: OTPEntry[]
+}
+
+function readBackup(text: string): StubBackup {
+  let file: StubBackup
+  try {
+    file = JSON.parse(text) as StubBackup
+  } catch {
+    throw failed(ReasonInvalidBackup, 'the file is no JSON of a backup')
+  }
+  if (file?.kind !== 'poros-backup' || file.v !== 1) throw failed(ReasonInvalidBackup, 'the file is no backup of Poros')
+  return file
+}
+
+function backupInfo(file: StubBackup): BackupInfo {
+  return {
+    created: file.created,
+    version: file.version,
+    parts: file.parts,
+    groups: file.groups?.length ?? 0,
+    servers: file.servers?.length ?? 0,
+    presets: file.presets?.length ?? 0,
+    codes: file.otp?.length ?? 0,
+  }
+}
 
 function failed(reason: string, message: string): CoreError {
   return { code: 1, message, data: { reason } }
@@ -1131,6 +1176,48 @@ export function createStubCore(): CoreClient {
     [MethodOTPLink]: ({ id }) => ({ link: otp.link(id) }),
     [MethodQREncode]: ({ text }) => stubQrEncode(text),
     [MethodQRScan]: () => stubQrScan(),
+    [MethodBackupCreate]: ({ parts }) => {
+      if (parts.length === 0) throw failed(ReasonInvalidBackup, 'a backup needs a part')
+      const has = (part: string) => parts.includes(part)
+      const file: StubBackup = {
+        kind: 'poros-backup',
+        v: 1,
+        version: '0.1.0',
+        created: Date.now(),
+        parts: backupParts.filter(has),
+        ...(has('profiles') ? { groups, servers: servers.map((server) => ({ server, profile: profiles.get(server.id)! })) } : {}),
+        ...(has('routing') ? { presets: copies } : {}),
+        ...(has('settings') ? { settings } : {}),
+        ...(has('otp') ? { otp: otp.all() } : {}),
+      }
+      return { name: `poros-backup-${new Date().toISOString().slice(0, 10)}.json`, text: JSON.stringify(file, null, 2) }
+    },
+    [MethodBackupInspect]: ({ text }) => backupInfo(readBackup(text)),
+    [MethodBackupRestore]: ({ text, parts }) => {
+      const file = readBackup(text)
+      const chosen = parts.length ? parts : file.parts
+      if (chosen.some((part) => !file.parts.includes(part))) throw failed(ReasonInvalidBackup, 'the backup has no such part')
+      if (connection.state !== ConnectionIdle) setConnection({ ...idle })
+      if (chosen.includes('profiles')) {
+        groups = file.groups ?? []
+        servers = (file.servers ?? []).map((x) => x.server)
+        profiles.clear()
+        for (const x of file.servers ?? []) profiles.set(x.server.id, x.profile)
+      }
+      if (chosen.includes('routing')) {
+        copies = file.presets ?? []
+        emit(EventPresetsChanged, presetList())
+      }
+      if (chosen.includes('otp')) otp.replace(file.otp ?? [])
+      const next = chosen.includes('settings') && file.settings ? { ...file.settings } : { ...settings }
+      if (!presetList().some((p) => p.id === next.preset)) next.preset = 'all'
+      if (next.server && !servers.some((s) => s.id === next.server)) next.server = ''
+      settings = next
+      emit(EventSettingsChanged, { ...settings })
+      emit(EventGroupsChanged, groupList())
+      emit(EventServersChanged, { groupId: '' })
+      return backupInfo(file)
+    },
     [MethodConnectionStart]: () => {
       setConnection({ ...idle, state: ConnectionStarting })
       settle(() => {

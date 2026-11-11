@@ -1646,6 +1646,68 @@ export interface QRScan {
   texts: string[];
 }
 /**
+ * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
+ * all settings of the core, otp the codes of «Tools → OTP».
+ */
+export const BackupProfiles = "profiles";
+/**
+ * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
+ * all settings of the core, otp the codes of «Tools → OTP».
+ */
+export const BackupRouting = "routing";
+/**
+ * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
+ * all settings of the core, otp the codes of «Tools → OTP».
+ */
+export const BackupSettings = "settings";
+/**
+ * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
+ * all settings of the core, otp the codes of «Tools → OTP».
+ */
+export const BackupOTP = "otp";
+/**
+ * BackupParts picks the parts of a backup.
+ */
+export interface BackupParts {
+  parts: string[];
+}
+/**
+ * BackupFile is a backup to save: its JSON and a name for the file.
+ */
+export interface BackupFile {
+  name: string;
+  text: string;
+}
+/**
+ * BackupText is a backup read from a file.
+ */
+export interface BackupText {
+  text: string;
+}
+/**
+ * BackupRestore is a backup read from a file and the parts of it to put in place of the current ones; no parts are
+ * all it has.
+ */
+export interface BackupRestore {
+  text: string;
+  parts: string[];
+}
+/**
+ * BackupInfo is what a backup holds: when and by which Poros it was made, its parts and how much of each.
+ */
+export interface BackupInfo {
+  /**
+   * Created is in Unix milliseconds.
+   */
+  created: number /* int64 */;
+  version: string;
+  parts: string[];
+  groups: number /* int */;
+  servers: number /* int */;
+  presets: number /* int */;
+  codes: number /* int */;
+}
+/**
  * Methods the core answers.
  */
 export const MethodAppInfo = "app.info";
@@ -1937,6 +1999,19 @@ export const MethodQREncode = "qr.encode";
  */
 export const MethodQRScan = "qr.scan";
 /**
+ * MethodBackupCreate gives a backup of the parts asked for; MethodBackupInspect tells what a backup holds, and
+ * MethodBackupRestore checks it whole, stops the connection and puts its parts in place, each whole.
+ */
+export const MethodBackupCreate = "backup.create";
+/**
+ * Methods the core answers.
+ */
+export const MethodBackupInspect = "backup.inspect";
+/**
+ * Methods the core answers.
+ */
+export const MethodBackupRestore = "backup.restore";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -2181,3 +2256,8 @@ export const ReasonScanUnsupported = "scan_unsupported";
  * Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
  */
 export const ReasonScanFailed = "scan_failed";
+/**
+ * ReasonInvalidBackup is a file that is no backup of Poros, or one with a part that cannot be taken; the message
+ * says what.
+ */
+export const ReasonInvalidBackup = "invalid_backup";

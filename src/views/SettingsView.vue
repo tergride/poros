@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ArrowLeft, Globe, Info, Layers, Link, Palette, Power, Signpost, X } from '@lucide/vue'
+import { ArrowLeft, Download, Globe, Info, Layers, Link, Palette, Power, Signpost, X } from '@lucide/vue'
 import { type Component, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import CoreBanner from '@/components/main/CoreBanner.vue'
+import BackupPage from '@/components/settings/BackupPage.vue'
 import ConnPage from '@/components/settings/ConnPage.vue'
 import DnsPage from '@/components/settings/DnsPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
@@ -28,6 +29,7 @@ const pages: { id: string; icon: Component; page: Component }[] = [
   { id: 'subs', icon: Link, page: SubsPage },
   { id: 'start', icon: Power, page: StartPage },
   { id: 'look', icon: Palette, page: LookPage },
+  { id: 'backup', icon: Download, page: BackupPage },
   { id: 'help', icon: Info, page: HelpPage },
 ]
 const current = computed(() => pages.find((p) => p.id === route.params.page) ?? pages[0]!)

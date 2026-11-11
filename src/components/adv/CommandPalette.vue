@@ -34,7 +34,7 @@ interface Item {
 
 // The pages of «Settings» of the advanced mode, in the order of their list.
 const basicPages = ['conn', 'dns', 'subs', 'start', 'look', 'help']
-const morePages = ['inbound', 'tests', 'tun', 'protocols', 'net', 'security', 'logging', 'hotkeys']
+const morePages = ['inbound', 'tests', 'tun', 'protocols', 'net', 'security', 'logging', 'hotkeys', 'backup']
 // Names the pages show as they are, untranslated: the terms of sing-box.
 const literals: Record<string, string[]> = {
   tun: ['MTU', 'Strict Route', 'TUN Routing', 'IPv4 CIDR', 'IPv6 CIDR'],

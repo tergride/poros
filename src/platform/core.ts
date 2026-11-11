@@ -6,6 +6,11 @@ import type {
   AddServers,
   AddSubscription,
   AppInfo,
+  BackupFile,
+  BackupInfo,
+  BackupParts,
+  BackupRestore,
+  BackupText,
   ByID,
   CleanServers,
   ConfigureGroup,
@@ -81,6 +86,9 @@ import {
   EventOTPChanged,
   MethodAppDebugInfo,
   MethodAppInfo,
+  MethodBackupCreate,
+  MethodBackupInspect,
+  MethodBackupRestore,
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
@@ -219,6 +227,9 @@ export interface CoreMethods {
   [MethodOTPLink]: { params: ByID; result: OTPLink }
   [MethodQREncode]: { params: QRText; result: QRCode }
   [MethodQRScan]: { params: undefined; result: QRScan }
+  [MethodBackupCreate]: { params: BackupParts; result: BackupFile }
+  [MethodBackupInspect]: { params: BackupText; result: BackupInfo }
+  [MethodBackupRestore]: { params: BackupRestore; result: BackupInfo }
 }
 
 export interface CoreEvents {

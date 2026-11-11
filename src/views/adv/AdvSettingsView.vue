@@ -2,6 +2,7 @@
 import {
   ArrowRightLeft,
   Check,
+  Download,
   Gauge,
   Globe,
   Info,
@@ -21,6 +22,7 @@ import { type Component, computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 
+import BackupPage from '@/components/settings/BackupPage.vue'
 import ConnPage from '@/components/settings/ConnPage.vue'
 import DnsPage from '@/components/settings/DnsPage.vue'
 import HelpPage from '@/components/settings/HelpPage.vue'
@@ -77,6 +79,7 @@ const groups: { id: string; pages: Page[] }[] = [
       { id: 'security', icon: Shield, page: SecurityPage },
       { id: 'logging', icon: ScrollText, page: LogPage },
       { id: 'hotkeys', icon: Keyboard, page: HotkeysPage },
+      { id: 'backup', icon: Download, page: BackupPage },
     ],
   },
 ]

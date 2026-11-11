@@ -319,7 +319,8 @@
       "net": "Network",
       "security": "Security",
       "logging": "Log",
-      "hotkeys": "Hotkeys"
+      "hotkeys": "Hotkeys",
+      "backup": "Backup"
     },
     "presets": {
       "lead": "A preset decides which traffic goes through the server and which goes directly. Built-in presets do not change: to add your own settings, make a copy or a new preset.",
@@ -598,6 +599,48 @@
       "needsCtrl": "It needs Ctrl or Alt, or it would type. Without them, only the keys F1–F24.",
       "takenBy": "This shortcut is taken by «{name}».",
       "takenOutside": "Another program holds {keys}. Choose another shortcut."
+    },
+    "backup": {
+      "lead": "Subscriptions, presets and settings in one file.",
+      "create": "Create a backup",
+      "createHint": "The file can move to another computer. It holds the keys of the servers as plain text — keep it like a password.",
+      "createButton": "Create",
+      "restore": "Restore from a backup",
+      "restoreHint": "Poros shows what the file holds and replaces the current data.",
+      "choose": "Choose a file",
+      "createTitle": "Create a backup",
+      "part": {
+        "profiles": "Profiles",
+        "routing": "Routing",
+        "settings": "Settings",
+        "otp": "OTP"
+      },
+      "partHint": {
+        "profiles": "Subscriptions and your groups with their settings and servers.",
+        "routing": "Your presets.",
+        "settings": "All settings of Poros, DNS and WARP among them.",
+        "otp": "The codes of «Tools → OTP»."
+      },
+      "secret": "The file holds the keys of the servers and the OTP secrets as plain text. Keep it like a password.",
+      "createMore": "Create a backup…",
+      "restoreTitle": "Restore",
+      "restoreChosenHint": "Poros shows what the file holds and replaces the parts you choose. The connection stops.",
+      "chooseMore": "Choose a file…",
+      "kind": "Poros backup",
+      "saved": "The backup is saved: {path}",
+      "restored": "Restored from the backup of {date}.",
+      "dialogTitle": "Restore from the backup?",
+      "from": "{file} — a backup of {date}, Poros {version}.",
+      "amount": {
+        "profiles": "groups: {groups}, servers: {servers}",
+        "routing": "own presets: {n}",
+        "settings": "all settings of Poros",
+        "otp": "codes: {n}"
+      },
+      "replaceChosen": "The parts you check replace the current ones whole; the rest stays.",
+      "replaceAll": "The data of the file replaces the current data.",
+      "stops": "The connection stops.",
+      "restoreButton": "Restore"
     }
   },
   "linkPreset": {
@@ -895,7 +938,8 @@
     "invalid_otp": "the OTP code was not saved",
     "qr_too_long": "the link is longer than a QR code holds",
     "scan_unsupported": "Poros cannot take a snapshot of the screen on this system yet",
-    "scan_failed": "Windows refused a snapshot of the screen"
+    "scan_failed": "Windows refused a snapshot of the screen",
+    "invalid_backup": "this is no backup of Poros, or it has an error"
   },
   "units": {
     "B": "B",

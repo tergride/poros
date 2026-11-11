@@ -131,6 +131,12 @@ export function createStubOtp(announce: (codes: OTPCode[]) => void, nextId: () =
       return code
     },
     get: (id: string): OTPEntry => ({ ...entries[index(id)]! }),
+    all: (): OTPEntry[] => entries.map((e) => ({ ...e })),
+    // A backup puts its codes in place of these.
+    replace(next: OTPEntry[]): void {
+      entries = next.map((e) => ({ ...e }))
+      changed()
+    },
     has: (id: string) => entries.some((e) => e.id === id),
     parse: parseOtp,
     import(text: string): OTPImported {
