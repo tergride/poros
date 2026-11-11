@@ -895,7 +895,6 @@
       "tools": "Tools",
       "settings": "Settings"
     },
-    "soon": "This section is still being built and comes in one of the next builds.",
     "presetsMore": "Presets…",
     "selected": "Chosen: {name}",
     "settings": {
@@ -1062,7 +1061,38 @@
         "bad_json": "the JSON cannot be read",
         "unknown": "this is no otpauth:// link, JSON or secret"
       },
-      "qrTitle": "QR code «{name}»"
+      "qrTitle": "QR code «{name}»",
+      "speedTitle": "Speed test of the current profile",
+      "speedHint": "Server: {name}. The test runs on its own, the connection goes on. The mode and the address are in «Settings → Tests».",
+      "speedNoServer": "No server is chosen. Choose one in «Profiles».",
+      "speedRunning": "Measuring «{name}»…",
+      "speedServer": "Server",
+      "speedDown": "Download",
+      "speedUp": "Upload",
+      "speedCountry": "Exit country",
+      "speedWhen": "When",
+      "speedError": "Error",
+      "speedStart": "Start",
+      "speedAgain": "Again",
+      "speedStop": "Stop"
+    },
+    "palette": {
+      "button": "Search",
+      "title": "Search",
+      "placeholder": "Settings, actions, profiles and presets",
+      "group": {
+        "settings": "Settings",
+        "actions": "Actions",
+        "profiles": "Profiles",
+        "presets": "Presets"
+      },
+      "testAll": "Test the delay of all servers",
+      "builtin": "built-in",
+      "advanced": "advanced",
+      "nothing": "Nothing found",
+      "move": "move",
+      "open": "open",
+      "close": "close"
     }
   },
   "profiles": {

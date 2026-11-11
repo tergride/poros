@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, Copy, FolderOpen, RefreshCw, ScrollText, Zap } from '@lucide/vue'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -9,7 +9,7 @@ import SettingsCard from '@/components/settings/SettingsCard.vue'
 import UpdateRows from '@/components/settings/UpdateRows.vue'
 import { Button, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
-import { useConnect } from '@/composables/useConnect'
+import { useResetConnection } from '@/composables/useResetConnection'
 import { useSetting } from '@/composables/useSetting'
 import { useSettingsDraft } from '@/composables/useSettingsDraft'
 import { appControls } from '@/platform'
@@ -21,11 +21,10 @@ import { useUiStore } from '@/stores/ui'
 // adds the debug information for a report, the data folder and beta versions.
 const core = useCoreStore()
 const ui = useUiStore()
-const connect = useConnect()
 const router = useRouter()
 const { t } = useI18n()
 const advanced = useSettingsDraft() !== null
-const resetting = ref(false)
+const { reset, resetting } = useResetConnection()
 const debugLog = useSetting('debugLog')
 const beta = useSetting('updateBeta')
 const attempt = useAttempt()
@@ -37,29 +36,6 @@ async function copyDebugInfo(): Promise<void> {
   await navigator.clipboard.writeText(await core.core().call(MethodAppDebugInfo))
   copied.value = true
   setTimeout(() => (copied.value = false), 2000)
-}
-
-/** A new core with the same rights, and the connection back if there was one. */
-async function reset(): Promise<void> {
-  const wasRunning = core.running
-  resetting.value = true
-  try {
-    await (core.status.elevated ? core.core().elevate() : core.core().restart())
-    await new Promise<void>((resolve) => {
-      const stop = watch(
-        () => core.status.state === 'ready' && core.loaded,
-        (ready) => {
-          if (ready) {
-            stop()
-            resolve()
-          }
-        },
-      )
-    })
-    if (wasRunning) await connect.start()
-  } finally {
-    resetting.value = false
-  }
 }
 </script>
 

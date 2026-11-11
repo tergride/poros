@@ -46,5 +46,7 @@ export const useUiStore = defineStore('ui', () => {
   // «New profile» and the profile editor of the advanced mode.
   const profilePicker = ref<ProfileTarget | null>(null)
   const profileEdit = ref<ProfileEdit | null>(null)
-  return { addSubscription, addPrefill, linkPreset, logs, notice, modeDialog, linkServer, profilePicker, profileEdit }
+  // A profile the search picked: «Profiles» shows its group and selects it.
+  const focusServer = ref('')
+  return { addSubscription, addPrefill, linkPreset, logs, notice, modeDialog, linkServer, profilePicker, profileEdit, focusServer }
 })

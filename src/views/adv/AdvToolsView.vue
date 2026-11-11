@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { Hammer } from '@lucide/vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import OtpTab from '@/components/adv/OtpTab.vue'
+import SpeedCard from '@/components/adv/SpeedCard.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui'
 
-// «Tools» of the advanced mode: the codes of OTP, and the rest.
+// «Tools» of the advanced mode: the codes of OTP, and the speed test of the chosen server.
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
@@ -27,11 +27,8 @@ const tab = computed({
       </TabsList>
     </Tabs>
     <OtpTab v-if="tab === 'otp'" />
-    <section v-else class="grid flex-1 place-items-center p-10 text-center" data-testid="section-soon">
-      <div class="grid max-w-[420px] justify-items-center gap-3">
-        <Hammer class="size-8 text-t3" />
-        <p class="text-t2">{{ t('adv.soon') }}</p>
-      </div>
-    </section>
+    <div v-else class="min-h-0 flex-1 overflow-auto px-3.5 py-3.5">
+      <div class="grid grid-cols-2 gap-3"><SpeedCard /></div>
+    </div>
   </div>
 </template>

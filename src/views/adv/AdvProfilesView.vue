@@ -30,7 +30,7 @@ import {
   X,
   Zap,
 } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import GroupEditor from '@/components/adv/GroupEditor.vue'
@@ -83,6 +83,21 @@ const rows = computed(() => {
   )
 })
 const selection = useSelection(computed(() => rows.value.map((s) => s.id)))
+// A profile the search picked: its group, the row selected and in sight.
+watch(
+  () => ui.focusServer,
+  async (id) => {
+    const server = id ? core.servers.find((s) => s.id === id) : undefined
+    if (!server) return
+    ui.focusServer = ''
+    groupId.value = server.groupId
+    query.value = ''
+    await nextTick()
+    selection.click(id)
+    document.querySelector(`[data-server-id="${id}"]`)?.scrollIntoView({ block: 'nearest' })
+  },
+  { immediate: true },
+)
 const picked = computed(() => rows.value.filter((s) => selection.isSelected(s.id)))
 const one = computed(() => (picked.value.length === 1 ? picked.value[0]! : null))
 watch(groupId, () => selection.clear())
@@ -359,6 +374,7 @@ async function importEntered(): Promise<void> {
                       running(s) && 'text-ok',
                     ]"
                     data-testid="profile-row"
+                    :data-server-id="s.id"
                     @click="onRowClick($event, s)"
                     @dblclick="actions.start(s.id)"
                     @contextmenu="selection.contextOn(s.id)"
