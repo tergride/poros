@@ -57,7 +57,7 @@ const ways = computed(() => [
     </SettingsCard>
     <SettingsCard :title="t('settings.dns.how')">
       <OptionRow :title="t('settings.dns.routing')" :hint="t('settings.dns.routingHint')" :note="t('settings.dns.routingNote')">
-        <Segmented v-model="routing" :options="ways" :aria-label="t('settings.dns.routing')" data-testid="dns-routing" />
+        <Segmented v-model="routing" :options="ways" :disabled="!!object" :aria-label="t('settings.dns.routing')" data-testid="dns-routing" />
       </OptionRow>
       <OptionRow :title="t('settings.dns.fakeIp')" :hint="t('settings.dns.fakeIpHint')" :note="t('settings.dns.fakeIpNote')">
         <Switch v-model="fakeIp" data-testid="fake-ip" />

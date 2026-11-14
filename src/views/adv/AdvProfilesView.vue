@@ -176,10 +176,26 @@ function testGroup(): Promise<void> {
   return attempt(() => core.testServers(group.value?.id ?? ''))
 }
 
+// The table on the keyboard, as a list of Windows: the arrows, Home and End move the selection and take a range with
+// Shift, Enter connects to the one selected profile as a double click does.
+const moves: Record<string, number> = { ArrowDown: 1, ArrowUp: -1, Home: -Infinity, End: Infinity }
 function onKey(event: KeyboardEvent): void {
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+  const ctrl = event.ctrlKey || event.metaKey
+  if (ctrl && event.key.toLowerCase() === 'a') {
     event.preventDefault()
     selection.selectAll()
+    return
+  }
+  if (ctrl || event.altKey) return
+  const delta = moves[event.key]
+  if (delta !== undefined) {
+    event.preventDefault()
+    const id = selection.step(delta, { shift: event.shiftKey })
+    const box = event.currentTarget as HTMLElement
+    void nextTick(() => box.querySelector(`[data-server-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }))
+  } else if (event.key === 'Enter' && one.value) {
+    event.preventDefault()
+    void actions.start(one.value.id)
   }
 }
 
@@ -302,33 +318,38 @@ async function importEntered(): Promise<void> {
 
     <section class="flex min-h-0 min-w-0 flex-1 flex-col">
       <template v-if="group">
-        <div class="flex flex-none items-center gap-3 border-b border-line px-4 py-3">
-          <div class="min-w-0 flex-1">
+        <!-- In a narrow window the quota and the buttons go under the name rather than past the edge. -->
+        <div class="flex flex-none flex-wrap items-center gap-3 border-b border-line px-4 py-3">
+          <div class="min-w-[180px] flex-1">
             <h2 class="truncate font-disp text-[17px] font-normal" data-testid="group-title">{{ group.name }}</h2>
             <small class="block truncate text-xs text-t3">{{ updatedText }}</small>
           </div>
-          <!-- The header of a subscription: its quota and its end date, as in the simple mode. -->
-          <SubscriptionQuota v-if="!manual" :group="group" class="w-[230px]" />
-          <Button v-if="!manual" size="sm" :disabled="updating || !core.ready" @click="updateGroup(group)">
-            <RefreshCw :class="updating && 'animate-spin'" />{{ t('profiles.update') }}
-          </Button>
-          <Button variant="ghost" size="icon-sm" :aria-label="t('profiles.editGroup')" data-testid="edit-group" @click="editing = group"><Pencil /></Button>
-          <Menu align="end">
-            <template #trigger>
-              <Button variant="ghost" size="icon-sm" :aria-label="t('profiles.groupActions')"><MoreHorizontal /></Button>
-            </template>
-            <MenuItem v-if="!manual" @select="updateGroup(group)"><RefreshCw />{{ t('profiles.update') }}</MenuItem>
-            <MenuItem @select="attempt(() => core.testServers(group!.id))"><Gauge />{{ t('list.test') }}</MenuItem>
-            <MenuItem v-if="!manual" @select="attempt(() => actions.copyText(group!.url))"><Copy />{{ t('list.copyLink') }}</MenuItem>
-            <MenuItem @select="editing = group"><SquarePen />{{ t('profiles.editGroupMenu') }}</MenuItem>
-            <MenuSeparator />
-            <MenuItem :shortcut="keys?.updateAll" @select="updateAll()"><Radar />{{ t('profiles.updateAll') }}</MenuItem>
-            <MenuSeparator />
-            <MenuItem danger @select="removingGroup = group"><Trash2 />{{ t(manual ? 'list.removeGroup' : 'list.removeSubscription') }}</MenuItem>
-          </Menu>
+          <div class="ml-auto flex flex-wrap items-center justify-end gap-3">
+            <!-- The header of a subscription: its quota and its end date, as in the simple mode. -->
+            <SubscriptionQuota v-if="!manual" :group="group" class="w-[230px]" />
+            <div class="flex items-center gap-3">
+              <Button v-if="!manual" size="sm" :disabled="updating || !core.ready" @click="updateGroup(group)">
+                <RefreshCw :class="updating && 'animate-spin'" />{{ t('profiles.update') }}
+              </Button>
+              <Button variant="ghost" size="icon-sm" :aria-label="t('profiles.editGroup')" data-testid="edit-group" @click="editing = group"><Pencil /></Button>
+              <Menu align="end">
+                <template #trigger>
+                  <Button variant="ghost" size="icon-sm" :aria-label="t('profiles.groupActions')"><MoreHorizontal /></Button>
+                </template>
+                <MenuItem v-if="!manual" @select="updateGroup(group)"><RefreshCw />{{ t('profiles.update') }}</MenuItem>
+                <MenuItem @select="attempt(() => core.testServers(group!.id))"><Gauge />{{ t('list.test') }}</MenuItem>
+                <MenuItem v-if="!manual" @select="attempt(() => actions.copyText(group!.url))"><Copy />{{ t('list.copyLink') }}</MenuItem>
+                <MenuItem @select="editing = group"><SquarePen />{{ t('profiles.editGroupMenu') }}</MenuItem>
+                <MenuSeparator />
+                <MenuItem :shortcut="keys?.updateAll" @select="updateAll()"><Radar />{{ t('profiles.updateAll') }}</MenuItem>
+                <MenuSeparator />
+                <MenuItem danger @select="removingGroup = group"><Trash2 />{{ t(manual ? 'list.removeGroup' : 'list.removeSubscription') }}</MenuItem>
+              </Menu>
+            </div>
+          </div>
         </div>
 
-        <div class="flex flex-none items-center gap-2 px-4 py-2.5">
+        <div class="flex flex-none flex-wrap items-center gap-2 px-4 py-2.5">
           <div class="relative min-w-[150px] flex-1">
             <Search class="absolute top-2 left-[11px] size-4 text-t3" />
             <Input v-model="query" class="h-8 pl-[33px]" :placeholder="t('profiles.search')" :aria-label="t('profiles.search')" />
@@ -368,7 +389,7 @@ async function importEntered(): Promise<void> {
 
         <ContextMenu min-width="270px">
           <template #trigger>
-            <div class="min-h-0 flex-1 overflow-auto px-4 pb-3 outline-none" tabindex="0" @keydown="onKey">
+            <div class="min-h-0 flex-1 overflow-auto px-4 pb-3 focus-visible:-outline-offset-2" tabindex="0" @keydown="onKey">
               <table class="w-full border-collapse text-[13px]" aria-multiselectable="true" data-testid="profiles-table">
                 <thead class="sticky top-0 bg-s1 text-left text-xs text-t3">
                   <tr>

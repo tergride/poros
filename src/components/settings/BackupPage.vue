@@ -71,7 +71,7 @@ function done(info: BackupInfo): void {
   </Banner>
   <template v-if="advanced">
     <SettingsCard :title="t('settings.backup.createTitle')">
-      <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-2.5 pb-1">
+      <div class="grid grid-cols-[repeat(auto-fit,minmax(max(200px,calc(50%_-_8px)),1fr))] gap-x-4 gap-y-3 pt-2.5 pb-1">
         <label v-for="part in parts" :key="part" class="flex items-start gap-3" :data-testid="`backup-part-${part}`">
           <Switch :model-value="chosen.includes(part)" :aria-label="t(`settings.backup.part.${part}`)" @update:model-value="(v: boolean) => toggle(part, v)" />
           <span>{{ t(`settings.backup.part.${part}`) }}<br /><span class="text-xs text-t3">{{ t(`settings.backup.partHint.${part}`) }}</span></span>

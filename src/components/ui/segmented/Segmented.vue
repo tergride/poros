@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 
-// A choice of a few values in one row, as the .seg of the mockups.
-defineProps<{ options: { value: string; label: string }[]; ariaLabel?: string }>()
+// A choice of a few values in one row, as the .seg of the mockups. Disabled here rather than by a disabled fieldset
+// around it, which the group does not see: Tab would stop on the group itself, with nothing to show.
+defineProps<{ options: { value: string; label: string }[]; ariaLabel?: string; disabled?: boolean }>()
 const model = defineModel<string>({ required: true })
 </script>
 
@@ -10,6 +11,7 @@ const model = defineModel<string>({ required: true })
   <RadioGroupRoot
     v-model="model"
     orientation="horizontal"
+    :disabled="disabled"
     :aria-label="ariaLabel"
     class="inline-flex gap-0.5 rounded-[10px] border border-line2 bg-s0 p-[3px]"
   >

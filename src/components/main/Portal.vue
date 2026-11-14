@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronRight, Layers, Lock, Play, Settings, ShieldAlert, Square, X } from '@lucide/vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { I18nT, useI18n } from 'vue-i18n'
 
 import portalArt from '@/assets/img/portal.jpg'
@@ -8,6 +8,7 @@ import { Button, Flag, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useConnectionView } from '@/composables/useConnectionView'
+import { useKeepFocus } from '@/composables/useKeepFocus'
 import { latencyTone } from '@/lib/format'
 import { localProxyHost } from '@/platform/core'
 import { ConnectionStopping } from '@/platform/core-types'
@@ -42,6 +43,9 @@ const {
   exitCountry,
   serverName,
 } = useConnectionView()
+// Start, Cancel and Stop take each other's place: Enter on the keyboard goes on from the one that comes.
+const actions = ref<HTMLElement | null>(null)
+useKeepFocus(actions, state)
 
 // Without TUN and System the hint names the local proxy; its address opens what it is and how to use it.
 const hint = computed(() => {
@@ -122,11 +126,11 @@ const proxyAddress = computed(() => `${localProxyHost}:${core.proxyPort}`)
     <div v-if="on" class="relative grid grid-cols-3 gap-2">
       <div class="rounded-[10px] border border-line bg-s2 px-2.5 py-[9px]">
         <span class="mb-0.5 block text-[11.5px] text-t3">{{ t('portal.download') }}</span>
-        <b class="font-mono text-[13px] font-medium">{{ speed(core.traffic?.download ?? 0) }}</b>
+        <b class="font-mono text-[13px] font-medium" data-testid="speed">{{ speed(core.traffic?.download ?? 0) }}</b>
       </div>
       <div class="rounded-[10px] border border-line bg-s2 px-2.5 py-[9px]">
         <span class="mb-0.5 block text-[11.5px] text-t3">{{ t('portal.upload') }}</span>
-        <b class="font-mono text-[13px] font-medium">{{ speed(core.traffic?.upload ?? 0) }}</b>
+        <b class="font-mono text-[13px] font-medium" data-testid="speed">{{ speed(core.traffic?.upload ?? 0) }}</b>
       </div>
       <div class="rounded-[10px] border border-line bg-s2 px-2.5 py-[9px]">
         <span class="mb-0.5 block text-[11.5px] text-t3">{{ t('portal.exit') }}</span>
@@ -136,6 +140,7 @@ const proxyAddress = computed(() => `${localProxyHost}:${core.proxyPort}`)
     </div>
 
     <div
+      ref="actions"
       class="relative flex gap-2.5"
       :title="held ? t(full ? 'portal.heldFullTitle' : 'portal.heldTitle') : blocked ? t('portal.lockTitle') : undefined"
     >

@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { isCoreError } from '@/platform'
 
 /** The shell's own failures: no core to ask, no answer in time, a declined UAC prompt, no core started. */
-const shellReasons: Record<number, string> = {
+export const shellReasons: Record<number, string> = {
   [-33000]: 'core_down',
   [-33001]: 'core_timeout',
   [-33002]: 'elevation_cancelled',

@@ -18,7 +18,7 @@ const attrs = useAttrs()
     :disabled="disabled"
     :aria-labelledby="attrs['aria-label'] || attrs['aria-labelledby'] ? undefined : label"
     :class="[
-      'relative flex-none cursor-pointer rounded-full bg-s5 transition-colors outline-none data-[state=checked]:bg-act disabled:cursor-not-allowed disabled:opacity-45',
+      'relative flex-none cursor-pointer rounded-full bg-s5 transition-colors data-[state=checked]:bg-act disabled:cursor-not-allowed disabled:opacity-45',
       size === 'sm' ? 'h-[18px] w-[30px]' : 'h-[22px] w-[38px]',
     ]"
   >

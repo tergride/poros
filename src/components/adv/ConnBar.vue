@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, Lock, Play, ShieldAlert, Square, X } from '@lucide/vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -8,6 +8,7 @@ import { Button, Flag, Select, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useConnectionView } from '@/composables/useConnectionView'
+import { useKeepFocus } from '@/composables/useKeepFocus'
 import { latencyTone } from '@/lib/format'
 import { ConnectionStopping } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
@@ -22,6 +23,9 @@ const router = useRouter()
 const { t, te } = useI18n()
 const { state, on, busy, group, blocked, full, held, blockedIdle, cancellable, stateText, address, shownIp, ipText, latencyText, speed, tun, system, serverName } =
   useConnectionView()
+// Start, Cancel and Stop take each other's place: Enter on the keyboard goes on from the one that comes.
+const actions = ref<HTMLElement | null>(null)
+useKeepFocus(actions, state)
 
 // The presets by name, and a last choice that opens them.
 const morePresets = '\u0000more'
@@ -46,7 +50,7 @@ const lockTitle = computed(() =>
 
 <template>
   <div class="flex flex-none items-center gap-3 border-b border-line bg-s0 px-3.5 py-2.5" data-testid="connbar" :data-state="state">
-    <div :title="lockTitle" class="flex-none">
+    <div ref="actions" :title="lockTitle" class="flex-none">
       <Button v-if="on || held" :disabled="!core.ready" data-testid="stop" @click="attempt(() => connect.stop())">
         <Square class="size-4 fill-current" />{{ t('portal.stop') }}
         <Lock v-if="blocked" class="size-3.5 opacity-75" data-testid="kill-switch-lock" />
@@ -76,7 +80,7 @@ const lockTitle = computed(() =>
         <span class="truncate" :title="on ? serverName : stateText" data-testid="connbar-state">{{ on ? serverName : stateText }}</span>
       </strong>
       <small class="truncate text-xs text-t3">
-        <template v-if="!on">{{ t('adv.selected', { name: serverName }) }}</template>
+        <template v-if="!on">{{ core.server ? t('adv.selected', { name: serverName }) : serverName }}</template>
         <template v-else-if="group">{{ group.name }}</template>
         <template v-if="ipText">
           ·
@@ -97,7 +101,7 @@ const lockTitle = computed(() =>
       </small>
     </div>
 
-    <div v-if="on" class="flex flex-none gap-3 font-mono text-xs text-t2">
+    <div v-if="on" class="flex flex-none gap-3 font-mono text-xs text-t2" data-testid="speed">
       <span class="inline-flex items-center gap-1"><ArrowDown class="size-3.5" />{{ speed(core.traffic?.download ?? 0) }}</span>
       <span class="inline-flex items-center gap-1"><ArrowUp class="size-3.5" />{{ speed(core.traffic?.upload ?? 0) }}</span>
     </div>

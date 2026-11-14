@@ -77,8 +77,8 @@ watch(hours, () => void attempt(load), { immediate: true })
             <tr v-for="item in profiles" :key="item.key" class="border-t border-line">
               <td class="truncate px-2.5 py-2">{{ item.name }}</td>
               <td class="truncate px-2.5 py-2 text-t2">{{ item.group }}</td>
-              <td class="px-2.5 py-2 text-right font-mono text-xs">{{ bytes(item.download) }}</td>
-              <td class="px-2.5 py-2 text-right font-mono text-xs">{{ bytes(item.upload) }}</td>
+              <td class="px-2.5 py-2 text-right font-mono text-xs whitespace-nowrap">{{ bytes(item.download) }}</td>
+              <td class="px-2.5 py-2 text-right font-mono text-xs whitespace-nowrap">{{ bytes(item.upload) }}</td>
             </tr>
           </tbody>
         </table>
@@ -98,9 +98,9 @@ watch(hours, () => void attempt(load), { immediate: true })
           <tbody>
             <tr v-for="item in apps" :key="item.key" class="border-t border-line">
               <td class="truncate px-2.5 py-2">{{ item.name }}</td>
-              <td class="px-2.5 py-2 text-right font-mono text-xs">{{ bytes(item.download) }}</td>
-              <td class="px-2.5 py-2 text-right font-mono text-xs">{{ bytes(item.upload) }}</td>
-              <td class="px-2.5 py-2 text-right font-mono text-xs">{{ bytes(item.download + item.upload) }}</td>
+              <td class="px-2.5 py-2 text-right font-mono text-xs whitespace-nowrap">{{ bytes(item.download) }}</td>
+              <td class="px-2.5 py-2 text-right font-mono text-xs whitespace-nowrap">{{ bytes(item.upload) }}</td>
+              <td class="px-2.5 py-2 text-right font-mono text-xs whitespace-nowrap">{{ bytes(item.download + item.upload) }}</td>
             </tr>
           </tbody>
         </table>

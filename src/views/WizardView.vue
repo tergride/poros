@@ -86,7 +86,7 @@ async function finish(): Promise<void> {
       </div>
     </aside>
     <section class="flex min-w-0 flex-1 flex-col bg-s1">
-      <nav class="flex items-center px-11 pt-7" :aria-label="t('menu.wizard')">
+      <nav class="flex flex-wrap items-center gap-y-2.5 px-11 pt-7" :aria-label="t('menu.wizard')">
         <template v-for="(name, i) in steps" :key="name">
           <div
             :class="['flex items-center gap-[9px] text-[13px] font-medium', i + 1 <= step ? 'text-t1' : 'text-t3']"
@@ -114,7 +114,7 @@ async function finish(): Promise<void> {
       <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-11 pt-10 pb-5">
         <template v-if="step === 1 && core.settings">
           <h1 class="font-disp text-2xl leading-snug font-normal">{{ t('wizard.mode.title') }}</h1>
-          <RadioGroup v-model="uiMode" class="grid grid-cols-2 gap-3" :aria-label="t('mode.menuLabel')">
+          <RadioGroup v-model="uiMode" class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3" :aria-label="t('mode.menuLabel')">
             <label
               v-for="mode in modes"
               :key="mode"

@@ -7,6 +7,6 @@ defineProps<{ value: string }>()
 <template>
   <RadioGroupItem
     :value="value"
-    class="size-[18px] flex-none cursor-pointer rounded-full border-[1.5px] border-line2 outline-none data-[state=checked]:border-[5px] data-[state=checked]:border-blue"
+    class="size-[18px] flex-none cursor-pointer rounded-full border-[1.5px] border-line2 data-[state=checked]:border-[5px] data-[state=checked]:border-blue"
   />
 </template>

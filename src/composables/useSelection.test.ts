@@ -35,6 +35,29 @@ describe('rows selected as in a list of Windows', () => {
     expect(s.selected.value).toEqual(['c'])
   })
 
+  it('moves with the arrow keys from the last row reached and takes ranges with Shift', () => {
+    const ids = ref(['a', 'b', 'c', 'd'])
+    const s = useSelection(ids)
+    // Nothing reached yet: down starts at the first row, up at the last.
+    expect(s.step(1)).toBe('a')
+    expect(s.selected.value).toEqual(['a'])
+    s.clear()
+    expect(s.step(-1)).toBe('d')
+    s.click('b')
+    s.step(1)
+    expect(s.selected.value).toEqual(['c'])
+    s.step(1, { shift: true })
+    expect(s.selected.value).toEqual(['c', 'd'])
+    // The edges hold, Home and End go to them.
+    s.step(1, { shift: true })
+    expect(s.selected.value).toEqual(['c', 'd'])
+    s.step(-Infinity, { shift: true })
+    expect(s.selected.value).toEqual(['a', 'b', 'c'])
+    s.step(Infinity)
+    expect(s.selected.value).toEqual(['d'])
+    expect(useSelection(ref([])).step(1)).toBe('')
+  })
+
   it('lets go of rows that are no longer shown', async () => {
     const ids = ref(['a', 'b', 'c'])
     const s = useSelection(ids)

@@ -26,9 +26,7 @@ const choice = computed({
   <SettingsCard v-if="draft" :title="t('presetEdit.default')" data-testid="preset-default">
     <p class="mb-2 text-xs text-t3">{{ t('presetEdit.defaultHint') }}</p>
     <div class="flex items-center gap-2">
-      <fieldset :disabled="draft.builtin" class="contents">
-        <Segmented v-model="choice" :options="actions" :aria-label="t('presetEdit.default')" />
-      </fieldset>
+      <Segmented v-model="choice" :options="actions" :disabled="draft.builtin" :aria-label="t('presetEdit.default')" />
       <Lock v-if="draft.builtin" class="size-3.5 text-t3" />
     </div>
     <div

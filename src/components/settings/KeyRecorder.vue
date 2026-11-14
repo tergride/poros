@@ -35,9 +35,10 @@ function onKey(event: KeyboardEvent): void {
 </script>
 
 <template>
+  <!-- The field shows the focus of the keyboard as a field of text does. -->
   <span
     :class="[
-      'inline-flex h-[30px] min-w-[180px] items-center gap-1 rounded-lg border bg-s0 pr-1 pl-2.5 font-mono text-xs text-t1',
+      'inline-flex h-[30px] min-w-[180px] items-center gap-1 rounded-lg border bg-s0 pr-1 pl-2.5 font-mono text-xs text-t1 has-[:focus-visible]:border-blue has-[:focus-visible]:shadow-[0_0_0_3px_color-mix(in_srgb,var(--blue)_18%,transparent)]',
       recording ? 'border-blue shadow-[0_0_0_3px_color-mix(in_srgb,var(--blue)_18%,transparent)]' : bad ? 'border-warn' : 'border-line2',
     ]"
   >
