@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"net/netip"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/sagernet/sing-box/option"
@@ -24,6 +26,80 @@ func detourOf(t *testing.T, options any) string {
 	}
 	t.Fatalf("no detour in %T", options)
 	return ""
+}
+
+// Next to the TUN of another client the engine finds the servers' addresses past its fake DNS. What dials a server
+// itself takes them, a later link of a chain goes through the one before, and what has a name without an address
+// keeps the system's DNS, as does every server without Resolved.
+func TestBuildPinsServers(t *testing.T) {
+	links := sampleLinks(t)
+	trojan, wireGuard, openVPN := mustParse(t, links["trojan tcp"]), mustParse(t, links["wireguard"]), mustParse(t, links["openvpn"])
+	if hosts := ServerHosts(wireGuard, []profile.Profile{openVPN}, false); !slices.Equal(hosts, []string{"wg.example.com", "o1.example.com", "o2.example.com"}) {
+		t.Fatalf("ServerHosts = %v", hosts)
+	}
+	if hosts := ServerHosts(mustParse(t, links["vless reality vision"]), nil, true); len(hosts) != 0 {
+		t.Fatalf("Xray resolves its own server: %v", hosts)
+	}
+	pair := profile.Profile{Type: profile.TypeChain, Name: "Pair", Chain: &profile.Chain{Servers: []string{"w", "t"}}}
+	in := Input{
+		Server: pair, Links: []profile.Profile{wireGuard, trojan}, Preset: Preset{Name: "Office", DefaultOutbound: OutboundProxy,
+			Endpoints: []string{"ovpn"}, Rules: allPreset.Rules}, Tun: true, MixedPort: 2090, Endpoints: []profile.Profile{openVPN},
+		Resolved: map[string]netip.Addr{
+			"wg.example.com": netip.MustParseAddr("192.0.2.1"),
+			"t.example.com":  netip.MustParseAddr("192.0.2.2"),
+			"o1.example.com": netip.MustParseAddr("192.0.2.3"),
+		},
+	}
+	resolverOf := func(raw any) string {
+		if resolver := raw.(option.DialerOptionsWrapper).TakeDialerOptions().DomainResolver; resolver != nil {
+			return resolver.Server
+		}
+		return ""
+	}
+	build := func() (Configs, string) {
+		t.Helper()
+		configs, err := Build(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := configs.SingBoxJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = boxmain.Check(data); err != nil {
+			t.Fatalf("sing-box refuses the config: %v\n%s", err, data)
+		}
+		return configs, string(data)
+	}
+	configs, data := build()
+	endpoints, out := configs.SingBox.Endpoints, configs.SingBox.Outbounds
+	if len(endpoints) != 2 || endpoints[0].Tag != "proxy-1" || endpoints[1].Tag != "endpoint-1" || out[0].Tag != TagProxy {
+		t.Fatalf("outbounds %+v, endpoints %+v", out, endpoints)
+	}
+	if got := resolverOf(endpoints[0].Options); got != dnsServerHosts {
+		t.Errorf("the first link dials its server with the engine's address: %q", got)
+	}
+	if got := resolverOf(out[0].Options); got != "" {
+		t.Errorf("the second link goes through the first: %q", got)
+	}
+	if got := resolverOf(endpoints[1].Options); got != "" {
+		t.Errorf("OpenVPN has a further server without an address: %q", got)
+	}
+	has := func(data, host, addr string) bool {
+		return strings.Contains(data, `"`+host+`":"`+addr+`"`) || strings.Contains(data, `"`+host+`":["`+addr+`"]`)
+	}
+	if !has(data, "wg.example.com", "192.0.2.1") || strings.Contains(data, "192.0.2.2") || strings.Contains(data, "192.0.2.3") {
+		t.Errorf("the hosts server holds only the names that dial with it:\n%s", data)
+	}
+
+	in.Resolved["o2.example.com"] = netip.MustParseAddr("192.0.2.4")
+	if configs, data = build(); resolverOf(configs.SingBox.Endpoints[1].Options) != dnsServerHosts || !has(data, "o2.example.com", "192.0.2.4") {
+		t.Errorf("OpenVPN with all its servers resolved:\n%s", data)
+	}
+	in.Resolved = nil
+	if configs, data = build(); resolverOf(configs.SingBox.Endpoints[0].Options) != "" || strings.Contains(data, dnsServerHosts) {
+		t.Errorf("without Resolved the system's DNS resolves every server:\n%s", data)
+	}
 }
 
 // A chain starting on Xray: the bridge to it is the first link, the others go one through another to the last.

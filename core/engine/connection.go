@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"net"
 	"net/netip"
 	"slices"
@@ -404,6 +405,23 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		}
 		if err != nil {
 			return ConnectionState{}, failure(ReasonStartFailed, "%v", err)
+		}
+	}
+	// With the TUN sing-box dials out of the network adapter, past the TUN of another client, whose DNS may answer the
+	// servers' names with fake addresses that lead only into that TUN.
+	if settings.Tun {
+		resolveCtx, cancel := context.WithTimeout(ctx, resolveTimeout)
+		pinned := pastFakes(resolveCtx, e.systemResolver(), config.ServerHosts(entry, endpoints, settings.RealityOnXray), !settings.IPv6)
+		cancel()
+		if ctx.Err() != nil {
+			return ConnectionState{}, ctx.Err()
+		}
+		if len(pinned) > 0 {
+			log.Printf("connection: the system's DNS has no real address for %d servers, DoH found them", len(pinned))
+			if in.Resolved == nil {
+				in.Resolved = map[string]netip.Addr{}
+			}
+			maps.Copy(in.Resolved, pinned)
 		}
 	}
 	configs, err := config.Build(in)

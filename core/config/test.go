@@ -88,7 +88,7 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 	servers := []option.DNSServerOptions{{Type: C.DNSTypeLocal, Tag: TagDNSDirect, Options: &option.LocalDNSServerOptions{}}}
 	resolver := TagDNSDirect
 	if len(in.Resolved) > 0 {
-		servers = append(servers, testHosts(in.Resolved))
+		servers = append(servers, hostsServer(dnsTestHosts, in.Resolved))
 		resolver = dnsTestHosts
 	}
 	configs.SingBox = option.Options{
@@ -109,12 +109,13 @@ func BuildTest(in TestInput) (TestConfigs, error) {
 // the TUN of another client, which a test dials past.
 const dnsTestHosts = "dns-test-hosts"
 
-func testHosts(resolved map[string]netip.Addr) option.DNSServerOptions {
+// hostsServer answers the names of resolved, and no others, with the addresses the engine found for them.
+func hostsServer(tag string, resolved map[string]netip.Addr) option.DNSServerOptions {
 	predefined := &badjson.TypedMap[string, badoption.Listable[netip.Addr]]{}
 	for host, addr := range resolved {
 		predefined.Put(host, badoption.Listable[netip.Addr]{addr})
 	}
-	return option.DNSServerOptions{Type: C.DNSTypeHosts, Tag: dnsTestHosts, Options: &option.HostsDNSServerOptions{Predefined: predefined}}
+	return option.DNSServerOptions{Type: C.DNSTypeHosts, Tag: tag, Options: &option.HostsDNSServerOptions{Predefined: predefined}}
 }
 
 // SingBoxJSON writes the sing-box config the way the core reads it.

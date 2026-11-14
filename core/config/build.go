@@ -57,7 +57,8 @@ const tunMTU = 1500
 // TunOptions is how the TUN is made; the zero value is Poros's own TUN.
 type TunOptions struct {
 	MTU uint32
-	// LooseRoute lets programs that bind to an interface go around the TUN; off, the route is strict.
+	// LooseRoute turns off sing-box's strict route. On Windows that route only blocks DNS past the TUN: programs that
+	// bind to an interface go around the TUN either way, and only the block of the kill switch stops them.
 	LooseRoute bool
 	// Routing sends the subnets of the preset's rules «Direct» around the TUN by the routes of Windows.
 	Routing            bool
@@ -135,7 +136,8 @@ type Input struct {
 	// settings send all of them through the server: else no direct site would open.
 	DNS DNS
 
-	// For a server on Xray: the bridge, the default interface Xray binds to, and the addresses of XrayHosts.
+	// For a server on Xray: the bridge and the default interface Xray binds to. Resolved holds the addresses of
+	// XrayHosts, and those of ServerHosts that the system's DNS answered only with fake ones.
 	Bridge    Bridge
 	Interface string
 	Resolved  map[string]netip.Addr
@@ -268,7 +270,67 @@ func Build(in Input) (Configs, error) {
 		Route:     buildRoute(in, preset),
 		NTP:       ntpOptions(in),
 	}
+	pinServers(&configs.SingBox, in.Resolved, addressStrategy(in))
 	return configs, nil
+}
+
+// dnsServerHosts answers the names of the servers with the addresses the engine found past the TUN of another
+// client, whose DNS gives fake addresses that lead only into that TUN.
+const dnsServerHosts = "dns-server-hosts"
+
+// pinServers has each outbound and endpoint that dials its servers itself, not through another, resolve them with
+// resolved when it has all their names. The rest resolve as before, with the system's DNS.
+func pinServers(options *option.Options, resolved map[string]netip.Addr, strategy option.DomainStrategy) {
+	pinned := map[string]netip.Addr{}
+	pin := func(raw any) {
+		wrapper, ok := raw.(option.DialerOptionsWrapper)
+		if !ok {
+			return
+		}
+		dialer := wrapper.TakeDialerOptions()
+		hosts := dialedNames(raw)
+		if dialer.Detour != "" || dialer.DomainResolver != nil || len(hosts) == 0 {
+			return
+		}
+		for _, host := range hosts {
+			if _, ok := resolved[host]; !ok {
+				return
+			}
+		}
+		dialer.DomainResolver = &option.DomainResolveOptions{Server: dnsServerHosts, Strategy: strategy}
+		wrapper.ReplaceDialerOptions(dialer)
+		for _, host := range hosts {
+			pinned[host] = resolved[host]
+		}
+	}
+	for _, outbound := range options.Outbounds {
+		pin(outbound.Options)
+	}
+	for _, endpoint := range options.Endpoints {
+		pin(endpoint.Options)
+	}
+	if len(pinned) > 0 {
+		options.DNS.Servers = append(options.DNS.Servers, hostsServer(dnsServerHosts, pinned))
+	}
+}
+
+// dialedNames are the host names an outbound or endpoint dials; addresses need no lookup.
+func dialedNames(raw any) []string {
+	var hosts []string
+	switch o := raw.(type) {
+	case *option.WireGuardEndpointOptions:
+		for _, peer := range o.Peers {
+			hosts = append(hosts, peer.Address)
+		}
+	case *option.OpenVPNClientEndpointOptions:
+		hosts = append(hosts, o.Server)
+		for _, remote := range o.Servers {
+			hosts = append(hosts, remote.Server)
+		}
+	case option.ServerOptionsWrapper:
+		hosts = append(hosts, o.TakeServerOptions().Server)
+	}
+	return slices.DeleteFunc(hosts, func(host string) bool { return host == "" || isIP(host) })
 }
 
 // addressStrategy is which address of a name a connection takes: IPv4 alone without IPv6, else the family the

@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"slices"
 	"time"
 
 	"github.com/sagernet/sing/common/control"
@@ -75,6 +76,30 @@ func lookupPast(ctx context.Context, resolver *net.Resolver, host string, ipv4On
 		return netip.Addr{}, fmt.Errorf("cannot resolve %s: %w", host, errors.Join(systemErr, err))
 	}
 	return addr, nil
+}
+
+// pastFakes looks up the servers a connection has sing-box dial out of the network adapter. A name the system's DNS
+// answers with a real address is left out: sing-box asks the same DNS when it dials and takes every address. A name
+// the system answers only with fake addresses, or not at all, as next to the TUN of another client, gets the address
+// DoH over the adapter finds; one nothing resolves stays with sing-box too.
+func pastFakes(ctx context.Context, resolver *net.Resolver, hosts []string, ipv4Only bool) map[string]netip.Addr {
+	network := "ip"
+	if ipv4Only {
+		network = "ip4"
+	}
+	found := map[string]netip.Addr{}
+	for _, host := range hosts {
+		systemCtx, cancel := context.WithTimeout(ctx, systemLookupTimeout)
+		addrs, _ := resolver.LookupNetIP(systemCtx, network, host)
+		cancel()
+		if slices.ContainsFunc(addrs, func(addr netip.Addr) bool { return !isFake(addr.Unmap()) }) {
+			continue
+		}
+		if addr, err := lookupDoH(ctx, host, ipv4Only); err == nil {
+			found[host] = addr
+		}
+	}
+	return found
 }
 
 func preferIPv4(addrs []netip.Addr) (netip.Addr, bool) {

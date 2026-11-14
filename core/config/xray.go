@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"maps"
 	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -52,6 +53,29 @@ func XrayHosts(p profile.Profile, realityOnXray bool) []string {
 	if leg := downloadLeg(p.VLESS.Transport.XHTTP.Extra); leg != nil {
 		if address, _ := leg[findKey(leg, "address")].(string); address != "" && !isIP(ace(address)) {
 			hosts = append(hosts, ace(address))
+		}
+	}
+	return hosts
+}
+
+// ServerHosts are the names of the servers sing-box dials itself in a connection: the server, or the first of a chain,
+// unless Xray runs it, and the endpoints of the preset, with the further servers of OpenVPN.
+func ServerHosts(entry profile.Profile, endpoints []profile.Profile, realityOnXray bool) []string {
+	var hosts []string
+	add := func(host string) {
+		if host = ace(host); host != "" && !isIP(host) && !slices.Contains(hosts, host) {
+			hosts = append(hosts, host)
+		}
+	}
+	for i, p := range append([]profile.Profile{entry}, endpoints...) {
+		if i == 0 && RunsOnXray(p, realityOnXray) {
+			continue
+		}
+		add(p.Server)
+		if p.OpenVPN != nil {
+			for _, remote := range p.OpenVPN.Remotes {
+				add(remote.Server)
+			}
 		}
 	}
 	return hosts
