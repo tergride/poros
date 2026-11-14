@@ -132,7 +132,7 @@ test('the settings of the simple mode, a backup to restore and the change of mod
   await page.getByTestId('backup-create').click()
   const download = await saving
   // The file under its own name: a download lies under a new random name each time, and the dialog names the file.
-  const buffer = (await import('node:fs')).readFileSync((await download.path())!)
+  const buffer = (await import('node:fs')).readFileSync(await download.path())
   await page.getByTestId('backup-file').setInputFiles({ name: download.suggestedFilename(), mimeType: 'application/json', buffer })
   await expect(page.getByTestId('restore-dialog')).toContainText('Текущие данные заменятся данными из файла.')
   await snap(page, 'dialog-restore')

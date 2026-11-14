@@ -41,7 +41,9 @@ const killSwitchOn = computed(() => props.killSwitch === KillSwitchConnected || 
 const killSwitchHint = computed(() =>
   props.killSwitchBlocking
     ? t(`window.killSwitchBlocking.${props.killSwitchBlocking}${props.killSwitchFull ? 'Full' : ''}`)
-    : t(`window.killSwitchHint.${props.killSwitch}`),
+    : props.killSwitch
+      ? t(`window.killSwitchHint.${props.killSwitch}`)
+      : '',
 )
 const modes = computed(() => [
   { value: 'simple', label: t('mode.simpleShort') },

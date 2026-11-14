@@ -22,7 +22,7 @@ async function tabTo(page: Page, target: Locator, back = false): Promise<void> {
     if (await target.evaluate((el) => el === document.activeElement || el.contains(document.activeElement))) return
     await page.keyboard.press(back ? 'Shift+Tab' : 'Tab')
   }
-  throw new Error(`Tab does not reach ${target}`)
+  throw new Error(`Tab does not reach ${target.toString()}`)
 }
 
 /** Where the focus is, and whether it stays in the open dialog. Runs in the page. */
@@ -303,7 +303,7 @@ test('the simple mode: the wizard, Start and Stop, the dialogs and the settings'
   await tabTo(page, page.getByTestId('backup-create'))
   const saving = page.waitForEvent('download')
   await page.keyboard.press('Enter')
-  const file = (await (await saving).path())!
+  const file = await (await saving).path()
   await tabTo(page, page.getByTestId('backup-choose'))
   const choosing = page.waitForEvent('filechooser')
   // On the button itself: on a busy run of all the tests the key once went elsewhere and no chooser opened.

@@ -551,7 +551,7 @@ function readShareLink(line: string): Profile | null {
     const type = shareSchemes[url.protocol.slice(0, -1).toLowerCase()]
     if (!type || !url.hostname || !url.port) return null
     const name = decodeURIComponent(url.hash.slice(1))
-    return { type, name, server: url.hostname, server_port: Number(url.port), [type]: {} } as Profile
+    return { type, name, server: url.hostname, server_port: Number(url.port), [type]: {} }
   } catch {
     return null
   }
@@ -957,7 +957,7 @@ export function createStubCore(): CoreClient {
       }
       groups = [...groups, sub]
       const added = stubServers.map(({ measured: _, ...s }) =>
-        addServer({ type: s.protocol, name: s.name, server: s.host, server_port: s.port, [s.protocol]: {} } as Profile, sub.id),
+        addServer({ type: s.protocol, name: s.name, server: s.host, server_port: s.port, [s.protocol]: {} }, sub.id),
       )
       changed(sub.id)
       return { ...noChanges(sub), added: added.length, addedNames: added.map((s) => s.name) }
@@ -1334,9 +1334,9 @@ export function createStubCore(): CoreClient {
     },
     on(event, handler) {
       const set = handlers.get(event) ?? new Set()
-      set.add(handler as (params: never) => void)
+      set.add(handler)
       handlers.set(event, set)
-      return () => set.delete(handler as (params: never) => void)
+      return () => set.delete(handler)
     },
     status: async () => ({ ...status }),
     onStatus(handler) {

@@ -1025,9 +1025,9 @@ test('«Backup» saves the chosen parts in a file and restores them after showin
   await page.getByTestId('backup-create').click()
   const download = await saving
   expect(download.suggestedFilename()).toMatch(/^poros-backup-\d{4}-\d{2}-\d{2}\.json$/)
-  const file = (await download.path())!
+  const file = await download.path()
   const text = (await import('node:fs')).readFileSync(file, 'utf8')
-  expect(JSON.parse(text).parts).toEqual(['profiles', 'routing', 'settings'])
+  expect((JSON.parse(text) as { parts: string[] }).parts).toEqual(['profiles', 'routing', 'settings'])
 
   // A setting changed since, put back by the backup.
   await page.locator('a[href="#/adv/settings/logging"]').click()
@@ -1057,7 +1057,7 @@ test('the simple mode keeps all of its data in one backup and puts all of it bac
   await page.locator('a[href="#/settings/backup"]').click()
   const saving = page.waitForEvent('download')
   await page.getByTestId('backup-create').click()
-  const file = (await (await saving).path())!
+  const file = await (await saving).path()
   await page.getByTestId('backup-file').setInputFiles(file)
   const dialog = page.getByTestId('restore-dialog')
   await expect(dialog).toContainText('Профили')

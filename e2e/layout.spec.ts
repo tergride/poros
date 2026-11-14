@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 
 import { type Page, expect, test } from '@playwright/test'
 
+import type en from '../src/i18n/en.json'
+
 // Every screen of both modes in both languages at the smallest, the default and a large window, and with the large text
 // of the settings in the first two, against the core in memory: no warning or error in the console (vue-i18n warns of
 // a missing message), nothing wider or higher than the window, no
@@ -11,8 +13,9 @@ import { type Page, expect, test } from '@playwright/test'
 // Each language and size goes through the wizard on its own page, so they run side by side.
 test.describe.configure({ mode: 'parallel' })
 
-type Strings = { [key: string]: Strings & string }
-const strings = (lang: string): Strings => JSON.parse(readFileSync(new URL(`../src/i18n/${lang}.json`, import.meta.url), 'utf8'))
+// Both languages have the keys of en.json: src/i18n/messages.test.ts checks it.
+const strings = (lang: string) =>
+  JSON.parse(readFileSync(new URL(`../src/i18n/${lang}.json`, import.meta.url), 'utf8')) as typeof en
 
 const languages = [
   { lang: 'ru', locale: 'ru-RU' },

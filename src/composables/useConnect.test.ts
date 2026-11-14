@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { CodeElevationCancelled } from '@/platform'
+import { CodeElevationCancelled, type CoreError } from '@/platform'
 import { ConnectionIdle, KillSwitchOff, MethodSubscriptionsAdd } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
@@ -38,7 +38,8 @@ async function prepare(settings: Parameters<ReturnType<typeof useCoreStore>['upd
 async function declining(core: ReturnType<typeof useCoreStore>, run: () => Promise<void>) {
   const client = core.core()
   const elevate = client.elevate
-  client.elevate = () => Promise.reject({ code: CodeElevationCancelled, message: 'administrator rights were not given' })
+  const cancelled: CoreError = { code: CodeElevationCancelled, message: 'administrator rights were not given' }
+  client.elevate = () => Promise.reject(cancelled)
   try {
     await run()
   } finally {

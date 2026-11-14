@@ -105,7 +105,7 @@ export function ruleSummary(rule: PresetRule, t: Translate): string {
 /** Words for a problem the core found in a rule. */
 export function problemText(problem: Partial<RuleProblem>, t: Translate): string {
   const kind = problem.kind ?? ''
-  switch (problem.reason) {
+  switch (problem.reason ?? '') {
     case ReasonInvalidEntry: {
       const why = t(`rules.invalid.${kind}`)
       // A value of a list in the rule window says which line it is on.

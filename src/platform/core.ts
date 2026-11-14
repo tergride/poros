@@ -315,9 +315,9 @@ export async function createTauriCore(): Promise<CoreClient> {
     call: (method, ...params) => invoke('core_call', { method, params: params[0] ?? null }),
     on(event, handler) {
       const set = handlers.get(event) ?? new Set()
-      set.add(handler as (params: never) => void)
+      set.add(handler)
       handlers.set(event, set)
-      return () => set.delete(handler as (params: never) => void)
+      return () => set.delete(handler)
     },
     status: () => invoke<CoreStatus>('core_status'),
     onStatus(handler) {

@@ -45,7 +45,7 @@ const failure = ref('')
 let last = ''
 let lastFailed = false
 
-const servers = computed(() => (added.value ? t('servers.count', added.value.group.servers) : ''))
+const foundServers = computed(() => (added.value ? t('servers.count', added.value.group.servers) : ''))
 
 async function add(again = true): Promise<void> {
   const text = link.value.trim()
@@ -149,7 +149,7 @@ defineExpose({ add, fill, busy, added, addedServer })
     </div>
     <div v-else-if="added" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3" data-testid="link-found">
       <Check class="size-4 text-ok" />
-      <span>{{ t('wizard.subscription.found', { servers, name: added.group.name }) }}</span>
+      <span>{{ t('wizard.subscription.found', { servers: foundServers, name: added.group.name }) }}</span>
     </div>
     <div v-else-if="addedServer" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3" data-testid="link-server">
       <Check class="size-4 text-ok" />

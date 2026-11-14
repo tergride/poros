@@ -62,7 +62,7 @@ function go(path: string): void {
 }
 
 const settingItems = computed<Item[]>(() => {
-  const messages = getLocaleMessage(locale.value) as { settings?: Record<string, unknown> }
+  const messages: { settings?: Record<string, unknown> } = getLocaleMessage(locale.value)
   const items: Item[] = []
   for (const [group, pages] of [['basic', basicPages], ['more', morePages]] as const) {
     for (const page of pages) {
@@ -121,8 +121,8 @@ const shown = computed(() => {
   const q = query.value.trim()
   if (!q) {
     return [
-      { group: 'actions' as GroupId, items: actionItems.value },
-      { group: 'settings' as GroupId, items: settingItems.value.filter((i) => i.key.startsWith('page:')) },
+      { group: 'actions', items: actionItems.value },
+      { group: 'settings', items: settingItems.value.filter((i) => i.key.startsWith('page:')) },
     ]
   }
   const all = [...settingItems.value, ...actionItems.value, ...profileItems.value, ...presetItems.value]

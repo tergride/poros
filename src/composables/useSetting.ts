@@ -29,7 +29,7 @@ export function useSettingAction<K extends keyof Settings>(
     if (apply) draft.onSave(key, apply)
     return computed({ get: () => draft.get(key), set: (value) => draft.set(key, value) })
   }
-  const write = apply ?? ((value: Settings[K]) => core.updateSettings({ [key]: value } as Partial<Settings>))
+  const write = apply ?? ((value: Settings[K]) => core.updateSettings({ [key]: value }))
   return computed({
     get: () => core.settings![key],
     set: (value) => void attempt(() => write(value)),

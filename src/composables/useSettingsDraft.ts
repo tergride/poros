@@ -38,7 +38,7 @@ export function provideSettingsDraft(): SettingsDraft {
       changes.value = next
     },
     onSave(key, apply) {
-      actions.set(key, apply as (value: never) => Promise<unknown>)
+      actions.set(key, apply)
     },
     async save() {
       const pending = { ...changes.value }

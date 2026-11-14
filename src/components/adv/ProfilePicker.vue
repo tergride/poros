@@ -34,7 +34,7 @@ function pick(choice: NewProfile): void {
   const target = ui.profilePicker
   if (!target) return
   ui.profilePicker = null
-  ui.profileEdit = { id: '', profile: JSON.parse(JSON.stringify(choice.profile)), target }
+  ui.profileEdit = { id: '', profile: JSON.parse(JSON.stringify(choice.profile)) as NewProfile['profile'], target }
 }
 </script>
 

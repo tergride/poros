@@ -292,9 +292,14 @@ ${vless('se.example.com', 'Sweden')}` })
     expect(blocks).toHaveBeenLastCalledWith({ on: false, full: false, error: '', errorText: '' })
 
     // Always with TUN asks for rights: without them the refusal runs without its TUN.
-    settings = await core.call(MethodSettingsSet, { ...settings, tun: true, killSwitch: KillSwitchAlways })
+    await core.call(MethodSettingsSet, { ...settings, tun: true, killSwitch: KillSwitchAlways })
     await settle()
-    expect(await core.call(MethodKillSwitchState)).toEqual({ on: true, full: false, error: ReasonKillSwitchNeedsElevation, errorText: expect.any(String) })
+    expect(await core.call(MethodKillSwitchState)).toEqual({
+      on: true,
+      full: false,
+      error: ReasonKillSwitchNeedsElevation,
+      errorText: expect.any(String) as string,
+    })
     await core.elevate()
     await settle()
     expect(await core.call(MethodKillSwitchState)).toEqual({ on: true, full: false, error: '', errorText: '' })
@@ -345,7 +350,7 @@ ${vless('se.example.com', 'Sweden')}` })
     await new Promise((resolve) => setTimeout(resolve, 0))
     // Without a connection there is neither an address through the VPN nor a leak test.
     expect(checks).toHaveBeenLastCalledWith(
-      expect.objectContaining({ checking: false, proxy: expect.objectContaining({ ip: '' }), leak: '' }),
+      expect.objectContaining({ checking: false, proxy: expect.objectContaining({ ip: '' }) as unknown, leak: '' }),
     )
   })
 
@@ -427,7 +432,7 @@ ${vless('se.example.com', 'Sweden')}` })
         block: 'suffix:*.ads.example\ngeosite:category-ads\nsuffix:*.\nprocessName:STEAM.EXE',
       },
     })
-    expect(read.rules.map((r) => `${r.action} ${r.conditions[0]!.kind}:${r.conditions[0]!.values[0]}`)).toEqual([
+    expect(read.rules.map((r) => `${r.action} ${r.conditions[0]!.kind}:${r.conditions[0]!.values[0]!}`)).toEqual([
       'proxy suffix:video.example.com',
       'proxy suffix:mail.example.org',
       'direct ip:192.168.50.0/24',

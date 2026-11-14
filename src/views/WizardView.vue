@@ -29,7 +29,10 @@ const uiMode = computed({
   get: (): UiMode => (core.settings?.uiMode === 'advanced' ? 'advanced' : 'simple'),
   set: (mode: string) => void core.updateSettings({ uiMode: mode }).catch(() => undefined),
 })
-const modeItems = (mode: UiMode): string[] => (tm(`wizard.mode.${mode}Items`) as unknown as string[]).map((item) => rt(item))
+const modeItems = (mode: UiMode): string[] => {
+  const items: string[] = tm(`wizard.mode.${mode}Items`)
+  return items.map((item) => rt(item))
+}
 
 const startOptions = [
   { key: 'autostart', label: 'wizard.start.autostart', hint: 'wizard.start.autostartHint' },

@@ -220,7 +220,7 @@ export function writeLists({ advanced, rules }: PresetRules): PresetLists {
   for (const rule of rules.filter(inList)) {
     if (!listActions(advanced).includes(rule.action)) throw { code: 1, message: 'unknown action', data: { reason: ReasonInvalidValue } } satisfies CoreError
     const condition = rule.conditions[0]!
-    lines.set(rule.action, [...(lines.get(rule.action) ?? []), `${condition.kind}:${condition.values[0]}`])
+    lines.set(rule.action, [...(lines.get(rule.action) ?? []), `${condition.kind}:${condition.values[0] ?? ''}`])
   }
   return { lists: Object.fromEntries(listActions(advanced).map((action) => [action, (lines.get(action) ?? []).join('\n')])) }
 }
