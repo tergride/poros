@@ -139,7 +139,7 @@ pub fn spawn(program: &Path, args: &Arguments) -> std::io::Result<Process> {
 /// Why an elevated start did not happen.
 #[derive(Debug)]
 pub enum ElevationError {
-    /// The user said no in the UAC prompt.
+    /// The user said no in the UAC prompt, or a policy of Windows did for them.
     Cancelled,
     Failed(String),
 }
@@ -193,7 +193,9 @@ mod elevated {
     use std::path::Path;
 
     use tokio::sync::watch;
-    use windows_sys::Win32::Foundation::{CloseHandle, ERROR_CANCELLED, GetLastError, HANDLE};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, ERROR_ACCESS_DISABLED_BY_POLICY, ERROR_CANCELLED, GetLastError, HANDLE,
+    };
     use windows_sys::Win32::System::Threading::{
         GetExitCodeProcess, GetProcessId, INFINITE, OpenProcess, PROCESS_NAME_WIN32,
         PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE,
@@ -314,7 +316,9 @@ mod elevated {
         if unsafe { ShellExecuteExW(&mut info) } == 0 {
             // SAFETY: reads the error of the call just made on this thread.
             let error = unsafe { GetLastError() };
-            return Err(if error == ERROR_CANCELLED {
+            // A standard user under a policy that refuses rights without asking gets the error of the policy.
+            let refused = error == ERROR_CANCELLED || error == ERROR_ACCESS_DISABLED_BY_POLICY;
+            return Err(if refused {
                 ElevationError::Cancelled
             } else {
                 ElevationError::Failed(std::io::Error::from_raw_os_error(error as i32).to_string())

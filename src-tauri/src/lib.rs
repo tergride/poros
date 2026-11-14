@@ -433,6 +433,19 @@ impl Sink for WindowSink {
     }
 }
 
+/// The first size of the window, in logical pixels: 1180×760, made smaller to fit the screen above the taskbar, as
+/// at 150% on a 1080p screen, where the bottom of the window would be under the taskbar, but not below its minimum.
+fn window_size(work_area: Option<(f64, f64)>) -> (f64, f64) {
+    let (width, height) = work_area.unwrap_or((f64::MAX, f64::MAX));
+    (
+        width.clamp(MIN_WIDTH, 1180.0),
+        height.clamp(MIN_HEIGHT, 760.0),
+    )
+}
+
+const MIN_WIDTH: f64 = 900.0;
+const MIN_HEIGHT: f64 = 600.0;
+
 /// The core sits next to the program; POROS_CORE_PATH points elsewhere, for `tauri dev`.
 fn core_program() -> PathBuf {
     if let Some(path) = std::env::var_os("POROS_CORE_PATH") {
@@ -576,10 +589,17 @@ pub fn run() {
             );
             app.manage(core);
 
+            let work_area = app.primary_monitor().ok().flatten().map(|monitor| {
+                monitor
+                    .work_area()
+                    .size
+                    .to_logical::<f64>(monitor.scale_factor())
+            });
+            let (width, height) = window_size(work_area.map(|area| (area.width, area.height)));
             let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
                 .title("Poros")
-                .inner_size(1180.0, 760.0)
-                .min_inner_size(900.0, 600.0)
+                .inner_size(width, height)
+                .min_inner_size(MIN_WIDTH, MIN_HEIGHT)
                 .center()
                 .decorations(false)
                 .visible(!minimized)
@@ -625,4 +645,17 @@ pub fn run() {
             tauri::async_runtime::block_on(core.shutdown());
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_window_fits_above_the_taskbar() {
+        assert_eq!(window_size(None), (1180.0, 760.0));
+        // 1920×1008 physical pixels above the taskbar at 150%.
+        assert_eq!(window_size(Some((1280.0, 672.0))), (1180.0, 672.0));
+        assert_eq!(window_size(Some((800.0, 500.0))), (MIN_WIDTH, MIN_HEIGHT));
+    }
 }
