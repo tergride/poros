@@ -258,7 +258,10 @@ func (e *Engine) RestoreBackup(p BackupRestore) (BackupInfo, error) {
 		return BackupInfo{}, err
 	}
 
+	// The settings follow under the same writeMu: a server or preset removed in between would fail their check and
+	// leave chosen what the restore took away.
 	e.writeMu.Lock()
+	defer e.writeMu.Unlock()
 	err = e.db.Update(func(tx *bbolt.Tx) error {
 		if has(BackupProfiles) {
 			for _, bucket := range [][]byte{bucketGroups, bucketServers} {
@@ -288,7 +291,6 @@ func (e *Engine) RestoreBackup(p BackupRestore) (BackupInfo, error) {
 		}
 		return nil
 	})
-	e.writeMu.Unlock()
 	if err != nil {
 		return BackupInfo{}, err
 	}
@@ -310,7 +312,7 @@ func (e *Engine) RestoreBackup(p BackupRestore) (BackupInfo, error) {
 			settings.Server = ""
 		}
 	}
-	if _, err = e.SetSettings(settings); err != nil {
+	if _, err = e.setSettings(settings); err != nil {
 		return BackupInfo{}, fmt.Errorf("the settings after the restore: %w", err)
 	}
 	if groups, err := e.Groups(); err == nil {

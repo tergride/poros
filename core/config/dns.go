@@ -145,7 +145,8 @@ func ParseAnswers(text string) ([]Answer, error) {
 			continue
 		}
 		name := strings.TrimSuffix(strings.ToLower(fields[0]), ".")
-		if len(fields) < 2 || name == "" || strings.ContainsAny(name, "/:") {
+		// A name with an empty label, such as "a..", would never match a query.
+		if len(fields) < 2 || name == "" || strings.ContainsAny(name, "/:") || slices.Contains(strings.Split(name, "."), "") {
 			return nil, fmt.Errorf("line %d: a name and its addresses", i+1)
 		}
 		answer := Answer{Name: name}

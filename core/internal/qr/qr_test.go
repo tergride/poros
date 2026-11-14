@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // picture draws QR codes as a screen shows them: scale pixels a module, a quiet zone of four modules, at their places
@@ -82,5 +83,15 @@ func TestEncodeRefusesTooLongText(t *testing.T) {
 	}
 	if _, err := Encode(strings.Repeat("x", 2900)); err != nil {
 		t.Errorf("2900 bytes fit the largest code: %v", err)
+	}
+	if _, err := Encode(strings.Repeat("7", 7000)); err != nil {
+		t.Errorf("7000 digits fit the largest code: %v", err)
+	}
+	began := time.Now()
+	if _, err := Encode(strings.Repeat("A", 2<<20)); err != ErrTooLong {
+		t.Errorf("2 MB: %v", err)
+	}
+	if took := time.Since(began); took > time.Second {
+		t.Errorf("2 MB took %s to refuse", took)
 	}
 }

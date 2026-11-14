@@ -155,7 +155,8 @@ func (e Entry) Link() string {
 	}
 	query := url.Values{}
 	query.Set("secret", e.Secret)
-	if e.Name != "" && e.Account != "" {
+	// The issuer tells the name from the account when the name has a colon of its own.
+	if e.Name != "" && (e.Account != "" || strings.Contains(e.Name, ":")) {
 		query.Set("issuer", e.Name)
 	}
 	query.Set("algorithm", e.Algorithm)

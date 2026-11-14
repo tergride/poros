@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"math/rand/v2"
 	"net"
 	"net/netip"
 	"slices"
@@ -748,14 +749,31 @@ func portFree(address string) bool {
 	return true
 }
 
+// The ports of the bridge to Xray: below the ranges outgoing connections take their ports from (49152 and up on
+// Windows, 32768 and up on Linux), so that another core's connection cannot take the port between this check and
+// Xray's start. They are handed out in turn, from a random place: a test of many servers takes hundreds at once.
+const (
+	bridgePortLow  = 20000
+	bridgePortHigh = 32000
+)
+
+var nextBridgePort = func() *atomic.Uint32 {
+	var next atomic.Uint32
+	next.Store(rand.Uint32N(bridgePortHigh - bridgePortLow))
+	return &next
+}()
+
 func newBridge() (config.Bridge, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return config.Bridge{}, err
+	for range 50 {
+		port := bridgePortLow + int(nextBridgePort.Add(1)%(bridgePortHigh-bridgePortLow))
+		listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		if err != nil {
+			continue
+		}
+		listener.Close()
+		return config.Bridge{Port: uint16(port), Username: newID(), Password: newID() + newID()}, nil
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	listener.Close()
-	return config.Bridge{Port: uint16(port), Username: newID(), Password: newID() + newID()}, nil
+	return config.Bridge{}, errors.New("no free port for the bridge to Xray")
 }
 
 // resolveHosts looks up the addresses Xray dials, preferring IPv4.

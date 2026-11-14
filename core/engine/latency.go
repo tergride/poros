@@ -258,7 +258,10 @@ func openTestBox(in config.TestInput) (*testBox, error) {
 	if configs.Xray != nil {
 		created, err := xray.CreateXrayInstance(string(configs.Xray))
 		if err == nil {
-			err = created.Start()
+			// A start that failed on one inbound leaves those before it listening.
+			if err = created.Start(); err != nil {
+				created.Close()
+			}
 		}
 		if err != nil {
 			return t, err

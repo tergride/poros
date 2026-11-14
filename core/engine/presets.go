@@ -323,7 +323,10 @@ func (e *Engine) checkEndpoints(advanced bool, endpoints []string) error {
 // RemovePreset deletes a user's preset; a connection that used it goes back to its base, or to the standard
 // preset.
 func (e *Engine) RemovePreset(id string) error {
+	// The choice moves on under the same writeMu: outside it, settings read before a server went would fail their
+	// check, and the preset that is gone would stay chosen.
 	e.writeMu.Lock()
+	defer e.writeMu.Unlock()
 	var record copyRecord
 	var found bool
 	err := e.db.Update(func(tx *bbolt.Tx) error {
@@ -333,7 +336,6 @@ func (e *Engine) RemovePreset(id string) error {
 		}
 		return tx.Bucket(bucketPresets).Delete([]byte(id))
 	})
-	e.writeMu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -343,7 +345,7 @@ func (e *Engine) RemovePreset(id string) error {
 	e.announcePresets()
 	if settings, err := e.Settings(); err == nil && settings.Preset == id {
 		settings.Preset = cmp.Or(record.BasedOn, standardPreset)
-		_, err = e.SetSettings(settings)
+		_, err = e.setSettings(settings)
 		return err
 	}
 	return nil

@@ -74,11 +74,17 @@ func (e *Engine) Settings() (Settings, error) {
 
 // SetSettings replaces the settings as a whole and announces the result.
 func (e *Engine) SetSettings(settings Settings) (Settings, error) {
+	e.writeMu.Lock()
+	defer e.writeMu.Unlock()
+	return e.setSettings(settings)
+}
+
+// setSettings is SetSettings for a caller that holds writeMu. The check holds it too: a server or preset removed
+// between the check and the write would stay chosen.
+func (e *Engine) setSettings(settings Settings) (Settings, error) {
 	if err := e.validateSettings(settings); err != nil {
 		return Settings{}, err
 	}
-	e.writeMu.Lock()
-	defer e.writeMu.Unlock()
 	previous, err := e.Settings()
 	if err != nil {
 		return Settings{}, err

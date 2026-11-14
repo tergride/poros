@@ -73,7 +73,10 @@ func (e *Engine) CloseConnections(p ByID) error {
 	for _, m := range tracker.Connections() {
 		if m.ID.String() == p.ID {
 			if connection := tracker.Connection(m.ID); connection != nil {
-				return connection.Close()
+				if err := connection.Close(); err != nil {
+					return jsonrpc.Failed(ReasonNotFound, "the connection %q is gone: %v", p.ID, err)
+				}
+				return nil
 			}
 		}
 	}

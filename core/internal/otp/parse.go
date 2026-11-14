@@ -87,15 +87,24 @@ func ParseLink(link string) (Entry, *Problem) {
 		return Entry{}, &Problem{Reason: ReasonBadLink}
 	}
 	entry := New("")
-	label := strings.TrimPrefix(u.Path, "/")
-	if name, account, found := strings.Cut(label, ":"); found {
-		entry.Name, entry.Account = strings.TrimSpace(name), strings.TrimSpace(account)
-	} else {
-		entry.Account = strings.TrimSpace(label)
-	}
+	label := strings.TrimSpace(strings.TrimPrefix(u.Path, "/"))
 	query := u.Query()
-	if issuer := strings.TrimSpace(query.Get("issuer")); issuer != "" {
+	issuer := strings.TrimSpace(query.Get("issuer"))
+	switch {
+	// A label that starts with the issuer keeps a colon of the name: "Corp:VPN:alice" with the issuer "Corp:VPN".
+	case issuer != "" && label == issuer:
 		entry.Name = issuer
+	case issuer != "" && strings.HasPrefix(label, issuer+":"):
+		entry.Name, entry.Account = issuer, strings.TrimSpace(label[len(issuer)+1:])
+	default:
+		if name, account, found := strings.Cut(label, ":"); found {
+			entry.Name, entry.Account = strings.TrimSpace(name), strings.TrimSpace(account)
+		} else {
+			entry.Account = label
+		}
+		if issuer != "" {
+			entry.Name = issuer
+		}
 	}
 	if entry.Name == "" {
 		entry.Name, entry.Account = entry.Account, ""
@@ -265,11 +274,15 @@ func migrationEntry(data []byte) (Entry, *Problem, bool) {
 	if !ok {
 		return Entry{}, nil, false
 	}
+	entry.Name, entry.Account = strings.TrimSpace(entry.Name), strings.TrimSpace(entry.Account)
 	if entry.Name == "" {
 		entry.Name, entry.Account = entry.Account, ""
 	}
+	// The period is TOTP's alone and the counter HOTP's, as in a link.
 	if entry.Kind == KindHOTP {
 		entry.Period = 0
+	} else {
+		entry.Counter = 0
 	}
 	if len(key) == 0 {
 		bad(ReasonNoSecret, "")

@@ -156,6 +156,10 @@ func (e *Engine) subscriptionLock(id string) *sync.Mutex {
 
 // UpdateSubscription downloads the subscription again. A failed update keeps the servers and records why.
 func (e *Engine) UpdateSubscription(ctx context.Context, id string) (SubscriptionUpdate, error) {
+	// A lock only for a subscription that exists: the locks are never let go.
+	if _, err := e.subscription(id); err != nil {
+		return SubscriptionUpdate{}, err
+	}
 	lock := e.subscriptionLock(id)
 	lock.Lock()
 	defer lock.Unlock()
