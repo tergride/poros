@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -52,7 +53,8 @@ var errGuardRights = errors.New("the kill switch needs administrator rights")
 // Poros.
 var errGuardTaken = errors.New("another Poros on this computer, as of another Windows user, holds a block of Windows")
 
-// rearmInterval spaces the attempts to bring back a block that went away, as when the firewall service restarts.
+// rearmInterval spaces the attempts to bring back a block that went away, so that one that keeps failing, as while
+// the firewall service restarts, is not tried in a loop.
 const rearmInterval = 30 * time.Second
 
 // markFile tells the next core of the same window that the kill switch held traffic: a core that failed or was
@@ -70,7 +72,11 @@ type killSwitch struct {
 	failure, failureText string
 	state                KillSwitchState
 	closed               bool
-	rearmed              time.Time
+	// rearmed is the last try to bring the block back, and rearm the next one, waiting for its turn.
+	rearmed time.Time
+	rearm   *time.Timer
+	// rearmEvery stands in for rearmInterval in tests.
+	rearmEvery time.Duration
 	// window is the PID of the Poros window, 0 without one; resume is the mark of this window found at the open.
 	window int
 	resume bool
@@ -204,7 +210,7 @@ func (e *Engine) holdLink(link GuardLink) {
 }
 
 // watchLink follows a block until it goes away. One that was turned off or let go is no longer the core's link;
-// one that failed comes back, unless it keeps failing.
+// one that failed comes back.
 func (e *Engine) watchLink(link GuardLink) {
 	<-link.Lost()
 	e.ks.mu.Lock()
@@ -219,25 +225,45 @@ func (e *Engine) watchLink(link GuardLink) {
 	}
 	e.ks.failure, e.ks.failureText = ReasonKillSwitchFailed, reason
 	e.announceKillSwitch()
-	retry := e.ks.rearmed.IsZero() || e.now().Sub(e.ks.rearmed) >= rearmInterval
-	if retry {
-		e.ks.rearmed = e.now()
-	}
+	e.scheduleRearm()
 	e.ks.mu.Unlock()
 	log.Printf("kill switch: the block went away: %s", reason)
-	if retry {
-		e.rearmBlock()
-	}
 }
 
-func (e *Engine) rearmBlock() {
+// scheduleRearm tries to bring the block back at once, or once rearmInterval has passed since the last try, and
+// again the same way while the tries fail and the connection still wants the block. The caller holds ks.mu.
+func (e *Engine) scheduleRearm() {
+	if e.ks.closed || e.ks.rearm != nil {
+		return
+	}
+	var wait time.Duration
+	if !e.ks.rearmed.IsZero() {
+		wait = max(0, cmp.Or(e.ks.rearmEvery, rearmInterval)-e.now().Sub(e.ks.rearmed))
+	}
+	e.ks.rearm = time.AfterFunc(wait, func() {
+		e.ks.mu.Lock()
+		e.ks.rearm = nil
+		e.ks.rearmed = e.now()
+		closed := e.ks.closed
+		e.ks.mu.Unlock()
+		if !closed && e.rearmBlock() {
+			e.ks.mu.Lock()
+			e.scheduleRearm()
+			e.ks.mu.Unlock()
+		}
+	})
+}
+
+// rearmBlock turns the block back on for a connection that runs with TUN under the kill switch. It tells whether
+// the block is still wanted and did not come back.
+func (e *Engine) rearmBlock() bool {
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
 	settings, err := e.Settings()
 	if err != nil || settings.KillSwitch == KillSwitchOff || !settings.Tun || e.conn.running == nil {
-		return
+		return false
 	}
-	_ = e.armBlock()
+	return e.armBlock() != nil
 }
 
 // disarmBlock turns the block of Windows off. The caller holds the lifecycle.
@@ -466,6 +492,10 @@ func (e *Engine) closeKillSwitch() {
 	e.ks.mu.Lock()
 	defer e.ks.mu.Unlock()
 	e.ks.closed = true
+	if e.ks.rearm != nil {
+		e.ks.rearm.Stop()
+		e.ks.rearm = nil
+	}
 	if e.ks.link != nil {
 		e.ks.link.Close()
 		e.ks.link = nil

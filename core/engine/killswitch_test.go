@@ -424,6 +424,9 @@ func TestKillSwitchGoesOnWithTheNextCoreOfTheWindow(t *testing.T) {
 func TestKillSwitchBlockComesBackAfterAFailure(t *testing.T) {
 	g := &fakeGuard{rights: true}
 	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchOff)
+	k.ks.mu.Lock()
+	k.ks.rearmEvery = time.Second
+	k.ks.mu.Unlock()
 	setSettings(t, k.Engine, func(s *Settings) { s.Tun = true })
 	setMode(t, k.Engine, KillSwitchAlways)
 	waitBlock(t, k.Engine, true)
@@ -443,10 +446,52 @@ func TestKillSwitchBlockComesBackAfterAFailure(t *testing.T) {
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
-	// A second failure soon after is told, and the block stays off: it would keep failing.
+	// A second failure soon after is told, and the block comes back only once the interval since the last try has
+	// passed: one that keeps failing is not tried in a loop, nor left off.
 	g.current().fail("again")
 	time.Sleep(100 * time.Millisecond)
 	if state := k.KillSwitchState(); state.ErrorText != "again" || g.on() {
 		t.Errorf("after a second failure: %+v, on %v", state, g.on())
+	}
+	for deadline := time.Now().Add(5 * time.Second); !g.on(); time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("the block did not come back after the second failure: %+v", k.KillSwitchState())
+		}
+	}
+	if arms, _ := g.counts(); arms != 3 {
+		t.Errorf("the block was armed %d times, want 3", arms)
+	}
+}
+
+// A try to bring the block back that fails is repeated while the connection still wants the block.
+func TestKillSwitchBlockTriesAgainWhileItFails(t *testing.T) {
+	g := &fakeGuard{rights: true}
+	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchOff)
+	k.ks.mu.Lock()
+	k.ks.rearmEvery = 200 * time.Millisecond
+	k.ks.mu.Unlock()
+	setSettings(t, k.Engine, func(s *Settings) { s.Tun = true })
+	setMode(t, k.Engine, KillSwitchAlways)
+	waitBlock(t, k.Engine, true)
+	for !g.on() {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Another Poros takes the block for a while, as a guard that cannot start would.
+	g.mu.Lock()
+	g.taken = true
+	g.mu.Unlock()
+	g.current().fail("the rules were removed")
+	time.Sleep(700 * time.Millisecond)
+	if g.on() {
+		t.Fatal("the block came back while it could not")
+	}
+	g.mu.Lock()
+	g.taken = false
+	g.mu.Unlock()
+	for deadline := time.Now().Add(5 * time.Second); !g.on(); time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("the block did not come back once it could: %+v", k.KillSwitchState())
+		}
 	}
 }
