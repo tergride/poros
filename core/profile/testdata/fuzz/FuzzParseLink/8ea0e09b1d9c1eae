@@ -1,0 +1,2 @@
+go test fuzz v1
+string("poros://Add/eyJ0eXBlIjoidHJvamFuIiwi0CI6Iv0iLCJzZXJ2ZXIiOiJB0CIsInNlcnZlcl9wb1J0Ijo0NzAsInRyb0pBbiI6eyJwYXNzd09yZCI6In0iLCJ0000iOnsi0CI6dHJ1ZX0sInRyYW5zcG9ydCI6eyJYaHR0cCI6eyJleHRyYSI6eyJ0IiA6IDB9fX19fX")

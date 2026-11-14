@@ -1,0 +1,115 @@
+package engine
+
+import (
+	"context"
+	"encoding/json"
+
+	C "github.com/sagernet/sing-box/constant"
+	"github.com/xtls/xray-core/core"
+
+	"PorosCore/internal/jsonrpc"
+	"PorosCore/profile"
+)
+
+func (e *Engine) Info() AppInfo {
+	return AppInfo{SingBox: C.Version, Xray: core.Version(), DataDir: e.dataDir, Elevated: elevated()}
+}
+
+// Handlers maps the methods of api.go onto the engine.
+func (e *Engine) Handlers() map[string]jsonrpc.Handler {
+	return map[string]jsonrpc.Handler{
+		MethodAppInfo:             noParams(func() (AppInfo, error) { return e.Info(), nil }),
+		MethodAppHandOver:         noParams(func() (any, error) { e.HandOver(); return nil, nil }),
+		MethodAppDebugInfo:        noParams(e.DebugInfo),
+		MethodSettingsGet:         noParams(e.Settings),
+		MethodSettingsSet:         withParams(e.SetSettings),
+		MethodDNSCheck:            withParams(func(p DNSObject) (any, error) { return nil, checkDNSObject(p.Object) }),
+		MethodWARPRegister:        withContext(e.RegisterWARP),
+		MethodGroupsList:          noParams(e.Groups),
+		MethodGroupsAdd:           withParams(e.AddGroup),
+		MethodGroupsRename:        withParams(e.RenameGroup),
+		MethodGroupsRemove:        withParams(func(p ByID) (any, error) { return nil, e.RemoveGroup(p.ID) }),
+		MethodGroupsConfigure:     withParams(e.ConfigureGroup),
+		MethodSubscriptionsAdd:    withContext(e.AddSubscription),
+		MethodSubscriptionsUpdate: withContext(func(ctx context.Context, p ByID) (SubscriptionUpdate, error) { return e.UpdateSubscription(ctx, p.ID) }),
+		MethodServersList:         withParams(e.Servers),
+		MethodServersAdd:          withParams(e.AddServers),
+		MethodServersGet:          withParams(e.Server),
+		MethodServersSave:         withParams(e.SaveServer),
+		MethodServersRemove:       withParams(func(p ServerIDs) (any, error) { return nil, e.RemoveServers(p) }),
+		MethodServersClone:        withParams(e.CloneServers),
+		MethodServersMove:         withParams(e.MoveServers),
+		MethodServersLinks:        withParams(e.ShareLinks),
+		MethodServersDeepLinks:    withParams(e.DeepLinks),
+		MethodServersExport:       withParams(e.ExportServer),
+		MethodServersForms: noParams(func() (ServerForms, error) {
+			return ServerForms{Forms: profile.Forms(), New: profile.NewProfiles()}, nil
+		}),
+		MethodServersCheck:        withParams(e.CheckServer),
+		MethodPresetsList:         noParams(e.Presets),
+		MethodPresetsGet:          withParams(func(p ByID) (PresetCopy, error) { return e.PresetCopy(p.ID) }),
+		MethodPresetsSave:         withParams(e.SavePreset),
+		MethodPresetsRemove:       withParams(func(p ByID) (any, error) { return nil, e.RemovePreset(p.ID) }),
+		MethodPresetsExport:       withParams(func(p ByID) (PresetLink, error) { return e.ExportPreset(p.ID) }),
+		MethodPresetsImport:       withParams(e.ImportPreset),
+		MethodPresetsCheck:        withParams(CheckPresetRules),
+		MethodPresetsWriteLists:   withParams(WritePresetLists),
+		MethodPresetsReadLists:    withParams(ReadPresetLists),
+		MethodLinksParse:          withParams(e.ParseLink),
+		MethodServersTest:         withParams(e.TestServers),
+		MethodServersSpeedTest:    withParams(e.SpeedTestServers),
+		MethodServersIPTest:       withParams(e.IPTestServers),
+		MethodServersResolve:      withParams(e.ResolveServers),
+		MethodServersClearResults: withParams(func(p ServersQuery) (any, error) { return nil, e.ClearResults(p) }),
+		MethodServersStopTests:    noParams(func() (any, error) { e.tests.stopAll(); return nil, nil }),
+		MethodServersResetTraffic: withParams(func(p ServersQuery) (any, error) { return nil, e.ResetTraffic(p) }),
+		MethodServersClean:        withParams(e.CleanServers),
+		MethodLogsGet:             withParams(e.Logs),
+		MethodConnectionStart:     noParams(e.StartConnection),
+		MethodConnectionStop:      noParams(e.StopConnection),
+		MethodConnectionsList:     noParams(e.Connections),
+		MethodStatsNow:            noParams(e.StatsNow),
+		MethodStatsTraffic:        withParams(e.TrafficHistory),
+		MethodConnectionsClose:    withParams(func(p ByID) (any, error) { return nil, e.CloseConnections(p) }),
+		MethodConnectionState:     noParams(func() (ConnectionState, error) { return e.ConnectionState(), nil }),
+		MethodNetworkCheck:        noParams(e.CheckNetwork),
+		MethodNetworkState:        noParams(func() (NetworkState, error) { return e.NetworkState(), nil }),
+		MethodKillSwitchState:     noParams(func() (KillSwitchState, error) { return e.KillSwitchState(), nil }),
+		MethodUpdatesState:        noParams(func() (UpdateState, error) { return e.UpdatesState(), nil }),
+		MethodUpdatesCheck:        noParams(e.CheckUpdates),
+		MethodUpdatesInstall:      noParams(e.InstallUpdate),
+		MethodOTPList:             noParams(e.OTPCodes),
+		MethodOTPGet:              withParams(func(p ByID) (OTPEntry, error) { return e.OTPEntry(p.ID) }),
+		MethodOTPParse:            withParams(e.ParseOTP),
+		MethodOTPImport:           withParams(e.ImportOTP),
+		MethodOTPSave:             withParams(e.SaveOTP),
+		MethodOTPRemove:           withParams(func(p ByID) (any, error) { return nil, e.RemoveOTP(p.ID) }),
+		MethodOTPMove:             withParams(func(p OTPMove) (any, error) { return nil, e.MoveOTP(p) }),
+		MethodOTPCode:             withParams(func(p ByID) (OTPCode, error) { return e.OTPCodeNow(p.ID) }),
+		MethodOTPLink:             withParams(func(p ByID) (OTPLink, error) { return e.OTPLink(p.ID) }),
+		MethodQREncode:            withParams(e.EncodeQR),
+		MethodQRScan:              noParams(e.ScanQR),
+		MethodBackupCreate:        withParams(e.CreateBackup),
+		MethodBackupInspect:       withParams(e.InspectBackup),
+		MethodBackupRestore:       withParams(e.RestoreBackup),
+	}
+}
+
+func noParams[R any](f func() (R, error)) jsonrpc.Handler {
+	return func(context.Context, json.RawMessage) (any, error) { return f() }
+}
+
+func withParams[P, R any](f func(P) (R, error)) jsonrpc.Handler {
+	return withContext(func(_ context.Context, params P) (R, error) { return f(params) })
+}
+
+// withContext is for methods that wait on the network: the request's context ends with the host's connection.
+func withContext[P, R any](f func(context.Context, P) (R, error)) jsonrpc.Handler {
+	return func(ctx context.Context, raw json.RawMessage) (any, error) {
+		var params P
+		if err := jsonrpc.DecodeParams(raw, &params); err != nil {
+			return nil, err
+		}
+		return f(ctx, params)
+	}
+}

@@ -1,0 +1,28 @@
+@font-face {
+  font-family: 'Onest';
+  src: url('../assets/fonts/Onest-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Unbounded';
+  src: url('../assets/fonts/Unbounded-Variable.ttf') format('truetype');
+  font-weight: 200 900;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/JetBrainsMono-Variable.ttf') format('truetype');
+  font-weight: 100 800;
+  font-display: block;
+}
+
+/* Windows has no flag glyphs, so country flags in server names come from this subset of Noto Color Emoji. */
+@font-face {
+  font-family: 'Poros Flags';
+  src: url('../assets/fonts/NotoColorEmoji.ttf') format('truetype');
+  unicode-range: U+1F1E6-1F1FF;
+  font-display: block;
+}

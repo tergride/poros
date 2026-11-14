@@ -1,0 +1,25 @@
+# go tool tygo generate: the contract of core/engine/api.go and the server model of core/profile as TypeScript for
+# the interface.
+packages:
+  - path: "PorosCore/profile"
+    output_path: "../src/platform/profile-types.ts"
+    include_files:
+      - "profile.go"
+      - "fields.go"
+    preserve_comments: "types"
+    type_mappings:
+      json.RawMessage: "unknown"
+    frontmatter: |
+      // Source: core/profile/profile.go and fields.go. Change the Go types and run `go tool tygo generate` in core.
+  - path: "PorosCore/engine"
+    output_path: "../src/platform/core-types.ts"
+    include_files:
+      - "api.go"
+    preserve_comments: "types"
+    type_mappings:
+      profile.Profile: "profile.Profile"
+      profile.ProfileForm: "profile.ProfileForm"
+      profile.NewProfile: "profile.NewProfile"
+    frontmatter: |
+      // Source: core/engine/api.go. Change the Go types and run `go tool tygo generate` in core.
+      import type * as profile from './profile-types'
