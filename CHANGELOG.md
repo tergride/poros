@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0
+
+<!-- ru -->
+- **Конечные точки отдельно от пресетов:** подключения OpenVPN и OpenConnect теперь в разделе «Маршрутизация → Конечные точки» расширенного режима. У каждой свои подключение, правила и выключатель, включённые работают с любым пресетом. Конечную точку можно сохранить в файл JSON с данными для входа или без них и добавить из такого файла или из `.ovpn`. Конечные точки, выбранные в пресетах 0.1.0, не переносятся: их нужно добавить заново.
+- **Пресетом можно поделиться** QR-кодом в виде картинки, ссылкой или файлом JSON. Ссылки стали в несколько раз короче, прежние тоже открываются. В окно «Импорт пресета» картинку или файл можно перетащить, выбрать или вставить через Ctrl+V.
+- **Редактор списков** подсказывает префиксы правил по мере ввода, а окно «Помощь» перечисляет все префиксы с примерами. Предупреждения о нераспознанных и повторных строках больше не меняют высоту поля.
+- **Соединения:** пока подключения нет, экран соединений расширенного режима показывает подсказку вместо пустого графика.
+- **Тексты настроек** стали точнее, у сложных настроек появились описания при наведении на значок «i».
+
+<!-- en -->
+- **Endpoints apart from presets:** OpenVPN and OpenConnect connections now live in Routing → Endpoints in advanced mode. Each one has its own connection, rules and switch, and enabled ones work with any preset. An endpoint can be saved to a JSON file with or without the data for signing in, and added from such a file or from an `.ovpn` file. Endpoints chosen in 0.1.0 presets are not carried over: add them again.
+- **Share a preset** as a picture of its QR code, a link or a JSON file. Links are several times shorter, and the old ones still open. A picture or a file can be dropped into the "Import a preset" dialog, picked, or pasted with Ctrl+V.
+- **The lists editor** suggests rule prefixes as you type, and its Help dialog lists every prefix with examples. Warnings about unrecognized and repeated lines no longer change the height of the field.
+- **Connections:** while not connected, the connections screen of advanced mode shows a hint instead of an empty chart.
+- **Setting texts** are more precise, and complex settings have notes on hover over the "i" icon.
+
 ## 0.1.0
 
 <!-- ru -->
