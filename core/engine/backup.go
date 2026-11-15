@@ -26,13 +26,13 @@ var backupParts = []string{BackupProfiles, BackupRouting, BackupSettings, Backup
 // backupFile is a backup as written: the parts it has, each as the core stores it. The traffic history, the logs and
 // the results of tests are not in it.
 type backupFile struct {
-	Kind     string                    `json:"kind"`
-	V        int                       `json:"v"`
-	Version  string                    `json:"version"`
-	Created  int64                     `json:"created"`
-	Parts    []string                  `json:"parts"`
-	Groups   []groupRecord             `json:"groups,omitempty"`
-	Servers  map[string][]serverRecord `json:"servers,omitempty"`
+	Kind      string                    `json:"kind"`
+	V         int                       `json:"v"`
+	Version   string                    `json:"version"`
+	Created   int64                     `json:"created"`
+	Parts     []string                  `json:"parts"`
+	Groups    []groupRecord             `json:"groups,omitempty"`
+	Servers   map[string][]serverRecord `json:"servers,omitempty"`
 	Presets   []copyRecord              `json:"presets,omitempty"`
 	Endpoints []endpointRecord          `json:"endpoints,omitempty"`
 	Settings  *Settings                 `json:"settings,omitempty"`

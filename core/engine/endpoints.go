@@ -114,12 +114,17 @@ func signInFields(p *profile.Profile) map[string]*string {
 	return map[string]*string{}
 }
 
-// stillNeeded is what of need the profile lacks yet, in signInOrder; a name it has no such data for is dropped.
+// stillNeeded is what of need the profile lacks yet, in signInOrder; a name it has no such data for is dropped. A code
+// of OTP is needed only while {otp} may sign in: the name or the password has it or is still missing.
 func stillNeeded(need []string, p profile.Profile) []string {
 	fields := signInFields(&p)
+	missing := func(name string) bool {
+		field, ok := fields[name]
+		return ok && *field == "" && slices.Contains(need, name)
+	}
 	var left []string
 	for _, name := range signInOrder {
-		if field, ok := fields[name]; ok && *field == "" && slices.Contains(need, name) {
+		if missing(name) && (name != SignInOTP || usesOTP(fields) || missing(SignInUsername) || missing(SignInPassword)) {
 			left = append(left, name)
 		}
 	}

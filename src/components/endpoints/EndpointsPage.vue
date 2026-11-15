@@ -45,9 +45,10 @@ const removing = ref(false)
 const making = ref(false)
 
 const selected = computed(() => String(route.params.id || core.endpoints[0]?.id || ''))
+// The address counts too: a new draft left for the endpoint shown before it changes the address, not the endpoint.
 watch(
-  selected,
-  (id) => {
+  [selected, () => route.params.id],
+  ([id]) => {
     if (making.value) return
     if (id) void editor.load(id)
     else entry.value = null

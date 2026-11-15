@@ -13,8 +13,7 @@ import { MethodPresetsExport, MethodPresetsFile, MethodQREncode, ReasonQRTooLong
 import { useCoreStore } from '@/stores/core'
 
 // «Share» of a user's preset: its QR code with the button that copies the picture of it for a message, its
-// poros://route/ link to copy and its file of JSON. Endpoints are this computer's profiles: they stay out, and the dialog
-// says so.
+// poros://route/ link to copy and its file of JSON.
 const open = defineModel<boolean>('open', { default: false })
 const props = defineProps<{ preset: Preset | null }>()
 

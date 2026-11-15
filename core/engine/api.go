@@ -1239,9 +1239,9 @@ type BackupRestore struct {
 // BackupInfo is what a backup holds: when and by which Poros it was made, its parts and how much of each.
 type BackupInfo struct {
 	// Created is in Unix milliseconds.
-	Created int64    `json:"created"`
-	Version string   `json:"version"`
-	Parts   []string `json:"parts"`
+	Created   int64    `json:"created"`
+	Version   string   `json:"version"`
+	Parts     []string `json:"parts"`
 	Groups    int      `json:"groups"`
 	Servers   int      `json:"servers"`
 	Presets   int      `json:"presets"`

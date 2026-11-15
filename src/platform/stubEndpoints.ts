@@ -48,9 +48,12 @@ function signInFields(profile: Profile): Map<string, { get: () => string; set: (
   return fields
 }
 
+// A code of OTP is needed only while {otp} may sign in: the name or the password has it or is still missing.
 function stillNeeded(need: string[], profile: Profile): string[] {
   const fields = signInFields(profile)
-  return signInOrder.filter((name) => need.includes(name) && fields.get(name)?.get() === '')
+  const missing = (name: string) => need.includes(name) && fields.get(name)?.get() === ''
+  const otp = [SignInUsername, SignInPassword].some((name) => missing(name) || fields.get(name)?.get().includes('{otp}'))
+  return signInOrder.filter((name) => missing(name) && (name !== SignInOTP || otp))
 }
 
 function fileName(name: string): string {

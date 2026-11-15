@@ -155,13 +155,25 @@ func TestEndpointFiles(t *testing.T) {
 	}
 	certificate, key := testCertificate(t)
 	o := filled.Profile.OpenVPN
-	o.Username, o.Password, o.Cert, o.Key = "petrov", "secret", certificate, key
+	o.Username, o.Password, o.Cert, o.Key = "petrov", "secret{otp}", certificate, key
 	if saved, err := e.SaveEndpoint(filled); err == nil || reason(err) != ReasonSignInMissing {
 		t.Errorf("the code of OTP is still missing: %+v, %v", saved, err)
 	}
 	o.OTP = code.ID
 	if saved, err := e.SaveEndpoint(filled); err != nil || !saved.On || len(saved.Need) != 0 {
 		t.Errorf("filled in, it turns on: %+v, %v", saved, err)
+	}
+	// Who signs in without {otp} needs no code of OTP, whatever the file asked for.
+	plain, err := e.ImportEndpoint(EndpointText{Text: safe.Text})
+	if err != nil {
+		t.Fatal(err)
+	}
+	filled, _ = e.EndpointEntry(plain.ID)
+	filled.On = true
+	o = filled.Profile.OpenVPN
+	o.Username, o.Password, o.Cert, o.Key = "sidorov", "secret", certificate, key
+	if saved, err := e.SaveEndpoint(filled); err != nil || !saved.On || len(saved.Need) != 0 {
+		t.Errorf("a password without {otp} turns on without a code: %+v, %v", saved, err)
 	}
 
 	if _, err = e.ImportEndpoint(EndpointText{Text: `{"kind":"poros-endpoint","v":1,"profile":{},"extra":true}`}); reason(err) != ReasonInvalidLink {

@@ -425,6 +425,15 @@ test('endpoints run beside the server with any preset, with their own rules, fil
   await page.getByTestId('endpoint-remove').click()
   await page.getByTestId('endpoint-remove-confirm').click()
   await expect(page.getByTestId('routing-endpoint')).toHaveCount(1)
+  await expect(page.getByTestId('endpoint-name')).toHaveValue('Офис')
+
+  // A new draft left for the endpoint shown before it brings that endpoint back.
+  await page.getByTestId('endpoint-add').first().click()
+  await page.getByTestId('endpoint-add-openvpn').click()
+  await expect(page.getByTestId('endpoint-name')).toHaveValue('OpenVPN')
+  await page.getByTestId('routing-endpoint').click()
+  await page.getByTestId('unsaved-leave').click()
+  await expect(page.getByTestId('endpoint-name')).toHaveValue('Офис')
 })
 
 test('the DNS settings of the advanced mode take answers, the cache and an own dns object, and wait for Save', async ({ page }) => {
