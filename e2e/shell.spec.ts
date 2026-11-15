@@ -316,6 +316,117 @@ test('the lists of a preset take a pasted list, name bad lines and save with the
   await expect(page.getByText('На основе «Весь трафик»: 6 правил.')).toBeVisible()
 })
 
+test('a preset is shared as a QR code, a link and a file, and imported from each', async ({ page }) => {
+  await throughWizard(page)
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.getByRole('link', { name: /Пресет:/ }).click()
+  await page.getByTestId('preset-copy').first().click()
+  await page.getByTestId('new-preset-create').click()
+  await page.getByTestId('preset-name').fill('Канал')
+  await page.getByTestId('rule-new-value').fill('example.org')
+  await page.getByTestId('rule-new-value').press('Enter')
+  await page.getByTestId('preset-save').click()
+  const mine = page.getByTestId('preset').filter({ hasText: 'Канал' })
+  await expect(mine).toBeVisible()
+
+  // «Share»: the code, the link to copy, the picture of the code and the file.
+  await mine.getByRole('button', { name: 'Ещё' }).click()
+  await page.getByTestId('preset-share').click()
+  const share = page.getByRole('dialog', { name: 'Поделиться «Канал»' })
+  await expect(share.getByTestId('share-qr')).toBeVisible()
+  await shot(page, 'preset-share')
+  const link = await share.getByTestId('share-link').inputValue()
+  expect(link).toMatch(/^poros:\/\/route\//)
+  await share.getByTestId('share-copy-link').click()
+  await expect(share.getByTestId('share-copy-link')).toHaveText('Скопировано')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link)
+  await share.getByTestId('share-copy-qr').click()
+  await expect(share.getByTestId('share-copy-qr')).toHaveText('QR-код скопирован')
+  await expect.poll(() => page.evaluate(async () => (await navigator.clipboard.read()).flatMap((item) => item.types))).toContain('image/png')
+  const saving = page.waitForEvent('download')
+  await share.getByTestId('share-export').click()
+  const download = await saving
+  expect(download.suggestedFilename()).toBe('Канал.json')
+  const file = (await import('node:fs')).readFileSync(await download.path())
+  expect(JSON.parse(file.toString('utf8'))).toMatchObject({ kind: 'poros-preset', v: 1, name: 'Канал' })
+  await expect(share.getByTestId('share-saved')).toHaveText('Сохранено: Канал.json')
+  await shot(page, 'preset-share-done')
+  await page.keyboard.press('Escape')
+  await expect(share).toBeHidden()
+
+  // «Import a preset»: a pasted picture, a picked picture and file, a dropped picture and a link. The stub reads
+  // every picture as what the page puts into window.porosPictureQr.
+  await page.evaluate((text) => {
+    ;(window as { porosPictureQr?: string[] }).porosPictureQr = [text]
+  }, link)
+  const dialog = page.getByRole('dialog', { name: 'Импорт пресета' })
+  const importing = async () => {
+    await page.getByTestId('preset-import').click()
+    await expect(dialog).toBeVisible()
+  }
+  const added = async (name: string) => {
+    await expect(dialog, `the dialog closes on «${name}» added`).toBeHidden()
+    await expect(page.getByText(`Пресет «${name}» добавлен.`)).toBeVisible()
+  }
+  const send = (type: 'dragover' | 'drop', target: string) =>
+    page.evaluate(
+      ([kind, testid]) => {
+        const zone = document.querySelector(`[data-testid="${testid}"]`)
+        if (!zone) throw new Error(`no ${testid}`)
+        const data = new DataTransfer()
+        data.items.add(new File(['png'], 'preset.png', { type: 'image/png' }))
+        const init = { bubbles: true, cancelable: true }
+        zone.dispatchEvent(new DragEvent(kind, { ...init, dataTransfer: data }))
+      },
+      [type, target] as const,
+    )
+  const picture = { name: 'preset.png', mimeType: 'image/png', buffer: Buffer.from('png') }
+
+  // The picture of the code copied in «Share» is still in the clipboard.
+  await importing()
+  await shot(page, 'preset-import')
+  await page.keyboard.press('Control+V')
+  await added('Канал 2')
+
+  await importing()
+  await dialog.getByTestId('import-file').setInputFiles(picture)
+  await added('Канал 3')
+
+  await importing()
+  await dialog.getByTestId('import-file').setInputFiles({ name: 'Канал.json', mimeType: 'application/json', buffer: file })
+  await added('Канал 4')
+
+  await importing()
+  await send('dragover', 'import-drop')
+  await expect(dialog.getByTestId('import-drop')).toHaveClass(/border-act/)
+  await send('drop', 'import-drop')
+  await added('Канал 5')
+
+  await importing()
+  await dialog.getByTestId('import-link').fill(link)
+  await dialog.getByTestId('import-link').press('Enter')
+  await added('Канал 6')
+
+  // What fails is said in the dialog, which stays open.
+  await importing()
+  await page.evaluate(() => {
+    ;(window as { porosPictureQr?: string[] }).porosPictureQr = ['https://example.com/']
+  })
+  await dialog.getByTestId('import-file').setInputFiles(picture)
+  await expect(dialog.getByTestId('import-error')).toHaveText('На картинке нет QR-кода пресета Poros.')
+  await dialog.getByTestId('import-file').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('x') })
+  await expect(dialog.getByTestId('import-error')).toHaveText('Подходит картинка PNG, JPEG или GIF с QR-кодом или файл пресета .json.')
+  await dialog.getByTestId('import-file').setInputFiles({ name: 'other.json', mimeType: 'application/json', buffer: Buffer.from('{"kind":"other"}') })
+  await expect(dialog.getByTestId('import-error')).toHaveText('В файле нет пресета Poros.')
+  await dialog.getByTestId('import-link').fill('https://example.com/')
+  await dialog.getByTestId('import-add').click()
+  await expect(dialog.getByTestId('import-error')).toContainText('Это не ссылка на пресет Poros')
+  await shot(page, 'preset-import-error')
+  await page.keyboard.press('Escape')
+  // Two built-in presets and six of the user's.
+  await expect(page.getByTestId('preset')).toHaveCount(8)
+})
+
 test('poros:// links open a dialog and add only after a yes', async ({ page }) => {
   await throughWizard(page)
   const encode = (text: string) => Buffer.from(text).toString('base64url')

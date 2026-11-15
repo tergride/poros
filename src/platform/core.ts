@@ -36,10 +36,12 @@ import type {
   OTPText,
   OutsideLink,
   QRCode,
+  QRImage,
   QRScan,
   QRText,
   Preset,
   PresetCopy,
+  PresetFile,
   PresetLink,
   PresetLists,
   PresetListsInput,
@@ -117,11 +119,13 @@ import {
   MethodOTPSave,
   MethodQREncode,
   MethodQRScan,
+  MethodQRRead,
   MethodDNSCheck,
   MethodPresetsCheck,
   MethodWARPRegister,
   MethodPresetsExport,
   MethodPresetsGet,
+  MethodPresetsFile,
   MethodPresetsImport,
   MethodPresetsList,
   MethodPresetsReadLists,
@@ -195,6 +199,7 @@ export interface CoreMethods {
   [MethodPresetsSave]: { params: PresetCopy; result: Preset }
   [MethodPresetsRemove]: { params: ByID; result: null }
   [MethodPresetsExport]: { params: ByID; result: PresetLink }
+  [MethodPresetsFile]: { params: ByID; result: PresetFile }
   [MethodPresetsImport]: { params: PresetLink; result: Preset }
   [MethodPresetsCheck]: { params: PresetRules; result: PresetRules }
   [MethodDNSCheck]: { params: DNSObject; result: null }
@@ -227,6 +232,7 @@ export interface CoreMethods {
   [MethodOTPLink]: { params: ByID; result: OTPLink }
   [MethodQREncode]: { params: QRText; result: QRCode }
   [MethodQRScan]: { params: undefined; result: QRScan }
+  [MethodQRRead]: { params: QRImage; result: QRScan }
   [MethodBackupCreate]: { params: BackupParts; result: BackupFile }
   [MethodBackupInspect]: { params: BackupText; result: BackupInfo }
   [MethodBackupRestore]: { params: BackupRestore; result: BackupInfo }

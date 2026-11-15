@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/base64"
 	"errors"
 
 	"PorosCore/internal/jsonrpc"
@@ -24,9 +25,24 @@ func (e *Engine) ScanQR() (QRScan, error) {
 	if err != nil {
 		return QRScan{}, jsonrpc.Failed(ReasonScanFailed, "%v", err)
 	}
-	texts := qr.Decode(screen)
-	if texts == nil {
-		texts = []string{}
+	return QRScan{Texts: nonNil(qr.Decode(screen))}, nil
+}
+
+// maxQRImage bounds the file of a picture to read, 32 MB: a photo of a phone is a few megabytes.
+const maxQRImage = 32 << 20
+
+// ReadQR reads the QR codes on a picture.
+func (e *Engine) ReadQR(p QRImage) (QRScan, error) {
+	if base64.StdEncoding.DecodedLen(len(p.Image)) > maxQRImage {
+		return QRScan{}, jsonrpc.Failed(ReasonBadPicture, "the picture is larger than %d MB", maxQRImage>>20)
 	}
-	return QRScan{Texts: texts}, nil
+	data, err := base64.StdEncoding.DecodeString(p.Image)
+	if err != nil {
+		return QRScan{}, jsonrpc.Failed(ReasonBadPicture, "the picture is no base64")
+	}
+	picture, err := qr.Picture(data)
+	if err != nil {
+		return QRScan{}, jsonrpc.Failed(ReasonBadPicture, "%v", err)
+	}
+	return QRScan{Texts: nonNil(qr.Decode(picture))}, nil
 }

@@ -1,21 +1,22 @@
 <script setup lang="ts">
-import { Check, ClipboardPaste, Copy, Layers, Link, Lock, Plus, Route, Trash2 } from '@lucide/vue'
+import { Check, Copy, Import, Layers, Lock, Plus, Route, Share2, Trash2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 
+import ImportPresetDialog from '@/components/presets/ImportPresetDialog.vue'
 import NewPresetDialog from '@/components/presets/NewPresetDialog.vue'
 import PresetEditor from '@/components/presets/PresetEditor.vue'
 import RoutingCommon from '@/components/presets/RoutingCommon.vue'
 import RoutingDraftPage from '@/components/presets/RoutingDraftPage.vue'
 import RoutingWarp from '@/components/presets/RoutingWarp.vue'
+import SharePresetDialog from '@/components/presets/SharePresetDialog.vue'
 import { Banner, Button, Dialog, Input, Tabs, TabsList, TabsTrigger } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { providePresetDraft } from '@/composables/usePresetDraft'
-import { useFailure } from '@/composables/useReason'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import type { Preset } from '@/platform/core-types'
-import { MethodPresetsExport, MethodPresetsImport, MethodPresetsRemove } from '@/platform/core-types'
+import { MethodPresetsRemove } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
@@ -28,7 +29,8 @@ const restart = useRestartNeeded()
 const route = useRoute()
 const router = useRouter()
 const attempt = useAttempt()
-const failureOf = useFailure()
+const importing = ref(false)
+const sharing = ref(false)
 const { t } = useI18n()
 const editor = providePresetDraft()
 const { draft, failure, dirty, toAdvancedOpen } = editor
@@ -66,23 +68,9 @@ async function save(): Promise<boolean> {
   }
 }
 
-function exportLink(): Promise<void> {
-  return attempt(async () => {
-    const { link } = await core.core().call(MethodPresetsExport, { id: selected.value })
-    await navigator.clipboard.writeText(link)
-    ui.notice = { tone: 'info', text: t(current.value?.endpoints ? 'settings.presets.exportedLocal' : 'settings.presets.exported') }
-  })
-}
-
-async function importLink(): Promise<void> {
-  try {
-    const link = (await navigator.clipboard.readText()).trim()
-    const preset = await core.core().call(MethodPresetsImport, { link })
-    ui.notice = { tone: 'info', text: t('settings.presets.imported', { name: preset.name }) }
-    open(preset.id)
-  } catch (error) {
-    ui.notice = { tone: 'warn', text: failureOf(error) }
-  }
+function imported(preset: Preset): void {
+  ui.notice = { tone: 'info', text: t('settings.presets.imported', { name: preset.name }) }
+  open(preset.id)
 }
 
 async function remove(): Promise<void> {
@@ -152,7 +140,7 @@ onBeforeRouteUpdate(ask)
         </nav>
         <div class="grid gap-1.5 p-2">
           <Button size="sm" data-testid="preset-create" @click="making = ''"><Plus />{{ t('settings.presets.create') }}</Button>
-          <Button size="sm" @click="importLink"><ClipboardPaste />{{ t('settings.presets.import') }}</Button>
+          <Button size="sm" data-testid="preset-import" @click="importing = true"><Import />{{ t('settings.presets.import') }}</Button>
         </div>
       </aside>
       <div class="flex min-w-0 flex-1 flex-col">
@@ -172,7 +160,7 @@ onBeforeRouteUpdate(ask)
             </span>
             <span class="flex-1" />
             <Button v-if="!draft.advanced" size="sm" data-testid="preset-to-advanced" @click="toAdvancedOpen = true"><Layers />{{ t('toAdvanced.button') }}</Button>
-            <Button size="sm" data-testid="preset-export" @click="exportLink"><Link />{{ t('settings.presets.export') }}</Button>
+            <Button size="sm" data-testid="preset-share" @click="sharing = true"><Share2 />{{ t('settings.presets.share') }}</Button>
             <Button variant="ghost" size="icon-sm" :aria-label="t('presetEdit.remove')" data-testid="preset-remove" @click="removing = current ?? null">
               <Trash2 />
             </Button>
@@ -193,6 +181,8 @@ onBeforeRouteUpdate(ask)
     <RoutingDraftPage v-else><RoutingWarp /></RoutingDraftPage>
 
     <NewPresetDialog :based-on="making" @close="making = null" @created="open" />
+    <ImportPresetDialog v-model:open="importing" @added="imported" />
+    <SharePresetDialog v-model:open="sharing" :preset="current ?? null" />
     <Dialog :open="removing !== null" :title="t('settings.presets.removeTitle')" @update:open="(o) => !o && (removing = null)">
       <p class="text-t2">
         {{ t('settings.presets.removeText', { name: removing?.name ?? '', base: baseName }) }}

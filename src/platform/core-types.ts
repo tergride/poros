@@ -1257,10 +1257,17 @@ export interface PresetListsRead {
   problems: PresetListProblem[];
 }
 /**
- * PresetLink is a preset as a poros://route/ link.
+ * PresetLink is a preset as a poros://route/ link. MethodPresetsImport takes the text of a preset file there too.
  */
 export interface PresetLink {
   link: string;
+}
+/**
+ * PresetFile is a preset as a file of JSON: its name, from the preset's, and its text.
+ */
+export interface PresetFile {
+  name: string;
+  text: string;
 }
 /**
  * OutsideLink is a link that came from outside Poros, such as a browser.
@@ -1640,7 +1647,13 @@ export interface QRCode {
   rows: string[];
 }
 /**
- * QRScan is what the QR codes on the screen hold, each text once; none found is no error.
+ * QRImage is a picture to read QR codes from: a PNG, JPEG or GIF file in base64.
+ */
+export interface QRImage {
+  image: string;
+}
+/**
+ * QRScan is what the QR codes on the screen or a picture hold, each text once; none found is no error.
  */
 export interface QRScan {
   texts: string[];
@@ -1902,6 +1915,10 @@ export const MethodPresetsRemove = "presets.remove";
  */
 export const MethodPresetsExport = "presets.export";
 /**
+ * MethodPresetsFile gives a preset as a file, which MethodPresetsImport reads as it does a link.
+ */
+export const MethodPresetsFile = "presets.file";
+/**
  * Methods the core answers.
  */
 export const MethodPresetsImport = "presets.import";
@@ -1991,13 +2008,17 @@ export const MethodOTPCode = "otp.code";
 export const MethodOTPLink = "otp.link";
 /**
  * MethodQREncode draws text as a QR code; MethodQRScan reads the QR codes on all monitors. The window of Poros
- * keeps itself out of the snapshot while it scans.
+ * keeps itself out of the snapshot while it scans. MethodQRRead reads the QR codes on a picture.
  */
 export const MethodQREncode = "qr.encode";
 /**
  * Methods the core answers.
  */
 export const MethodQRScan = "qr.scan";
+/**
+ * Methods the core answers.
+ */
+export const MethodQRRead = "qr.read";
 /**
  * MethodBackupCreate gives a backup of the parts asked for; MethodBackupInspect tells what a backup holds, and
  * MethodBackupRestore checks it whole, stops the connection and puts its parts in place, each whole.
@@ -2256,6 +2277,10 @@ export const ReasonScanUnsupported = "scan_unsupported";
  * Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
  */
 export const ReasonScanFailed = "scan_failed";
+/**
+ * ReasonBadPicture is a picture to read QR codes from that is no PNG, JPEG or GIF, is damaged or too large.
+ */
+export const ReasonBadPicture = "bad_picture";
 /**
  * ReasonInvalidBackup is a file that is no backup of Poros, or one with a part that cannot be taken; the message
  * says what.

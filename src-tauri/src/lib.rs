@@ -603,6 +603,8 @@ pub fn run() {
                 .center()
                 .decorations(false)
                 .visible(!minimized)
+                // A picture dropped on the presets page goes to the page itself, as in a browser.
+                .disable_drag_drop_handler()
                 // The paste buttons read the clipboard; WebView2 would first ask, as a browser does on a site.
                 .on_permission_request(|_, kind| match kind {
                     PermissionKind::ClipboardRead => PermissionResponse::Allow,

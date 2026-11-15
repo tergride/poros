@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
 	"maps"
 	"math/rand/v2"
 	"net/http"
@@ -158,6 +160,15 @@ func sanitizeRestore(raw []byte) []byte {
 	return data
 }
 
+// blankPNG is a white picture of one pixel in base64: one without a QR code.
+func blankPNG() string {
+	picture := image.NewGray(image.Rect(0, 0, 1, 1))
+	picture.Pix[0] = 0xff
+	var file bytes.Buffer
+	_ = png.Encode(&file, picture)
+	return base64.StdEncoding.EncodeToString(file.Bytes())
+}
+
 func contractMethods() map[string]contractMethod {
 	storeServers := func(f *contractFuzz) []string { return f.pool.storeServers }
 	storeGroups := func(f *contractFuzz) []string { return f.pool.storeGroups }
@@ -295,6 +306,7 @@ func contractMethods() map[string]contractMethod {
 		}},
 		MethodPresetsRemove:     {params: ByID{}, base: func(f *contractFuzz) any { return ByID{ID: f.pickID(f.pool.copies)} }},
 		MethodPresetsExport:     {params: ByID{}, base: byID(presets)},
+		MethodPresetsFile:       {params: ByID{}, base: byID(presets)},
 		MethodPresetsImport:     {params: PresetLink{}, base: func(f *contractFuzz) any { return PresetLink{Link: f.pool.presetLink} }},
 		MethodPresetsCheck:      {params: PresetRules{}, base: presetRules},
 		MethodPresetsWriteLists: {params: PresetRules{}, base: presetRules},
@@ -354,6 +366,7 @@ func contractMethods() map[string]contractMethod {
 		MethodOTPLink:       {params: ByID{}, base: byID(codes)},
 		MethodQREncode:      {params: QRText{}, base: func(f *contractFuzz) any { return QRText{Text: f.pool.deepLink} }},
 		MethodQRScan:        {skip: "it takes a snapshot of the user's screens"},
+		MethodQRRead:        {params: QRImage{}, base: func(*contractFuzz) any { return QRImage{Image: blankPNG()} }},
 		MethodBackupCreate:  {params: BackupParts{}, base: func(f *contractFuzz) any { return BackupParts{Parts: f.parts()} }},
 		MethodBackupInspect: {params: BackupText{}, base: backupText},
 		MethodBackupRestore: {params: BackupRestore{}, sanitize: sanitizeRestore, base: func(f *contractFuzz) any {

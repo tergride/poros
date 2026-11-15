@@ -13,6 +13,7 @@ import TitleBar from '@/components/shell/TitleBar.vue'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useLinks } from '@/composables/useLinks'
+import { refuseStrayDrops } from '@/composables/usePresetImport'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import { useTray } from '@/composables/useTray'
 import { useUiMode } from '@/composables/useUiMode'
@@ -35,7 +36,10 @@ const router = useRouter()
 const attempt = useAttempt()
 const { locale } = useI18n()
 
-onMounted(() => void core.start())
+onMounted(() => {
+  refuseStrayDrops()
+  void core.start()
+})
 useTray()
 useLinks()
 

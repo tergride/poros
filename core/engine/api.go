@@ -843,9 +843,15 @@ type PresetListsRead struct {
 	Problems []PresetListProblem `json:"problems"`
 }
 
-// PresetLink is a preset as a poros://route/ link.
+// PresetLink is a preset as a poros://route/ link. MethodPresetsImport takes the text of a preset file there too.
 type PresetLink struct {
 	Link string `json:"link"`
+}
+
+// PresetFile is a preset as a file of JSON: its name, from the preset's, and its text.
+type PresetFile struct {
+	Name string `json:"name"`
+	Text string `json:"text"`
 }
 
 // OutsideLink is a link that came from outside Poros, such as a browser.
@@ -1132,7 +1138,12 @@ type QRCode struct {
 	Rows []string `json:"rows"`
 }
 
-// QRScan is what the QR codes on the screen hold, each text once; none found is no error.
+// QRImage is a picture to read QR codes from: a PNG, JPEG or GIF file in base64.
+type QRImage struct {
+	Image string `json:"image"`
+}
+
+// QRScan is what the QR codes on the screen or a picture hold, each text once; none found is no error.
 type QRScan struct {
 	Texts []string `json:"texts"`
 }
@@ -1263,6 +1274,8 @@ const (
 	MethodPresetsSave   = "presets.save"
 	MethodPresetsRemove = "presets.remove"
 	MethodPresetsExport = "presets.export"
+	// MethodPresetsFile gives a preset as a file, which MethodPresetsImport reads as it does a link.
+	MethodPresetsFile   = "presets.file"
 	MethodPresetsImport = "presets.import"
 	// MethodPresetsCheck checks the rules of a preset without saving them; a wrong one fails with a RuleProblem as
 	// the data of the error.
@@ -1302,9 +1315,10 @@ const (
 	MethodOTPCode = "otp.code"
 	MethodOTPLink = "otp.link"
 	// MethodQREncode draws text as a QR code; MethodQRScan reads the QR codes on all monitors. The window of Poros
-	// keeps itself out of the snapshot while it scans.
+	// keeps itself out of the snapshot while it scans. MethodQRRead reads the QR codes on a picture.
 	MethodQREncode = "qr.encode"
 	MethodQRScan   = "qr.scan"
+	MethodQRRead   = "qr.read"
 	// MethodBackupCreate gives a backup of the parts asked for; MethodBackupInspect tells what a backup holds, and
 	// MethodBackupRestore checks it whole, stops the connection and puts its parts in place, each whole.
 	MethodBackupCreate  = "backup.create"
@@ -1427,6 +1441,8 @@ const (
 	// ReasonScanFailed one the system refused.
 	ReasonScanUnsupported = "scan_unsupported"
 	ReasonScanFailed      = "scan_failed"
+	// ReasonBadPicture is a picture to read QR codes from that is no PNG, JPEG or GIF, is damaged or too large.
+	ReasonBadPicture = "bad_picture"
 	// ReasonInvalidBackup is a file that is no backup of Poros, or one with a part that cannot be taken; the message
 	// says what.
 	ReasonInvalidBackup = "invalid_backup"

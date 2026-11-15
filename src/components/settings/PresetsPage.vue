@@ -1,24 +1,26 @@
 <script setup lang="ts">
-import { ClipboardPaste, Copy, Lock, MoreHorizontal, Pencil, Plus, Trash2 } from '@lucide/vue'
+import { Copy, Import, Lock, MoreHorizontal, Pencil, Plus, Share2, Trash2 } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+import ImportPresetDialog from '@/components/presets/ImportPresetDialog.vue'
 import NewPresetDialog from '@/components/presets/NewPresetDialog.vue'
+import SharePresetDialog from '@/components/presets/SharePresetDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Dialog, Menu, MenuItem, MenuSeparator, RadioGroup, RadioItem } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
-import { useFailure } from '@/composables/useReason'
 import type { Preset } from '@/platform/core-types'
-import { MethodPresetsExport, MethodPresetsImport, MethodPresetsRemove } from '@/platform/core-types'
+import { MethodPresetsRemove } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 const core = useCoreStore()
 const ui = useUiStore()
 const router = useRouter()
-const failure = useFailure()
 const attempt = useAttempt()
+const importing = ref(false)
+const sharing = ref<Preset | null>(null)
 const { t, te } = useI18n()
 const removing = ref<Preset | null>(null)
 // The base of a preset to make: "" for one from scratch, null for no dialog.
@@ -41,22 +43,8 @@ const selected = computed({
   set: (id: string) => void attempt(() => core.updateSettings({ preset: id })),
 })
 
-function exportLink(preset: Preset): Promise<void> {
-  return attempt(async () => {
-    const { link } = await core.core().call(MethodPresetsExport, { id: preset.id })
-    await navigator.clipboard.writeText(link)
-    ui.notice = { tone: 'info', text: t(preset.endpoints > 0 ? 'settings.presets.exportedLocal' : 'settings.presets.exported') }
-  })
-}
-
-async function importLink(): Promise<void> {
-  try {
-    const link = (await navigator.clipboard.readText()).trim()
-    const preset = await core.core().call(MethodPresetsImport, { link })
-    ui.notice = { tone: 'info', text: t('settings.presets.imported', { name: preset.name }) }
-  } catch (error) {
-    ui.notice = { tone: 'warn', text: failure(error) }
-  }
+function imported(preset: Preset): void {
+  ui.notice = { tone: 'info', text: t('settings.presets.imported', { name: preset.name }) }
 }
 
 function open(id: string): void {
@@ -118,7 +106,7 @@ function remove(): Promise<void> {
             <template #trigger>
               <Button variant="ghost" size="icon-sm" :aria-label="t('common.more')"><MoreHorizontal /></Button>
             </template>
-            <MenuItem @select="exportLink(preset)"><Copy />{{ t('settings.presets.export') }}</MenuItem>
+            <MenuItem data-testid="preset-share" @select="sharing = preset"><Share2 />{{ t('settings.presets.share') }}</MenuItem>
             <MenuSeparator />
             <MenuItem danger @select="removing = preset"><Trash2 />{{ t('common.remove') }}</MenuItem>
           </Menu>
@@ -128,10 +116,12 @@ function remove(): Promise<void> {
   </RadioGroup>
   <div class="flex gap-2">
     <Button data-testid="preset-create" @click="making = ''"><Plus />{{ t('settings.presets.create') }}</Button>
-    <Button @click="importLink"><ClipboardPaste />{{ t('settings.presets.import') }}</Button>
+    <Button data-testid="preset-import" @click="importing = true"><Import />{{ t('settings.presets.import') }}</Button>
   </div>
 
   <NewPresetDialog :based-on="making" @close="making = null" @created="open" />
+  <ImportPresetDialog v-model:open="importing" @added="imported" />
+  <SharePresetDialog :open="sharing !== null" :preset="sharing" @update:open="(o: boolean) => !o && (sharing = null)" />
   <Dialog :open="removing !== null" :title="t('settings.presets.removeTitle')" @update:open="(o) => !o && (removing = null)">
     <p class="text-t2">
       {{ t('settings.presets.removeText', { name: removing?.name ?? '', base: removing ? baseOf(removing) : '' }) }}

@@ -1,9 +1,10 @@
 import type { CoreError } from './core'
 import type { QRCode, QRScan } from './core-types'
-import { ReasonQRTooLong } from './core-types'
+import { ReasonBadPicture, ReasonQRTooLong } from './core-types'
 
 // QR codes of the stub core: a matrix of the size a real one would have, with its finders, and modules from a hash of
-// the text, enough for the interface to draw. The screen holds what Playwright puts into window.porosScreenQr.
+// the text, enough for the interface to draw. The screen holds what Playwright puts into window.porosScreenQr, every
+// picture what it puts into window.porosPictureQr.
 
 const capacity = 2953
 
@@ -39,5 +40,11 @@ export function stubQrEncode(text: string): QRCode {
 
 export function stubQrScan(): QRScan {
   const texts = (globalThis as { porosScreenQr?: string[] }).porosScreenQr ?? []
+  return { texts: [...texts] }
+}
+
+export function stubQrRead(image: string): QRScan {
+  if (!image) throw { code: 1, message: 'the picture is no PNG, JPEG or GIF to read', data: { reason: ReasonBadPicture } } satisfies CoreError
+  const texts = (globalThis as { porosPictureQr?: string[] }).porosPictureQr ?? []
   return { texts: [...texts] }
 }

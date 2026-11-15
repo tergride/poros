@@ -18,3 +18,23 @@ export function qrPath(rows: string[]): string {
   })
   return d
 }
+
+/**
+ * The code as a PNG to send in a message: scale pixels a module and four modules of quiet zone, dark on white as
+ * readers expect, whatever the theme.
+ */
+export function qrPng(rows: string[], scale = 10): Promise<Blob> {
+  const size = (rows.length + 8) * scale
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const draw = canvas.getContext('2d')
+  if (!draw) return Promise.reject(new Error('no canvas to draw the QR code on'))
+  draw.fillStyle = '#ffffff'
+  draw.fillRect(0, 0, size, size)
+  draw.fillStyle = '#0b1020'
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) if (row[x] === '1') draw.fillRect((x + 4) * scale, (y + 4) * scale, scale, scale)
+  })
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('no PNG of the QR code'))), 'image/png'))
+}

@@ -3,11 +3,13 @@ package engine
 import (
 	"bytes"
 	"cmp"
+	"compress/zlib"
 	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 
@@ -359,17 +361,45 @@ func (e *Engine) announcePresets() {
 
 const presetLinkPrefix = "poros://route/"
 
-// presetLink is what a poros://route/ link carries: the copy without its ID.
+// presetLink is what a poros://route/ link carries: the copy without its ID, as JSON compressed with zlib. What is
+// unset stays out, so that a preset of dozens of rules takes a few hundred characters: short enough to paste into a
+// message and to read from a QR code on a picture.
 type presetLink struct {
-	Kind      string       `json:"kind"`
-	Version   int          `json:"v"`
-	BasedOn   string       `json:"based_on"`
-	Name      string       `json:"name"`
-	Advanced  bool         `json:"advanced,omitempty"`
-	Rules     []PresetRule `json:"rules,omitempty"`
-	DNS       string       `json:"dns,omitempty"`
-	DirectDNS string       `json:"direct_dns,omitempty"`
-	Default   string       `json:"default,omitempty"`
+	Kind      string     `json:"kind"`
+	Version   int        `json:"v"`
+	BasedOn   string     `json:"based_on,omitempty"`
+	Name      string     `json:"name"`
+	Advanced  bool       `json:"advanced,omitempty"`
+	Rules     []linkRule `json:"rules,omitempty"`
+	DNS       string     `json:"dns,omitempty"`
+	DirectDNS string     `json:"direct_dns,omitempty"`
+	Default   string     `json:"default,omitempty"`
+}
+
+// linkRule is a PresetRule as a link carries it, without the fields the rule leaves unset.
+type linkRule struct {
+	Name       string          `json:"name,omitempty"`
+	Conditions []RuleCondition `json:"conditions"`
+	Invert     bool            `json:"invert,omitempty"`
+	Off        bool            `json:"off,omitempty"`
+	Action     string          `json:"action"`
+	Endpoint   string          `json:"endpoint,omitempty"`
+}
+
+func linkRules(rules []PresetRule) []linkRule {
+	out := make([]linkRule, len(rules))
+	for i, r := range rules {
+		out[i] = linkRule(r)
+	}
+	return out
+}
+
+func (l presetLink) rules() []PresetRule {
+	out := make([]PresetRule, len(l.Rules))
+	for i, r := range l.Rules {
+		out[i] = PresetRule(r)
+	}
+	return out
 }
 
 const presetLinkKind = "poros-preset"
@@ -385,14 +415,80 @@ func (e *Engine) ExportPreset(id string) (PresetLink, error) {
 	}
 	// The endpoints are this computer's profiles: the link leaves them out, and the rules to them.
 	rules := slices.DeleteFunc(slices.Clone(c.Rules), func(r PresetRule) bool { return r.Action == ActionEndpoint })
-	data, err := json.Marshal(presetLink{
-		Kind: presetLinkKind, Version: 1, BasedOn: c.BasedOn, Name: c.Name, Advanced: c.Advanced, Rules: rules,
+	link, err := encodePresetLink(presetLink{
+		Kind: presetLinkKind, Version: 1, BasedOn: c.BasedOn, Name: c.Name, Advanced: c.Advanced, Rules: linkRules(rules),
 		DNS: c.DNS, DirectDNS: c.DirectDNS, Default: c.Default,
 	})
+	return PresetLink{Link: link}, err
+}
+
+// ExportPresetFile writes a preset as a file of JSON, what its link holds, under the preset's name.
+func (e *Engine) ExportPresetFile(id string) (PresetFile, error) {
+	exported, err := e.ExportPreset(id)
 	if err != nil {
-		return PresetLink{}, err
+		return PresetFile{}, err
 	}
-	return PresetLink{Link: presetLinkPrefix + base64.RawURLEncoding.EncodeToString(data)}, nil
+	link, err := decodePresetLink(exported.Link)
+	if err != nil {
+		return PresetFile{}, err
+	}
+	data, err := json.MarshalIndent(link, "", "  ")
+	if err != nil {
+		return PresetFile{}, err
+	}
+	return PresetFile{Name: fileName(link.Name) + ".json", Text: string(data) + "\n"}, nil
+}
+
+// fileName makes a name fit for a file on every system: the characters Windows refuses become «_», and the dots and
+// spaces it drops at the end go.
+func fileName(name string) string {
+	name = strings.Map(func(r rune) rune {
+		if r < 32 || strings.ContainsRune(`<>:"/\|?*`, r) {
+			return '_'
+		}
+		return r
+	}, name)
+	name = strings.TrimRight(strings.TrimSpace(name), ". ")
+	if name == "" {
+		return "preset"
+	}
+	return name
+}
+
+func encodePresetLink(link presetLink) (string, error) {
+	data, err := json.Marshal(link)
+	if err != nil {
+		return "", err
+	}
+	var packed bytes.Buffer
+	w, err := zlib.NewWriterLevel(&packed, zlib.BestCompression)
+	if err != nil {
+		return "", err
+	}
+	if _, err = w.Write(data); err != nil {
+		return "", err
+	}
+	if err = w.Close(); err != nil {
+		return "", err
+	}
+	return presetLinkPrefix + base64.RawURLEncoding.EncodeToString(packed.Bytes()), nil
+}
+
+// maxPresetJSON bounds what a link may unpack to: a preset of thousands of rules is far less, and a small link that
+// unpacks to gigabytes stops there.
+const maxPresetJSON = 1 << 20
+
+func unpackPresetLink(data []byte) ([]byte, error) {
+	r, err := zlib.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	unpacked, err := io.ReadAll(io.LimitReader(r, maxPresetJSON+1))
+	if err == nil && len(unpacked) > maxPresetJSON {
+		err = errors.New("the preset is too large")
+	}
+	return unpacked, err
 }
 
 // nameTaken tells whether a preset other than id, built-in or the user's, has the name; case does not count.
@@ -414,9 +510,10 @@ func (e *Engine) nameTaken(name, id string) (bool, error) {
 	return false, nil
 }
 
-// ImportPreset makes a new copy from a link; a name that is taken gets a number: "Games 2".
+// ImportPreset makes a new copy from a link or the text of a preset file; a name that is taken gets a number:
+// "Games 2".
 func (e *Engine) ImportPreset(p PresetLink) (Preset, error) {
-	link, err := decodePresetLink(p.Link)
+	link, err := decodePresetText(p.Link)
 	if err != nil {
 		return Preset{}, err
 	}
@@ -437,7 +534,7 @@ func (e *Engine) ImportPreset(p PresetLink) (Preset, error) {
 // copy is the preset a link brings, under name.
 func (l presetLink) copy(name string) PresetCopy {
 	return PresetCopy{
-		BasedOn: l.BasedOn, Name: name, Advanced: l.Advanced, Rules: nonNil(l.Rules), DNS: l.DNS,
+		BasedOn: l.BasedOn, Name: name, Advanced: l.Advanced, Rules: l.rules(), DNS: l.DNS,
 		DirectDNS: l.DirectDNS, Default: l.Default, Endpoints: []string{},
 	}
 }
@@ -449,15 +546,36 @@ func decodePresetLink(text string) (presetLink, error) {
 	}
 	encoded := strings.TrimRight(text[len(presetLinkPrefix):], "=")
 	data, err := base64.RawURLEncoding.DecodeString(encoded)
+	// Plain JSON starts with «{», never the first byte of zlib: such a link reads as it is.
+	if err == nil && !bytes.HasPrefix(data, []byte("{")) {
+		data, err = unpackPresetLink(data)
+	}
 	if err != nil {
 		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "the preset link is damaged")
 	}
-	// Unknown keys are refused: a rule that lost a condition would match more.
+	return readPresetJSON(data)
+}
+
+// readPresetJSON reads what a link or a preset file holds. Unknown keys are refused: a rule that lost a condition
+// would match more.
+func readPresetJSON(data []byte) (presetLink, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var link presetLink
-	if err = decoder.Decode(&link); err != nil || link.Kind != presetLinkKind || link.Version != 1 {
-		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "the link holds no Poros preset")
+	if err := decoder.Decode(&link); err != nil || link.Kind != presetLinkKind || link.Version != 1 {
+		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "it holds no Poros preset")
 	}
 	return link, nil
+}
+
+// decodePresetText reads a poros://route/ link, or the text of a preset file, which is JSON.
+func decodePresetText(text string) (presetLink, error) {
+	text = strings.TrimSpace(text)
+	if !strings.HasPrefix(text, "{") {
+		return decodePresetLink(text)
+	}
+	if len(text) > maxPresetJSON {
+		return presetLink{}, jsonrpc.Failed(ReasonInvalidLink, "the preset file is larger than %d KB", maxPresetJSON>>10)
+	}
+	return readPresetJSON([]byte(text))
 }

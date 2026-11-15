@@ -89,12 +89,17 @@ func FuzzReadPresetLists(f *testing.F) {
 	})
 }
 
-func presetLinkOf(f *testing.F, link presetLink) string {
+// presetLinkOf writes a link of plain JSON, which a link may still be, and the compressed one an export writes.
+func presetLinkOf(f *testing.F, link presetLink) []string {
 	data, err := json.Marshal(link)
 	if err != nil {
 		f.Fatal(err)
 	}
-	return presetLinkPrefix + base64.RawURLEncoding.EncodeToString(data)
+	packed, err := encodePresetLink(link)
+	if err != nil {
+		f.Fatal(err)
+	}
+	return []string{presetLinkPrefix + base64.RawURLEncoding.EncodeToString(data), packed}
 }
 
 // Links from a browser or a messenger: whatever poros:// or throne:// link comes, ParseLink tells what it adds or why
@@ -103,7 +108,16 @@ func presetLinkOf(f *testing.F, link presetLink) string {
 func FuzzOutsideLink(f *testing.F) {
 	e := presetEngine(f)
 	encode := func(text string) string { return base64.RawURLEncoding.EncodeToString([]byte(text)) }
-	for _, link := range []string{
+	home := presetLinkOf(f, presetLink{Kind: presetLinkKind, Version: 1, BasedOn: "all", Name: "Home", DNS: "tls://1.1.1.1",
+		Rules: linkRules([]PresetRule{rule(CondSuffix, "example.org", ActionBlock), rule(CondIP, "10.0.0.0/8", ActionDirect)})})
+	advanced := presetLinkOf(f, presetLink{Kind: presetLinkKind, Version: 1, BasedOn: "all", Name: "Advanced", Advanced: true, Default: ActionDirect,
+		DirectDNS: "local", DNS: "https://dns.example/dns-query", Rules: linkRules([]PresetRule{
+			{Name: "Games", Action: ActionWARP, Invert: true, Conditions: []RuleCondition{
+				{Kind: CondProcessName, Values: []string{"game.exe", "GAME.EXE"}}, {Kind: CondNetwork, Values: []string{"udp"}}}},
+			{Action: ActionProxy, Off: true, Conditions: []RuleCondition{{Kind: CondPrivate, Values: []string{}}}},
+			rule(CondPort, "8000-8080", ActionBlock), rule(CondPort, "8008", ActionProxy), rule(CondRegex, `\.ads\.example$`, ActionBlock),
+		})})
+	for _, link := range slices.Concat(home, advanced, []string{
 		"poros://AddSub/" + encode("https://sub.example.com/u/8f3a#My%20VPN"),
 		"throne://addsub/" + base64.StdEncoding.EncodeToString([]byte("https://vpn.example.org/s/71bd")),
 		"poros://addsub/" + encode("vless://id@host:443"),
@@ -114,17 +128,8 @@ func FuzzOutsideLink(f *testing.F) {
 		"poros://add/" + encode(`{"type":"vless"}`),
 		"throne://route/" + encode("{}"),
 		"poros://remoteroute/x",
-		presetLinkOf(f, presetLink{Kind: presetLinkKind, Version: 1, BasedOn: "all", Name: "Home", DNS: "tls://1.1.1.1",
-			Rules: []PresetRule{rule(CondSuffix, "example.org", ActionBlock), rule(CondIP, "10.0.0.0/8", ActionDirect)}}),
-		presetLinkOf(f, presetLink{Kind: presetLinkKind, Version: 1, BasedOn: "all", Name: "Advanced", Advanced: true, Default: ActionDirect,
-			DirectDNS: "local", DNS: "https://dns.example/dns-query", Rules: []PresetRule{
-				{Name: "Games", Action: ActionWARP, Invert: true, Conditions: []RuleCondition{
-					{Kind: CondProcessName, Values: []string{"game.exe", "GAME.EXE"}}, {Kind: CondNetwork, Values: []string{"udp"}}}},
-				{Action: ActionProxy, Off: true, Conditions: []RuleCondition{{Kind: CondPrivate, Values: []string{}}}},
-				rule(CondPort, "8000-8080", ActionBlock), rule(CondPort, "8008", ActionProxy), rule(CondRegex, `\.ads\.example$`, ActionBlock),
-			}}),
 		"poros://route/" + encode(`{"kind":"poros-preset","v":1,"based_on":"all","name":"X","rules":[{"conditions":[],"action":"proxy","extra":1}]}`),
-	} {
+	}) {
 		f.Add(link)
 	}
 	f.Fuzz(func(t *testing.T, link string) {
@@ -169,17 +174,16 @@ func checkPresetLink(t *testing.T, e *Engine, c PresetCopy) {
 	if _, err = e.compose(record); err != nil {
 		return
 	}
-	data, err := json.Marshal(presetLink{Kind: presetLinkKind, Version: 1, BasedOn: record.BasedOn, Name: record.Name,
-		Advanced: record.Advanced, Rules: rules, DNS: record.DNS, DirectDNS: record.DirectDNS, Default: record.Default})
+	exported, err := encodePresetLink(presetLink{Kind: presetLinkKind, Version: 1, BasedOn: record.BasedOn, Name: record.Name,
+		Advanced: record.Advanced, Rules: linkRules(rules), DNS: record.DNS, DirectDNS: record.DirectDNS, Default: record.Default})
 	if err != nil {
-		t.Fatalf("the preset has no JSON: %v", err)
+		t.Fatalf("the preset has no link: %v", err)
 	}
-	exported := presetLinkPrefix + base64.RawURLEncoding.EncodeToString(data)
 	back, err := decodePresetLink(exported)
 	if err != nil {
 		t.Fatalf("the export %q does not read back: %v", exported, err)
 	}
-	again, err := checkRules(back.Advanced, nil, back.Rules)
+	again, err := checkRules(back.Advanced, nil, back.rules())
 	if err != nil || !reflect.DeepEqual(again, rules) {
 		t.Fatalf("the rules\n%+v\nare exported as %q, which reads as\n%+v, %v", rules, exported, again, err)
 	}

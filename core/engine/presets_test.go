@@ -1,9 +1,12 @@
 package engine
 
 import (
+	"bytes"
+	"compress/zlib"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -297,6 +300,108 @@ func TestPresetDefault(t *testing.T) {
 	draft.Default = "elsewhere"
 	if _, err = e.SavePreset(draft); reason(err) != ReasonInvalidValue {
 		t.Errorf("an unknown default: %v", err)
+	}
+}
+
+// A link is compressed and leaves out what its preset and rules do not set, so that two dozen rules take a few hundred
+// characters; a link of plain JSON that writes every field out reads into the same preset, and a damaged or huge one
+// is refused.
+func TestPresetLinkIsShort(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	var rules []PresetRule
+	for i, word := range strings.Fields("alpha bravo charlie delta echo foxtrot golf hotel india juliett kilo lima mike " +
+		"november oscar papa quebec romeo sierra") {
+		rules = append(rules, rule(CondSuffix, fmt.Sprintf("%s-%d.example.com", word, i*37%11), ActionProxy))
+	}
+	for _, word := range strings.Fields("tango uniform victor whiskey xray") {
+		rules = append(rules, rule(CondProcessName, word+"-app.exe", ActionProxy))
+	}
+	saved, err := e.SavePreset(PresetCopy{Name: "Many", Default: ActionDirect, Rules: rules})
+	if err != nil {
+		t.Fatal(err)
+	}
+	link, err := e.ExportPreset(saved.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(link.Link) > 1000 {
+		t.Errorf("a link of %d rules has %d characters", len(rules), len(link.Link))
+	}
+	packed, _ := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(link.Link, presetLinkPrefix))
+	data, err := unpackPresetLink(packed)
+	if err != nil {
+		t.Fatalf("the link is no zlib: %v", err)
+	}
+	for _, unset := range []string{`"based_on"`, `"name":""`, `"invert"`, `"off"`, `"endpoint"`, `"dns"`, `"direct_dns"`} {
+		if strings.Contains(string(data), unset) {
+			t.Errorf("the link writes %s: %s", unset, data)
+		}
+	}
+
+	stored, _ := e.PresetCopy(saved.ID)
+	full, _ := json.Marshal(map[string]any{
+		"kind": presetLinkKind, "v": 1, "based_on": "", "name": "Many", "advanced": false, "rules": stored.Rules,
+		"dns": "", "direct_dns": "", "default": ActionDirect,
+	})
+	var huge bytes.Buffer
+	w := zlib.NewWriter(&huge)
+	_, _ = w.Write(bytes.Repeat([]byte(" "), maxPresetJSON+1))
+	_ = w.Close()
+	for _, bad := range []string{presetLinkPrefix + encodeLink(string(packed[:len(packed)/2])), presetLinkPrefix + encodeLink(huge.String())} {
+		if _, err = e.ImportPreset(PresetLink{Link: bad}); reason(err) != ReasonInvalidLink {
+			t.Errorf("a damaged or huge link: %v", err)
+		}
+	}
+	for _, text := range []string{link.Link, presetLinkPrefix + encodeLink(string(full))} {
+		imported, err := e.ImportPreset(PresetLink{Link: text})
+		if err != nil {
+			t.Fatalf("%s: %v", text, err)
+		}
+		again, _ := e.PresetCopy(imported.ID)
+		if again.Default != ActionDirect || !reflect.DeepEqual(again.Rules, stored.Rules) {
+			t.Errorf("%s reads as %+v", text, again)
+		}
+	}
+}
+
+// A preset goes to a file as the JSON its link holds, under a name Windows takes, and the file's text imports as the
+// link does.
+func TestPresetFile(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	rules := []PresetRule{rule(CondSuffix, "example.org", ActionProxy), rule(CondProcessName, "game.exe", ActionDirect)}
+	saved, err := e.SavePreset(PresetCopy{Name: "Work: home/office?", Default: ActionDirect, Rules: rules})
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := e.ExportPresetFile(saved.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if file.Name != "Work_ home_office_.json" || !strings.Contains(file.Text, "\n  \"kind\": \"poros-preset\",") {
+		t.Errorf("the file %q:\n%s", file.Name, file.Text)
+	}
+	imported, err := e.ImportPreset(PresetLink{Link: file.Text})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, _ := e.PresetCopy(saved.ID)
+	if again, _ := e.PresetCopy(imported.ID); again.Default != ActionDirect || !reflect.DeepEqual(again.Rules, stored.Rules) {
+		t.Errorf("the file reads as %+v", again)
+	}
+
+	for _, bad := range []string{`{"kind":"poros-preset","v":1,"name":"X","sites":[]}`, `{"kind":"other","v":1,"name":"X"}`,
+		"{" + strings.Repeat(" ", maxPresetJSON) + "}"} {
+		if _, err = e.ImportPreset(PresetLink{Link: bad}); reason(err) != ReasonInvalidLink {
+			t.Errorf("%.60q: %v", bad, err)
+		}
+	}
+	if _, err = e.ExportPresetFile("all"); reason(err) != ReasonInvalidValue {
+		t.Errorf("a file of a built-in preset: %v", err)
+	}
+	for name, want := range map[string]string{" . ": "preset", "Games.": "Games", "a\tb": "a_b"} {
+		if got := fileName(name); got != want {
+			t.Errorf("fileName(%q) = %q, want %q", name, got, want)
+		}
 	}
 }
 

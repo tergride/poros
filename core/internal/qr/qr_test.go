@@ -1,8 +1,12 @@
 package qr
 
 import (
+	"bytes"
+	"errors"
 	"image"
 	"image/color"
+	"image/jpeg"
+	"image/png"
 	"slices"
 	"strings"
 	"testing"
@@ -93,5 +97,35 @@ func TestEncodeRefusesTooLongText(t *testing.T) {
 	}
 	if took := time.Since(began); took > time.Second {
 		t.Errorf("2 MB took %s to refuse", took)
+	}
+}
+
+// A picture the user gives is a file: a PNG as saved, a JPEG as a messenger compresses it.
+func TestPictureReadsFilesOfCodes(t *testing.T) {
+	link := "poros://route/eNqNk8tOwzAQRf_F6zx_Ql0hJBYsKiE2KHJt0wW1E8VO1Uro3xnnUVo1HrCyss-dO2NPZvLtzvD7fvXRBLX5" +
+		"OqqbJHlnSdUkbu7rGm1Sx3e7-ym2jOq1I1LvYlNz2Pqw4P56K2E6OQBMkvZoBV1TlAJJONkhWmhOE5lQFFqeggrtzkrqtiWoS49PJM4eW" +
+		"4TaG1jg1OqjXYxbeOZ5BRSxNKp6CRBWfhUZvr0Fpk0eklBRWfLrkdpDNjBM8ciW1k5p0ykiWtrLWvxamm9kjN7Y8OL4hW8QeL78y3IaVt" +
+		"Jx77Px7fPgjZZMOeyvFm3UvdRwgsFMcLmcRqQNzULRZFmRsfzPQi1QFQrzF8dU-m1Ay1BWS4qx8-dsDPF1nRs9ZbbVh83fHU2NbFgqkbX"
+	page := picture(t, 900, 900, 8, map[image.Point]string{{30, 30}: link})
+	var asPNG, asJPEG bytes.Buffer
+	if err := png.Encode(&asPNG, page); err != nil {
+		t.Fatal(err)
+	}
+	if err := jpeg.Encode(&asJPEG, page, &jpeg.Options{Quality: 75}); err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range map[string][]byte{"PNG": asPNG.Bytes(), "JPEG": asJPEG.Bytes()} {
+		read, err := Picture(data)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if got := Decode(read); !slices.Equal(got, []string{link}) {
+			t.Errorf("%s reads as %q", name, got)
+		}
+	}
+	for _, bad := range [][]byte{nil, []byte("not a picture"), asPNG.Bytes()[:100]} {
+		if _, err := Picture(bad); !errors.Is(err, ErrBadPicture) {
+			t.Errorf("%q: %v", bad, err)
+		}
 	}
 }

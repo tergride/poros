@@ -1,10 +1,14 @@
 // Package qr draws QR codes as matrices of modules and reads every QR code on a picture, such as a snapshot of the
-// screen.
+// screen or a picture the user gives.
 package qr
 
 import (
+	"bytes"
 	"errors"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"slices"
 	"strings"
 
@@ -19,6 +23,26 @@ var ErrTooLong = errors.New("the text is longer than a QR code holds")
 
 // ErrUnsupported is a snapshot of the screen on a system Poros cannot take one on yet.
 var ErrUnsupported = errors.New("this system has no snapshot of the screen yet")
+
+// ErrBadPicture is a picture that is no PNG, JPEG or GIF, is damaged, or has more pixels than maxPixels.
+var ErrBadPicture = errors.New("the picture is no PNG, JPEG or GIF to read")
+
+// maxPixels bounds the size of a picture to read: 64 megapixels is more than a photo of a phone, and a small file
+// that claims far more would take the memory of the core.
+const maxPixels = 64 << 20
+
+// Picture reads a picture of PNG, JPEG or GIF.
+func Picture(data []byte) (image.Image, error) {
+	config, _, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil || int64(config.Width)*int64(config.Height) > maxPixels {
+		return nil, ErrBadPicture
+	}
+	picture, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, ErrBadPicture
+	}
+	return picture, nil
+}
 
 // maxText is the most any QR code holds, 7089 digits: a text of more bytes fits in none. The encoder finds that out
 // only after writing all of it, which takes it seconds for a long text.

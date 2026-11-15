@@ -384,9 +384,13 @@ test('an advanced preset takes OpenVPN and OpenConnect profiles of any group as 
   await page.getByTestId('preset-save').click()
   await expect(page.getByTestId('savebar')).toBeHidden()
 
-  // The link leaves the endpoints out and says so.
-  await page.getByTestId('preset-export').click()
-  await expect(page.getByTestId('notice')).toContainText('Конечные точки и правила к ним — профили этого компьютера, в ссылку они не входят.')
+  // The link and the file leave the endpoints out, and «Share» says so.
+  await page.getByTestId('preset-share').click()
+  const share = page.getByRole('dialog', { name: /^Поделиться/ })
+  await expect(share.getByTestId('share-local')).toHaveText('Конечные точки и правила к ним — профили этого компьютера, в ссылку и файл они не входят.')
+  await shot(page, 'adv-preset-share')
+  await page.keyboard.press('Escape')
+  await expect(share).toBeHidden()
 
   // An endpoint that rules use goes after asking, and the rules send their traffic through the server.
   await page.getByTestId('preset-tab-endpoints').click()

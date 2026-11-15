@@ -8,6 +8,7 @@ import type {
   NetworkState,
   Preset,
   PresetCopy,
+  PresetRule,
   Server,
   ServerCheck,
   ServerForms,
@@ -86,12 +87,14 @@ import {
   MethodOTPSave,
   MethodQREncode,
   MethodQRScan,
+  MethodQRRead,
   MethodDNSCheck,
   MethodPresetsCheck,
   MethodWARPRegister,
   MethodPresetsExport,
   MethodPresetsGet,
   MethodLinksParse,
+  MethodPresetsFile,
   MethodPresetsImport,
   MethodPresetsList,
   MethodPresetsReadLists,
@@ -162,7 +165,7 @@ import type { Profile } from './profile-types'
 import stubForms from './stubForms.json'
 import { checkDnsObject, checkDnsSettings } from './stubDns'
 import { createStubOtp } from './stubOtp'
-import { stubQrEncode, stubQrScan } from './stubQr'
+import { stubQrEncode, stubQrRead, stubQrScan } from './stubQr'
 import { checkRules, readLists, writeLists } from './stubPresets'
 
 const noWarpDevice: WARPDevice = { endpoint: '', privateKey: '', peerKey: '', addresses: '', reserved: '', serverName: '', http: '', registeredAt: 0 }
@@ -415,20 +418,30 @@ function failed(reason: string, message: string): CoreError {
   return { code: 1, message, data: { reason } }
 }
 
-function encodeLink(copy: PresetCopy): string {
-  const data = JSON.stringify({
+/** What a link or a file of a preset holds, as the engine writes it: what is unset left out, as undefined. */
+function presetJSON(copy: PresetCopy) {
+  return {
     kind: 'poros-preset',
     v: 1,
-    based_on: copy.basedOn,
+    based_on: copy.basedOn || undefined,
     name: copy.name,
-    advanced: copy.advanced,
+    advanced: copy.advanced || undefined,
     // The endpoints are this computer's profiles: the link leaves them out, and the rules to them.
-    rules: copy.rules.filter((rule) => rule.action !== ActionEndpoint),
-    dns: copy.dns,
-    direct_dns: copy.directDns,
-    default: copy.default,
-  })
-  return presetLinkPrefix + encodeBase64(data)
+    rules: copy.rules
+      .filter((rule) => rule.action !== ActionEndpoint)
+      .map((rule) => ({ name: rule.name || undefined, conditions: rule.conditions, invert: rule.invert || undefined, off: rule.off || undefined, action: rule.action })),
+    dns: copy.dns || undefined,
+    direct_dns: copy.directDns || undefined,
+    default: copy.default || undefined,
+  }
+}
+
+/**
+ * The link not compressed, unlike the engine's: the compression streams of a browser are asynchronous, and a link of
+ * plain JSON reads in the engine too.
+ */
+function encodeLink(copy: PresetCopy): string {
+  return presetLinkPrefix + encodeBase64(JSON.stringify(presetJSON(copy)))
 }
 
 function encodeBase64(data: string): string {
@@ -436,15 +449,17 @@ function encodeBase64(data: string): string {
   return base64.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
 }
 
+/** A link, or the text of a preset file, which is its JSON. */
 function decodeLink(link: string): PresetCopy {
   const text = link.trim()
-  if (!text.toLowerCase().startsWith(presetLinkPrefix)) {
+  const file = text.startsWith('{')
+  if (!file && !text.toLowerCase().startsWith(presetLinkPrefix)) {
     throw failed(ReasonInvalidLink, `a preset link starts with ${presetLinkPrefix}`)
   }
   try {
     const base64 = text.slice(presetLinkPrefix.length).replaceAll('-', '+').replaceAll('_', '/')
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-    const data = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>
+    const json = file ? text : new TextDecoder().decode(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)))
+    const data = JSON.parse(json) as Record<string, unknown>
     const known = ['kind', 'v', 'based_on', 'name', 'advanced', 'rules', 'dns', 'direct_dns', 'default']
     if (data.kind !== 'poros-preset' || data.v !== 1 || Object.keys(data).some((key) => !known.includes(key))) throw new Error()
     return {
@@ -453,7 +468,7 @@ function decodeLink(link: string): PresetCopy {
       basedOn: String(data.based_on ?? ''),
       name: String(data.name ?? ''),
       advanced: data.advanced === true,
-      rules: (data.rules as PresetCopy['rules'] | undefined) ?? [],
+      rules: ((data.rules as Partial<PresetRule>[] | undefined) ?? []).map((rule) => ({ name: '', invert: false, off: false, endpoint: '', ...rule }) as PresetRule),
       dns: String(data.dns ?? ''),
       directDns: String(data.direct_dns ?? ''),
       default: String(data.default ?? ''),
@@ -1137,6 +1152,11 @@ export function createStubCore(): CoreClient {
       if (copy.builtin) throw failed(ReasonInvalidValue, 'a built-in preset is in every Poros already')
       return { link: encodeLink(copy) }
     },
+    [MethodPresetsFile]: ({ id }) => {
+      const copy = copyOf(id)
+      if (copy.builtin) throw failed(ReasonInvalidValue, 'a built-in preset is in every Poros already')
+      return { name: `${copy.name.replace(/[<>:"/\\|?*]/g, '_')}.json`, text: `${JSON.stringify(presetJSON(copy), null, 2)}\n` }
+    },
     [MethodPresetsImport]: ({ link }) => {
       const copy = decodeLink(link)
       return saveCopy({ ...copy, name: freeName(copy.name) })
@@ -1176,6 +1196,7 @@ export function createStubCore(): CoreClient {
     [MethodOTPLink]: ({ id }) => ({ link: otp.link(id) }),
     [MethodQREncode]: ({ text }) => stubQrEncode(text),
     [MethodQRScan]: () => stubQrScan(),
+    [MethodQRRead]: ({ image }) => stubQrRead(image),
     [MethodBackupCreate]: ({ parts }) => {
       if (parts.length === 0) throw failed(ReasonInvalidBackup, 'a backup needs a part')
       const has = (part: string) => parts.includes(part)
