@@ -132,3 +132,27 @@ export function kindOfLine(text: string): string {
   const prefix = text.slice(0, colon).trim().toLowerCase()
   return advancedKinds.find((kind) => kind !== CondPrivate && kind.toLowerCase() === prefix) ?? ''
 }
+
+/** The kinds a line of the lists window can name: the private networks have no line. */
+export function listKinds(advanced: boolean): string[] {
+  return (advanced ? advancedKinds : simpleKinds).filter((kind) => kind !== CondPrivate)
+}
+
+/**
+ * The prefix being typed at the caret of the lists window: where it starts after the indent of the line, and what is
+ * typed of it up to the caret. A line with a colon has its prefix already: null.
+ */
+export function prefixAt(text: string, caret: number): { from: number; typed: string } | null {
+  const start = caret > 0 ? text.lastIndexOf('\n', caret - 1) + 1 : 0
+  const end = text.indexOf('\n', caret)
+  if (text.slice(start, end < 0 ? undefined : end).includes(':')) return null
+  const typed = text.slice(start, caret).trimStart()
+  return { from: caret - typed.length, typed }
+}
+
+/** The kinds whose prefix fits what is typed, whatever its case: those it begins first, then those it is part of. */
+export function prefixesFor(kinds: string[], typed: string): string[] {
+  const query = typed.toLowerCase()
+  const begin = kinds.filter((kind) => kind.toLowerCase().startsWith(query))
+  return [...begin, ...kinds.filter((kind) => !begin.includes(kind) && kind.toLowerCase().includes(query))]
+}

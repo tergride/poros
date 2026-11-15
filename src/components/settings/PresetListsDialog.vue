@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { TextAlignStart, TriangleAlert, X } from '@lucide/vue'
+import { CircleQuestionMark, TextAlignStart, TriangleAlert, X } from '@lucide/vue'
 import { useDebounceFn } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { I18nT, useI18n } from 'vue-i18n'
 
-import { Banner, Button, Dialog, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui'
+import { Banner, Button, Dialog, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui'
+import PresetListsHelp from '@/components/settings/PresetListsHelp.vue'
+import PresetListsText from '@/components/settings/PresetListsText.vue'
 import { useFailure } from '@/composables/useReason'
-import { kindOfLine } from '@/lib/rules'
+import { kindOfLine, listKinds } from '@/lib/rules'
 import type { PresetListProblem, PresetListsRead, PresetRule } from '@/platform/core-types'
 import {
   ActionBlock,
@@ -33,7 +35,9 @@ const reason = useFailure()
 const { t } = useI18n()
 
 const tabs = computed(() => (props.advanced ? [ActionProxy, ActionDirect, ActionBlock, ActionWARP] : [ActionProxy, ActionDirect, ActionBlock]))
+const kinds = computed(() => listKinds(props.advanced))
 const tab = ref<string>(ActionProxy)
+const helpOpen = ref(false)
 const lists = ref<Record<string, string> | null>(null)
 const read = ref<PresetListsRead | null>(null)
 const failure = ref('')
@@ -85,6 +89,11 @@ const problemsOf = (action: string) => read.value?.problems.filter((problem) => 
 const duplicatesOf = (action: string) => read.value?.problems.filter((problem) => problem.reason === ReasonDuplicate && problem.action === action) ?? []
 const invalid = computed(() => problemsOf(tab.value))
 const duplicates = computed(() => duplicatesOf(tab.value))
+const invalidText = computed(() =>
+  invalid.value.length > 0 ? t('presetLists.invalid', { n: invalid.value.length, lines: lineList(invalid.value) }, invalid.value.length) : '',
+)
+const duplicateText = computed(() => (duplicates.value.length > 0 ? t('presetLists.duplicate', { lines: lineList(duplicates.value) }) : ''))
+const problemText = computed(() => [invalidText.value, duplicateText.value].filter(Boolean).join(' '))
 
 // A pasted list can have hundreds of bad lines: the message names the first few.
 const named = 5
@@ -133,36 +142,30 @@ const title = computed(() =>
       </template>
       <TabsContent v-for="action in tabs" :key="action" :value="action" class="flex h-full flex-col gap-2.5 pt-2.5">
         <template v-if="lists">
-          <Textarea
+          <PresetListsText
             v-model="lists[action]"
-            mono
-            class="min-h-0 flex-1 resize-none"
-            spellcheck="false"
+            :kinds="kinds"
             :aria-label="t(`action.${action}`)"
             data-testid="lists-text"
             @update:model-value="checkSoon"
           />
         </template>
-        <div
-          v-if="invalid.length > 0"
-          class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3"
-          role="alert"
-          data-testid="lists-invalid"
-        >
-          <TriangleAlert class="size-4 flex-none text-warn" />
-          <span>{{ t('presetLists.invalid', { n: invalid.length, lines: lineList(invalid) }, invalid.length) }}</span>
-        </div>
-        <div
-          v-if="duplicates.length > 0"
-          class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-3"
-          role="alert"
-          data-testid="lists-duplicate"
-        >
-          <TriangleAlert class="size-4 flex-none text-warn" />
-          <span>{{ t('presetLists.duplicate', { lines: lineList(duplicates) }) }}</span>
-        </div>
         <Banner v-if="failure">{{ failure }}</Banner>
-        <p class="text-xs text-t3">{{ t(advanced ? 'presetLists.hintAdvanced' : 'presetLists.hint') }}</p>
+        <!-- The problems take the place of the hint in two lines at most, so that the field keeps its height while typing. -->
+        <div class="flex min-h-8 items-center gap-3">
+          <div v-if="problemText" class="flex min-w-0 flex-1 items-start gap-2 text-xs leading-4" role="alert">
+            <TriangleAlert class="size-4 flex-none text-warn" />
+            <p class="line-clamp-2" :title="problemText">
+              <span v-if="invalidText" data-testid="lists-invalid">{{ invalidText }}</span>
+              {{ ' ' }}
+              <span v-if="duplicateText" data-testid="lists-duplicate">{{ duplicateText }}</span>
+            </p>
+          </div>
+          <I18nT v-else keypath="presetLists.hint" tag="p" scope="global" class="flex-1 text-xs text-t3">
+            <template #example><code class="font-mono text-t2">suffix:example.com</code></template>
+          </I18nT>
+          <Button size="sm" data-testid="lists-help" @click="helpOpen = true"><CircleQuestionMark />{{ t('presetLists.help.open') }}</Button>
+        </div>
       </TabsContent>
       <template #footer>
         <span class="sp text-xs text-t3">{{ t('presetLists.locked') }}</span>
@@ -172,5 +175,6 @@ const title = computed(() =>
         </Button>
       </template>
     </Dialog>
+    <PresetListsHelp v-model:open="helpOpen" :advanced="advanced" />
   </Tabs>
 </template>

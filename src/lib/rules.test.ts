@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { fromTarget, inRow, kindOfLine, moved, newRule, problemText, ruleSummary, targetOf } from './rules'
+import { fromTarget, inRow, kindOfLine, listKinds, moved, newRule, prefixAt, prefixesFor, problemText, ruleSummary, targetOf } from './rules'
 
 // The keys and values as the messages of the interface would put them together.
 const t = (key: string, values: Record<string, unknown> = {}) =>
@@ -54,5 +54,25 @@ describe('the rules of a preset in the interface', () => {
     expect(kindOfLine('processPathRegex: (?i)games')).toBe('processPathRegex')
     expect(kindOfLine('private:')).toBe('')
     expect(kindOfLine('example.com')).toBe('')
+  })
+
+  it('offers prefixes on a line until it has a colon, from its indent to the caret', () => {
+    expect(prefixAt('', 0)).toEqual({ from: 0, typed: '' })
+    expect(prefixAt('\nsuffix:example.com', 0)).toEqual({ from: 0, typed: '' })
+    expect(prefixAt('suffix:example.com\n  pro', 24)).toEqual({ from: 21, typed: 'pro' })
+    // A value without its prefix takes one before it.
+    expect(prefixAt('example.com', 0)).toEqual({ from: 0, typed: '' })
+    expect(prefixAt('suffix:example.com', 3)).toBeNull()
+    expect(prefixAt('suffix:example.com\nip', 7)).toBeNull()
+  })
+
+  it('narrows the prefixes to the typed text, those it begins first', () => {
+    expect(listKinds(false)).toEqual(['suffix', 'ip', 'processName', 'processPath'])
+    expect(listKinds(true)).not.toContain('private')
+    expect(prefixesFor(listKinds(false), '')).toEqual(listKinds(false))
+    expect(prefixesFor(listKinds(false), 'PRO')).toEqual(['processName', 'processPath'])
+    expect(prefixesFor(listKinds(true), 'ip')).toEqual(['ip', 'ipVersion', 'sourceIP'])
+    expect(prefixesFor(listKinds(true), 'regex')).toEqual(['regex', 'processPathRegex'])
+    expect(prefixesFor(listKinds(true), 'example.com')).toEqual([])
   })
 })

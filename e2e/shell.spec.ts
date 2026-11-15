@@ -289,6 +289,51 @@ test('the lists of a preset take a pasted list, name bad lines and save with the
   const text = lists.getByTestId('lists-text')
   await expect(text).toHaveValue('suffix:example.org')
   await expect(lists.getByTestId('lists-tab-proxy')).toHaveText('Через сервер · 1')
+
+  // A line without a colon offers the prefixes of the kinds, typing narrows them, Enter or a click puts one in.
+  const prefixes = lists.getByTestId('lists-prefix')
+  await text.click()
+  await text.press('Control+End')
+  await expect(prefixes).toHaveCount(0)
+  await text.press('Enter')
+  await expect(prefixes).toHaveText(['suffix:Сайт', 'ip:IP или подсеть', 'processName:Программа', 'processPath:Путь к программе'])
+  await text.pressSequentially('pro')
+  await expect(prefixes).toHaveText(['processName:Программа', 'processPath:Путь к программе'])
+  await shot(page, 'preset-lists-prefixes')
+  await text.press('ArrowDown')
+  await text.press('Enter')
+  await expect(text).toHaveValue('suffix:example.org\nprocessPath:')
+  await expect(prefixes).toHaveCount(0)
+  await text.pressSequentially('C:\\Games\\game.exe')
+  await text.press('Enter')
+  await expect(prefixes).toHaveCount(4)
+  await text.press('Escape')
+  await expect(prefixes).toHaveCount(0)
+  await expect(lists).toBeVisible()
+  await text.pressSequentially('i')
+  await prefixes.filter({ hasText: 'suffix:' }).click()
+  await text.pressSequentially('example.net')
+  await expect(text).toHaveValue('suffix:example.org\nprocessPath:C:\\Games\\game.exe\nsuffix:example.net')
+
+  await lists.getByTestId('lists-help').click()
+  const help = page.getByRole('dialog', { name: 'Как писать списки' })
+  await expect(help.getByTestId('lists-help-kinds').locator('tbody tr')).toHaveCount(4)
+  await shot(page, 'preset-lists-help')
+  await page.keyboard.press('Escape')
+  await expect(help).toBeHidden()
+  await expect(lists).toBeVisible()
+
+  // A wrong line keeps the height of the field, and the list of prefixes for the last line opens past the field.
+  const field = (await text.boundingBox())!
+  await text.fill(Array.from({ length: 30 }, (_, i) => `suffix:site${i}.example.com`).join('\n'))
+  await text.press('Control+End')
+  await text.press('Enter')
+  await text.pressSequentially('s')
+  await expect(lists.getByTestId('lists-invalid')).toHaveText('Не распознана 1 строка: 31 «s» — нет приставки. Исправьте или удалите её.')
+  expect((await text.boundingBox())!.height).toBe(field.height)
+  expect((await lists.getByTestId('lists-prefixes').boundingBox())!.y).toBeGreaterThan(field.y + field.height - 30)
+  await shot(page, 'preset-lists-last-line')
+
   await text.fill('suffix:example.org\nsuffix:video.example.com\n# работа\nmail.example.net\nsuffix:*.\nport:443')
   await expect(lists.getByTestId('lists-invalid')).toHaveText(
     'Не распознаны 3 строки: 4 «mail.example.net» — нет приставки, 5 «suffix:*.» — не сайт, 6 «port:443» — этот вид — в расширенном пресете. Исправьте или удалите их.',
