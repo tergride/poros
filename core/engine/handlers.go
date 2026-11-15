@@ -94,6 +94,13 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodBackupCreate:        withParams(e.CreateBackup),
 		MethodBackupInspect:       withParams(e.InspectBackup),
 		MethodBackupRestore:       withParams(e.RestoreBackup),
+		MethodEndpointsList:       noParams(e.Endpoints),
+		MethodEndpointsGet:        withParams(func(p ByID) (EndpointEntry, error) { return e.EndpointEntry(p.ID) }),
+		MethodEndpointsSave:       withParams(e.SaveEndpoint),
+		MethodEndpointsRemove:     withParams(func(p ByID) (any, error) { return nil, e.RemoveEndpoint(p.ID) }),
+		MethodEndpointsMove:       withParams(func(p EndpointMove) (any, error) { return nil, e.MoveEndpoint(p) }),
+		MethodEndpointsExport:     withParams(e.ExportEndpoint),
+		MethodEndpointsImport:     withParams(e.ImportEndpoint),
 	}
 }
 

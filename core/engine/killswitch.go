@@ -393,7 +393,8 @@ func (e *Engine) startRefusal(settings Settings) {
 		return
 	}
 	e.clearFailure()
-	preset, found, err := e.preset(settings.Preset)
+	// The rules of the endpoints that are on go to the server here, and are refused with the rest of its traffic.
+	preset, _, found, err := e.connectionPreset(settings.Preset)
 	if err != nil || !found {
 		preset = config.Preset{Name: "Refusal", DefaultOutbound: config.OutboundProxy}
 	}

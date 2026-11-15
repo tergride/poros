@@ -77,9 +77,11 @@ export const useRestartNeeded = defineStore('restartNeeded', () => {
   const core = useCoreStore()
   const connect = useConnect()
   const applied = ref('')
-  // A preset or a server saved while the connection runs on it changes the connection without changing the settings.
+  // A preset, a server or an endpoint saved while the connection runs on it changes the connection without changing
+  // the settings.
   const presetEdited = ref(false)
   const serverEdited = ref(false)
+  const endpointEdited = ref(false)
   const dialogOpen = ref(false)
 
   watch(
@@ -89,12 +91,15 @@ export const useRestartNeeded = defineStore('restartNeeded', () => {
         applied.value = builtWith(core.settings)
         presetEdited.value = false
         serverEdited.value = false
+        endpointEdited.value = false
       }
     },
     { immediate: true },
   )
 
-  const needed = computed(() => core.running && !!core.settings && (builtWith(core.settings) !== applied.value || presetEdited.value || serverEdited.value))
+  const needed = computed(
+    () => core.running && !!core.settings && (builtWith(core.settings) !== applied.value || presetEdited.value || serverEdited.value || endpointEdited.value),
+  )
 
   // The dialog has nothing to ask about once the connection stopped or took the settings. Synchronously: a change
   // and its undoing within one tick must not leave the dialog open.
@@ -116,5 +121,10 @@ export const useRestartNeeded = defineStore('restartNeeded', () => {
     if (core.running && (core.connection.servers ?? [core.connection.serverId]).includes(id)) serverEdited.value = true
   }
 
-  return { needed, presetEdited, serverEdited, dialogOpen, apply, serverSaved }
+  /** Marks a changed endpoint, if the running connection runs with it or it is on now. */
+  function endpointChanged(id: string, on: boolean): void {
+    if (core.running && (on || (core.connection.endpoints ?? []).includes(id))) endpointEdited.value = true
+  }
+
+  return { needed, presetEdited, serverEdited, endpointEdited, dialogOpen, apply, serverSaved, endpointChanged }
 })

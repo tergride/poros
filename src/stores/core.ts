@@ -5,6 +5,7 @@ import { type CoreClient, type CoreStatus, useCore } from '@/platform'
 import { localProxyPort } from '@/platform/core'
 import type {
   ConnectionState,
+  Endpoint,
   Group,
   KillSwitchState,
   NetworkState,
@@ -20,6 +21,7 @@ import {
   ConnectionRunning,
   EventConnectionChanged,
   EventConnectionTraffic,
+  EventEndpointsChanged,
   EventGroupsChanged,
   EventKillSwitchChanged,
   EventNetworkChanged,
@@ -32,6 +34,7 @@ import {
   EventSettingsChanged,
   EventUpdatesChanged,
   MethodConnectionState,
+  MethodEndpointsList,
   MethodGroupsList,
   MethodKillSwitchState,
   MethodNetworkState,
@@ -98,6 +101,7 @@ export const useCoreStore = defineStore('core', () => {
   const presets = ref<Preset[]>([])
   // The codes of «Tools → OTP», without their secrets.
   const otp = ref<OTPCode[]>([])
+  const endpoints = ref<Endpoint[]>([])
   const connection = ref<ConnectionState>({ ...idle })
   const network = ref<NetworkState>({ ...noCheck })
   const killSwitch = ref<KillSwitchState>({ ...noBlock })
@@ -136,7 +140,7 @@ export const useCoreStore = defineStore('core', () => {
     testing.value = false
     speedTesting.value = false
     ipTesting.value = false
-    const [s, groupList, list, presetList, conn, net, block, upd, codes] = await Promise.all([
+    const [s, groupList, list, presetList, conn, net, block, upd, codes, endpointList] = await Promise.all([
       c.call(MethodSettingsGet),
       c.call(MethodGroupsList),
       c.call(MethodServersList, { groupId: '' }),
@@ -146,6 +150,7 @@ export const useCoreStore = defineStore('core', () => {
       c.call(MethodKillSwitchState),
       c.call(MethodUpdatesState),
       c.call(MethodOTPList),
+      c.call(MethodEndpointsList),
     ])
     const known = new Map(servers.value.map((server) => [server.id, server.latency]))
     settings.value = s
@@ -157,6 +162,7 @@ export const useCoreStore = defineStore('core', () => {
     killSwitch.value = block
     updates.value = upd
     otp.value = codes
+    endpoints.value = endpointList
     loaded.value = true
   }
 
@@ -172,6 +178,7 @@ export const useCoreStore = defineStore('core', () => {
       c.on(EventServersChanged, () => void loadServers())
       c.on(EventPresetsChanged, (next) => (presets.value = next))
       c.on(EventOTPChanged, (next) => (otp.value = next))
+      c.on(EventEndpointsChanged, (next) => (endpoints.value = next))
       c.on(EventConnectionChanged, (next) => {
         connection.value = next
         if (next.state !== ConnectionRunning) {
@@ -271,6 +278,7 @@ export const useCoreStore = defineStore('core', () => {
     servers,
     presets,
     otp,
+    endpoints,
     connection,
     network,
     killSwitch,

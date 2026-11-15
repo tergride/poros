@@ -5,32 +5,35 @@ import { useI18n } from 'vue-i18n'
 
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Input, Menu, MenuItem, MenuSeparator, Select, Switch } from '@/components/ui'
-import { usePresetDraft } from '@/composables/usePresetDraft'
-import { advancedKinds, fromTarget, inRow, moved, newRule, ruleSummary, simpleKinds, targetOf } from '@/lib/rules'
+import { useRuleDraft } from '@/composables/usePresetDraft'
+import { advancedKinds, inRow, moved, newRule, ruleSummary, simpleKinds } from '@/lib/rules'
 import type { InheritedRule, PresetRule } from '@/platform/core-types'
-import { ActionProxy, CondPrivate, CondSuffix } from '@/platform/core-types'
+import { ActionEndpoint, ActionProxy, CondPrivate, CondSuffix } from '@/platform/core-types'
+import { useCoreStore } from '@/stores/core'
 
-// The rules of a preset, one list checked from the top. A row of one condition and one value changes in place; a
-// rule of several conditions changes in the rule dialog. The rules of the base stand under a lock around the user's:
-// the DNS queries Poros answers and, in an advanced preset, the networks of its endpoints before them, the local
-// networks and, in an advanced preset, the rest after them.
+// The rules of a preset or an endpoint, one list checked from the top. A row of one condition and one value changes
+// in place; a rule of several conditions changes in the rule dialog. In a preset the rules of the base stand under a
+// lock around the user's: the DNS queries Poros answers and the endpoints that are on before them, the local networks
+// and, in an advanced preset, the rest after them. The rules of an endpoint have no «Where» and follow the networks its
+// server announces.
 const props = defineProps<{ advanced: boolean }>()
-const { draft, apply, checked, ruleOpen, endpointOf, targets: targetsOf } = usePresetDraft()
+const { draft, endpoint, apply, checked, ruleOpen, targets: targetsOf } = useRuleDraft()
+const core = useCoreStore()
 const { t, te } = useI18n()
 
 const locked = computed(() => draft.value?.builtin ?? true)
 const kinds = computed(() => (props.advanced ? advancedKinds : simpleKinds).map((value) => ({ value, label: t(`rules.kinds.${value}`) })))
-const targets = computed(() => targetsOf(false))
-const columns = computed(() =>
-  props.advanced ? 'grid-cols-[36px_160px_minmax(0,1fr)_170px_30px_30px_30px]' : 'grid-cols-[160px_minmax(0,1fr)_170px_30px_30px_30px]',
-)
+const targets = computed(() => targetsOf())
+const columns = computed(() => {
+  if (endpoint) return 'grid-cols-[36px_160px_minmax(0,1fr)_30px_30px_30px]'
+  return props.advanced ? 'grid-cols-[36px_160px_minmax(0,1fr)_170px_30px_30px_30px]' : 'grid-cols-[160px_minmax(0,1fr)_170px_30px_30px_30px]'
+})
 
 const newKind = ref<string>(CondSuffix)
 const newValue = ref('')
-const newAction = ref<string>(ActionProxy)
-// An endpoint the preset no longer has is no choice for a new rule.
+const newAction = ref<string>(endpoint ? ActionEndpoint : ActionProxy)
 watch(targets, (choices) => {
-  if (!choices.some((c) => c.value === newAction.value)) newAction.value = ActionProxy
+  if (!endpoint && !choices.some((c) => c.value === newAction.value)) newAction.value = ActionProxy
 })
 const adding = ref(false)
 
@@ -68,10 +71,6 @@ function setValue(rule: PresetRule, i: number, event: Event): void {
   void replace(i, { ...rule, conditions: [{ kind: rule.conditions[0]?.kind ?? CondSuffix, values: value ? [value] : [] }] })
 }
 
-function setTarget(rule: PresetRule, target: string): void {
-  Object.assign(rule, fromTarget(target))
-}
-
 function remove(i: number): void {
   const next = rules()
   next.splice(i, 1)
@@ -81,7 +80,18 @@ function remove(i: number): void {
 const label = (rule: InheritedRule) => (te(`presets.rule.${rule.name}`) ? t(`presets.rule.${rule.name}`) : rule.name)
 const value = (rule: InheritedRule) => (te(`presets.ruleValue.${rule.name}`) ? t(`presets.ruleValue.${rule.name}`) : '')
 const head = computed(() => (props.advanced ? (draft.value?.inherited.filter((r) => r.first) ?? []) : []))
-const endpointNames = computed(() => (props.advanced ? (draft.value?.endpoints ?? []).map((id) => endpointOf(id).name).join(', ') : ''))
+// The endpoints that are on decide before every preset; the simple mode has no section of them.
+const endpointNames = computed(() =>
+  endpoint
+    ? ''
+    : core.endpoints
+        .filter((e) => e.on && e.need.length === 0)
+        .map((e) => e.name)
+        .join(', '),
+)
+const endpointsValue = computed(() =>
+  core.settings?.uiMode === 'advanced' ? endpointNames.value : t('rules.endpointsSimple', { names: endpointNames.value }),
+)
 const tail = computed(() => draft.value?.inherited.filter((r) => !r.first) ?? [])
 const restAction = computed(() => (draft.value ? t(`action.${draft.value.default}`) : ''))
 const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
@@ -89,8 +99,8 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
 
 <template>
   <SettingsCard v-if="draft" :title="t('rules.title')" data-testid="rules">
-    <p class="mt-1.5 mb-1 text-xs text-t3">{{ t('rules.hint') }}</p>
-    <div v-if="!locked" class="grid grid-cols-[160px_minmax(0,1fr)_170px_auto] items-center gap-2 pt-1 pb-2.5">
+    <p class="mt-1.5 mb-1 text-xs text-t3">{{ t(endpoint ? 'endpoints.rulesHint' : 'rules.hint') }}</p>
+    <div v-if="!locked" :class="['grid items-center gap-2 pt-1 pb-2.5', endpoint ? 'grid-cols-[160px_minmax(0,1fr)_auto]' : 'grid-cols-[160px_minmax(0,1fr)_170px_auto]']">
       <Select v-model="newKind" :options="kinds" class="h-8 w-full" :aria-label="t('rules.newKind')" data-testid="rule-new-kind" />
       <Input
         v-model="newValue"
@@ -102,7 +112,7 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
         data-testid="rule-new-value"
         @keydown.enter="add"
       />
-      <Select v-model="newAction" :options="targets" class="h-8 w-full" :aria-label="t('rules.newAction')" data-testid="rule-new-action" />
+      <Select v-if="!endpoint" v-model="newAction" :options="targets" class="h-8 w-full" :aria-label="t('rules.newAction')" data-testid="rule-new-action" />
       <Button :disabled="adding" data-testid="rule-add" @click="add"><Plus />{{ t('common.add') }}</Button>
     </div>
 
@@ -114,10 +124,16 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
       <span /><span /><span />
     </div>
     <div v-if="endpointNames" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-endpoints">
-      <span />
+      <span v-if="advanced" />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('rules.endpoints') }}</span>
-      <span class="truncate text-[12.5px]">{{ endpointNames }}</span>
-      <span class="truncate pl-[11px] text-[12.5px]">{{ endpointNames }}</span>
+      <span class="truncate text-[12.5px]" :title="endpointsValue">{{ endpointsValue }}</span>
+      <span class="truncate pl-[11px] text-[12.5px]">{{ t('action.endpoint') }}</span>
+      <span /><span /><span />
+    </div>
+    <div v-if="endpoint" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-networks">
+      <span />
+      <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('endpoints.networks') }}</span>
+      <span class="truncate text-[12.5px]" :title="t('endpoints.networksValue')">{{ t('endpoints.networksValue') }}</span>
       <span /><span /><span />
     </div>
 
@@ -159,12 +175,13 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
         </Button>
       </template>
       <Select
-        :model-value="targetOf(rule)"
+        v-if="!endpoint"
+        :model-value="rule.action"
         :options="targets"
         class="h-8 w-full"
         :aria-label="t('rules.action')"
         data-testid="rule-action"
-        @update:model-value="(target: string) => setTarget(rule, target)"
+        @update:model-value="(action: string) => (rule.action = action)"
       />
       <Button variant="ghost" size="icon-sm" :disabled="i === 0" :aria-label="t('rules.up')" @click="apply(moved(draft.rules, i, -1))"><ArrowUp /></Button>
       <Button variant="ghost" size="icon-sm" :disabled="i === draft.rules.length - 1" :aria-label="t('rules.down')" @click="apply(moved(draft.rules, i, 1))">
@@ -181,14 +198,14 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
       <Button v-else variant="ghost" size="icon-sm" :aria-label="t('common.remove')" @click="remove(i)"><X /></Button>
     </div>
 
-    <div v-for="rule in tail" :key="rule.name" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]">
+    <div v-for="rule in endpoint ? [] : tail" :key="rule.name" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]">
       <span v-if="advanced" />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ label(rule) }}</span>
       <span class="truncate text-[12.5px]">{{ value(rule) }}</span>
       <span class="pl-[11px] text-[12.5px]">{{ t(`action.${rule.action}`) }}</span>
       <span /><span /><span />
     </div>
-    <div v-if="advanced" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-rest">
+    <div v-if="advanced && !endpoint" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-rest">
       <span />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('rules.rest') }}</span>
       <span class="truncate text-[12.5px]">{{ t('rules.restValue') }}</span>

@@ -592,8 +592,8 @@ export interface StatsNow {
   online: boolean;
   network: string;
   /**
-   * The open connections through the server, directly and elsewhere (endpoints of the preset, WARP), while the
-   * statistics are on.
+   * The open connections through the server, directly and elsewhere (endpoints, WARP), while the statistics are
+   * on.
    */
   throughServer: number /* int */;
   direct: number /* int */;
@@ -629,7 +629,8 @@ export interface Connection {
   destination: string;
   /**
    * Inbound and Outbound are tags of the connection's config: the TUN or the local proxy; the server (proxy),
-   * direct, an endpoint of the preset or WARP. Rule is the rule that sent it there, "" for the default.
+   * direct, an endpoint (endpoint-1 is the first of ConnectionState.Endpoints) or WARP. Rule is the rule that sent it
+   * there, "" for the default.
    */
   inbound: string;
   outbound: string;
@@ -703,10 +704,15 @@ export interface ConnectionState {
   tun: boolean;
   systemProxy: boolean;
   /**
-   * Servers are all the servers the connection goes through: the chosen one, the links of a chain, the proxies
-   * of its group and the endpoints of the preset. A change of any of them waits for a restart.
+   * Servers are all the servers the connection goes through: the chosen one, the links of a chain and the proxies
+   * of its group. A change of any of them waits for a restart.
    */
   servers?: string[];
+  /**
+   * Endpoints are the IDs of the endpoints the connection runs with, in the order of their outbounds: endpoint-1
+   * is the first.
+   */
+  endpoints?: string[];
   /**
    * Since is when the connection came up, Unix milliseconds.
    */
@@ -924,34 +930,30 @@ export interface Preset {
    * Rules counts the user's rules of a copy, and all the rules of a built-in preset.
    */
   rules: number /* int */;
-  /**
-   * Endpoints counts the endpoints of an advanced preset, which a link to it leaves out.
-   */
-  endpoints: number /* int */;
 }
 /**
- * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
- * server, and the endpoint the rule's Endpoint names.
+ * Where the traffic of a rule goes. ActionWARP belongs to an advanced preset and goes out through WARP after the
+ * server. ActionEndpoint is the one action of the rules of an endpoint: through that endpoint.
  */
 export const ActionProxy = "proxy";
 /**
- * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
- * server, and the endpoint the rule's Endpoint names.
+ * Where the traffic of a rule goes. ActionWARP belongs to an advanced preset and goes out through WARP after the
+ * server. ActionEndpoint is the one action of the rules of an endpoint: through that endpoint.
  */
 export const ActionDirect = "direct";
 /**
- * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
- * server, and the endpoint the rule's Endpoint names.
+ * Where the traffic of a rule goes. ActionWARP belongs to an advanced preset and goes out through WARP after the
+ * server. ActionEndpoint is the one action of the rules of an endpoint: through that endpoint.
  */
 export const ActionBlock = "block";
 /**
- * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
- * server, and the endpoint the rule's Endpoint names.
+ * Where the traffic of a rule goes. ActionWARP belongs to an advanced preset and goes out through WARP after the
+ * server. ActionEndpoint is the one action of the rules of an endpoint: through that endpoint.
  */
 export const ActionWARP = "warp";
 /**
- * Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
- * server, and the endpoint the rule's Endpoint names.
+ * Where the traffic of a rule goes. ActionWARP belongs to an advanced preset and goes out through WARP after the
+ * server. ActionEndpoint is the one action of the rules of an endpoint: through that endpoint.
  */
 export const ActionEndpoint = "endpoint";
 /**
@@ -1033,11 +1035,6 @@ export interface PresetRule {
   invert: boolean;
   off: boolean;
   action: string;
-  /**
-   * Endpoint is the ID of the profile of the endpoint ActionEndpoint sends to, one of the preset's Endpoints; ""
-   * for the other actions.
-   */
-  endpoint: string;
 }
 /**
  * RuleProblem is the data of an error about a rule of a preset: which rule, condition and value.
@@ -1101,12 +1098,6 @@ export interface PresetCopy {
    */
   default: string;
   inherited: InheritedRule[];
-  /**
-   * Endpoints of an advanced preset are the IDs of OpenVPN and OpenConnect profiles of any group. They connect
-   * alongside the server, the networks they announce go through them, and rules send them more. They are this
-   * computer's profiles: a link to the preset leaves them out, and the rules to them.
-   */
-  endpoints: string[];
 }
 /**
  * The TUN of Poros as it comes: its addresses and the ranges it keeps out.
@@ -1206,26 +1197,28 @@ export interface DNSObject {
  */
 export const DNSLocal = "local";
 /**
- * PresetRules are the rules of a preset of a kind: presets.check gives them back checked, with every value as the
- * core reads it and narrower rules over wider ones. Endpoints are those of the preset, which its rules may send to.
+ * PresetRules are the rules of a preset of a kind, or of an endpoint: presets.check gives them back checked, with
+ * every value as the core reads it and narrower rules over wider ones. The rules of an endpoint take the kinds of an
+ * advanced preset and the action endpoint alone.
  */
 export interface PresetRules {
   advanced: boolean;
+  endpoint?: boolean;
   rules: PresetRule[];
-  endpoints?: string[];
 }
 /**
- * PresetLists are the rules of a preset as the lists window shows them: a text per action (proxy, direct, block)
- * with a line per rule, each starting with the prefix of its kind.
+ * PresetLists are the rules of a preset as the lists window shows them: a text per action (proxy, direct, block,
+ * warp; endpoint alone for an endpoint) with a line per rule, each starting with the prefix of its kind.
  */
 export interface PresetLists {
   lists: { [key: string]: string};
 }
 /**
- * PresetListsInput is the text of the lists window and the rules it was written from.
+ * PresetListsInput is the text of the lists window and the rules it was written from, of a preset or an endpoint.
  */
 export interface PresetListsInput {
   advanced: boolean;
+  endpoint?: boolean;
   rules: PresetRule[];
   lists: { [key: string]: string};
 }
@@ -1241,8 +1234,7 @@ export interface PresetListProblem {
   text: string;
   /**
    * Reason is no_prefix, advanced_only for a kind of the advanced preset in a simple one, invalid_entry for a value
-   * that is not of its kind, and duplicate for a line already on the tab Other, or of a rule to an endpoint when
-   * Other is endpoint.
+   * that is not of its kind, and duplicate for a line already on the tab Other.
    */
   reason: string;
   other: string;
@@ -1635,6 +1627,101 @@ export interface OTPLink {
   link: string;
 }
 /**
+ * Endpoint is an OpenVPN or OpenConnect connection of its own that runs alongside the server with any preset while
+ * it is on: the networks its server announces go through it, and so does the traffic of its rules, before the rules
+ * of any preset. This is it as the list shows it.
+ */
+export interface Endpoint {
+  id: string;
+  name: string;
+  /**
+   * Type is openvpn or openconnect.
+   */
+  type: string;
+  on: boolean;
+  rules: number /* int */;
+  /**
+   * Need is the data for signing in its file came without, which it waits for before it can be on.
+   */
+  need: string[];
+}
+/**
+ * EndpointEntry is an endpoint as its editor shows it and endpoints.save takes it; an empty ID is a new one. The
+ * profile is its connection, and the profile's name is its name. Its rules have the action endpoint.
+ */
+export interface EndpointEntry {
+  id: string;
+  on: boolean;
+  profile: profile.Profile;
+  rules: PresetRule[];
+  /**
+   * Need is kept from the file the endpoint came from, less what has been filled in since.
+   */
+  need: string[];
+}
+/**
+ * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
+ * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ */
+export const SignInUsername = "username";
+/**
+ * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
+ * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ */
+export const SignInPassword = "password";
+/**
+ * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
+ * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ */
+export const SignInCert = "cert";
+/**
+ * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
+ * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ */
+export const SignInKey = "key";
+/**
+ * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
+ * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ */
+export const SignInKeyPassword = "keyPassword";
+/**
+ * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
+ * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ */
+export const SignInWrapKey = "wrapKey";
+/**
+ * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
+ * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ */
+export const SignInOTP = "otp";
+/**
+ * EndpointMove moves an endpoint up (-1) or down (1) the list.
+ */
+export interface EndpointMove {
+  id: string;
+  offset: number /* int */;
+}
+/**
+ * EndpointExport asks for the file of an endpoint, with the data for signing in or without it.
+ */
+export interface EndpointExport {
+  id: string;
+  signIn: boolean;
+}
+/**
+ * EndpointFile is an endpoint as a file of JSON: a name for the file, from the endpoint's, and its text.
+ */
+export interface EndpointFile {
+  name: string;
+  text: string;
+}
+/**
+ * EndpointText is the text of a file to import an endpoint from: a file of an endpoint, or an .ovpn file.
+ */
+export interface EndpointText {
+  text: string;
+}
+/**
  * QRText is text to draw as a QR code.
  */
 export interface QRText {
@@ -1659,23 +1746,23 @@ export interface QRScan {
   texts: string[];
 }
 /**
- * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
- * all settings of the core, otp the codes of «Tools → OTP».
+ * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets and the
+ * endpoints, settings all settings of the core, otp the codes of «Tools → OTP».
  */
 export const BackupProfiles = "profiles";
 /**
- * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
- * all settings of the core, otp the codes of «Tools → OTP».
+ * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets and the
+ * endpoints, settings all settings of the core, otp the codes of «Tools → OTP».
  */
 export const BackupRouting = "routing";
 /**
- * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
- * all settings of the core, otp the codes of «Tools → OTP».
+ * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets and the
+ * endpoints, settings all settings of the core, otp the codes of «Tools → OTP».
  */
 export const BackupSettings = "settings";
 /**
- * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
- * all settings of the core, otp the codes of «Tools → OTP».
+ * Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets and the
+ * endpoints, settings all settings of the core, otp the codes of «Tools → OTP».
  */
 export const BackupOTP = "otp";
 /**
@@ -1718,6 +1805,7 @@ export interface BackupInfo {
   groups: number /* int */;
   servers: number /* int */;
   presets: number /* int */;
+  endpoints: number /* int */;
   codes: number /* int */;
 }
 /**
@@ -2033,6 +2121,35 @@ export const MethodBackupInspect = "backup.inspect";
  */
 export const MethodBackupRestore = "backup.restore";
 /**
+ * MethodEndpointsList gives the endpoints in the user's order; MethodEndpointsSave keeps one, a new one at the end.
+ */
+export const MethodEndpointsList = "endpoints.list";
+/**
+ * Methods the core answers.
+ */
+export const MethodEndpointsGet = "endpoints.get";
+/**
+ * Methods the core answers.
+ */
+export const MethodEndpointsSave = "endpoints.save";
+/**
+ * Methods the core answers.
+ */
+export const MethodEndpointsRemove = "endpoints.remove";
+/**
+ * Methods the core answers.
+ */
+export const MethodEndpointsMove = "endpoints.move";
+/**
+ * MethodEndpointsExport gives the file of an endpoint; MethodEndpointsImport adds one, off, from such a file or an
+ * .ovpn file.
+ */
+export const MethodEndpointsExport = "endpoints.export";
+/**
+ * Methods the core answers.
+ */
+export const MethodEndpointsImport = "endpoints.import";
+/**
  * Events the core sends without a request.
  */
 export const EventSettingsChanged = "settings.changed";
@@ -2084,6 +2201,10 @@ export const EventUpdatesChanged = "updates.changed";
  * EventOTPChanged brings the list of codes, as otp.list gives it, after an entry changed.
  */
 export const EventOTPChanged = "otp.changed";
+/**
+ * EventEndpointsChanged brings the list of endpoints, as endpoints.list gives it, after one changed.
+ */
+export const EventEndpointsChanged = "endpoints.changed";
 /**
  * Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
  */
@@ -2189,10 +2310,17 @@ export const ReasonKillSwitchTaken = "kill_switch_taken";
  */
 export const ReasonStartFailed = "start_failed";
 /**
- * ReasonEndpointFailed is an endpoint of the preset that did not connect, or whose profile is gone or of another
- * type now; ErrorText names it.
+ * ReasonEndpointFailed is an endpoint that is on and did not connect; ErrorText names it.
  */
 export const ReasonEndpointFailed = "endpoint_failed";
+/**
+ * ReasonEndpointNameTaken is an endpoint saved under the name of another one.
+ */
+export const ReasonEndpointNameTaken = "endpoint_name_taken";
+/**
+ * ReasonSignInMissing is an endpoint turned on while the data for signing in its file came without is missing.
+ */
+export const ReasonSignInMissing = "sign_in_missing";
 /**
  * ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
  */

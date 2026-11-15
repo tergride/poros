@@ -5,19 +5,20 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { Button, Checkbox, Dialog, Input, Menu, MenuItem, Segmented, Select, Switch, Textarea } from '@/components/ui'
-import { usePresetDraft } from '@/composables/usePresetDraft'
+import { useRuleDraft } from '@/composables/usePresetDraft'
 import { useFailure } from '@/composables/useReason'
-import { advancedKinds, fromTarget, problemText, protocols, targetOf } from '@/lib/rules'
+import { advancedKinds, problemText, protocols } from '@/lib/rules'
 import { isCoreError } from '@/platform'
 import type { PresetRule } from '@/platform/core-types'
-import { ActionDirect, CondIPVersion, CondNetwork, CondPrivate, CondProtocol, MethodPresetsCheck } from '@/platform/core-types'
+import { ActionDirect, ActionEndpoint, CondIPVersion, CondNetwork, CondPrivate, CondProtocol, MethodPresetsCheck } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
-// A rule of an advanced preset: every condition must match, any value of one does. Each kind comes once, so «Condition»
-// offers the kinds the rule has not got. The core checks the rule as it is typed and names the condition and line of
-// a wrong value; Done puts it into the list, where narrower rules rise over wider ones.
+// A rule of an advanced preset or an endpoint: every condition must match, any value of one does. Each kind comes
+// once, so «Condition» offers the kinds the rule has not got. The core checks the rule as it is typed and names the
+// condition and line of a wrong value; Done puts it into the list, where narrower rules rise over wider ones. A rule
+// of an endpoint has no «Where»: it goes through the endpoint.
 const core = useCoreStore()
-const { draft, ruleOpen, targets } = usePresetDraft()
+const { draft, endpoint, ruleOpen, targets } = useRuleDraft()
 const failure = useFailure()
 const { t } = useI18n()
 
@@ -29,7 +30,6 @@ interface Condition {
 const name = ref('')
 const conditions = ref<Condition[]>([])
 const invert = ref(false)
-// An action, or an endpoint of the preset, as targetOf gives them.
 const target = ref<string>(ActionDirect)
 const problem = ref('')
 const busy = ref(false)
@@ -49,14 +49,14 @@ watch(ruleOpen, (i) => {
   name.value = rule?.name ?? ''
   conditions.value = rule ? rule.conditions.map((c) => ({ kind: c.kind, text: c.values.join('\n') })) : [{ kind: advancedKinds[0]!, text: '' }]
   invert.value = rule?.invert ?? false
-  target.value = rule ? targetOf(rule) : ActionDirect
+  target.value = endpoint ? ActionEndpoint : (rule?.action ?? ActionDirect)
   problem.value = ''
 })
 
 const kindLabel = (kind: string) => t(kind === 'suffix' ? 'rules.dialog.suffix' : `rules.kinds.${kind}`)
 const free = computed(() => advancedKinds.filter((kind) => !conditions.value.some((c) => c.kind === kind)))
 const kindsFor = (own: string) => advancedKinds.filter((kind) => kind === own || free.value.includes(kind)).map((value) => ({ value, label: kindLabel(value) }))
-const actions = computed(() => targets(true))
+const actions = computed(() => targets())
 
 function addCondition(kind: string): void {
   conditions.value.push({ kind, text: first(kind) })
@@ -81,14 +81,14 @@ function built(): PresetRule {
     })),
     invert: invert.value,
     off: ruleOpen.value !== null && ruleOpen.value >= 0 ? (draft.value?.rules[ruleOpen.value]?.off ?? false) : false,
-    ...fromTarget(target.value),
+    action: target.value,
   }
 }
 
 // What the core says about the rules, the rule's own problem named by its condition and line.
 async function check(rules: PresetRule[]): Promise<PresetRule[] | null> {
   try {
-    const result = await core.core().call(MethodPresetsCheck, { advanced: true, rules, endpoints: draft.value?.endpoints ?? [] })
+    const result = await core.core().call(MethodPresetsCheck, { advanced: true, endpoint, rules })
     problem.value = ''
     return result.rules
   } catch (error) {
@@ -182,7 +182,8 @@ async function done(): Promise<void> {
         <Switch v-model="invert" :aria-label="t('rules.dialog.invert')" />
         <span>{{ t('rules.dialog.invert') }}<br /><span class="text-xs text-t3">{{ t('rules.dialog.invertHint') }}</span></span>
       </label>
-      <label class="grid max-w-[360px] gap-[5px]">
+      <p v-if="endpoint" class="text-xs text-t3" data-testid="rule-through">{{ t('endpoints.ruleThrough', { name: draft?.name ?? '' }) }}</p>
+      <label v-else class="grid max-w-[360px] gap-[5px]">
         <span class="text-[12.5px] text-t2">{{ t('rules.action') }}</span>
         <Select v-model="target" :options="actions" class="w-full" :aria-label="t('rules.action')" data-testid="rule-target" />
       </label>

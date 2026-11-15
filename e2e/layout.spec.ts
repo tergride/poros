@@ -38,6 +38,7 @@ const advancedScreens = [
   '/adv/connections',
   '/adv/routing/rules',
   '/adv/routing/rules/hardened',
+  '/adv/routing/endpoints',
   '/adv/routing/warp',
   '/adv/routing/common',
   '/adv/logs',

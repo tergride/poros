@@ -17,7 +17,6 @@ import (
 
 	"PorosCore/config"
 	"PorosCore/internal/jsonrpc"
-	"PorosCore/profile"
 )
 
 //go:embed presets/*.json
@@ -63,12 +62,11 @@ type copyRecord struct {
 	DNS       string       `json:"dns"`
 	DirectDNS string       `json:"directDns"`
 	Default   string       `json:"default,omitempty"`
-	Endpoints []string     `json:"endpoints,omitempty"`
 	AddedAt   int64        `json:"addedAt"`
 }
 
 func (r copyRecord) view() Preset {
-	return Preset{ID: r.ID, Name: r.Name, BasedOn: r.BasedOn, Advanced: r.Advanced, Rules: len(r.Rules), Endpoints: len(r.Endpoints)}
+	return Preset{ID: r.ID, Name: r.Name, BasedOn: r.BasedOn, Advanced: r.Advanced, Rules: len(r.Rules)}
 }
 
 // foundation is the built-in preset whose rules a user's preset adds to.
@@ -167,11 +165,10 @@ func (e *Engine) compose(record copyRecord) (config.Preset, error) {
 	if record.Default != "" {
 		preset.DefaultOutbound = record.Default
 	}
-	preset.Endpoints = record.Endpoints
 	var own []config.Rule
 	for _, rule := range record.Rules {
 		if !rule.Off {
-			own = append(own, configRule(rule, record.Endpoints))
+			own = append(own, configRule(rule, ""))
 		}
 	}
 	n := head(base.Preset)
@@ -207,7 +204,7 @@ func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
 	if base, ok := e.builtin(id); ok {
 		return PresetCopy{
 			ID: id, Builtin: true, Name: base.Preset.Name, Rules: []PresetRule{}, Default: base.Preset.DefaultOutbound,
-			Inherited: inherited(base.Preset), Endpoints: []string{},
+			Inherited: inherited(base.Preset),
 		}, nil
 	}
 	record, found, err := e.copyRecord(id)
@@ -225,7 +222,6 @@ func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
 		ID: record.ID, BasedOn: record.BasedOn, Name: record.Name, Advanced: record.Advanced,
 		Rules: nonNil(record.Rules), DNS: record.DNS, DirectDNS: record.DirectDNS,
 		Default: cmp.Or(record.Default, base.Preset.DefaultOutbound), Inherited: inherited(base.Preset),
-		Endpoints: nonNil(record.Endpoints),
 	}, nil
 }
 
@@ -237,7 +233,6 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	record := copyRecord{
 		ID: c.ID, BasedOn: c.BasedOn, Name: strings.TrimSpace(c.Name), Advanced: c.Advanced,
 		DNS: strings.TrimSpace(c.DNS), DirectDNS: strings.TrimSpace(c.DirectDNS), Default: c.Default,
-		Endpoints: c.Endpoints,
 	}
 	if record.Name == "" {
 		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "the preset needs a name")
@@ -248,13 +243,10 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	if !record.Advanced && record.DirectDNS != "" {
 		return Preset{}, jsonrpc.Failed(ReasonAdvancedOnly, "a simple preset has no direct DNS")
 	}
-	if err := e.checkEndpoints(record.Advanced, record.Endpoints); err != nil {
-		return Preset{}, err
-	}
 	if _, ok := e.foundation(record.BasedOn); !ok {
 		return Preset{}, jsonrpc.Failed(ReasonUnknownPreset, "there is no built-in preset %q", record.BasedOn)
 	}
-	rules, err := checkRules(record.Advanced, record.Endpoints, c.Rules)
+	rules, err := checkRules(ruleSetOf(record.Advanced, false), c.Rules)
 	if err != nil {
 		return Preset{}, err
 	}
@@ -296,30 +288,6 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 	}
 	e.announcePresets()
 	return record.view(), nil
-}
-
-// checkEndpoints refuses endpoints of a simple preset, one named twice, and a profile that is gone or neither OpenVPN
-// nor OpenConnect.
-func (e *Engine) checkEndpoints(advanced bool, endpoints []string) error {
-	if len(endpoints) > 0 && !advanced {
-		return jsonrpc.Failed(ReasonAdvancedOnly, "only an advanced preset has endpoints")
-	}
-	for i, id := range endpoints {
-		if slices.Contains(endpoints[:i], id) {
-			return jsonrpc.Failed(ReasonInvalidValue, "the endpoint %q is there twice", id)
-		}
-		p, found, err := e.serverProfile(id)
-		if err != nil {
-			return err
-		}
-		if !found {
-			return serverNotFound(id)
-		}
-		if p.Type != profile.TypeOpenVPN && p.Type != profile.TypeOpenConnect {
-			return jsonrpc.Failed(ReasonInvalidValue, "an endpoint is an OpenVPN or OpenConnect profile, not %s", p.Type)
-		}
-	}
-	return nil
 }
 
 // RemovePreset deletes a user's preset; a connection that used it goes back to its base, or to the standard
@@ -383,7 +351,6 @@ type linkRule struct {
 	Invert     bool            `json:"invert,omitempty"`
 	Off        bool            `json:"off,omitempty"`
 	Action     string          `json:"action"`
-	Endpoint   string          `json:"endpoint,omitempty"`
 }
 
 func linkRules(rules []PresetRule) []linkRule {
@@ -413,10 +380,8 @@ func (e *Engine) ExportPreset(id string) (PresetLink, error) {
 	if c.Builtin {
 		return PresetLink{}, jsonrpc.Failed(ReasonInvalidValue, "a built-in preset is in every Poros already")
 	}
-	// The endpoints are this computer's profiles: the link leaves them out, and the rules to them.
-	rules := slices.DeleteFunc(slices.Clone(c.Rules), func(r PresetRule) bool { return r.Action == ActionEndpoint })
 	link, err := encodePresetLink(presetLink{
-		Kind: presetLinkKind, Version: 1, BasedOn: c.BasedOn, Name: c.Name, Advanced: c.Advanced, Rules: linkRules(rules),
+		Kind: presetLinkKind, Version: 1, BasedOn: c.BasedOn, Name: c.Name, Advanced: c.Advanced, Rules: linkRules(c.Rules),
 		DNS: c.DNS, DirectDNS: c.DirectDNS, Default: c.Default,
 	})
 	return PresetLink{Link: link}, err
@@ -535,7 +500,7 @@ func (e *Engine) ImportPreset(p PresetLink) (Preset, error) {
 func (l presetLink) copy(name string) PresetCopy {
 	return PresetCopy{
 		BasedOn: l.BasedOn, Name: name, Advanced: l.Advanced, Rules: l.rules(), DNS: l.DNS,
-		DirectDNS: l.DirectDNS, Default: l.Default, Endpoints: []string{},
+		DirectDNS: l.DirectDNS, Default: l.Default,
 	}
 }
 

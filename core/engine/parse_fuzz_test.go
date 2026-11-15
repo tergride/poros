@@ -71,11 +71,11 @@ func FuzzReadPresetLists(f *testing.F) {
 			t.Fatalf("the window's own tabs: %v", err)
 		}
 		for _, p := range read.Problems {
-			if p.Reason == "" || p.Line < 1 || !slices.Contains(listActions(advanced), p.Action) {
+			if p.Reason == "" || p.Line < 1 || !slices.Contains(listActions(ruleSetOf(advanced, false)), p.Action) {
 				t.Fatalf("a problem %+v", p)
 			}
 		}
-		if _, err := checkRules(advanced, nil, read.Rules); err != nil {
+		if _, err := checkRules(ruleSetOf(advanced, false), read.Rules); err != nil {
 			t.Fatalf("the window gives rules a preset refuses: %v\n%+v", err, read.Rules)
 		}
 		written, err := WritePresetLists(PresetRules{Advanced: advanced, Rules: read.Rules})
@@ -162,12 +162,12 @@ func FuzzOutsideLink(f *testing.F) {
 // read back into the same rules.
 func checkPresetLink(t *testing.T, e *Engine, c PresetCopy) {
 	t.Helper()
-	rules, err := checkRules(c.Advanced, c.Endpoints, c.Rules)
+	rules, err := checkRules(ruleSetOf(c.Advanced, false), c.Rules)
 	if err != nil {
 		return
 	}
 	record := copyRecord{BasedOn: c.BasedOn, Name: c.Name, Advanced: c.Advanced, Rules: rules, DNS: strings.TrimSpace(c.DNS),
-		DirectDNS: strings.TrimSpace(c.DirectDNS), Default: c.Default, Endpoints: c.Endpoints}
+		DirectDNS: strings.TrimSpace(c.DirectDNS), Default: c.Default}
 	if _, ok := e.foundation(record.BasedOn); !ok {
 		return
 	}
@@ -183,7 +183,7 @@ func checkPresetLink(t *testing.T, e *Engine, c PresetCopy) {
 	if err != nil {
 		t.Fatalf("the export %q does not read back: %v", exported, err)
 	}
-	again, err := checkRules(back.Advanced, nil, back.rules())
+	again, err := checkRules(ruleSetOf(back.Advanced, false), back.rules())
 	if err != nil || !reflect.DeepEqual(again, rules) {
 		t.Fatalf("the rules\n%+v\nare exported as %q, which reads as\n%+v, %v", rules, exported, again, err)
 	}

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"PorosCore/internal/boxmain"
+	"PorosCore/profile"
 )
 
 // The protocols beyond the first nine, each against its sing-box server on loopback. NaiveProxy checks certificates
@@ -228,22 +229,16 @@ func openVPNOffice(t *testing.T, password string) string {
 		`"openvpn":{"network":"tcp","username":"u","password":%s,"ca":%s}}`, port, jsonText(t, password), jsonText(t, certificate)))
 }
 
-// useOffice adds the profile of link to a group of the user's and picks an advanced preset with it as an endpoint
-// and a rule that sends 192.0.2.81 to it.
+// useOffice adds the profile of link as an endpoint that is on, with a rule that sends 192.0.2.81 to it. The preset
+// stays the built-in one: endpoints run with any.
 func useOffice(t *testing.T, e *Engine, link string) {
 	t.Helper()
-	added, err := e.AddServers(AddServers{NewGroup: "Office", Text: link})
+	p, err := profile.ParseLink(link)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lab := PresetRule{Conditions: []RuleCondition{{Kind: CondIP, Values: []string{"192.0.2.81"}}}, Action: ActionEndpoint, Endpoint: added.IDs[0]}
-	preset, err := e.SavePreset(PresetCopy{BasedOn: "all", Name: "Office", Advanced: true, Endpoints: added.IDs, Rules: []PresetRule{lab}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	settings, _ := e.Settings()
-	settings.Preset = preset.ID
-	if _, err = e.SetSettings(settings); err != nil {
+	lab := PresetRule{Conditions: []RuleCondition{{Kind: CondIP, Values: []string{"192.0.2.81"}}}, Action: ActionEndpoint}
+	if _, err = e.SaveEndpoint(EndpointEntry{On: true, Profile: p, Rules: []PresetRule{lab}}); err != nil {
 		t.Fatal(err)
 	}
 }

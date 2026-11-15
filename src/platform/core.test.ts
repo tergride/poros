@@ -26,6 +26,11 @@ import {
   MethodConnectionState,
   MethodConnectionStop,
   MethodDNSCheck,
+  MethodEndpointsExport,
+  MethodEndpointsGet,
+  MethodEndpointsImport,
+  MethodEndpointsList,
+  MethodEndpointsSave,
   MethodGroupsAdd,
   MethodGroupsConfigure,
   MethodGroupsList,
@@ -65,6 +70,7 @@ import {
   ReasonAdvancedOnly,
   ReasonCheckOff,
   ReasonDuplicate,
+  ReasonEndpointNameTaken,
   ReasonInvalidEntry,
   ReasonInvalidLink,
   ReasonInvalidValue,
@@ -77,6 +83,7 @@ import {
   ReasonNotFound,
   ReasonNotManual,
   ReasonPresetNameTaken,
+  ReasonSignInMissing,
   ReasonSingleServer,
   ReasonSubscriptionURL,
   ReasonUpdateNotReady,
@@ -84,9 +91,10 @@ import {
   UpdateReady,
 } from './core-types'
 import type { PresetCopy, PresetRule } from './core-types'
+import type { Profile } from './profile-types'
 
-const rule = (kind: string, value: string, action: string): PresetRule => ({ name: '', conditions: [{ kind, values: [value] }], invert: false, off: false, action, endpoint: '' })
-const emptyCopy: PresetCopy = { id: '', builtin: false, basedOn: '', name: '', advanced: false, rules: [], dns: '', directDns: '', default: '', inherited: [], endpoints: [] }
+const rule = (kind: string, value: string, action: string): PresetRule => ({ name: '', conditions: [{ kind, values: [value] }], invert: false, off: false, action })
+const emptyCopy: PresetCopy = { id: '', builtin: false, basedOn: '', name: '', advanced: false, rules: [], dns: '', directDns: '', default: '', inherited: [] }
 
 async function reasonOf(promise: Promise<unknown>): Promise<string | undefined> {
   try {
@@ -459,36 +467,31 @@ ${vless('se.example.com', 'Sweden')}` })
     const back = await core.call(MethodPresetsReadLists, { advanced: true, rules, lists: { ...lists.lists, proxy: 'suffix:x.example.org' } })
     expect(back.rules.map((r) => r.conditions[0]!.values[0])).toEqual(['x.example.org', 'example.org', 'game.exe', '10.0.0.0/8'])
   })
-  it('keeps the endpoints of an advanced preset as the engine does', async () => {
+  it('keeps the endpoints apart from the presets, with their files, as the engine does', async () => {
     const core = createStubCore()
-    const encode = (text: string) => btoa(text).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
-    const office = { type: 'openvpn', name: 'Office', server: 'vpn.example.com', server_port: 1194, openvpn: { username: 'u', password: 'pw' } }
-    const added = await core.call(MethodServersAdd, {
-      groupId: '',
-      newGroup: 'Office',
-      text: `poros://add/${encode(JSON.stringify(office))}
-trojan://p@de.example.com:443#Germany`,
-    })
-    const [vpn, trojan] = added.ids as [string, string]
-    const wiki = { ...rule('suffix', 'wiki.example', 'endpoint'), endpoint: vpn }
-    const draft = { ...emptyCopy, basedOn: 'all', name: 'Office', advanced: true, endpoints: [vpn], rules: [wiki, rule('suffix', 'example.org', 'direct')] }
-    const saved = await core.call(MethodPresetsSave, draft)
-    expect(saved).toMatchObject({ advanced: true, rules: 2, endpoints: 1 })
-    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, advanced: false, rules: [] }))).toBe(ReasonAdvancedOnly)
-    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'No VPN', endpoints: [trojan], rules: [] }))).toBe(ReasonInvalidValue)
-    expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'Gone', endpoints: ['gone'], rules: [] }))).toBe(ReasonNotFound)
+    const profile = { type: 'openvpn', name: 'Office', server: 'vpn.example.com', server_port: 1194, openvpn: { username: 'u', password: 'pw', ca: 'CA' } } as unknown as Profile
+    const wiki = rule('suffix', 'wiki.example', 'endpoint')
+    const saved = await core.call(MethodEndpointsSave, { id: '', on: true, profile, rules: [wiki], need: [] })
+    expect(saved).toMatchObject({ name: 'Office', type: 'openvpn', on: true, rules: 1, need: [] })
+    expect(await reasonOf(core.call(MethodEndpointsSave, { id: '', on: false, profile, rules: [], need: [] }))).toBe(ReasonEndpointNameTaken)
+    expect(await reasonOf(core.call(MethodEndpointsSave, { id: '', on: false, profile: { ...profile, name: 'Lab' }, rules: [rule('suffix', 'example.org', 'direct')], need: [] }))).toBe(
+      ReasonInvalidValue,
+    )
     const stray = await core.call(MethodPresetsCheck, { advanced: true, rules: [wiki] }).catch((error: unknown) => error)
     expect(isCoreError(stray) && stray.data).toMatchObject({ reason: ReasonInvalidValue, rule: 0 })
 
-    // A link leaves the endpoints out with the rules to them; the lists window has no line for those rules.
-    const { link } = await core.call(MethodPresetsExport, { id: saved.id })
-    const imported = await core.call(MethodPresetsImport, { link })
-    expect(await core.call(MethodPresetsGet, { id: imported.id })).toMatchObject({ endpoints: [], rules: [{ conditions: [{ values: ['example.org'] }] }] })
-    const stored = await core.call(MethodPresetsGet, { id: saved.id })
-    expect((await core.call(MethodPresetsWriteLists, { advanced: true, rules: stored.rules })).lists).toEqual({ proxy: '', direct: 'suffix:example.org', block: '', warp: '' })
-    const read = await core.call(MethodPresetsReadLists, { advanced: true, rules: stored.rules, lists: { proxy: 'suffix:Wiki.example', direct: 'suffix:example.org' } })
-    expect(read.problems).toEqual([{ action: 'proxy', line: 1, text: 'suffix:Wiki.example', reason: ReasonDuplicate, other: 'endpoint' }])
-    expect(read.rules).toEqual(stored.rules)
+    // A file without the data for signing in names what it left out; the import needs it and stays off.
+    const file = await core.call(MethodEndpointsExport, { id: saved.id, signIn: false })
+    expect(file.name).toBe('Office.json')
+    expect(file.text).not.toContain('"pw"')
+    const imported = await core.call(MethodEndpointsImport, { text: file.text })
+    expect(imported).toMatchObject({ name: 'Office 2', on: false, need: ['username', 'password'] })
+    expect(await reasonOf(core.call(MethodEndpointsSave, { ...(await core.call(MethodEndpointsGet, { id: imported.id })), on: true }))).toBe(ReasonSignInMissing)
+    expect((await core.call(MethodEndpointsList)).map((e) => e.name)).toEqual(['Office', 'Office 2'])
+
+    // An endpoint has one list of its own.
+    const lists = await core.call(MethodPresetsWriteLists, { advanced: true, endpoint: true, rules: [wiki] })
+    expect(lists.lists).toEqual({ endpoint: 'suffix:wiki.example' })
   })
 
   it('keeps WARP in the settings and its rules in an advanced preset, as the engine does', async () => {

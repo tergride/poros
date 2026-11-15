@@ -3,7 +3,7 @@ import { Check, Copy, FileDown, ImageIcon, Share2, X } from '@lucide/vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Banner, Button, Dialog, Input } from '@/components/ui'
+import { Button, Dialog, Input } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { reasonOf } from '@/composables/useReason'
 import { qrPath, qrPng } from '@/lib/qr'
@@ -89,7 +89,6 @@ const exportJson = () =>
       <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="open = false"><X /></Button>
     </template>
     <div class="grid gap-5" data-testid="share-preset">
-      <Banner v-if="preset && preset.endpoints > 0" tone="info" data-testid="share-local">{{ t('settings.presets.shareLocal') }}</Banner>
 
       <section class="flex gap-5 rounded-xl border border-line bg-s1 p-4">
         <svg

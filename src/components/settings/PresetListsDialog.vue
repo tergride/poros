@@ -13,6 +13,7 @@ import type { PresetListProblem, PresetListsRead, PresetRule } from '@/platform/
 import {
   ActionBlock,
   ActionDirect,
+  ActionEndpoint,
   ActionProxy,
   ActionWARP,
   MethodPresetsReadLists,
@@ -23,10 +24,10 @@ import {
 } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
-// The rules of a preset as a list per action, to paste whole lists at once: every line starts with the prefix of its
-// kind. The core reads the lines; Apply hands the rules to the editor, which saves them with the rest of the preset.
-// Rules of several conditions and the locked ones stay out of the window and in place.
-const props = defineProps<{ name: string; advanced: boolean; rules: PresetRule[] }>()
+// The rules of a preset as a list per action, or of an endpoint as one list, to paste whole lists at once: every line
+// starts with the prefix of its kind. The core reads the lines; Apply hands the rules to the editor, which saves them
+// with the rest. Rules of several conditions and the locked ones stay out of the window and in place.
+const props = defineProps<{ name: string; advanced: boolean; endpoint?: boolean; rules: PresetRule[] }>()
 const emit = defineEmits<{ apply: [rules: PresetRule[]] }>()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -34,8 +35,10 @@ const core = useCoreStore()
 const reason = useFailure()
 const { t } = useI18n()
 
-const tabs = computed(() => (props.advanced ? [ActionProxy, ActionDirect, ActionBlock, ActionWARP] : [ActionProxy, ActionDirect, ActionBlock]))
-const kinds = computed(() => listKinds(props.advanced))
+const tabs = computed(() =>
+  props.endpoint ? [ActionEndpoint] : props.advanced ? [ActionProxy, ActionDirect, ActionBlock, ActionWARP] : [ActionProxy, ActionDirect, ActionBlock],
+)
+const kinds = computed(() => listKinds(props.advanced || props.endpoint))
 const tab = ref<string>(ActionProxy)
 const helpOpen = ref(false)
 const lists = ref<Record<string, string> | null>(null)
@@ -46,12 +49,12 @@ let serial = 0
 
 watch(open, async (shown) => {
   if (!shown) return
-  tab.value = ActionProxy
+  tab.value = tabs.value[0]!
   lists.value = null
   read.value = null
   failure.value = ''
   try {
-    lists.value = (await core.core().call(MethodPresetsWriteLists, { advanced: props.advanced, rules: props.rules })).lists
+    lists.value = (await core.core().call(MethodPresetsWriteLists, { advanced: props.advanced, endpoint: props.endpoint, rules: props.rules })).lists
     await check()
   } catch (error) {
     failure.value = reason(error)
@@ -62,7 +65,12 @@ async function check(): Promise<PresetListsRead | null> {
   if (!lists.value) return null
   const mine = ++serial
   try {
-    const result = await core.core().call(MethodPresetsReadLists, { advanced: props.advanced, rules: props.rules, lists: { ...lists.value } })
+    const result = await core.core().call(MethodPresetsReadLists, {
+      advanced: props.advanced,
+      endpoint: props.endpoint,
+      rules: props.rules,
+      lists: { ...lists.value },
+    })
     if (mine === serial) {
       read.value = result
       failure.value = ''
@@ -118,9 +126,11 @@ function lineList(problems: PresetListProblem[]): string {
   return problems.length > named ? t('presetLists.more', { lines, n: problems.length - named }) : lines
 }
 
-const title = computed(() =>
-  props.name.trim() ? t('presetLists.title', { name: props.name.trim() }) : t('presetLists.titleUnnamed'),
-)
+const title = computed(() => {
+  const name = props.name.trim()
+  if (props.endpoint) return t('presetLists.titleEndpoint', { name })
+  return name ? t('presetLists.title', { name }) : t('presetLists.titleUnnamed')
+})
 </script>
 
 <template>
@@ -168,13 +178,13 @@ const title = computed(() =>
         </div>
       </TabsContent>
       <template #footer>
-        <span class="sp text-xs text-t3">{{ t('presetLists.locked') }}</span>
+        <span class="sp text-xs text-t3">{{ t(endpoint ? 'presetLists.lockedEndpoint' : 'presetLists.locked') }}</span>
         <Button variant="ghost" @click="open = false">{{ t('common.cancel') }}</Button>
         <Button variant="primary" :disabled="!read || read.problems.length > 0" data-testid="lists-apply" @click="apply">
           {{ t('presetLists.apply') }}
         </Button>
       </template>
     </Dialog>
-    <PresetListsHelp v-model:open="helpOpen" :advanced="advanced" />
+    <PresetListsHelp v-model:open="helpOpen" :advanced="advanced || endpoint" />
   </Tabs>
 </template>

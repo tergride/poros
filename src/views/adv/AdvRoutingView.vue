@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 
+import EndpointsPage from '@/components/endpoints/EndpointsPage.vue'
 import ImportPresetDialog from '@/components/presets/ImportPresetDialog.vue'
 import NewPresetDialog from '@/components/presets/NewPresetDialog.vue'
 import PresetEditor from '@/components/presets/PresetEditor.vue'
@@ -21,8 +22,9 @@ import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 // «Routing» of the advanced mode. «Presets and rules» lists the presets and edits the chosen one beside the list:
-// a change waits for «Save», and leaving with one asks first, as on the settings pages. WARP and «General» are
-// settings: WARP after the server, and the family of addresses first and the preset in use.
+// a change waits for «Save», and leaving with one asks first, as on the settings pages. «Endpoints» are connections of
+// their own beside the server, with any preset. WARP and «General» are settings: WARP after the server, and the family
+// of addresses first and the preset in use.
 const core = useCoreStore()
 const ui = useUiStore()
 const restart = useRestartNeeded()
@@ -39,8 +41,8 @@ const tab = computed({
   get: () => String(route.params.tab ?? 'rules'),
   set: (next: string) => void router.push(`/adv/routing/${next}`),
 })
-// The preset to edit: the one in the address, else the one in use.
-const selected = computed(() => String(route.params.id || core.settings?.preset || 'all'))
+// The preset to edit: the one in the address of the presets, else the one in use.
+const selected = computed(() => String((tab.value === 'rules' && route.params.id) || core.settings?.preset || 'all'))
 watch(selected, (id) => void editor.load(id), { immediate: true })
 
 const builtins = computed(() => core.presets.filter((p) => p.builtin))
@@ -112,6 +114,7 @@ onBeforeRouteUpdate(ask)
     <Tabs v-model="tab">
       <TabsList>
         <TabsTrigger value="rules">{{ t('routing.tabs.rules') }}</TabsTrigger>
+        <TabsTrigger value="endpoints" data-testid="routing-tab-endpoints">{{ t('routing.tabs.endpoints') }}</TabsTrigger>
         <TabsTrigger value="warp">WARP</TabsTrigger>
         <TabsTrigger value="common">{{ t('routing.tabs.common') }}</TabsTrigger>
       </TabsList>
@@ -177,6 +180,7 @@ onBeforeRouteUpdate(ask)
         </div>
       </div>
     </div>
+    <EndpointsPage v-else-if="tab === 'endpoints'" />
     <RoutingDraftPage v-else-if="tab === 'common'"><RoutingCommon /></RoutingDraftPage>
     <RoutingDraftPage v-else><RoutingWarp /></RoutingDraftPage>
 

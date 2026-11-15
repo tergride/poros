@@ -42,8 +42,12 @@ function outboundName(tag: string): string {
   if (tag === 'proxy') return serverName.value
   if (tag === 'direct') return t('adv.connections.direct')
   if (tag === 'warp') return 'WARP'
+  // endpoint-1 is the first endpoint the connection runs with.
   const endpoint = /^endpoint-(\d+)$/.exec(tag)
-  if (endpoint) return t('adv.connections.endpoint', { n: endpoint[1] })
+  if (endpoint) {
+    const id = core.connection.endpoints?.[Number(endpoint[1]) - 1]
+    return core.endpoints.find((e) => e.id === id)?.name ?? t('adv.connections.endpoint', { n: endpoint[1] })
+  }
   return tag
 }
 const processName = (process: string) => process || t('adv.connections.system')

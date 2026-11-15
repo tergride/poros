@@ -9,7 +9,6 @@ import (
 	"math/rand/v2"
 	"net"
 	"net/netip"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -302,16 +301,16 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if !found {
 		return ConnectionState{}, failure(ReasonNoServer, "the chosen server is no longer in its subscription")
 	}
-	preset, found, err := e.preset(settings.Preset)
+	preset, endpointsOn, found, err := e.connectionPreset(settings.Preset)
 	if err != nil {
 		return ConnectionState{}, err
 	}
 	if !found {
 		return ConnectionState{}, failure(ReasonStartFailed, "the preset %q is gone", settings.Preset)
 	}
-	endpoints, endpointNames, err := e.presetEndpoints(preset, server, settings.Server)
-	if err != nil {
-		return ConnectionState{}, err
+	endpoints := make([]profile.Profile, len(endpointsOn))
+	for i, endpoint := range endpointsOn {
+		endpoints[i] = endpoint.Profile
 	}
 	// Before the rights: they would not help, and the prompt for them would come for nothing. This core's own TUN is
 	// already down: the earlier connection stopped before this start.
@@ -517,19 +516,19 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		_ = e.stopRunning(true)
 		return ConnectionState{}, failure(ReasonStartFailed, "%v", err)
 	}
-	// So do the endpoints of the preset, and the start fails with the one that did not come up.
-	for i, name := range endpointNames {
+	// So do the endpoints, and the start fails with the one that did not come up.
+	for i, endpoint := range endpointsOn {
 		if err = probe.AwaitTunnels(ctx, running.box, config.EndpointTag(i)); err != nil && ctx.Err() == nil {
 			_ = e.stopRunning(true)
-			return ConnectionState{}, failure(ReasonEndpointFailed, "%s: %v", name, err)
+			return ConnectionState{}, failure(ReasonEndpointFailed, "%s: %v", endpoint.Profile.Name, err)
 		}
 	}
 	if ctx.Err() != nil {
 		_ = e.stopRunning(true)
 		return ConnectionState{}, ctx.Err()
 	}
-	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Servers: append(e.serversThrough(settings.Server), preset.Endpoints...),
-		Since: e.now().UnixMilli()}
+	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Servers: e.serversThrough(settings.Server),
+		Endpoints: preset.Endpoints, Since: e.now().UnixMilli()}
 	if err = e.syncProxyOf(settings); err != nil {
 		state.Error, state.ErrorText = ReasonSystemProxyFailed, err.Error()
 		log.Printf("connection: system proxy: %v", err)
@@ -702,31 +701,6 @@ func (e *Engine) closeConnection() error {
 	e.conn.lifecycle.Lock()
 	defer e.conn.lifecycle.Unlock()
 	return e.stopRunning(e.ks.handover.Load())
-}
-
-// presetEndpoints gives the profiles of the endpoints of a preset and their names. One whose profile is gone or of
-// another type now fails the start, and so does one that is the server of the connection or a server of its chain.
-func (e *Engine) presetEndpoints(preset config.Preset, server profile.Profile, serverID string) ([]profile.Profile, []string, error) {
-	var profiles []profile.Profile
-	var names []string
-	for _, id := range preset.Endpoints {
-		p, found, err := e.serverProfile(id)
-		if err != nil {
-			return nil, nil, err
-		}
-		if !found {
-			return nil, nil, failure(ReasonEndpointFailed, "a profile of the preset's endpoints is gone")
-		}
-		name := serverRecord{Profile: p}.view("").Name
-		switch {
-		case p.Type != profile.TypeOpenVPN && p.Type != profile.TypeOpenConnect:
-			return nil, nil, failure(ReasonEndpointFailed, "%s is an endpoint of the preset and no OpenVPN or OpenConnect profile now", name)
-		case id == serverID || (server.Chain != nil && slices.Contains(server.Chain.Servers, id)):
-			return nil, nil, failure(ReasonEndpointFailed, "%s is the server of the connection and an endpoint of its preset at once", name)
-		}
-		profiles, names = append(profiles, p), append(names, name)
-	}
-	return profiles, names, nil
 }
 
 func (e *Engine) serverProfile(id string) (p profile.Profile, found bool, err error) {

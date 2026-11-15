@@ -31,19 +31,37 @@ func ruleFailure(problem RuleProblem, format string, args ...any) error {
 	return &jsonrpc.Error{Code: jsonrpc.CodeFailed, Message: fmt.Sprintf(format, args...), Data: problem}
 }
 
-// CheckPresetRules gives the rules of a preset as the core keeps them: every value read for its kind, repeats in a
-// condition dropped, and a narrower rule over a wider one. A rule that is wrong fails with a RuleProblem.
-func CheckPresetRules(p PresetRules) (PresetRules, error) {
-	rules, err := checkRules(p.Advanced, p.Endpoints, p.Rules)
-	return PresetRules{Advanced: p.Advanced, Rules: rules, Endpoints: p.Endpoints}, err
+// ruleSet is whose rules they are: those of an endpoint take the kinds of an advanced preset and go through it.
+type ruleSet int
+
+const (
+	simpleRules ruleSet = iota
+	advancedRules
+	endpointRules
+)
+
+func ruleSetOf(advanced, endpoint bool) ruleSet {
+	switch {
+	case endpoint:
+		return endpointRules
+	case advanced:
+		return advancedRules
+	}
+	return simpleRules
 }
 
-// checkRules checks the rules of a preset whose endpoints are the profiles endpoints names.
-func checkRules(advanced bool, endpoints []string, rules []PresetRule) ([]PresetRule, error) {
+// CheckPresetRules gives the rules of a preset or an endpoint as the core keeps them: every value read for its kind,
+// repeats in a condition dropped, and a narrower rule over a wider one. A rule that is wrong fails with a RuleProblem.
+func CheckPresetRules(p PresetRules) (PresetRules, error) {
+	rules, err := checkRules(ruleSetOf(p.Advanced, p.Endpoint), p.Rules)
+	return PresetRules{Advanced: p.Advanced, Endpoint: p.Endpoint, Rules: rules}, err
+}
+
+func checkRules(set ruleSet, rules []PresetRule) ([]PresetRule, error) {
 	checked := make([]PresetRule, 0, len(rules))
 	seen := map[string]int{}
 	for i, rule := range rules {
-		rule, err := checkRule(advanced, endpoints, i, rule)
+		rule, err := checkRule(set, i, rule)
 		if err != nil {
 			return nil, err
 		}
@@ -59,17 +77,17 @@ func checkRules(advanced bool, endpoints []string, rules []PresetRule) ([]Preset
 	return narrowFirst(checked), nil
 }
 
-func checkRule(advanced bool, endpoints []string, i int, rule PresetRule) (PresetRule, error) {
+func checkRule(set ruleSet, i int, rule PresetRule) (PresetRule, error) {
 	problem := func(reason string) RuleProblem { return RuleProblem{Reason: reason, Rule: i} }
+	advanced := set != simpleRules
 	switch {
-	case (rule.Action == ActionEndpoint || rule.Action == ActionWARP) && !advanced:
+	case set == endpointRules && rule.Action != ActionEndpoint:
+		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: a rule of an endpoint goes through it, not %q", i+1, rule.Action)
+	case set == endpointRules:
+	case rule.Action == ActionWARP && !advanced:
 		return rule, ruleFailure(problem(ReasonAdvancedOnly), "rule %d: only an advanced preset sends traffic to %s", i+1, rule.Action)
-	case rule.Action == ActionEndpoint && !slices.Contains(endpoints, rule.Endpoint):
-		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the preset has no endpoint %q", i+1, rule.Endpoint)
-	case rule.Action != ActionEndpoint && !slices.Contains(ruleActions, rule.Action):
-		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the action must be proxy, direct, block, warp or endpoint, not %q", i+1, rule.Action)
-	case rule.Action != ActionEndpoint:
-		rule.Endpoint = ""
+	case !slices.Contains(ruleActions, rule.Action):
+		return rule, ruleFailure(problem(ReasonInvalidValue), "rule %d: the action must be proxy, direct, block or warp, not %q", i+1, rule.Action)
 	}
 	if len(rule.Conditions) == 0 {
 		return rule, ruleFailure(problem(ReasonNoCondition), "rule %d has no condition", i+1)
@@ -283,9 +301,9 @@ func narrowFirst(rules []PresetRule) []PresetRule {
 	return rules
 }
 
-// configRule is a checked rule of a preset as the config builder takes it.
-// configRule turns a checked rule into one of the connection; endpoints are those of its preset.
-func configRule(rule PresetRule, endpoints []string) config.Rule {
+// configRule turns a checked rule into one of the connection; a rule of an endpoint goes to outbound, the tag of that
+// endpoint.
+func configRule(rule PresetRule, outbound string) config.Rule {
 	out := config.Rule{Name: rule.Name, Invert: rule.Invert}
 	if out.Name == "" && len(rule.Conditions) > 0 && len(rule.Conditions[0].Values) > 0 {
 		out.Name = rule.Conditions[0].Values[0]
@@ -294,7 +312,7 @@ func configRule(rule PresetRule, endpoints []string) config.Rule {
 	case ActionBlock:
 		out.Action = config.ActionReject
 	case ActionEndpoint:
-		out.Action, out.Outbound = config.ActionRoute, config.EndpointTag(slices.Index(endpoints, rule.Endpoint))
+		out.Action, out.Outbound = config.ActionRoute, outbound
 	case ActionWARP:
 		out.Action, out.Outbound = config.ActionRoute, config.OutboundWARP
 	default:

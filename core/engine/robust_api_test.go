@@ -174,6 +174,7 @@ func contractMethods() map[string]contractMethod {
 	storeGroups := func(f *contractFuzz) []string { return f.pool.storeGroups }
 	presets := func(f *contractFuzz) []string { return f.pool.presets }
 	codes := func(f *contractFuzz) []string { return f.pool.otp }
+	endpoints := func(f *contractFuzz) []string { return f.pool.endpoints }
 	byID := func(list func(f *contractFuzz) []string) func(f *contractFuzz) any {
 		return func(f *contractFuzz) any { return ByID{ID: f.pickID(list(f))} }
 	}
@@ -208,9 +209,19 @@ func contractMethods() map[string]contractMethod {
 		}
 		return c
 	}
-	presetRules := func(f *contractFuzz) any {
+	presetRules := func(f *contractFuzz) PresetRules {
+		if entry, err := f.store.EndpointEntry(f.pickID(f.pool.endpoints)); err == nil && f.chance(0.3) {
+			return PresetRules{Endpoint: true, Rules: entry.Rules}
+		}
 		c := presetCopy(f)
-		return PresetRules{Advanced: c.Advanced, Rules: c.Rules, Endpoints: c.Endpoints}
+		return PresetRules{Advanced: c.Advanced, Rules: c.Rules}
+	}
+	endpointEntry := func(f *contractFuzz) any {
+		if entry, err := f.store.EndpointEntry(f.pickID(f.pool.endpoints)); err == nil && f.chance(0.6) {
+			entry.On = f.chance(0.5)
+			return entry
+		}
+		return f.endpoint(fmt.Sprintf("Endpoint %d", f.r.IntN(1000)))
 	}
 	otpText := func(f *contractFuzz) any {
 		return OTPText{Text: "otpauth://totp/GitHub:me?secret=JBSWY3DPEHPK3PXP&issuer=GitHub\n" +
@@ -308,12 +319,12 @@ func contractMethods() map[string]contractMethod {
 		MethodPresetsExport:     {params: ByID{}, base: byID(presets)},
 		MethodPresetsFile:       {params: ByID{}, base: byID(presets)},
 		MethodPresetsImport:     {params: PresetLink{}, base: func(f *contractFuzz) any { return PresetLink{Link: f.pool.presetLink} }},
-		MethodPresetsCheck:      {params: PresetRules{}, base: presetRules},
-		MethodPresetsWriteLists: {params: PresetRules{}, base: presetRules},
+		MethodPresetsCheck:      {params: PresetRules{}, base: func(f *contractFuzz) any { return presetRules(f) }},
+		MethodPresetsWriteLists: {params: PresetRules{}, base: func(f *contractFuzz) any { return presetRules(f) }},
 		MethodPresetsReadLists: {params: PresetListsInput{}, base: func(f *contractFuzz) any {
-			c := presetCopy(f)
-			lists, _ := WritePresetLists(PresetRules{Advanced: c.Advanced, Rules: c.Rules, Endpoints: c.Endpoints})
-			return PresetListsInput{Advanced: c.Advanced, Rules: c.Rules, Lists: lists.Lists}
+			rules := presetRules(f)
+			lists, _ := WritePresetLists(rules)
+			return PresetListsInput{Advanced: rules.Advanced, Endpoint: rules.Endpoint, Rules: rules.Rules, Lists: lists.Lists}
 		}},
 		MethodLinksParse: {params: OutsideLink{}, base: func(f *contractFuzz) any {
 			links := []string{f.pool.deepLink, f.pool.presetLink,
@@ -372,6 +383,17 @@ func contractMethods() map[string]contractMethod {
 		MethodBackupRestore: {params: BackupRestore{}, sanitize: sanitizeRestore, base: func(f *contractFuzz) any {
 			return BackupRestore{Text: f.pool.backup, Parts: f.parts()}
 		}},
+		MethodEndpointsList:   none,
+		MethodEndpointsGet:    {params: ByID{}, base: byID(endpoints)},
+		MethodEndpointsSave:   {params: EndpointEntry{}, base: endpointEntry},
+		MethodEndpointsRemove: {params: ByID{}, base: byID(endpoints)},
+		MethodEndpointsMove: {params: EndpointMove{}, base: func(f *contractFuzz) any {
+			return EndpointMove{ID: f.pickID(f.pool.endpoints), Offset: []int{-1, 1}[f.r.IntN(2)]}
+		}},
+		MethodEndpointsExport: {params: EndpointExport{}, base: func(f *contractFuzz) any {
+			return EndpointExport{ID: f.pickID(f.pool.endpoints), SignIn: f.chance(0.5)}
+		}},
+		MethodEndpointsImport: {params: EndpointText{}, base: func(f *contractFuzz) any { return EndpointText{Text: f.pool.endpointFile} }},
 	}
 }
 
@@ -381,8 +403,10 @@ type contractPool struct {
 	storeGroups, manual, storeServers []string
 	netGroups, subs, netServers       []string
 	presets, copies, otp, conns       []string
+	endpoints                         []string
 	profiles                          map[string]profile.Profile
 	backup, presetLink, deepLink      string
+	endpointFile                      string
 }
 
 type contractFuzz struct {
@@ -395,6 +419,8 @@ type contractFuzz struct {
 	oddities   []string
 	pool       contractPool
 	refills    int
+	// certificate is the CA of the endpoints.
+	certificate string
 }
 
 func (f *contractFuzz) chance(p float64) bool { return f.r.Float64() < p }
@@ -858,6 +884,16 @@ func (f *contractFuzz) refresh() {
 			p.conns = append(p.conns, c.ID)
 		}
 	}
+	if list, err := f.store.Endpoints(); err == nil {
+		for _, endpoint := range list {
+			p.endpoints = append(p.endpoints, endpoint.ID)
+		}
+	}
+	if len(p.endpoints) > 0 {
+		if file, err := f.store.ExportEndpoint(EndpointExport{ID: p.endpoints[f.r.IntN(len(p.endpoints))], SignIn: f.chance(0.5)}); err == nil {
+			p.endpointFile = file.Text
+		}
+	}
 	for range min(6, len(p.storeServers)) {
 		id := p.storeServers[f.r.IntN(len(p.storeServers))]
 		if server, err := f.store.Server(ByID{ID: id}); err == nil {
@@ -877,7 +913,7 @@ func (f *contractFuzz) refresh() {
 			p.deepLink = links.Links[0]
 		}
 	}
-	p.ids = slices.Concat(p.storeGroups, p.storeServers, p.netGroups, p.netServers, p.presets, p.otp, p.conns)
+	p.ids = slices.Concat(p.storeGroups, p.storeServers, p.netGroups, p.netServers, p.presets, p.otp, p.conns, p.endpoints)
 	f.pool = p
 }
 
@@ -905,8 +941,25 @@ func (f *contractFuzz) replenish(t *testing.T) {
 		}
 		changed = true
 	}
+	if len(f.pool.endpoints) == 0 {
+		f.refills++
+		if _, err := f.store.SaveEndpoint(f.endpoint(fmt.Sprintf("Refill %d", f.refills))); err != nil {
+			t.Logf("refill an endpoint: %v", err)
+		}
+		changed = true
+	}
 	if changed {
 		f.refresh()
+	}
+}
+
+// endpoint is an OpenVPN endpoint that is off, with a rule of its own.
+func (f *contractFuzz) endpoint(name string) EndpointEntry {
+	return EndpointEntry{
+		Profile: profile.Profile{Type: profile.TypeOpenVPN, Name: name, Server: "vpn.example.com", ServerPort: 1194, OpenVPN: &profile.OpenVPN{
+			Network: "udp", Username: "u", Password: "pw", CA: f.certificate,
+		}},
+		Rules: []PresetRule{rule(CondSuffix, "office.example", ActionEndpoint)},
 	}
 }
 
@@ -926,7 +979,7 @@ func (f *contractFuzz) seed(t *testing.T) {
 	if err != nil || len(mine.IDs) < 4 {
 		t.Fatalf("AddServers: %+v, %v", mine, err)
 	}
-	ovpn, oc, _ := vpnProfiles(t, f.store)
+	f.certificate, _ = testCertificate(t)
 	if _, err = f.store.SaveServer(SaveServer{GroupID: mine.Group.ID, Profile: chainProfile(mine.IDs[0], mine.IDs[3])}); err != nil {
 		t.Fatalf("a chain: %v", err)
 	}
@@ -935,11 +988,14 @@ func (f *contractFuzz) seed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("a simple preset: %v", err)
 	}
-	office := rule(CondSuffix, "office.example", ActionEndpoint)
-	office.Endpoint = oc
-	if _, err = f.store.SavePreset(PresetCopy{BasedOn: standardPreset, Name: "Advanced", Advanced: true, Endpoints: []string{ovpn, oc},
-		Rules: []PresetRule{office, rule(CondPort, "8000-8080", ActionProxy), rule(CondKeyword, "tracker", ActionBlock)}}); err != nil {
+	if _, err = f.store.SavePreset(PresetCopy{BasedOn: standardPreset, Name: "Advanced", Advanced: true,
+		Rules: []PresetRule{rule(CondPort, "8000-8080", ActionProxy), rule(CondKeyword, "tracker", ActionBlock)}}); err != nil {
 		t.Fatalf("an advanced preset: %v", err)
+	}
+	for _, name := range []string{"Office", "Lab"} {
+		if _, err = f.store.SaveEndpoint(f.endpoint(name)); err != nil {
+			t.Fatalf("an endpoint: %v", err)
+		}
 	}
 	if _, err = f.store.SaveOTP(totp("GitHub", "JBSWY3DPEHPK3PXP")); err != nil {
 		t.Fatal(err)

@@ -411,8 +411,8 @@ type StatsNow struct {
 	// Online tells that the system has a network to go out by; Network is the name of its adapter.
 	Online  bool   `json:"online"`
 	Network string `json:"network"`
-	// The open connections through the server, directly and elsewhere (endpoints of the preset, WARP), while the
-	// statistics are on.
+	// The open connections through the server, directly and elsewhere (endpoints, WARP), while the statistics are
+	// on.
 	ThroughServer int `json:"throughServer"`
 	Direct        int `json:"direct"`
 	Other         int `json:"other"`
@@ -435,7 +435,8 @@ type Connection struct {
 	// Destination is host:port, with the name the program asked for when there is one.
 	Destination string `json:"destination"`
 	// Inbound and Outbound are tags of the connection's config: the TUN or the local proxy; the server (proxy),
-	// direct, an endpoint of the preset or WARP. Rule is the rule that sent it there, "" for the default.
+	// direct, an endpoint (endpoint-1 is the first of ConnectionState.Endpoints) or WARP. Rule is the rule that sent it
+	// there, "" for the default.
 	Inbound  string `json:"inbound"`
 	Outbound string `json:"outbound"`
 	Rule     string `json:"rule"`
@@ -488,9 +489,12 @@ type ConnectionState struct {
 	ServerID    string `json:"serverId"`
 	Tun         bool   `json:"tun"`
 	SystemProxy bool   `json:"systemProxy"`
-	// Servers are all the servers the connection goes through: the chosen one, the links of a chain, the proxies
-	// of its group and the endpoints of the preset. A change of any of them waits for a restart.
+	// Servers are all the servers the connection goes through: the chosen one, the links of a chain and the proxies
+	// of its group. A change of any of them waits for a restart.
 	Servers []string `json:"servers,omitempty"`
+	// Endpoints are the IDs of the endpoints the connection runs with, in the order of their outbounds: endpoint-1
+	// is the first.
+	Endpoints []string `json:"endpoints,omitempty"`
 	// Since is when the connection came up, Unix milliseconds.
 	Since int64 `json:"since"`
 	// Error is the reason the last start failed or a running connection lost a part, such as system_proxy_failed;
@@ -630,12 +634,10 @@ type Preset struct {
 	Advanced bool `json:"advanced"`
 	// Rules counts the user's rules of a copy, and all the rules of a built-in preset.
 	Rules int `json:"rules"`
-	// Endpoints counts the endpoints of an advanced preset, which a link to it leaves out.
-	Endpoints int `json:"endpoints"`
 }
 
-// Where the traffic of a preset rule goes. ActionWARP and ActionEndpoint belong to an advanced preset: WARP after the
-// server, and the endpoint the rule's Endpoint names.
+// Where the traffic of a rule goes. ActionWARP belongs to an advanced preset and goes out through WARP after the
+// server. ActionEndpoint is the one action of the rules of an endpoint: through that endpoint.
 const (
 	ActionProxy    = "proxy"
 	ActionDirect   = "direct"
@@ -687,9 +689,6 @@ type PresetRule struct {
 	Invert bool   `json:"invert"`
 	Off    bool   `json:"off"`
 	Action string `json:"action"`
-	// Endpoint is the ID of the profile of the endpoint ActionEndpoint sends to, one of the preset's Endpoints; ""
-	// for the other actions.
-	Endpoint string `json:"endpoint"`
 }
 
 // RuleProblem is the data of an error about a rule of a preset: which rule, condition and value.
@@ -734,10 +733,6 @@ type PresetCopy struct {
 	// built-in preset.
 	Default   string          `json:"default"`
 	Inherited []InheritedRule `json:"inherited"`
-	// Endpoints of an advanced preset are the IDs of OpenVPN and OpenConnect profiles of any group. They connect
-	// alongside the server, the networks they announce go through them, and rules send them more. They are this
-	// computer's profiles: a link to the preset leaves them out, and the rules to them.
-	Endpoints []string `json:"endpoints"`
 }
 
 // The TUN of Poros as it comes: its addresses and the ranges it keeps out.
@@ -801,23 +796,25 @@ type DNSObject struct {
 // DNSLocal is the system's DNS as the direct DNS of a preset.
 const DNSLocal = "local"
 
-// PresetRules are the rules of a preset of a kind: presets.check gives them back checked, with every value as the
-// core reads it and narrower rules over wider ones. Endpoints are those of the preset, which its rules may send to.
+// PresetRules are the rules of a preset of a kind, or of an endpoint: presets.check gives them back checked, with
+// every value as the core reads it and narrower rules over wider ones. The rules of an endpoint take the kinds of an
+// advanced preset and the action endpoint alone.
 type PresetRules struct {
-	Advanced  bool         `json:"advanced"`
-	Rules     []PresetRule `json:"rules"`
-	Endpoints []string     `json:"endpoints,omitempty"`
+	Advanced bool         `json:"advanced"`
+	Endpoint bool         `json:"endpoint,omitempty"`
+	Rules    []PresetRule `json:"rules"`
 }
 
-// PresetLists are the rules of a preset as the lists window shows them: a text per action (proxy, direct, block)
-// with a line per rule, each starting with the prefix of its kind.
+// PresetLists are the rules of a preset as the lists window shows them: a text per action (proxy, direct, block,
+// warp; endpoint alone for an endpoint) with a line per rule, each starting with the prefix of its kind.
 type PresetLists struct {
 	Lists map[string]string `json:"lists"`
 }
 
-// PresetListsInput is the text of the lists window and the rules it was written from.
+// PresetListsInput is the text of the lists window and the rules it was written from, of a preset or an endpoint.
 type PresetListsInput struct {
 	Advanced bool              `json:"advanced"`
+	Endpoint bool              `json:"endpoint,omitempty"`
 	Rules    []PresetRule      `json:"rules"`
 	Lists    map[string]string `json:"lists"`
 }
@@ -829,8 +826,7 @@ type PresetListProblem struct {
 	Line   int    `json:"line"`
 	Text   string `json:"text"`
 	// Reason is no_prefix, advanced_only for a kind of the advanced preset in a simple one, invalid_entry for a value
-	// that is not of its kind, and duplicate for a line already on the tab Other, or of a rule to an endpoint when
-	// Other is endpoint.
+	// that is not of its kind, and duplicate for a line already on the tab Other.
 	Reason string `json:"reason"`
 	Other  string `json:"other"`
 }
@@ -1128,6 +1124,66 @@ type OTPLink struct {
 	Link string `json:"link"`
 }
 
+// Endpoint is an OpenVPN or OpenConnect connection of its own that runs alongside the server with any preset while
+// it is on: the networks its server announces go through it, and so does the traffic of its rules, before the rules
+// of any preset. This is it as the list shows it.
+type Endpoint struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Type is openvpn or openconnect.
+	Type  string `json:"type"`
+	On    bool   `json:"on"`
+	Rules int    `json:"rules"`
+	// Need is the data for signing in its file came without, which it waits for before it can be on.
+	Need []string `json:"need"`
+}
+
+// EndpointEntry is an endpoint as its editor shows it and endpoints.save takes it; an empty ID is a new one. The
+// profile is its connection, and the profile's name is its name. Its rules have the action endpoint.
+type EndpointEntry struct {
+	ID      string          `json:"id"`
+	On      bool            `json:"on"`
+	Profile profile.Profile `json:"profile"`
+	Rules   []PresetRule    `json:"rules"`
+	// Need is kept from the file the endpoint came from, less what has been filled in since.
+	Need []string `json:"need"`
+}
+
+// Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
+// of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+const (
+	SignInUsername    = "username"
+	SignInPassword    = "password"
+	SignInCert        = "cert"
+	SignInKey         = "key"
+	SignInKeyPassword = "keyPassword"
+	SignInWrapKey     = "wrapKey"
+	SignInOTP         = "otp"
+)
+
+// EndpointMove moves an endpoint up (-1) or down (1) the list.
+type EndpointMove struct {
+	ID     string `json:"id"`
+	Offset int    `json:"offset"`
+}
+
+// EndpointExport asks for the file of an endpoint, with the data for signing in or without it.
+type EndpointExport struct {
+	ID     string `json:"id"`
+	SignIn bool   `json:"signIn"`
+}
+
+// EndpointFile is an endpoint as a file of JSON: a name for the file, from the endpoint's, and its text.
+type EndpointFile struct {
+	Name string `json:"name"`
+	Text string `json:"text"`
+}
+
+// EndpointText is the text of a file to import an endpoint from: a file of an endpoint, or an .ovpn file.
+type EndpointText struct {
+	Text string `json:"text"`
+}
+
 // QRText is text to draw as a QR code.
 type QRText struct {
 	Text string `json:"text"`
@@ -1148,8 +1204,8 @@ type QRScan struct {
 	Texts []string `json:"texts"`
 }
 
-// Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets, settings
-// all settings of the core, otp the codes of «Tools → OTP».
+// Parts of a backup: profiles are the groups with their settings and servers, routing the user's presets and the
+// endpoints, settings all settings of the core, otp the codes of «Tools → OTP».
 const (
 	BackupProfiles = "profiles"
 	BackupRouting  = "routing"
@@ -1186,10 +1242,11 @@ type BackupInfo struct {
 	Created int64    `json:"created"`
 	Version string   `json:"version"`
 	Parts   []string `json:"parts"`
-	Groups  int      `json:"groups"`
-	Servers int      `json:"servers"`
-	Presets int      `json:"presets"`
-	Codes   int      `json:"codes"`
+	Groups    int      `json:"groups"`
+	Servers   int      `json:"servers"`
+	Presets   int      `json:"presets"`
+	Endpoints int      `json:"endpoints"`
+	Codes     int      `json:"codes"`
 }
 
 // Methods the core answers.
@@ -1324,6 +1381,16 @@ const (
 	MethodBackupCreate  = "backup.create"
 	MethodBackupInspect = "backup.inspect"
 	MethodBackupRestore = "backup.restore"
+	// MethodEndpointsList gives the endpoints in the user's order; MethodEndpointsSave keeps one, a new one at the end.
+	MethodEndpointsList   = "endpoints.list"
+	MethodEndpointsGet    = "endpoints.get"
+	MethodEndpointsSave   = "endpoints.save"
+	MethodEndpointsRemove = "endpoints.remove"
+	MethodEndpointsMove   = "endpoints.move"
+	// MethodEndpointsExport gives the file of an endpoint; MethodEndpointsImport adds one, off, from such a file or an
+	// .ovpn file.
+	MethodEndpointsExport = "endpoints.export"
+	MethodEndpointsImport = "endpoints.import"
 )
 
 // Events the core sends without a request.
@@ -1343,6 +1410,8 @@ const (
 	EventUpdatesChanged    = "updates.changed"
 	// EventOTPChanged brings the list of codes, as otp.list gives it, after an entry changed.
 	EventOTPChanged = "otp.changed"
+	// EventEndpointsChanged brings the list of endpoints, as endpoints.list gives it, after one changed.
+	EventEndpointsChanged = "endpoints.changed"
 )
 
 // Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
@@ -1396,9 +1465,12 @@ const (
 	ReasonKillSwitchTaken = "kill_switch_taken"
 	// ReasonStartFailed is a core that refused to start; ErrorText has its words.
 	ReasonStartFailed = "start_failed"
-	// ReasonEndpointFailed is an endpoint of the preset that did not connect, or whose profile is gone or of another
-	// type now; ErrorText names it.
+	// ReasonEndpointFailed is an endpoint that is on and did not connect; ErrorText names it.
 	ReasonEndpointFailed = "endpoint_failed"
+	// ReasonEndpointNameTaken is an endpoint saved under the name of another one.
+	ReasonEndpointNameTaken = "endpoint_name_taken"
+	// ReasonSignInMissing is an endpoint turned on while the data for signing in its file came without is missing.
+	ReasonSignInMissing = "sign_in_missing"
 	// ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
 	ReasonSystemProxyFailed = "system_proxy_failed"
 	// ReasonStopTimeout is a connection that did not close in time; the core has to restart to let go of it.

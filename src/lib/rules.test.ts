@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { fromTarget, inRow, kindOfLine, listKinds, moved, newRule, prefixAt, prefixesFor, problemText, ruleSummary, targetOf } from './rules'
+import { inRow, kindOfLine, listKinds, moved, newRule, prefixAt, prefixesFor, problemText, ruleSummary } from './rules'
 
 // The keys and values as the messages of the interface would put them together.
 const t = (key: string, values: Record<string, unknown> = {}) =>
@@ -14,13 +14,6 @@ describe('the rules of a preset in the interface', () => {
     const two = newRule('processName', 'game.exe', 'direct')
     two.conditions.push({ kind: 'network', values: ['udp'] })
     expect(inRow(two)).toBe(false)
-  })
-
-  it('makes one choice of an action or an endpoint, and back', () => {
-    const office = newRule('ip', '10.8.0.0/16', 'endpoint:a1b2')
-    expect(office).toMatchObject({ action: 'endpoint', endpoint: 'a1b2' })
-    expect(targetOf(office)).toBe('endpoint:a1b2')
-    expect(fromTarget('direct')).toEqual({ action: 'direct', endpoint: '' })
   })
 
   it('moves a rule by one place and stays at the ends', () => {

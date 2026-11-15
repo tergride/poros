@@ -36,7 +36,7 @@ function amount(part: string): string {
     case 'profiles':
       return t('settings.backup.amount.profiles', { groups: i.groups, servers: i.servers })
     case 'routing':
-      return t('settings.backup.amount.routing', { n: i.presets })
+      return t('settings.backup.amount.routing', { n: i.presets, endpoints: i.endpoints })
     case 'otp':
       return t('settings.backup.amount.otp', { n: i.codes })
     default:

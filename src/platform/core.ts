@@ -20,6 +20,12 @@ import type {
   TrafficQuery,
   ConnectionState,
   DNSObject,
+  Endpoint,
+  EndpointEntry,
+  EndpointExport,
+  EndpointFile,
+  EndpointMove,
+  EndpointText,
   Group,
   KillSwitchState,
   LinkInfo,
@@ -86,6 +92,7 @@ import {
   EventSettingsChanged,
   EventUpdatesChanged,
   EventOTPChanged,
+  EventEndpointsChanged,
   MethodAppDebugInfo,
   MethodAppInfo,
   MethodBackupCreate,
@@ -96,6 +103,13 @@ import {
   MethodConnectionStop,
   MethodConnectionsClose,
   MethodConnectionsList,
+  MethodEndpointsExport,
+  MethodEndpointsGet,
+  MethodEndpointsImport,
+  MethodEndpointsList,
+  MethodEndpointsMove,
+  MethodEndpointsRemove,
+  MethodEndpointsSave,
   MethodStatsNow,
   MethodStatsTraffic,
   MethodGroupsAdd,
@@ -236,6 +250,13 @@ export interface CoreMethods {
   [MethodBackupCreate]: { params: BackupParts; result: BackupFile }
   [MethodBackupInspect]: { params: BackupText; result: BackupInfo }
   [MethodBackupRestore]: { params: BackupRestore; result: BackupInfo }
+  [MethodEndpointsList]: { params: undefined; result: Endpoint[] }
+  [MethodEndpointsGet]: { params: ByID; result: EndpointEntry }
+  [MethodEndpointsSave]: { params: EndpointEntry; result: Endpoint }
+  [MethodEndpointsRemove]: { params: ByID; result: null }
+  [MethodEndpointsMove]: { params: EndpointMove; result: null }
+  [MethodEndpointsExport]: { params: EndpointExport; result: EndpointFile }
+  [MethodEndpointsImport]: { params: EndpointText; result: Endpoint }
 }
 
 export interface CoreEvents {
@@ -252,6 +273,7 @@ export interface CoreEvents {
   [EventKillSwitchChanged]: KillSwitchState
   [EventUpdatesChanged]: UpdateState
   [EventOTPChanged]: OTPCode[]
+  [EventEndpointsChanged]: Endpoint[]
 }
 
 export type CoreMethod = keyof CoreMethods

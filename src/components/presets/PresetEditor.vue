@@ -5,7 +5,6 @@ import { useI18n } from 'vue-i18n'
 
 import DefaultCard from '@/components/presets/DefaultCard.vue'
 import DnsChoice from '@/components/presets/DnsChoice.vue'
-import EndpointList from '@/components/presets/EndpointList.vue'
 import RuleDialog from '@/components/presets/RuleDialog.vue'
 import RuleList from '@/components/presets/RuleList.vue'
 import ToAdvancedDialog from '@/components/presets/ToAdvancedDialog.vue'
@@ -19,7 +18,7 @@ import { useCoreStore } from '@/stores/core'
 
 // The editor of a preset under its name, the same in both modes: its kind, not the mode, decides what it has. A simple
 // preset is one page: where traffic goes by default, the rules and the remote DNS. An advanced one has tabs: the rules
-// with more kinds, the endpoints and both DNS servers. A built-in preset shows as a simple one under a lock.
+// with more kinds and both DNS servers. A built-in preset shows as a simple one under a lock.
 // listsButton puts «Edit as a list» over a simple preset, for a host that has no place for it of its own.
 defineProps<{ listsButton?: boolean }>()
 const { draft, listsOpen, ruleOpen } = usePresetDraft()
@@ -70,7 +69,6 @@ function applyLists(rules: PresetRule[]): void {
     <Tabs v-else v-model="tab">
       <TabsList class="-mx-7 mb-3.5 px-5">
         <TabsTrigger value="list" data-testid="preset-tab-list">{{ t('presetEdit.tabRules') }}</TabsTrigger>
-        <TabsTrigger value="endpoints" data-testid="preset-tab-endpoints">{{ t('presetEdit.tabEndpoints') }}</TabsTrigger>
         <TabsTrigger value="dns" data-testid="preset-tab-dns">{{ t('presetEdit.tabDns') }}</TabsTrigger>
       </TabsList>
       <TabsContent value="list">
@@ -83,9 +81,6 @@ function applyLists(rules: PresetRule[]): void {
         </p>
         <DefaultCard />
         <RuleList advanced />
-      </TabsContent>
-      <TabsContent value="endpoints">
-        <EndpointList />
       </TabsContent>
       <TabsContent value="dns">
         <SettingsCard :title="t('presetEdit.dnsServers')" class="max-w-[640px]">

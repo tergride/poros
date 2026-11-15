@@ -7,10 +7,13 @@ import (
 	"PorosCore/internal/jsonrpc"
 )
 
-// listActions are the tabs of the lists window of a preset in the order it shows them; a line on two tabs is a
-// problem of the later one. An advanced preset has «Through WARP» too.
-func listActions(advanced bool) []string {
-	if advanced {
+// listActions are the tabs of the lists window in the order it shows them; a line on two tabs is a problem of the
+// later one. An advanced preset has «Through WARP» too, an endpoint one tab of its own.
+func listActions(set ruleSet) []string {
+	switch set {
+	case endpointRules:
+		return []string{ActionEndpoint}
+	case advancedRules:
 		return []string{ActionProxy, ActionDirect, ActionBlock, ActionWARP}
 	}
 	return []string{ActionProxy, ActionDirect, ActionBlock}
@@ -28,26 +31,26 @@ func listKind(prefix string) (string, bool) {
 
 // inList tells whether the lists window has a line for a rule: one condition with one value, as kind:value.
 func inList(rule PresetRule) bool {
-	return single(rule) && rule.Conditions[0].Kind != CondPrivate && rule.Action != ActionEndpoint
+	return single(rule) && rule.Conditions[0].Kind != CondPrivate
 }
 
-// WritePresetLists gives the rules of a preset as the text of the lists window: each line has the prefix of its kind.
-// Rules of several conditions or values, inverted ones, the private networks and rules to endpoints, which are this
-// computer's profiles, have no line.
+// WritePresetLists gives the rules of a preset or an endpoint as the text of the lists window: each line has the
+// prefix of its kind. Rules of several conditions or values, inverted ones and the private networks have no line.
 func WritePresetLists(p PresetRules) (PresetLists, error) {
+	set := ruleSetOf(p.Advanced, p.Endpoint)
 	lines := map[string][]string{}
 	for _, rule := range p.Rules {
 		if !inList(rule) {
 			continue
 		}
-		if !slices.Contains(listActions(p.Advanced), rule.Action) {
-			return PresetLists{}, jsonrpc.Failed(ReasonInvalidValue, "the action must be proxy, direct or block, not %q", rule.Action)
+		if !slices.Contains(listActions(set), rule.Action) {
+			return PresetLists{}, jsonrpc.Failed(ReasonInvalidValue, "there is no list for the action %q", rule.Action)
 		}
 		condition := rule.Conditions[0]
 		lines[rule.Action] = append(lines[rule.Action], condition.Kind+":"+condition.Values[0])
 	}
 	lists := PresetLists{Lists: map[string]string{}}
-	for _, action := range listActions(p.Advanced) {
+	for _, action := range listActions(set) {
 		lists.Lists[action] = strings.Join(lines[action], "\n")
 	}
 	return lists, nil
@@ -56,8 +59,9 @@ func WritePresetLists(p PresetRules) (PresetLists, error) {
 // ReadPresetLists puts the text of the lists window into the rules it was written from and names the lines that
 // became no rule. Empty lines and lines starting with # are skipped; a line repeated on its own tab counts once.
 func ReadPresetLists(p PresetListsInput) (PresetListsRead, error) {
+	set := ruleSetOf(p.Advanced, p.Endpoint)
 	for action := range p.Lists {
-		if !slices.Contains(listActions(p.Advanced), action) {
+		if !slices.Contains(listActions(set), action) {
 			return PresetListsRead{}, jsonrpc.Failed(ReasonInvalidValue, "there is no list %q", action)
 		}
 	}
@@ -66,18 +70,7 @@ func ReadPresetLists(p PresetListsInput) (PresetListsRead, error) {
 	tabOf := map[string]string{}
 	var keys []string
 	lines := map[string]line{}
-	// A line with the value of a rule to an endpoint would repeat that rule, which stays out of the window.
-	for _, rule := range p.Rules {
-		if rule.Action == ActionEndpoint && single(rule) {
-			condition := rule.Conditions[0]
-			value, ok := ruleValue(condition.Kind, condition.Values[0])
-			if !ok {
-				value = condition.Values[0]
-			}
-			tabOf[valueKey(condition.Kind, value)] = ActionEndpoint
-		}
-	}
-	for _, action := range listActions(p.Advanced) {
+	for _, action := range listActions(set) {
 		for i, raw := range strings.Split(p.Lists[action], "\n") {
 			text := strings.TrimSpace(raw)
 			if text == "" || strings.HasPrefix(text, "#") {
@@ -90,7 +83,7 @@ func ReadPresetLists(p PresetListsInput) (PresetListsRead, error) {
 			switch {
 			case !found || !known:
 				problem.Reason = ReasonNoPrefix
-			case !p.Advanced && !slices.Contains(simpleKinds, kind):
+			case set == simpleRules && !slices.Contains(simpleKinds, kind):
 				problem.Reason = ReasonAdvancedOnly
 			case !valid:
 				problem.Reason = ReasonInvalidEntry

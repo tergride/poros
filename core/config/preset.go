@@ -26,7 +26,7 @@ const (
 	OutboundBlock = "block"
 )
 
-// EndpointTag is the outbound of an endpoint of a preset: the i-th of Preset.Endpoints, from 0.
+// EndpointTag is the outbound of an endpoint of the connection: the i-th of Preset.Endpoints, from 0.
 func EndpointTag(i int) string {
 	return endpointPrefix + strconv.Itoa(i+1)
 }
@@ -65,9 +65,9 @@ type Preset struct {
 	// SystemDNS are the system's DNS.
 	DirectDNS string `json:"direct_dns,omitempty"`
 	Rules     []Rule `json:"rules"`
-	// Endpoints are the IDs of the OpenVPN and OpenConnect profiles that connect alongside the server: the
-	// connection gives them as Input.Endpoints, in this order, and a rule reaches one through its EndpointTag.
-	// They are this computer's profiles, so no preset file has them.
+	// Endpoints are the IDs of the OpenVPN and OpenConnect endpoints that connect alongside the server: the
+	// connection adds them to whatever preset it runs, gives their profiles as Input.Endpoints in this order, and
+	// a rule reaches one through its EndpointTag. No preset file has them.
 	Endpoints []string `json:"-"`
 }
 

@@ -33,9 +33,10 @@ type backupFile struct {
 	Parts    []string                  `json:"parts"`
 	Groups   []groupRecord             `json:"groups,omitempty"`
 	Servers  map[string][]serverRecord `json:"servers,omitempty"`
-	Presets  []copyRecord              `json:"presets,omitempty"`
-	Settings *Settings                 `json:"settings,omitempty"`
-	OTP      []OTPEntry                `json:"otp,omitempty"`
+	Presets   []copyRecord              `json:"presets,omitempty"`
+	Endpoints []endpointRecord          `json:"endpoints,omitempty"`
+	Settings  *Settings                 `json:"settings,omitempty"`
+	OTP       []OTPEntry                `json:"otp,omitempty"`
 }
 
 func invalidBackup(format string, args ...any) error {
@@ -85,6 +86,11 @@ func (e *Engine) CreateBackup(p BackupParts) (BackupFile, error) {
 			}); err != nil {
 				return err
 			}
+			endpoints, err := loadEndpoints(tx)
+			if err != nil {
+				return err
+			}
+			file.Endpoints = nonNil(endpoints)
 		}
 		if has(BackupOTP) {
 			entries, err := loadOTP(tx)
@@ -134,6 +140,9 @@ func (e *Engine) readBackup(text string) (backupFile, error) {
 	}
 	if has(BackupRouting) {
 		if err := e.checkBackupPresets(file.Presets); err != nil {
+			return file, err
+		}
+		if err := checkBackupEndpoints(file.Endpoints); err != nil {
 			return file, err
 		}
 	}
@@ -209,7 +218,7 @@ func (e *Engine) checkBackupPresets(presets []copyRecord) error {
 			return invalidBackup("the preset %q has the ID of a built-in one", record.Name)
 		}
 		ids[record.ID], names[name] = true, true
-		if _, err := checkRules(record.Advanced, record.Endpoints, record.Rules); err != nil {
+		if _, err := checkRules(ruleSetOf(record.Advanced, false), record.Rules); err != nil {
 			return invalidBackup("the preset %q: %v", record.Name, err)
 		}
 		if _, err := e.compose(record); err != nil {
@@ -219,8 +228,25 @@ func (e *Engine) checkBackupPresets(presets []copyRecord) error {
 	return nil
 }
 
+// checkBackupEndpoints checks each endpoint as its save would, and that IDs and names do not repeat.
+func checkBackupEndpoints(endpoints []endpointRecord) error {
+	for i, record := range endpoints {
+		if record.ID == "" || slices.ContainsFunc(endpoints[:i], func(r endpointRecord) bool { return r.ID == record.ID }) {
+			return invalidBackup("an endpoint has no ID or the ID of another")
+		}
+		if nameTakenBy(endpoints[:i], record.Profile.Name, record.ID) {
+			return invalidBackup("two endpoints are named %q", record.Profile.Name)
+		}
+		if _, err := checkEndpoint(record.entry()); err != nil {
+			return invalidBackup("the endpoint %q: %v", record.Profile.Name, err)
+		}
+	}
+	return nil
+}
+
 func backupInfo(file backupFile) BackupInfo {
-	info := BackupInfo{Created: file.Created, Version: file.Version, Parts: nonNil(file.Parts), Groups: len(file.Groups), Presets: len(file.Presets), Codes: len(file.OTP)}
+	info := BackupInfo{Created: file.Created, Version: file.Version, Parts: nonNil(file.Parts), Groups: len(file.Groups), Presets: len(file.Presets),
+		Endpoints: len(file.Endpoints), Codes: len(file.OTP)}
 	for _, list := range file.Servers {
 		info.Servers += len(list)
 	}
@@ -285,6 +311,9 @@ func (e *Engine) RestoreBackup(p BackupRestore) (BackupInfo, error) {
 					return err
 				}
 			}
+			if err := putJSON(tx, bucketEndpoints, keyEndpoints, nonNil(file.Endpoints)); err != nil {
+				return err
+			}
 		}
 		if has(BackupOTP) {
 			return putJSON(tx, bucketOTP, keyOTP, nonNil(file.OTP))
@@ -320,6 +349,7 @@ func (e *Engine) RestoreBackup(p BackupRestore) (BackupInfo, error) {
 	}
 	e.notify(EventServersChanged, ServersChanged{})
 	e.announcePresets()
+	e.announceEndpoints()
 	e.announceOTP()
 	log.Printf("backup: restored %s from a backup of %s", strings.Join(parts, ", "), time.UnixMilli(file.Created).Format(time.DateTime))
 	return backupInfo(file), nil

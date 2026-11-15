@@ -21,7 +21,7 @@ export const router = createRouter({
         { path: 'settings', redirect: '/adv/settings/conn' },
         { path: 'settings/:page', component: () => import('./views/adv/AdvSettingsView.vue') },
         { path: 'routing', redirect: '/adv/routing/rules' },
-        { path: 'routing/:tab(rules|warp|common)/:id?', component: () => import('./views/adv/AdvRoutingView.vue') },
+        { path: 'routing/:tab(rules|endpoints|warp|common)/:id?', component: () => import('./views/adv/AdvRoutingView.vue') },
         { path: 'logs', component: () => import('./views/adv/AdvLogsView.vue') },
         { path: 'connections', component: () => import('./views/adv/AdvConnectionsView.vue') },
         { path: 'stats', redirect: '/adv/stats/now' },

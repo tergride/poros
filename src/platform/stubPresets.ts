@@ -36,8 +36,9 @@ const ruleKinds: string[] = [
   CondSuffix, CondDomain, CondKeyword, CondRegex, CondIP, CondPrivate, CondPort, CondProcessName, CondProcessPath,
   CondProcessPathRegex, CondProtocol, CondNetwork, CondIPVersion, CondSourceIP,
 ]
-/** The tabs of the lists window: an advanced preset has «Through WARP» too. */
-export const listActions = (advanced: boolean): string[] => (advanced ? [ActionProxy, ActionDirect, ActionBlock, ActionWARP] : [ActionProxy, ActionDirect, ActionBlock])
+/** The tabs of the lists window: an advanced preset has «Through WARP» too, an endpoint one tab of its own. */
+export const listActions = (advanced: boolean, endpoint = false): string[] =>
+  endpoint ? [ActionEndpoint] : advanced ? [ActionProxy, ActionDirect, ActionBlock, ActionWARP] : [ActionProxy, ActionDirect, ActionBlock]
 const protocols = ['tls', 'http', 'quic', 'dns', 'stun', 'bittorrent', 'dtls', 'ssh', 'rdp', 'ntp']
 
 function ruleFailure(problem: RuleProblem, message: string): CoreError {
@@ -159,17 +160,19 @@ export function narrowFirst(rules: PresetRule[]): PresetRule[] {
   return list
 }
 
-/** As checkRules in core/engine/presetrules.go: the rules as kept, or a failure that names the rule and value. */
-export function checkRules({ advanced, rules, endpoints = [] }: PresetRules): PresetRule[] {
+/**
+ * As checkRules in core/engine/presetrules.go: the rules as kept, or a failure that names the rule and value. The rules
+ * of an endpoint take the kinds of an advanced preset and go through it.
+ */
+export function checkRules({ advanced, endpoint = false, rules }: PresetRules): PresetRule[] {
   const seen = new Map<string, number>()
+  advanced ||= endpoint
   const checked = rules.map((rule, i): PresetRule => {
-    if ((rule.action === ActionEndpoint || rule.action === ActionWARP) && !advanced) {
+    if (endpoint && rule.action !== ActionEndpoint) throw ruleFailure(problemOf(ReasonInvalidValue, i), `rule ${i + 1}: a rule of an endpoint goes through it`)
+    if (!endpoint && rule.action === ActionWARP && !advanced) {
       throw ruleFailure(problemOf(ReasonAdvancedOnly, i), `rule ${i + 1}: only an advanced preset sends traffic to ${rule.action}`)
     }
-    if (rule.action === ActionEndpoint && !endpoints.includes(rule.endpoint)) {
-      throw ruleFailure(problemOf(ReasonInvalidValue, i), `rule ${i + 1}: the preset has no endpoint "${rule.endpoint}"`)
-    }
-    if (rule.action !== ActionEndpoint && !listActions(true).includes(rule.action)) throw ruleFailure(problemOf(ReasonInvalidValue, i), `rule ${i + 1}: unknown action`)
+    if (!endpoint && !listActions(true).includes(rule.action)) throw ruleFailure(problemOf(ReasonInvalidValue, i), `rule ${i + 1}: unknown action`)
     if (rule.conditions.length === 0) throw ruleFailure(problemOf(ReasonNoCondition, i), `rule ${i + 1} has no condition`)
     const name = rule.name.trim()
     if (!advanced && (rule.conditions.length > 1 || rule.conditions[0]!.values.length > 1 || rule.invert || rule.off || name)) {
@@ -199,7 +202,7 @@ export function checkRules({ advanced, rules, endpoints = [] }: PresetRules): Pr
       }
       return { kind, values }
     })
-    const next = { ...rule, name, conditions, endpoint: rule.action === ActionEndpoint ? rule.endpoint : '' }
+    const next = { ...rule, name, conditions }
     if (single(next)) {
       const key = valueKey(conditions[0]!.kind, conditions[0]!.values[0]!)
       const other = seen.get(key)
@@ -213,32 +216,27 @@ export function checkRules({ advanced, rules, endpoints = [] }: PresetRules): Pr
   return narrowFirst(checked)
 }
 
-const inList = (rule: PresetRule) => single(rule) && rule.conditions[0]!.kind !== CondPrivate && rule.action !== ActionEndpoint
+const inList = (rule: PresetRule) => single(rule) && rule.conditions[0]!.kind !== CondPrivate
 
-export function writeLists({ advanced, rules }: PresetRules): PresetLists {
+export function writeLists({ advanced, endpoint = false, rules }: PresetRules): PresetLists {
   const lines = new Map<string, string[]>()
   for (const rule of rules.filter(inList)) {
-    if (!listActions(advanced).includes(rule.action)) throw { code: 1, message: 'unknown action', data: { reason: ReasonInvalidValue } } satisfies CoreError
+    if (!listActions(advanced, endpoint).includes(rule.action)) throw { code: 1, message: 'unknown action', data: { reason: ReasonInvalidValue } } satisfies CoreError
     const condition = rule.conditions[0]!
     lines.set(rule.action, [...(lines.get(rule.action) ?? []), `${condition.kind}:${condition.values[0] ?? ''}`])
   }
-  return { lists: Object.fromEntries(listActions(advanced).map((action) => [action, (lines.get(action) ?? []).join('\n')])) }
+  return { lists: Object.fromEntries(listActions(advanced, endpoint).map((action) => [action, (lines.get(action) ?? []).join('\n')])) }
 }
 
-export function readLists({ advanced, rules, lists }: PresetListsInput): PresetListsRead {
+export function readLists({ advanced, endpoint = false, rules, lists }: PresetListsInput): PresetListsRead {
   for (const action of Object.keys(lists ?? {})) {
-    if (!listActions(advanced).includes(action)) throw { code: 1, message: `there is no list "${action}"`, data: { reason: ReasonInvalidValue } } satisfies CoreError
+    if (!listActions(advanced, endpoint).includes(action)) throw { code: 1, message: `there is no list "${action}"`, data: { reason: ReasonInvalidValue } } satisfies CoreError
   }
+  advanced ||= endpoint
   const problems: PresetListProblem[] = []
   const tabOf = new Map<string, string>()
   const lines = new Map<string, { kind: string; value: string }>()
-  // A line with the value of a rule to an endpoint would repeat that rule, which stays out of the window.
-  for (const rule of rules) {
-    if (rule.action !== ActionEndpoint || !single(rule)) continue
-    const condition = rule.conditions[0]!
-    tabOf.set(valueKey(condition.kind, ruleValue(condition.kind, condition.values[0]!) ?? condition.values[0]!), ActionEndpoint)
-  }
-  for (const action of listActions(advanced)) {
+  for (const action of listActions(advanced, endpoint)) {
     for (const [i, raw] of (lists?.[action] ?? '').split('\n').entries()) {
       const text = raw.trim()
       if (text === '' || text.startsWith('#')) continue
@@ -279,7 +277,7 @@ export function readLists({ advanced, rules, lists }: PresetListsInput): PresetL
   }
   for (const [key, line] of lines) {
     if (!kept.has(key)) {
-      result.push({ name: '', conditions: [{ kind: line.kind, values: [line.value] }], invert: false, off: false, action: tabOf.get(key)!, endpoint: '' })
+      result.push({ name: '', conditions: [{ kind: line.kind, values: [line.value] }], invert: false, off: false, action: tabOf.get(key)! })
     }
   }
   return { rules: narrowFirst(result), problems }

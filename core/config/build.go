@@ -347,10 +347,10 @@ func addressStrategy(in Input) option.DomainStrategy {
 	return option.DomainStrategy(C.DomainStrategyAsIS)
 }
 
-// endpointParts builds the endpoints of a preset. They dial their servers directly, not through the server.
+// endpointParts builds the endpoints of the connection. They dial their servers directly, not through the server.
 func endpointParts(preset Preset, profiles []profile.Profile) ([]option.Endpoint, error) {
 	if len(profiles) != len(preset.Endpoints) {
-		return nil, errors.New("the endpoints of the preset are missing")
+		return nil, errors.New("the profiles of the endpoints are missing")
 	}
 	var endpoints []option.Endpoint
 	for i, p := range profiles {

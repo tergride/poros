@@ -155,6 +155,7 @@ test('the advanced mode: its sections, settings, a QR code and the connections',
 
   const sections: [string, string][] = [
     ['/adv/routing/rules/all', 'adv-routing'],
+    ['/adv/routing/endpoints', 'adv-routing-endpoints'],
     ['/adv/logs', 'adv-logs'],
     ['/adv/stats/now', 'adv-stats-now'],
     ['/adv/stats/traffic', 'adv-stats-traffic'],
