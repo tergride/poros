@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import NoteText from '@/components/settings/NoteText.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Input, Select, Switch } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
@@ -68,7 +69,7 @@ const methods = computed(() => [
   <SettingsCard :title="t('settings.protocols.fragment')">
     <label class="flex items-start gap-3 pt-2.5 pb-1">
       <Switch v-model="fragment" :aria-label="t('settings.protocols.byDefault')" data-testid="fragment-default" />
-      <span>{{ t('settings.protocols.byDefault') }}<br /><span class="text-xs text-t3">{{ t('settings.protocols.fragmentHint') }}</span></span>
+      <NoteText :title="t('settings.protocols.byDefault')" :hint="t('settings.protocols.fragmentHint')" :note="t('settings.protocols.fragmentNote')" />
     </label>
   </SettingsCard>
   <SettingsCard title="TLS">

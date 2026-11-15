@@ -50,9 +50,9 @@ const ownAgent = computed(() => (core.updates.current ? `Poros/${core.updates.cu
     <OptionRow :title="t('settings.subs.interval')">
       <Select v-model="hours" :options="intervals" :disabled="!autoUpdate" :aria-label="t('settings.subs.interval')" />
     </OptionRow>
-    <OptionRow :title="t('settings.subs.viaProxy')" :hint="t('settings.subs.viaProxyHint')"><Switch v-model="viaProxy" /></OptionRow>
+    <OptionRow :title="t('settings.subs.viaProxy')" :hint="t('settings.subs.viaProxyHint')" :note="t('settings.subs.viaProxyNote')"><Switch v-model="viaProxy" /></OptionRow>
     <OptionRow :title="t('settings.subs.showChanges')" :hint="t('settings.subs.showChangesHint')"><Switch v-model="showChanges" /></OptionRow>
-    <OptionRow :title="t('settings.subs.deviceInfo')" :hint="t('settings.subs.deviceInfoHint')"><Switch v-model="deviceInfo" /></OptionRow>
+    <OptionRow :title="t('settings.subs.deviceInfo')" :hint="t('settings.subs.deviceInfoHint')" :note="t('settings.subs.deviceInfoNote')"><Switch v-model="deviceInfo" /></OptionRow>
   </SettingsCard>
   <SettingsCard v-if="advanced" :title="t('settings.subs.request')">
     <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-2.5 pb-1">

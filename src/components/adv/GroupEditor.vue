@@ -3,6 +3,7 @@ import { Pencil } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import NoteText from '@/components/settings/NoteText.vue'
 import { Banner, Button, Checkbox, Dialog, Input, Select, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui'
 import { useProfileActions } from '@/composables/useProfileActions'
 import { useReason } from '@/composables/useReason'
@@ -167,7 +168,7 @@ async function save(): Promise<void> {
         </TabsContent>
         <TabsContent value="request" class="grid grid-cols-2 gap-3 pt-3">
           <label class="col-span-2 grid gap-1.5">
-            <span class="text-xs text-t3">{{ t('groupEditor.address') }}</span>
+            <span class="text-xs text-t3"><NoteText :title="t('groupEditor.address')" :note="t('groupEditor.addressNote')" /></span>
             <Input v-model="settings.serverAddress" class="font-mono" :placeholder="t('groupEditor.addressPlaceholder')" data-testid="group-address" />
             <span class="text-xs text-t3">{{ t('groupEditor.addressHint') }}</span>
           </label>

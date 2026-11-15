@@ -3,6 +3,7 @@ import { Check, Download, Globe, Info, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import NoteText from '@/components/settings/NoteText.vue'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Dialog, Input, Segmented, Select, Switch, Textarea } from '@/components/ui'
@@ -88,7 +89,7 @@ function saveHosts(): void {
 
 <template>
   <SettingsCard :title="t('routing.warp.title')">
-    <OptionRow :title="t('routing.warp.use')" :hint="t('routing.warp.useHint')"><Switch v-model="on" data-testid="warp-on" /></OptionRow>
+    <OptionRow :title="t('routing.warp.use')" :hint="t('routing.warp.useHint')" :note="t('routing.warp.useNote')"><Switch v-model="on" data-testid="warp-on" /></OptionRow>
   </SettingsCard>
   <SettingsCard :title="t('routing.warp.config')">
     <div class="pt-2.5">
@@ -100,7 +101,7 @@ function saveHosts(): void {
       </div>
     </div>
     <div class="grid gap-[5px] pt-3">
-      <span class="text-[12.5px] text-t2">{{ t('routing.warp.mode') }}</span>
+      <span class="text-[12.5px] text-t2"><NoteText :title="t('routing.warp.mode')" :note="t('routing.warp.modeNote')" /></span>
       <div><Segmented v-model="mode" :options="modes" :aria-label="t('routing.warp.mode')" data-testid="warp-mode" /></div>
       <span class="text-xs text-t3">{{ t('routing.warp.modeHint') }}</span>
     </div>

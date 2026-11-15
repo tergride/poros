@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import NoteText from '@/components/settings/NoteText.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Input, Select, Switch } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
@@ -46,7 +47,7 @@ const outbounds = computed(() => [
   <SettingsCard title="NTP">
     <label class="flex items-start gap-3 pt-2.5">
       <Switch v-model="ntp" :aria-label="t('settings.net.ntpOn')" data-testid="ntp" />
-      <span>{{ t('settings.net.ntpOn') }}<br /><span class="text-xs text-t3">{{ t('settings.net.ntpHint') }}</span></span>
+      <NoteText :title="t('settings.net.ntpOn')" :hint="t('settings.net.ntpHint')" :note="t('settings.net.ntpNote')" />
     </label>
     <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-3 pb-1">
       <label class="grid gap-[5px]">

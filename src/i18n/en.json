@@ -75,7 +75,7 @@
   },
   "logs": {
     "title": "Log",
-    "copy": "Copy for support",
+    "copy": "Copy the log",
     "copied": "Copied",
     "empty": "The log is empty so far."
   },
@@ -86,7 +86,7 @@
     },
     "about": {
       "all": "Everything goes through the server, the local network directly.",
-      "hardened": "Like All traffic, plus TLS fragmentation. Helps when the connection keeps breaking."
+      "hardened": "Like All traffic, plus TLS fragmentation: the start of a TLS connection goes to the server in several packets."
     },
     "rule": {
       "Local networks": "Local networks",
@@ -128,7 +128,7 @@
     },
     "subscription": {
       "title": "Add a subscription",
-      "text": "Paste the link from your provider, and Poros will load its servers. It usually comes in an email or from a bot after payment.",
+      "text": "Paste the link from your provider, and Poros will load its servers.",
       "label": "Subscription link",
       "checking": "Loading the subscription…",
       "found": "Subscription found: {servers}, “{name}”",
@@ -142,7 +142,7 @@
       "autoConnect": "Connect to the last server",
       "autoConnectHint": "Right after it starts, Poros connects to the server that worked last time.",
       "urlScheme": "Open poros:// links",
-      "urlSchemeHint": "A link from a site or a messenger opens straight in Poros.",
+      "urlSchemeHint": "poros:// links will open in Poros.",
       "note": "Windows keeps autostart and links outside the Poros folder. They can be turned off in the settings."
     },
     "routing": {
@@ -174,8 +174,8 @@
     "preset": "Preset:",
     "hint": {
       "both": "TUN takes all of the computer's traffic through the server, and System also points programs at the proxy directly.",
-      "tun": "All of the computer's traffic goes through the server, games and programs included.",
-      "system": "Browsers and programs that use the system proxy go through the server.",
+      "tun": "All of the computer's traffic goes through the server, programs without proxy settings included.",
+      "system": "Programs that use the system proxy go through the server.",
       "none": "Without TUN and System only programs set to the proxy {address} go through the server.",
       "wireguard": "With WireGuard, Windows Firewall may ask about PorosCore on the first connection: no need to allow it, the VPN works either way."
     },
@@ -242,8 +242,8 @@
   },
   "modes": {
     "title": "How traffic goes through the server",
-    "tun": "All of the computer's traffic, games and programs without proxy settings included. Needs administrator rights.",
-    "system": "Browsers and programs that use the Windows system proxy. No rights needed.",
+    "tun": "All of the computer's traffic, programs without proxy settings included. Needs administrator rights.",
+    "system": "Programs that use the Windows system proxy. No rights needed.",
     "note": "Both can be on. The choice is remembered; the switches are on the main screen under Start.",
     "connect": "Connect",
     "none": "Without TUN and System"
@@ -283,12 +283,12 @@
   "proxy": {
     "title": "Local proxy",
     "lead": "{address} is the proxy of Poros on this computer. A program set to it goes online by the rules of the preset: through the server or directly.",
-    "how": "Set it in the program's settings, usually under Proxy or Network: type HTTP or SOCKS5, address {host}, port {port}. Or copy a ready link:",
+    "how": "Set it in the program's proxy settings: type HTTP or SOCKS5, address {host}, port {port}. Or copy a ready link:",
     "copy": "Copy the {kind} link",
     "copied": "Copied",
-    "modes": "TUN and System do this by themselves: TUN for every program, System for those that take the Windows proxy, such as browsers.",
+    "modes": "TUN and System do this by themselves: TUN for every program, System for those that take the Windows proxy.",
     "lan": "Devices in your network can connect to port {port} too, at this computer's address in the local network.",
-    "lanOff": "Only this computer can connect. For a phone or TV to go online through Poros, turn on “Let other devices connect” in Connection."
+    "lanOff": "Only this computer can connect. “Let other devices connect” in Connection opens it to other devices on the network."
   },
   "ip": {
     "title": "IP and DNS",
@@ -383,7 +383,7 @@
       "killSwitchConnected": "While connected",
       "killSwitchAlways": "Always",
       "allowLan": "Let other devices connect",
-      "allowLanHint": "A phone or TV on this network can go out through Poros. On the first connection Windows Firewall asks about PorosCore: allow it on private networks.",
+      "allowLanHint": "Devices on this network can go online through Poros. On the first connection Windows Firewall asks about PorosCore: allow it on private networks.",
       "checkIp": "Check IP and DNS",
       "checkIpHint": "Before and after connecting, Poros asks an outside service for the IP and DNS servers. Click the IP for details and DNS leaks.",
       "ipv6": "IPv6",
@@ -432,11 +432,13 @@
       "every6": "Every 6 hours",
       "daily": "Once a day",
       "viaProxy": "Update through the connection",
-      "viaProxyHint": "Helps when the provider's site cannot be reached directly.",
+      "viaProxyHint": "While Poros is connected, subscriptions load through the server.",
+      "viaProxyNote": "If the provider's site cannot be reached directly, for example, the subscription still updates while Poros is connected. Without a connection subscriptions download directly.",
       "showChanges": "Show changes",
       "showChangesHint": "After an update by hand, show which servers came and went.",
       "deviceInfo": "Send device information",
-      "deviceInfoHint": "Needed by providers that limit the number of devices.",
+      "deviceInfoHint": "With the subscription request Poros sends the provider a HWID and the system version.",
+      "deviceInfoNote": "The HWID is a random ID that Poros makes once and keeps with its data. A provider that limits the devices of a subscription tells this computer from others by it: with a limit of three devices, for example, a fourth may get no servers.",
       "update": "Updates",
       "request": "Request",
       "auto": "Auto",
@@ -473,7 +475,7 @@
       "large": "Large"
     },
     "help": {
-      "lead": "If something does not work.",
+      "lead": "The quick setup, the log, resetting the connection and updates.",
       "wizard": "Quick setup",
       "wizardHint": "Go through the first-start steps again.",
       "run": "Run",
@@ -481,7 +483,7 @@
       "logsHint": "What Poros did and what went wrong. The files are in the config\\logs folder next to the program.",
       "open": "Open",
       "reset": "Reset the connection",
-      "resetHint": "Restarts the core if TUN stopped working.",
+      "resetHint": "Restarts the Poros core. A running connection comes back.",
       "resetButton": "Reset",
       "updates": "Updates",
       "version": "Current version: {version}.",
@@ -499,7 +501,7 @@
       "logsFolder": "Folder",
       "debugLog": "Detailed log",
       "debugLogHint": "Records every connection through Poros. Errors are always recorded. Takes effect with the next connection.",
-      "trouble": "If something does not work",
+      "trouble": "Diagnostics",
       "debugInfo": "Debug information",
       "debugInfoHint": "Versions of the cores, the system and the settings, without links and keys.",
       "copy": "Copy",
@@ -554,6 +556,7 @@
       "fragment": "TLS fragmentation",
       "byDefault": "For profiles “as by default”",
       "fragmentHint": "The ClientHello leaves in several TCP packets, and a blocker does not read the SNI. Not for REALITY and QUIC.",
+      "fragmentNote": "A blocker learns where a connection goes from the site name (SNI) in the ClientHello, the first message of TLS. Split over several TCP packets, the ClientHello hides the name from a blocker that does not put them back together. It helps, for example, when the connection to a server breaks right after it starts: blocking by SNI usually looks like that. REALITY and QUIC do not support it.",
       "fingerprint": "Default fingerprint",
       "noFingerprint": "None",
       "spoof": "TLS spoofing",
@@ -568,7 +571,8 @@
       "ignoreTls": "Ignore TLS errors",
       "ignoreTlsHint": "In the requests of Poros itself: subscriptions, the IP check. Updates are always checked: what they download runs.",
       "ntpOn": "Turn on NTP",
-      "ntpHint": "A clock of the core’s own, for when the system time is wrong.",
+      "ntpHint": "The core takes the time from an NTP server instead of the Windows clock.",
+      "ntpNote": "VMess and Shadowsocks 2022, for example, do not connect when the Windows clock is a couple of minutes off the server's, and TLS fails when the date is past the certificate's validity. With NTP the core takes the time from an NTP server, and the Windows clock does not affect connections.",
       "server": "Server",
       "port": "Port",
       "interval": "Interval, minutes",
@@ -579,7 +583,8 @@
     "security": {
       "protection": "Protection",
       "systemCerts": "Trust the system certificates in Xray",
-      "systemCertsHint": "Xray takes the certificates of Windows, such as corporate ones, instead of its own list.",
+      "systemCertsHint": "Xray takes the certificates of Windows instead of its own list.",
+      "systemCertsNote": "Xray normally checks the certificates of servers against its own list of certificate authorities; with this setting, against the Windows store. If Windows has a root certificate of an organization or of an antivirus that inspects HTTPS, for example, Xray will trust it.",
       "insecure": "Skip the TLS check by default (allowInsecure)",
       "insecureHint": "For profiles without a check of their own; pinned certificates of a profile are still checked. Xray always checks."
     },
@@ -636,7 +641,7 @@
     "backup": {
       "lead": "Subscriptions, presets and settings in one file.",
       "create": "Create a backup",
-      "createHint": "The file can move to another computer. It holds the keys of the servers as plain text — keep it like a password.",
+      "createHint": "The file holds the keys of the servers as plain text — keep it like a password.",
       "createButton": "Create",
       "restore": "Restore from a backup",
       "restoreHint": "Poros shows what the file holds and replaces the current data.",
@@ -691,7 +696,7 @@
     "back": "Presets",
     "copyOf": "Copy of “{name}”",
     "name": "Name",
-    "namePlaceholder": "For example, Work",
+    "namePlaceholder": "The preset's name",
     "dns": "DNS",
     "dnsServers": "DNS servers",
     "dnsCustom": "Custom…",
@@ -840,7 +845,7 @@
     "dialog": {
       "title": "Rule",
       "name": "Name",
-      "namePlaceholder": "Such as Games over UDP",
+      "namePlaceholder": "Optional",
       "conditions": "Conditions",
       "addCondition": "Condition",
       "conditionsHint": "The rule matches when all its conditions do; a condition matches by any of its values, one per line.",
@@ -892,7 +897,7 @@
     "copyTitle": "Copy of the preset “{name}”",
     "name": "New preset",
     "simple": "Simple",
-    "simpleText": "Sites, IPs and programs: through the server, directly or blocked. Enough for almost everyone.",
+    "simpleText": "Sites, IPs and programs: through the server, directly or blocked.",
     "advanced": "Advanced",
     "advancedText": "Adds rules of several conditions, ports and protocols, WARP, OpenVPN and OpenConnect endpoints and a direct DNS of your own.",
     "note": "A simple preset can become advanced later, but not back.",
@@ -922,12 +927,14 @@
     "warp": {
       "title": "WARP",
       "use": "Use WARP",
-      "useHint": "Traffic with the “Through WARP” action goes out to the internet through Cloudflare WARP after the server: the site sees an address of Cloudflare. Helps with services that do not accept VPN addresses. Turned off, this traffic goes through the server.",
+      "useHint": "Traffic with the “Through WARP” action goes out to the internet through Cloudflare WARP after the server: the site sees an address of Cloudflare. Turned off, this traffic goes through the server.",
+      "useNote": "Sites see an address of Cloudflare WARP rather than the server's. Services that turn away addresses of VPNs and data centers, or show them a captcha, for example, often let WARP addresses in. The preset's rules with the “Through WARP” action decide what goes through WARP.",
       "config": "Configuration",
       "registered": "Configuration received on {date}.",
       "none": "No configuration: get one from Cloudflare or enter your own.",
       "mode": "Mode",
-      "modeHint": "MASQUE goes over HTTP/3 or HTTP/2 and helps when UDP does not pass through the server.",
+      "modeHint": "WireGuard goes over UDP, MASQUE over HTTP/3 or HTTP/2.",
+      "modeNote": "HTTP/3 also runs over UDP (QUIC), HTTP/2 over TCP. If UDP does not pass through the server, for example, WARP works in MASQUE mode over HTTP/2: as the fallback with “HTTP/3, falling back to HTTP/2” or always with “HTTP/2 only”.",
       "privateKey": "Private key",
       "peerKey": "Server public key",
       "addresses": "Interface addresses",
@@ -1018,7 +1025,7 @@
     "advanced": "Advanced mode",
     "simpleShort": "Simple",
     "advancedShort": "Advanced",
-    "simpleHint": "Simple mode: the main settings for every day. Click to move to the advanced mode.",
+    "simpleHint": "Simple mode: the main settings. Click to move to the advanced mode.",
     "advancedHint": "Advanced mode: every setting and feature of Poros. Click to move to the simple mode.",
     "menuLabel": "Interface mode",
     "toAdvancedTitle": "Move to the advanced mode?",
@@ -1332,7 +1339,7 @@
     "addedSkipped": "Added: {added}. Not added: {skipped}, which cannot run or are broken.",
     "addFailed": "The profiles were not added: {reason}",
     "linkTitle": "Add the server from the link?",
-    "linkText": "The link from a browser or a messenger leads to one server.",
+    "linkText": "The link leads to one server.",
     "newProfile": "Profile",
     "edit": "Edit…",
     "editFirst": "Edit before adding"
@@ -1355,7 +1362,8 @@
     "copyDeepLinks": "Copy as deep links",
     "address": "Server address",
     "addressPlaceholder": "The addresses of the profiles",
-    "addressHint": "A host or IP for every server of the group, such as an IP of a CDN. The server name stays in SNI.",
+    "addressHint": "A host or IP for every server of the group. The server name stays in SNI.",
+    "addressNote": "Poros connects to this address instead of the addresses of the profiles, and the server name stays in SNI. If the group's servers are behind a CDN, for example, this is the IP or domain of a CDN node that is easier to reach.",
     "tls": "TLS version",
     "http": "HTTP version",
     "deviceInfo": "Send HWID",
@@ -1741,13 +1749,13 @@
     "picture": "QR code",
     "tooLong": "The link is longer than a QR code holds. Pass it on as text.",
     "link": "Link",
-    "secret": "Anyone who sees this QR code gets your sign-in codes. Show it to your own phone only.",
+    "secret": "Anyone who sees this QR code gets your sign-in codes.",
     "copy": "Copy link",
     "menu": "QR code and link",
     "scan": "Scan QR code",
     "scanScreen": "Scan a QR code on the screen",
     "notFound": "No QR code found on the screen. Show it whole on the screen and try again.",
     "notFoundWizard": "No QR code found on the screen. Show it whole on the screen and press the button again.",
-    "profileNote": "Scan it with the camera of a phone in a client that reads such links, or copy the link."
+    "profileNote": "The QR code holds the same profile link as below."
   }
 }
