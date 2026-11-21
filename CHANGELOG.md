@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+<!-- ru -->
+- **Подписка по ссылке из браузера:** ссылка `poros://addsub/` теперь принимает адрес подписки как есть, а не только в base64. Название после `#` работает в обоих видах. Формат ссылки для страниц провайдеров описан в README.
+- **Подписка уже добавлена:** ссылка на подписку, которая уже есть в Poros, открывает окно с её именем и временем обновления. Из него подписку можно обновить или показать её группу.
+
+<!-- en -->
+- **Subscription links from the browser:** a `poros://addsub/` link now takes the subscription URL as it is, not only in base64. A name after `#` works in both forms. The README describes the link format for provider pages.
+- **Subscription already added:** a link to a subscription Poros already has opens a dialog with its name and last update. From there the subscription can be updated or its group shown.
+
 ## 0.2.0
 
 <!-- ru -->
