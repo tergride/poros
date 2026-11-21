@@ -691,6 +691,12 @@
     },
     "advanced": "An advanced preset."
   },
+  "knownSubscription": {
+    "title": "Subscription already added",
+    "text": "The subscription “{name}” is in Poros already.",
+    "show": "Show",
+    "update": "Update"
+  },
   "presetEdit": {
     "back": "Presets",
     "copyOf": "Copy of “{name}”",

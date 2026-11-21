@@ -42,6 +42,11 @@ export function useLinks(): void {
         ui.addSubscription = true
         return
       }
+      const known = core.groups.find((g) => g.url === info.url)
+      if (known) {
+        ui.knownSubscription = known.id
+        return
+      }
       ui.addPrefill = { url: info.url, name: info.name, check: false }
       ui.addSubscription = true
     } catch (error) {
@@ -59,9 +64,10 @@ export function useLinks(): void {
   }
 
   watch(
-    () => [queue.value.length, core.loaded, route.path, ui.addSubscription, ui.linkPreset, ui.linkServer, opening.value] as const,
-    ([waiting, loaded, path, adding, preset, server, busyOpening]) => {
-      const busy = !loaded || path === '/' || path.startsWith('/wizard') || adding || preset || server || busyOpening
+    () =>
+      [queue.value.length, core.loaded, route.path, ui.addSubscription, ui.linkPreset, ui.linkServer, ui.knownSubscription, opening.value] as const,
+    ([waiting, loaded, path, adding, preset, server, known, busyOpening]) => {
+      const busy = !loaded || path === '/' || path.startsWith('/wizard') || adding || preset || server || known || busyOpening
       if (!waiting || busy) return
       const link = queue.value.shift()
       if (!link) return

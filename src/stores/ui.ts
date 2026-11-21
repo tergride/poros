@@ -37,6 +37,10 @@ export const useUiStore = defineStore('ui', () => {
   const addSubscription = ref(false)
   const addPrefill = ref<AddPrefill | null>(null)
   const linkPreset = ref<{ link: string; preset: PresetCopy } | null>(null)
+  // The ID of a subscription a link brought again: the dialog offers to update it or to show it.
+  const knownSubscription = ref('')
+  // A group to open and bring into sight in the list of the mode.
+  const focusGroup = ref('')
   const logs = ref(false)
   const notice = ref<Notice | null>(null)
   // The dialog that moves to the other mode of the interface, opened from the chip of the title bar.
@@ -48,5 +52,18 @@ export const useUiStore = defineStore('ui', () => {
   const profileEdit = ref<ProfileEdit | null>(null)
   // A profile the search picked: «Profiles» shows its group and selects it.
   const focusServer = ref('')
-  return { addSubscription, addPrefill, linkPreset, logs, notice, modeDialog, linkServer, profilePicker, profileEdit, focusServer }
+  return {
+    addSubscription,
+    addPrefill,
+    linkPreset,
+    knownSubscription,
+    focusGroup,
+    logs,
+    notice,
+    modeDialog,
+    linkServer,
+    profilePicker,
+    profileEdit,
+    focusServer,
+  }
 })

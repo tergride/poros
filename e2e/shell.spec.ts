@@ -487,6 +487,23 @@ test('poros:// links open a dialog and add only after a yes', async ({ page }) =
   await expect(add).toBeHidden()
   await expect(page.getByTestId('server-group')).toHaveCount(2)
 
+  // The same subscription again, and as the plain URL: nothing to add, it is updated or shown, from any screen.
+  await send(`poros://addsub/${encode('https://vpn.example.org/s/71bd#Другое название')}`)
+  const known = page.getByRole('dialog', { name: 'Подписка уже добавлена' })
+  await expect(known).toContainText('Подписка «Work» уже есть в Poros.')
+  await expect(known.getByTestId('known-summary')).toContainText('3 сервера · обновлена')
+  await shot(page, 'link-known')
+  await known.getByTestId('known-update').click()
+  await expect(known).toBeHidden()
+  await expect(page.getByTestId('server-group')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Меню' }).click()
+  await page.getByRole('menuitem', { name: 'Настройки' }).click()
+  await send('poros://addsub/https://vpn.example.org/s/71bd')
+  await known.getByTestId('known-show').click()
+  await expect(known).toBeHidden()
+  await expect(page).toHaveURL(/#\/main$/)
+  await expect(page.getByTestId('server-group').filter({ hasText: 'Work' }).getByTestId('server')).toHaveCount(3)
+
   const preset = encode(
     JSON.stringify({
       kind: 'poros-preset',

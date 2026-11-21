@@ -85,6 +85,17 @@ const rows = computed(() => {
   )
 })
 const selection = useSelection(computed(() => rows.value.map((s) => s.id)))
+// A group a link pointed at, out of the search's way.
+watch(
+  () => ui.focusGroup,
+  (id) => {
+    if (!id || !core.groups.some((g) => g.id === id)) return
+    ui.focusGroup = ''
+    groupId.value = id
+    query.value = ''
+  },
+  { immediate: true },
+)
 // A profile the search picked: its group, the row selected and in sight.
 watch(
   () => ui.focusServer,

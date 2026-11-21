@@ -154,6 +154,18 @@ test('profiles come from a pasted text and a link, into a group of the user', as
   await shot(page, 'adv-link-server')
   await page.getByTestId('link-add').click()
   await expect(page.getByTestId('profile-row')).toHaveCount(3)
+
+  // A link to the subscription Poros has: «Show» selects its group.
+  await page.evaluate(
+    (detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })),
+    [`poros://addsub/${encode('https://sub.example.com/u/8f3a2c')}`],
+  )
+  const known = page.getByRole('dialog', { name: 'Подписка уже добавлена' })
+  await expect(known).toContainText('Подписка «sub.example.com» уже есть в Poros.')
+  await shot(page, 'adv-link-known')
+  await known.getByTestId('known-show').click()
+  await expect(known).toBeHidden()
+  await expect(page.getByTestId('group-title')).toHaveText('sub.example.com')
 })
 
 test('the group editor keeps the address and the updates of a subscription', async ({ page }) => {

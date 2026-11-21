@@ -691,6 +691,12 @@
     },
     "advanced": "Расширенный пресет."
   },
+  "knownSubscription": {
+    "title": "Подписка уже добавлена",
+    "text": "Подписка «{name}» уже есть в Poros.",
+    "show": "Показать",
+    "update": "Обновить"
+  },
   "presetEdit": {
     "back": "Пресеты",
     "copyOf": "Копия пресета «{name}»",

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import AddSubscriptionDialog from '@/components/main/AddSubscriptionDialog.vue'
+import KnownSubscriptionDialog from '@/components/main/KnownSubscriptionDialog.vue'
 import LinkPresetDialog from '@/components/main/LinkPresetDialog.vue'
 import LogsDialog from '@/components/shell/LogsDialog.vue'
 import ModeDialog from '@/components/shell/ModeDialog.vue'
@@ -115,6 +116,7 @@ async function addSubscription(): Promise<void> {
     </div>
     <LogsDialog v-model:open="ui.logs" />
     <AddSubscriptionDialog v-model:open="ui.addSubscription" />
+    <KnownSubscriptionDialog />
     <LinkPresetDialog />
     <RestartDialog />
     <ModeDialog />

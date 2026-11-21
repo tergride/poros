@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Gauge, LoaderCircle, Plus, Search, Zap } from '@lucide/vue'
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import mark from '@/assets/img/mark.png'
@@ -89,6 +89,20 @@ function toggle(id: string): void {
   if (closed.has(id)) closed.delete(id)
   else closed.add(id)
 }
+
+// A group a link pointed at: open, out of the search's way and in sight.
+watch(
+  () => ui.focusGroup,
+  async (id) => {
+    if (!id || !core.groups.some((g) => g.id === id)) return
+    ui.focusGroup = ''
+    query.value = ''
+    closed.delete(id)
+    await nextTick()
+    document.querySelector(`[data-group-id="${id}"]`)?.scrollIntoView({ block: 'nearest' })
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -124,6 +138,7 @@ function toggle(id: string): void {
         <ServerGroup
           v-for="group in groups"
           :key="group.group.id"
+          :data-group-id="group.group.id"
           :group="group.group"
           :servers="group.servers"
           :selected="core.settings?.server ?? ''"
