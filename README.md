@@ -61,6 +61,20 @@ Poros has no installer. Its data, the WebView2 profile included, stays in `confi
 
 Poros checks this repository's releases at start and every four hours, downloads a new version in the background and installs it when you press **Restart and update**. Help in the settings turns the automatic check off and turns on beta versions, which are pre-releases here. To update by hand, unpack the new archive over the folder: it has no `config`, so your data stays.
 
+## For providers
+
+A subscription page can open Poros with the subscription in it. The link is `poros://addsub/` followed by the subscription URL, in base64url without padding or as it is:
+
+```js
+const base64url = (text) =>
+  btoa(String.fromCharCode(...new TextEncoder().encode(text))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+
+const link = 'poros://addsub/' + base64url(subscriptionUrl)
+// or: 'poros://addsub/' + subscriptionUrl
+```
+
+Poros adds nothing on its own: the link opens the add dialog with the URL filled in, and a subscription that is already added is offered for an update. A name after `#` at the end of the URL (`https://example.com/sub#My%20VPN`, inside the base64 too) becomes the subscription's name for good and replaces the name the provider sends in `Profile-Title`. Without it, Poros shows the provider's name and follows its changes. Poros takes these links once the first-run wizard or **Settings → Start** turns them on.
+
 ## For developers
 
 ### Building
