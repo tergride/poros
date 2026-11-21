@@ -17,6 +17,17 @@ func TestOutsideLinks(t *testing.T) {
 	if info, err = e.ParseLink(OutsideLink{Link: "throne://addsub/" + padded}); err != nil || info.URL != "https://vpn.example.org/s/71bd" || info.Name != "" {
 		t.Fatalf("Throne subscription link: %+v, %v", info, err)
 	}
+	// The URL as it is, the way provider pages link other clients: its query stays, the fragment is the name.
+	for link, want := range map[string]LinkInfo{
+		"poros://addsub/https://sub.example.com/u/8f3a?token=a%2Fb&flag=1#My%20VPN": {URL: "https://sub.example.com/u/8f3a?token=a%2Fb&flag=1", Name: "My VPN"},
+		" poros://addsub/HTTP://vpn.example.org/s/71bd ":                            {URL: "HTTP://vpn.example.org/s/71bd"},
+		"poros://addsub/https://sub.example.com/u/8f3a#":                            {URL: "https://sub.example.com/u/8f3a"},
+	} {
+		info, err := e.ParseLink(OutsideLink{Link: link})
+		if err != nil || info.Kind != LinkSubscription || info.URL != want.URL || info.Name != want.Name {
+			t.Errorf("%s: %+v, %v", link, info, err)
+		}
+	}
 
 	draft := PresetCopy{BasedOn: "all", Name: "Home", Rules: []PresetRule{rule(CondSuffix, "example.org", ActionBlock)}, DNS: "tls://1.1.1.1"}
 	saved, err := e.SavePreset(draft)
@@ -57,6 +68,9 @@ func TestOutsideLinks(t *testing.T) {
 		"poros://addsub/" + encode("vless://id@host:443"): ReasonSingleServer,
 		"poros://addsub/" + encode("ftp://example.com/x"): ReasonInvalidURL,
 		"poros://addsub/%%%":                              ReasonInvalidLink,
+		"poros://addsub/https://":                         ReasonInvalidURL,
+		"poros://addsub/https:/sub.example.com/u/8f3a":    ReasonInvalidLink,
+		"poros://addsub/vless://id@host:443":              ReasonInvalidLink,
 		"throne://route/" + encode("{}"):                  ReasonInvalidLink,
 		"poros://remoteroute/x":                           ReasonInvalidLink,
 		"https://sub.example.com/u/8f3a":                  ReasonInvalidLink,

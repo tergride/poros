@@ -599,11 +599,13 @@ function parseOutsideLink(link: string): LinkInfo {
   const [, scheme = '', command = '', data = ''] = match
   switch (command.toLowerCase()) {
     case 'addsub': {
-      let text: string
-      try {
-        text = decodeBase64(data.trim()).trim()
-      } catch {
-        throw failed(ReasonInvalidLink, 'the subscription link is damaged')
+      let text = data.trim()
+      if (!/^https?:\/\//i.test(text)) {
+        try {
+          text = decodeBase64(text).trim()
+        } catch {
+          throw failed(ReasonInvalidLink, 'the subscription link is damaged')
+        }
       }
       const cut = text.indexOf('#')
       const url = cut < 0 ? text : text.slice(0, cut)

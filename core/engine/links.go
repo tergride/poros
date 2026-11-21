@@ -9,9 +9,10 @@ import (
 	"PorosCore/profile"
 )
 
-// Links from a browser or a messenger: poros://addsub/<base64 of the URL, with the name as its fragment>,
-// poros://route/<preset>, and poros://add/<server>, which only the advanced mode adds. Throne's throne:// links
-// of a subscription and a server look the same. Nothing is added here: the interface asks the user first.
+// Links from a browser or a messenger: poros://addsub/<base64 of the URL, with the name as its fragment> or
+// poros://addsub/<the URL as it is, with the name as its fragment>, poros://route/<preset>, and
+// poros://add/<server>, which only the advanced mode adds. Throne's throne:// links of a subscription and a server
+// look the same. Nothing is added here: the interface asks the user first.
 
 // ParseLink tells what a link asks to add.
 func (e *Engine) ParseLink(p OutsideLink) (LinkInfo, error) {
@@ -47,18 +48,10 @@ func (e *Engine) ParseLink(p OutsideLink) (LinkInfo, error) {
 }
 
 func parseSubscriptionLink(data string) (LinkInfo, error) {
-	encoded := strings.TrimRight(strings.TrimSpace(data), "=")
-	var decoded []byte
-	var err error
-	for _, encoding := range []*base64.Encoding{base64.RawURLEncoding, base64.RawStdEncoding} {
-		if decoded, err = encoding.DecodeString(encoded); err == nil {
-			break
-		}
-	}
+	link, err := subscriptionOfLink(strings.TrimSpace(data))
 	if err != nil {
-		return LinkInfo{}, jsonrpc.Failed(ReasonInvalidLink, "the subscription link is damaged")
+		return LinkInfo{}, err
 	}
-	link := strings.TrimSpace(string(decoded))
 	name := ""
 	if base, fragment, found := strings.Cut(link, "#"); found {
 		link = base
@@ -70,4 +63,20 @@ func parseSubscriptionLink(data string) (LinkInfo, error) {
 		return LinkInfo{}, err
 	}
 	return LinkInfo{Kind: LinkSubscription, URL: link, Name: strings.TrimSpace(name)}, nil
+}
+
+// subscriptionOfLink takes the URL as it is when it starts with http:// or https://, base64 of it otherwise: a colon
+// is no base64, so the two never mix.
+func subscriptionOfLink(data string) (string, error) {
+	lower := strings.ToLower(data)
+	if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+		return data, nil
+	}
+	encoded := strings.TrimRight(data, "=")
+	for _, encoding := range []*base64.Encoding{base64.RawURLEncoding, base64.RawStdEncoding} {
+		if decoded, err := encoding.DecodeString(encoded); err == nil {
+			return strings.TrimSpace(string(decoded)), nil
+		}
+	}
+	return "", jsonrpc.Failed(ReasonInvalidLink, "the subscription link is damaged")
 }
