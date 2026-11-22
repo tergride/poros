@@ -37,6 +37,10 @@ const (
 	CodeInternal    = "internal"
 	// CodeTaken is the block of another Poros on the computer: two would shut out each other's Poros.
 	CodeTaken = "taken"
+	// CodeCompatible and CodeStrict report how the block works from then on: CodeCompatible lets out the packets
+	// WinDivert sends on, CodeStrict none.
+	CodeCompatible = "compatible"
+	CodeStrict     = "strict"
 )
 
 // Config is the block a guard holds.
@@ -153,14 +157,17 @@ func (o options) args() []string {
 }
 
 // Lines of the guard's stdout before the block is on, and of its pipe after: ON greets a core that joins, a core
-// may ask to disarm, and WARN and FAIL report. The guard closes the pipe once the block is off.
+// may ask to disarm, and WARN and FAIL report. COMPATIBLE and STRICT tell how the block works from then on: a core
+// that joins hears COMPATIBLE after ON while that holds. The guard closes the pipe once the block is off.
 const (
-	lineReady  = "READY"
-	lineError  = "ERROR"
-	lineOn     = "ON"
-	lineWarn   = "WARN"
-	lineFail   = "FAIL"
-	lineDisarm = "disarm"
+	lineReady      = "READY"
+	lineError      = "ERROR"
+	lineOn         = "ON"
+	lineWarn       = "WARN"
+	lineFail       = "FAIL"
+	lineCompatible = "COMPATIBLE"
+	lineStrict     = "STRICT"
+	lineDisarm     = "disarm"
 )
 
 func clean(text string) string {
@@ -258,10 +265,11 @@ func Run(args []string) {
 
 // server answers the cores on the guard's pipe: each may turn the block off, and each hears when it fails.
 type server struct {
-	mu      sync.Mutex
-	clients map[net.Conn]struct{}
-	closed  bool
-	disarm  chan struct{}
+	mu         sync.Mutex
+	clients    map[net.Conn]struct{}
+	closed     bool
+	compatible bool
+	disarm     chan struct{}
 }
 
 // accept greets each core under the lock, so that it hears every report that comes after it joined.
@@ -279,6 +287,9 @@ func (s *server) accept(listener net.Listener) {
 		}
 		s.clients[conn] = struct{}{}
 		s.send(conn, lineOn)
+		if s.compatible {
+			s.send(conn, lineCompatible)
+		}
 		s.mu.Unlock()
 		go s.read(conn)
 	}
@@ -329,6 +340,20 @@ func (s *server) broadcast(line string) {
 	}
 }
 
+// setCompatible tells every core how the block works from now on.
+func (s *server) setCompatible(on bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.compatible = on
+	line := lineStrict
+	if on {
+		line = lineCompatible
+	}
+	for conn := range s.clients {
+		s.send(conn, line)
+	}
+}
+
 // serve holds the block until a core turns it off, stop comes or the backend fails, and returns the exit code.
 func serve(active backend, listener net.Listener, events <-chan Event, stop <-chan string) int {
 	s := &server{clients: map[net.Conn]struct{}{}, disarm: make(chan struct{}, 1)}
@@ -358,6 +383,10 @@ func serve(active backend, listener net.Listener, events <-chan Event, stop <-ch
 			active.Disarm()
 			return 0
 		case event := <-events:
+			if event.Code == CodeCompatible || event.Code == CodeStrict {
+				s.setCompatible(event.Code == CodeCompatible)
+				continue
+			}
 			if !event.Fatal {
 				log.Printf("guard: %s", event.Message)
 				s.broadcast(lineWarn + " " + clean(event.Message))

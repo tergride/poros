@@ -288,7 +288,7 @@ ${vless('se.example.com', 'Sweden')}` })
     expect((await core.call(MethodKillSwitchState)).on).toBe(true)
     await core.call(MethodConnectionStop)
     await settle()
-    expect(await core.call(MethodKillSwitchState)).toEqual({ on: false, full: false, error: '', errorText: '' })
+    expect(await core.call(MethodKillSwitchState)).toEqual({ on: false, full: false, compatible: false, error: '', errorText: '' })
 
     // Always: the refusal runs at once, and Stop keeps it.
     await core.call(MethodSettingsSet, { ...settings, killSwitch: KillSwitchAlways })
@@ -299,7 +299,7 @@ ${vless('se.example.com', 'Sweden')}` })
     expect((await core.call(MethodKillSwitchState)).on).toBe(true)
     await core.call(MethodSettingsSet, { ...settings, killSwitch: KillSwitchOff })
     await settle()
-    expect(blocks).toHaveBeenLastCalledWith({ on: false, full: false, error: '', errorText: '' })
+    expect(blocks).toHaveBeenLastCalledWith({ on: false, full: false, compatible: false, error: '', errorText: '' })
 
     // Always with TUN asks for rights: without them the refusal runs without its TUN.
     await core.call(MethodSettingsSet, { ...settings, tun: true, killSwitch: KillSwitchAlways })
@@ -307,12 +307,13 @@ ${vless('se.example.com', 'Sweden')}` })
     expect(await core.call(MethodKillSwitchState)).toEqual({
       on: true,
       full: false,
+      compatible: false,
       error: ReasonKillSwitchNeedsElevation,
       errorText: expect.any(String) as string,
     })
     await core.elevate()
     await settle()
-    expect(await core.call(MethodKillSwitchState)).toEqual({ on: true, full: false, error: '', errorText: '' })
+    expect(await core.call(MethodKillSwitchState)).toEqual({ on: true, full: false, compatible: false, error: '', errorText: '' })
   })
 
   it('answers a start at once and settles it the way the engine does', async () => {

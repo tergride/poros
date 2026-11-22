@@ -750,6 +750,26 @@ test('the kill switch guards System without rights and asks for them only for TU
   await expect(page.getByTestId('portal-state')).toHaveText('Трафик VPN закрыт до подключения')
 })
 
+test('a mark next to the kill switch chip tells its compatible mode', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as { porosWinDivert?: boolean }).porosWinDivert = true
+  })
+  await throughWizard(page)
+  const mark = page.getByTestId('kill-switch-compatible')
+  await page.getByTestId('tun').click()
+  await page.getByTestId('start').click()
+  await expect(mark).toBeHidden()
+  await page.getByTestId('admin-restart').click()
+  await expect(page.getByTestId('admin-chip')).toBeVisible()
+  await expect(page.getByTestId('portal-state')).toContainText('Подключено')
+  await expect(mark).toBeVisible()
+  await expect(mark).toHaveAttribute('title', /^Обнаружен конфликт: загружен драйвер WinDivert.*совместимом режиме/)
+  await expect(page.getByTestId('kill-switch-chip')).not.toHaveAttribute('data-blocking')
+  await shot(page, 'main-ks-compatible')
+  await mark.click()
+  await expect(page.getByTestId('kill-switch')).toBeVisible()
+})
+
 test('an update is checked from the menu, downloaded and offered over the servers', async ({ page }) => {
   await throughWizard(page)
   await page.getByRole('button', { name: 'Меню' }).click()

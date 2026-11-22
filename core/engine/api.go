@@ -530,6 +530,9 @@ type KillSwitchState struct {
 	// Full is the block of Windows without Poros's TUN, as when the core came back without rights: only Poros and
 	// the local network reach the network, not just the traffic of the server waits.
 	Full bool `json:"full"`
+	// Compatible is the block of Windows next to WinDivert, the driver of zapret and GoodbyeDPI: it lets out the
+	// packets the driver sends on, which Windows takes for raw ones of its System process.
+	Compatible bool `json:"compatible"`
 	// Error is why the kill switch does not hold what the setting asks for: kill_switch_needs_elevation for the
 	// TUN, or kill_switch_failed with ErrorText in English.
 	Error     string `json:"error"`

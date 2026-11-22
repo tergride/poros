@@ -776,6 +776,11 @@ export interface KillSwitchState {
    */
   full: boolean;
   /**
+   * Compatible is the block of Windows next to WinDivert, the driver of zapret and GoodbyeDPI: it lets out the
+   * packets the driver sends on, which Windows takes for raw ones of its System process.
+   */
+  compatible: boolean;
+  /**
    * Error is why the kill switch does not hold what the setting asks for: kill_switch_needs_elevation for the
    * TUN, or kill_switch_failed with ErrorText in English.
    */

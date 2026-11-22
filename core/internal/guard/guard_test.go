@@ -175,3 +175,35 @@ func TestThePipeIsTheGuards(t *testing.T) {
 	s.stop <- "done"
 	s.exitCode(t)
 }
+
+// Every core of the window hears of the compatible mode, one that joins later too.
+func TestTheCompatibleModeReachesTheCores(t *testing.T) {
+	s := startServe(t)
+	first := s.join(t)
+	defer first.Close()
+	waitMode := func(link *Link, want bool) {
+		t.Helper()
+		deadline := time.After(5 * time.Second)
+		for link.Compatible() != want {
+			select {
+			case <-link.Changed():
+			case <-deadline:
+				t.Fatalf("the core did not hear of the mode: compatible %t", !want)
+			}
+		}
+	}
+	waitMode(first, false)
+	s.events <- Event{Code: CodeCompatible}
+	waitMode(first, true)
+	next := s.join(t)
+	defer next.Close()
+	waitMode(next, true)
+	s.events <- Event{Code: CodeStrict}
+	waitMode(first, false)
+	waitMode(next, false)
+
+	if err := first.Disarm(); err != nil {
+		t.Fatalf("Disarm: %v", err)
+	}
+	s.exitCode(t)
+}

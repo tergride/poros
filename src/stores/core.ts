@@ -63,7 +63,7 @@ const idle: ConnectionState = {
 
 const noAddress = { ip: '', ipv6: '', countryCode: '', city: '', isp: '', asn: 0 }
 
-const noBlock: KillSwitchState = { on: false, full: false, error: '', errorText: '' }
+const noBlock: KillSwitchState = { on: false, full: false, compatible: false, error: '', errorText: '' }
 
 const noUpdates: UpdateState = {
   available: false,

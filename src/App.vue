@@ -101,6 +101,7 @@ async function addSubscription(): Promise<void> {
       :kill-switch="core.settings?.killSwitch"
       :kill-switch-blocking="killSwitchBlocking"
       :kill-switch-full="core.killSwitch.full"
+      :kill-switch-compatible="core.killSwitch.compatible"
       :restart-needed="restart.needed"
       :mode="uiMode.mode.value"
       @mode-chip="ui.modeDialog = true"

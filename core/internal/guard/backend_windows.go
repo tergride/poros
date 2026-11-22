@@ -27,6 +27,7 @@ const (
 	weightLANDNS   = 12
 	weightLAN      = 11
 	weightLink     = 10
+	weightDivert   = 9
 	weightBlock    = 0
 )
 
@@ -76,6 +77,8 @@ type wfpBackend struct {
 	blockAll   []uint64
 	tuns       []tunAdapter
 	tunFilters []uint64
+	// divertFilters are there while the driver of WinDivert is loaded.
+	divertFilters []uint64
 }
 
 func newBackend() (backend, error) {
@@ -100,6 +103,9 @@ func (b *wfpBackend) Arm(cfg *config, events chan<- Event) error {
 	}
 	if err = b.arm(cfg, tuns, appID); err != nil {
 		return err
+	}
+	if len(b.divertFilters) > 0 {
+		b.tellDivert(events)
 	}
 	b.wg.Add(1)
 	goSafe(events, func() {
@@ -135,9 +141,13 @@ func (b *wfpBackend) arm(cfg *config, tuns []tunAdapter, appID *fwpByteBlob) err
 		return fmt.Errorf("open the filtering engine: %w", err)
 	}
 	b.engine, b.tuns = engine, tuns
+	divert, err := divertLoaded()
+	if err != nil {
+		log.Printf("guard: %v", err)
+	}
 	var pin runtime.Pinner
 	defer pin.Unpin()
-	err := b.transaction(func() (err error) {
+	err = b.transaction(func() (err error) {
 		if err = b.addSublayer(); err != nil {
 			return err
 		}
@@ -147,7 +157,12 @@ func (b *wfpBackend) arm(cfg *config, tuns []tunAdapter, appID *fwpByteBlob) err
 		if b.blockAll, err = b.install(blockRules()); err != nil {
 			return err
 		}
-		b.tunFilters, err = b.install(tunRules(tuns, &pin))
+		if b.tunFilters, err = b.install(tunRules(tuns, &pin)); err != nil {
+			return err
+		}
+		if divert {
+			b.divertFilters, err = b.install(divertRules(&pin))
+		}
 		return err
 	})
 	if err != nil {
@@ -293,6 +308,56 @@ func (b *wfpBackend) logTun() {
 	}
 }
 
+// recheckDivert follows the driver of WinDivert: a program loads and unloads it whenever it likes.
+func (b *wfpBackend) recheckDivert(events chan<- Event) {
+	loaded, err := divertLoaded()
+	if err != nil {
+		log.Printf("guard: %v", err)
+		return
+	}
+	b.access.Lock()
+	defer b.access.Unlock()
+	if loaded == (len(b.divertFilters) > 0) {
+		return
+	}
+	var pin runtime.Pinner
+	defer pin.Unpin()
+	var ids []uint64
+	err = b.transaction(func() (err error) {
+		if loaded {
+			ids, err = b.install(divertRules(&pin))
+			return err
+		}
+		for _, id := range b.divertFilters {
+			if err = fwpmFilterDeleteById0(b.engine, id); err != nil {
+				return fmt.Errorf("delete filter %d: %w", id, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("guard: update the WinDivert permit: %v", err)
+		return
+	}
+	b.divertFilters = ids
+	b.tellDivert(events)
+}
+
+// tellDivert logs and reports which way the block works from now on.
+func (b *wfpBackend) tellDivert(events chan<- Event) {
+	event := Event{Code: CodeStrict}
+	if len(b.divertFilters) > 0 {
+		event.Code = CodeCompatible
+		log.Print("guard: WinDivert is loaded, the packets it sends on pass")
+	} else {
+		log.Print("guard: WinDivert is gone, so is its permit")
+	}
+	select {
+	case events <- event:
+	case <-b.stop:
+	}
+}
+
 func (b *wfpBackend) watchdog(events chan<- Event) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -310,6 +375,7 @@ func (b *wfpBackend) watchdog(events chan<- Event) {
 			}
 			return
 		}
+		b.recheckDivert(events)
 	}
 }
 

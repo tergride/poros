@@ -332,7 +332,7 @@ const idle: ConnectionState = {
 
 const noAddress = { ip: '', ipv6: '', countryCode: '', city: '', isp: '', asn: 0 }
 
-const noBlock: KillSwitchState = { on: false, full: false, error: '', errorText: '' }
+const noBlock: KillSwitchState = { on: false, full: false, compatible: false, error: '', errorText: '' }
 
 /** A release build of 0.1.0, with 0.1.1 out: a check finds it and downloads it. */
 const stubUpdates: UpdateState = {
@@ -771,6 +771,7 @@ export function createStubCore(): CoreClient {
     if (
       next.on === block.on &&
       next.full === block.full &&
+      next.compatible === block.compatible &&
       next.error === block.error &&
       next.errorText === block.errorText
     ) {
@@ -783,10 +784,12 @@ export function createStubCore(): CoreClient {
   // misses only the TUN of the refusal and asks for them.
   const arm = (): boolean => {
     if (settings.tun && !status.elevated) {
-      setBlock({ on: true, full: false, error: ReasonKillSwitchNeedsElevation, errorText: 'the kill switch needs administrator rights' })
+      setBlock({ on: true, full: false, compatible: false, error: ReasonKillSwitchNeedsElevation, errorText: 'the kill switch needs administrator rights' })
       return false
     }
-    setBlock({ on: true, full: false, error: '', errorText: '' })
+    // The block of Windows is there with TUN alone; a test stands in for the driver of WinDivert with window.porosWinDivert.
+    const compatible = settings.tun && !!(globalThis as { porosWinDivert?: boolean }).porosWinDivert
+    setBlock({ on: true, full: false, compatible, error: '', errorText: '' })
     return true
   }
   const disarm = () => setBlock({ ...noBlock })

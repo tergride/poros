@@ -58,6 +58,19 @@ describe('TitleBar', () => {
     expect(full.get('[data-testid="kill-switch-chip"]').attributes('title')).toMatch(/^Kill switch сейчас блокирует весь интернет/)
   })
 
+  it('marks the compatible mode of the kill switch next to its chip', async () => {
+    const plugins = [createAppI18n(['ru-RU'])]
+    const mountBar = (props: { killSwitch: string; killSwitchCompatible?: boolean }) => mount(TitleBar, { props, global: { plugins } })
+    expect(mountBar({ killSwitch: 'connected' }).find('[data-testid="kill-switch-compatible"]').exists()).toBe(false)
+    expect(mountBar({ killSwitch: 'off', killSwitchCompatible: true }).find('[data-testid="kill-switch-compatible"]').exists()).toBe(false)
+    const bar = mountBar({ killSwitch: 'connected', killSwitchCompatible: true })
+    const mark = bar.get('[data-testid="kill-switch-compatible"]')
+    expect(mark.attributes('title')).toMatch(/^Обнаружен конфликт: загружен драйвер WinDivert.*совместимом режиме/)
+    expect(mark.attributes('aria-label')).toBe('Kill switch в совместимом режиме')
+    await mark.trigger('click')
+    expect(bar.emitted('killSwitch')).toHaveLength(1)
+  })
+
   it('offers the restart of saved settings with a chip that asks for it', async () => {
     const plugins = [createAppI18n(['ru-RU'])]
     expect(mount(TitleBar, { global: { plugins } }).find('[data-testid="restart-chip"]').exists()).toBe(false)

@@ -98,6 +98,9 @@ type Link struct {
 
 	mu     sync.Mutex
 	reason string
+	// compatible is the mode of the block, changed has a value after it changed.
+	compatible bool
+	changed    chan struct{}
 }
 
 // Find joins the guard of the Poros window hostPID; it is nil when that window has none.
@@ -132,7 +135,7 @@ func dial(name string) (*Link, error) {
 		conn.Close()
 		return nil, fmt.Errorf("the kill switch did not answer: %q, %v", line, err)
 	}
-	l := &Link{conn: conn, reader: reader, lost: make(chan struct{})}
+	l := &Link{conn: conn, reader: reader, lost: make(chan struct{}), changed: make(chan struct{}, 1)}
 	go l.read()
 	return l, nil
 }
@@ -180,11 +183,20 @@ func (l *Link) read() {
 	scanner := bufio.NewScanner(l.reader)
 	for scanner.Scan() {
 		verb, rest, _ := strings.Cut(strings.TrimSpace(scanner.Text()), " ")
-		if verb == lineFail {
+		switch verb {
+		case lineFail:
 			_, message, _ := strings.Cut(rest, " ")
 			l.mu.Lock()
 			l.reason = message
 			l.mu.Unlock()
+		case lineCompatible, lineStrict:
+			l.mu.Lock()
+			l.compatible = verb == lineCompatible
+			l.mu.Unlock()
+			select {
+			case l.changed <- struct{}{}:
+			default:
+			}
 		}
 	}
 }
@@ -198,6 +210,16 @@ func (l *Link) Reason() string {
 	defer l.mu.Unlock()
 	return l.reason
 }
+
+// Compatible tells whether the block lets out the packets WinDivert sends on.
+func (l *Link) Compatible() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.compatible
+}
+
+// Changed has a value after Compatible changed.
+func (l *Link) Changed() <-chan struct{} { return l.changed }
 
 // Disarm turns the block off and returns once the guard has let go of its pipe, so a new guard can start.
 func (l *Link) Disarm() error {

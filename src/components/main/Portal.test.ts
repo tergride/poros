@@ -12,7 +12,7 @@ import Portal from './Portal.vue'
 const settings = { tun: false, systemProxy: true, server: 's1', preset: 'all' } as Settings
 const server = { id: 's1', groupId: '', name: 'Germany', protocol: 'vless', host: '', port: 443, country: 'DE', security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '', latency: 0 }
 const idle = { state: ConnectionIdle, serverId: '', tun: false, systemProxy: false, since: 0, error: '', errorText: '' }
-const blocked = { on: true, full: false, error: '', errorText: '' }
+const blocked = { on: true, full: false, compatible: false, error: '', errorText: '' }
 
 function mountPortal() {
   return mount(Portal, { global: { plugins: [createAppI18n(['ru-RU'])], stubs: { RouterLink: true } } })
@@ -40,7 +40,7 @@ describe('Portal and the kill switch', () => {
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Соединение прервано — интернет закрыт')
 
-    core.killSwitch = { on: false, full: false, error: '', errorText: '' }
+    core.killSwitch = { on: false, full: false, compatible: false, error: '', errorText: '' }
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="portal-state"]').text()).toBe('Не подключено')
     expect(wrapper.find('[data-testid="kill-switch-lock"]').exists()).toBe(false)

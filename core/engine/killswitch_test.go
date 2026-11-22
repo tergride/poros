@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -27,10 +28,12 @@ type fakeGuard struct {
 }
 
 type fakeLink struct {
-	guard  *fakeGuard
-	lost   chan struct{}
-	once   sync.Once
-	reason string
+	guard      *fakeGuard
+	lost       chan struct{}
+	once       sync.Once
+	reason     string
+	compatible atomic.Bool
+	changed    chan struct{}
 }
 
 func (g *fakeGuard) Find() (GuardLink, error) {
@@ -59,13 +62,22 @@ func (g *fakeGuard) Arm() (GuardLink, error) {
 	if g.engine != nil && g.engine.conn.box.Load() != nil {
 		g.whileRun = true
 	}
-	g.block = &fakeLink{guard: g, lost: make(chan struct{})}
+	g.block = &fakeLink{guard: g, lost: make(chan struct{}), changed: make(chan struct{}, 1)}
 	return g.block, nil
 }
 
 func (l *fakeLink) Lost() <-chan struct{} { return l.lost }
 func (l *fakeLink) Reason() string        { return l.reason }
 func (l *fakeLink) Close() error          { return nil }
+
+func (l *fakeLink) Compatible() bool         { return l.compatible.Load() }
+func (l *fakeLink) Changed() <-chan struct{} { return l.changed }
+
+// setCompatible is the guard finding or losing the driver of WinDivert.
+func (l *fakeLink) setCompatible(on bool) {
+	l.compatible.Store(on)
+	l.changed <- struct{}{}
+}
 
 func (l *fakeLink) Disarm() error {
 	l.guard.mu.Lock()
@@ -204,6 +216,36 @@ func failReconnect(t *testing.T, k ksTest) ConnectionState {
 	setSettings(t, k.Engine, func(s *Settings) { s.Server = "" })
 	k.StartConnection()
 	return waitState(t, k.states)
+}
+
+func TestKillSwitchTellsTheCompatibleMode(t *testing.T) {
+	g := &fakeGuard{rights: true}
+	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchConnected)
+	e := k.Engine
+	if err := e.armBlock(); err != nil {
+		t.Fatal(err)
+	}
+	link := g.current()
+	wait := func(want bool) {
+		t.Helper()
+		for deadline := time.Now().Add(5 * time.Second); e.KillSwitchState().Compatible != want; time.Sleep(10 * time.Millisecond) {
+			if time.Now().After(deadline) {
+				t.Fatalf("compatible must be %t: %+v", want, e.KillSwitchState())
+			}
+		}
+	}
+	wait(false)
+	link.setCompatible(true)
+	wait(true)
+	link.setCompatible(false)
+	wait(false)
+	link.setCompatible(true)
+	wait(true)
+	// The mode is of the block: it goes with it.
+	e.conn.lifecycle.Lock()
+	e.disarmBlock()
+	e.conn.lifecycle.Unlock()
+	wait(false)
 }
 
 func TestKillSwitchWithoutTunNeedsNoRights(t *testing.T) {

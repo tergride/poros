@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, EyeOff, Lock, Menu as MenuIcon, Minus, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, Square, X, Zap } from '@lucide/vue'
+import { CircleAlert, Download, EyeOff, Lock, Menu as MenuIcon, Minus, Plus, RefreshCw, ScrollText, Settings, ShieldCheck, Square, X, Zap } from '@lucide/vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -13,6 +13,7 @@ import { KillSwitchAlways, KillSwitchConnected } from '@/platform/core-types'
 // The wizard has no menu: it leads through its own steps. Each chip tells what it means when the pointer rests on it.
 // killSwitch is the mode of the setting: its chip shows while it is on, turns red while it blocks (killSwitchBlocking:
 // held after a lost connection, or always without one; killSwitchFull: the whole internet) and opens its setting.
+// killSwitchCompatible: its block works around WinDivert, and a mark next to the chip tells it.
 // restartNeeded: saved settings wait for a restart of the running connection, and their chip asks for it. mode is the
 // mode of the interface: its chip offers the other one, the menu switches at once.
 const props = defineProps<{
@@ -22,6 +23,7 @@ const props = defineProps<{
   killSwitch?: string
   killSwitchBlocking?: '' | 'held' | 'always'
   killSwitchFull?: boolean
+  killSwitchCompatible?: boolean
   restartNeeded?: boolean
 }>()
 const emit = defineEmits<{
@@ -105,6 +107,17 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
           @click="emit('killSwitch')"
         >
           <Lock class="size-3.5" />{{ t('window.killSwitch') }}
+        </button>
+        <button
+          v-if="killSwitchOn && killSwitchCompatible"
+          type="button"
+          class="inline-flex size-6.5 flex-none cursor-pointer items-center justify-center rounded-full bg-warn/15 text-warn hover:bg-warn/25"
+          :title="t('window.killSwitchCompatibleHint')"
+          :aria-label="t('window.killSwitchCompatible')"
+          data-testid="kill-switch-compatible"
+          @click="emit('killSwitch')"
+        >
+          <CircleAlert class="size-4" />
         </button>
         <span v-if="elevated" :class="[chip, 'text-warn']" :title="t('window.administratorHint')" data-testid="admin-chip">
           <ShieldCheck class="size-3.5" />{{ t('window.administrator') }}

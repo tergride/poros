@@ -21,6 +21,8 @@
     "administrator": "Administrator",
     "administratorHint": "The Poros core runs with administrator rights: TUN and the kill switch with TUN turn on without asking for rights. The Poros window runs without them.",
     "killSwitch": "Kill switch",
+    "killSwitchCompatible": "Kill switch in compatible mode",
+    "killSwitchCompatibleHint": "Conflict found: the WinDivert driver, used by zapret and GoodbyeDPI, is loaded. The kill switch works in compatible mode: it lets out the packets WinDivert sends on and blocks the rest as usual.",
     "killSwitchHint": {
       "connected": "Kill switch on connection: if the connection to the server drops, VPN traffic does not go directly until you press Stop. Click to open its setting.",
       "always": "Kill switch always: while Poros runs, VPN traffic goes only through the server and is closed without a connection. Click to open its setting."
@@ -390,7 +392,7 @@
       "ipv6Hint": "Off, sites open over IPv4 only, and IPv6 connections do not go past the server.",
       "reality": "REALITY on Xray",
       "realityHint": "VLESS servers with REALITY run on Xray. Off, they run on sing-box.",
-      "killSwitchNote": "How the kill switch works: VPN traffic is what the preset sends through the server. If the connection breaks, Poros keeps TUN and System on and refuses in place of the server: sites and programs the preset sends directly still work. With TUN, while the Poros core restarts, Windows closes the whole internet except Poros and the local network. Stop lifts the kill switch in the While connected mode, and so does choosing Off."
+      "killSwitchNote": "How the kill switch works: VPN traffic is what the preset sends through the server. If the connection breaks, Poros keeps TUN and System on and refuses in place of the server: sites and programs the preset sends directly still work. With TUN, while the Poros core restarts, Windows closes the whole internet except Poros and the local network. While the WinDivert driver (used by zapret and GoodbyeDPI) is loaded, the kill switch works in compatible mode: the block also lets out raw TCP and UDP packets of the System process, which is how Windows sees the packets WinDivert sends on. Stop lifts the kill switch in the While connected mode, and so does choosing Off."
     },
     "dns": {
       "lead": "How Poros learns the addresses of sites and who sees these queries.",

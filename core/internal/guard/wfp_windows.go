@@ -54,9 +54,10 @@ const (
 	fwpActionBlock  = 0x1001
 	fwpActionPermit = 0x1002
 
-	fwpConditionFlagIsLoopback = 0x1
-	fwpmSessionFlagDynamic     = 0x1
-	rpcCAuthnWinNT             = 10
+	fwpConditionFlagIsLoopback    = 0x1
+	fwpConditionFlagIsRawEndpoint = 0x10
+	fwpmSessionFlagDynamic        = 0x1
+	rpcCAuthnWinNT                = 10
 )
 
 type fwpByteBlob struct {

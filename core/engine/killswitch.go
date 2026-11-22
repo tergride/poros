@@ -41,6 +41,10 @@ type GuardLink interface {
 	// Lost is closed when the block goes away; Reason then says why, "" when it was turned off.
 	Lost() <-chan struct{}
 	Reason() string
+	// Compatible tells whether the block lets out the packets WinDivert sends on; Changed has a value after that
+	// changed.
+	Compatible() bool
+	Changed() <-chan struct{}
 	// Disarm turns the block off.
 	Disarm() error
 	// Close lets go of the block and leaves it on.
@@ -94,10 +98,11 @@ func (e *Engine) KillSwitchState() KillSwitchState {
 // the changes.
 func (e *Engine) announceKillSwitch() {
 	state := KillSwitchState{
-		On:        e.ks.guarding || e.ks.link != nil,
-		Full:      e.ks.link != nil && !e.ks.tun,
-		Error:     e.ks.failure,
-		ErrorText: e.ks.failureText,
+		On:         e.ks.guarding || e.ks.link != nil,
+		Full:       e.ks.link != nil && !e.ks.tun,
+		Compatible: e.ks.link != nil && e.ks.link.Compatible(),
+		Error:      e.ks.failure,
+		ErrorText:  e.ks.failureText,
 	}
 	if state == e.ks.state {
 		return
@@ -209,10 +214,21 @@ func (e *Engine) holdLink(link GuardLink) {
 	go e.watchLink(link)
 }
 
-// watchLink follows a block until it goes away. One that was turned off or let go is no longer the core's link;
-// one that failed comes back.
+// watchLink follows a block until it goes away and tells the changes of its mode. One that was turned off or let go
+// is no longer the core's link; one that failed comes back.
 func (e *Engine) watchLink(link GuardLink) {
-	<-link.Lost()
+	for lost := false; !lost; {
+		select {
+		case <-link.Lost():
+			lost = true
+		case <-link.Changed():
+			e.ks.mu.Lock()
+			if e.ks.link == link {
+				e.announceKillSwitch()
+			}
+			e.ks.mu.Unlock()
+		}
+	}
 	e.ks.mu.Lock()
 	if e.ks.link != link {
 		e.ks.mu.Unlock()
