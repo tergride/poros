@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import type { PresetCopy, Server } from '@/platform/core-types'
+import type { IncomingPreset } from '@/composables/usePresetImport'
+import type { Server } from '@/platform/core-types'
 import type { Profile } from '@/platform/profile-types'
 
 /** A link for the add dialog; check tries it at once, to say why it is no subscription. */
@@ -36,7 +37,9 @@ export interface ProfileEdit {
 export const useUiStore = defineStore('ui', () => {
   const addSubscription = ref(false)
   const addPrefill = ref<AddPrefill | null>(null)
-  const linkPreset = ref<{ link: string; preset: PresetCopy } | null>(null)
+  const linkPreset = ref<IncomingPreset | null>(null)
+  // The preset an import has just replaced: an editor that has it open shows the new one.
+  const replacedPreset = ref<{ id: string } | null>(null)
   // The ID of a subscription a link brought again: the dialog offers to update it or to show it.
   const knownSubscription = ref('')
   // A group to open and bring into sight in the list of the mode.
@@ -56,6 +59,7 @@ export const useUiStore = defineStore('ui', () => {
     addSubscription,
     addPrefill,
     linkPreset,
+    replacedPreset,
     knownSubscription,
     focusGroup,
     logs,

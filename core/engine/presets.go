@@ -227,28 +227,39 @@ func (e *Engine) PresetCopy(id string) (PresetCopy, error) {
 
 // SavePreset stores a user's preset, a new one when it has no ID. An advanced preset stays advanced.
 func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
+	record, err := e.checkedCopy(c)
+	if err != nil {
+		return Preset{}, err
+	}
+	e.writeMu.Lock()
+	defer e.writeMu.Unlock()
+	return e.storeCopy(record)
+}
+
+// checkedCopy is a preset as it is stored, once it passes the checks that need no other preset.
+func (e *Engine) checkedCopy(c PresetCopy) (copyRecord, error) {
 	if c.Builtin {
-		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "a built-in preset does not change")
+		return copyRecord{}, jsonrpc.Failed(ReasonInvalidValue, "a built-in preset does not change")
 	}
 	record := copyRecord{
 		ID: c.ID, BasedOn: c.BasedOn, Name: strings.TrimSpace(c.Name), Advanced: c.Advanced,
 		DNS: strings.TrimSpace(c.DNS), DirectDNS: strings.TrimSpace(c.DirectDNS), Default: c.Default,
 	}
 	if record.Name == "" {
-		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "the preset needs a name")
+		return copyRecord{}, jsonrpc.Failed(ReasonInvalidValue, "the preset needs a name")
 	}
 	if !slices.Contains([]string{"", ActionProxy, ActionDirect, ActionBlock}, record.Default) {
-		return Preset{}, jsonrpc.Failed(ReasonInvalidValue, "the default must be proxy, direct or block, not %q", record.Default)
+		return copyRecord{}, jsonrpc.Failed(ReasonInvalidValue, "the default must be proxy, direct or block, not %q", record.Default)
 	}
 	if !record.Advanced && record.DirectDNS != "" {
-		return Preset{}, jsonrpc.Failed(ReasonAdvancedOnly, "a simple preset has no direct DNS")
+		return copyRecord{}, jsonrpc.Failed(ReasonAdvancedOnly, "a simple preset has no direct DNS")
 	}
 	if _, ok := e.foundation(record.BasedOn); !ok {
-		return Preset{}, jsonrpc.Failed(ReasonUnknownPreset, "there is no built-in preset %q", record.BasedOn)
+		return copyRecord{}, jsonrpc.Failed(ReasonUnknownPreset, "there is no built-in preset %q", record.BasedOn)
 	}
 	rules, err := checkRules(ruleSetOf(record.Advanced, false), c.Rules)
 	if err != nil {
-		return Preset{}, err
+		return copyRecord{}, err
 	}
 	record.Rules = rules
 	if _, err := e.compose(record); err != nil {
@@ -256,10 +267,13 @@ func (e *Engine) SavePreset(c PresetCopy) (Preset, error) {
 		if !errors.As(err, &rpcErr) {
 			err = jsonrpc.Failed(ReasonInvalidValue, "%v", err)
 		}
-		return Preset{}, err
+		return copyRecord{}, err
 	}
-	e.writeMu.Lock()
-	defer e.writeMu.Unlock()
+	return record, nil
+}
+
+// storeCopy writes a checked preset, a new one when it has no ID; the caller holds writeMu.
+func (e *Engine) storeCopy(record copyRecord) (Preset, error) {
 	if taken, err := e.nameTaken(record.Name, record.ID); err != nil {
 		return Preset{}, err
 	} else if taken {
@@ -482,18 +496,84 @@ func (e *Engine) ImportPreset(p PresetLink) (Preset, error) {
 	if err != nil {
 		return Preset{}, err
 	}
-	name := strings.TrimSpace(link.Name)
-	for n := 2; name != ""; n++ {
-		taken, err := e.nameTaken(name, "")
+	name, err := e.freeName(link.Name)
+	if err != nil {
+		return Preset{}, err
+	}
+	return e.SavePreset(link.copy(name))
+}
+
+// freeName is name, or name with the first number that makes it free.
+func (e *Engine) freeName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	free := name
+	for n := 2; free != ""; n++ {
+		taken, err := e.nameTaken(free, "")
 		if err != nil {
-			return Preset{}, err
+			return "", err
 		}
 		if !taken {
 			break
 		}
-		name = fmt.Sprintf("%s %d", strings.TrimSpace(link.Name), n)
+		free = fmt.Sprintf("%s %d", name, n)
 	}
-	return e.SavePreset(link.copy(name))
+	return free, nil
+}
+
+// ReadPreset tells what an import would add, and the user's preset of the same name that it could replace instead.
+func (e *Engine) ReadPreset(p PresetLink) (PresetPreview, error) {
+	link, err := decodePresetText(p.Link)
+	if err != nil {
+		return PresetPreview{}, err
+	}
+	name := strings.TrimSpace(link.Name)
+	preview := PresetPreview{Preset: link.copy(name)}
+	if preview.NewName, err = e.freeName(name); err != nil {
+		return PresetPreview{}, err
+	}
+	copies, err := e.copies()
+	if err != nil {
+		return PresetPreview{}, err
+	}
+	if i := slices.IndexFunc(copies, func(c copyRecord) bool { return c.named(name) }); i >= 0 {
+		same, err := e.PresetCopy(copies[i].ID)
+		if err != nil {
+			return PresetPreview{}, err
+		}
+		preview.Same = &same
+	}
+	return preview, nil
+}
+
+// ReplacePreset saves the preset of a link or a file over the user's preset of the same name.
+func (e *Engine) ReplacePreset(p PresetReplace) (Preset, error) {
+	link, err := decodePresetText(p.Link)
+	if err != nil {
+		return Preset{}, err
+	}
+	name := strings.TrimSpace(link.Name)
+	// Checked as an import is, by its own kind, before it takes on the kind of the old one.
+	record, err := e.checkedCopy(link.copy(name))
+	if err != nil {
+		return Preset{}, err
+	}
+	e.writeMu.Lock()
+	defer e.writeMu.Unlock()
+	old, found, err := e.copyRecord(p.ID)
+	if err != nil {
+		return Preset{}, err
+	}
+	// The user agreed to lose the preset of this name, not whatever has the ID by now.
+	if !found || !old.named(name) {
+		return Preset{}, jsonrpc.Failed(ReasonNotFound, "there is no preset %q named %q", p.ID, name)
+	}
+	record.ID, record.Advanced = old.ID, record.Advanced || old.Advanced
+	return e.storeCopy(record)
+}
+
+// named tells whether the preset has the name; case does not count, as in nameTaken.
+func (r copyRecord) named(name string) bool {
+	return strings.EqualFold(strings.TrimSpace(r.Name), name)
 }
 
 // copy is the preset a link brings, under name.

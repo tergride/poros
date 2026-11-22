@@ -315,10 +315,14 @@ func contractMethods() map[string]contractMethod {
 			}
 			return c
 		}},
-		MethodPresetsRemove:     {params: ByID{}, base: func(f *contractFuzz) any { return ByID{ID: f.pickID(f.pool.copies)} }},
-		MethodPresetsExport:     {params: ByID{}, base: byID(presets)},
-		MethodPresetsFile:       {params: ByID{}, base: byID(presets)},
-		MethodPresetsImport:     {params: PresetLink{}, base: func(f *contractFuzz) any { return PresetLink{Link: f.pool.presetLink} }},
+		MethodPresetsRemove: {params: ByID{}, base: func(f *contractFuzz) any { return ByID{ID: f.pickID(f.pool.copies)} }},
+		MethodPresetsExport: {params: ByID{}, base: byID(presets)},
+		MethodPresetsFile:   {params: ByID{}, base: byID(presets)},
+		MethodPresetsImport: {params: PresetLink{}, base: func(f *contractFuzz) any { return PresetLink{Link: f.pool.presetLink} }},
+		MethodPresetsRead:   {params: PresetLink{}, base: func(f *contractFuzz) any { return PresetLink{Link: f.pool.presetLink} }},
+		MethodPresetsReplace: {params: PresetReplace{}, base: func(f *contractFuzz) any {
+			return PresetReplace{ID: f.pickID(f.pool.copies), Link: f.pool.presetLink}
+		}},
 		MethodPresetsCheck:      {params: PresetRules{}, base: func(f *contractFuzz) any { return presetRules(f) }},
 		MethodPresetsWriteLists: {params: PresetRules{}, base: func(f *contractFuzz) any { return presetRules(f) }},
 		MethodPresetsReadLists: {params: PresetListsInput{}, base: func(f *contractFuzz) any {

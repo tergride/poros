@@ -52,6 +52,8 @@ import type {
   PresetLists,
   PresetListsInput,
   PresetListsRead,
+  PresetPreview,
+  PresetReplace,
   PresetRules,
   RuleProblem,
   MoveServers,
@@ -142,8 +144,10 @@ import {
   MethodPresetsFile,
   MethodPresetsImport,
   MethodPresetsList,
+  MethodPresetsRead,
   MethodPresetsReadLists,
   MethodPresetsRemove,
+  MethodPresetsReplace,
   MethodPresetsSave,
   MethodPresetsWriteLists,
   MethodServersAdd,
@@ -215,6 +219,8 @@ export interface CoreMethods {
   [MethodPresetsExport]: { params: ByID; result: PresetLink }
   [MethodPresetsFile]: { params: ByID; result: PresetFile }
   [MethodPresetsImport]: { params: PresetLink; result: Preset }
+  [MethodPresetsRead]: { params: PresetLink; result: PresetPreview }
+  [MethodPresetsReplace]: { params: PresetReplace; result: Preset }
   [MethodPresetsCheck]: { params: PresetRules; result: PresetRules }
   [MethodDNSCheck]: { params: DNSObject; result: null }
   [MethodWARPRegister]: { params: WARPRegister; result: Settings }

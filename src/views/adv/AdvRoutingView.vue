@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, Copy, Import, Layers, Lock, Plus, Route, Share2, Trash2 } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 
@@ -52,9 +52,9 @@ const baseName = computed(() => editor.shownName(core.presets.find((p) => p.id =
 const making = ref<string | null>(null)
 const removing = ref<Preset | null>(null)
 
-function open(id: string): void {
+async function open(id: string): Promise<void> {
   making.value = null
-  void router.push(`/adv/routing/rules/${id}`)
+  await router.push(`/adv/routing/rules/${id}`)
 }
 
 const saving = ref(false)
@@ -63,16 +63,18 @@ async function save(): Promise<boolean> {
   try {
     const saved = await editor.save()
     // A saved preset of the running connection waits for a restart by the chip.
-    if (saved && core.running && saved.id === core.settings?.preset) restart.presetEdited = true
+    if (saved) restart.presetSaved(saved.id)
     return saved !== null
   } finally {
     saving.value = false
   }
 }
 
-function imported(preset: Preset): void {
-  ui.notice = { tone: 'info', text: t('settings.presets.imported', { name: preset.name }) }
-  open(preset.id)
+async function imported(preset: Preset, replaced: boolean): Promise<void> {
+  await open(preset.id)
+  // A notice belongs to the screen it came from: the one set after this lands on the preset opened.
+  await nextTick()
+  ui.notice = { tone: 'info', text: t(replaced ? 'settings.presets.replaced' : 'settings.presets.imported', { name: preset.name }) }
 }
 
 async function remove(): Promise<void> {

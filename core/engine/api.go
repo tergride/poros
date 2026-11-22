@@ -495,6 +495,9 @@ type ConnectionState struct {
 	// Endpoints are the IDs of the endpoints the connection runs with, in the order of their outbounds: endpoint-1
 	// is the first.
 	Endpoints []string `json:"endpoints,omitempty"`
+	// Preset is the ID of the preset the connection is built of, told as a start reads it; the settings may choose
+	// another by now. What is saved of it from then on waits for a restart.
+	Preset string `json:"preset,omitempty"`
 	// Since is when the connection came up, Unix milliseconds.
 	Since int64 `json:"since"`
 	// Error is the reason the last start failed or a running connection lost a part, such as system_proxy_failed;
@@ -841,6 +844,23 @@ type PresetListsRead struct {
 
 // PresetLink is a preset as a poros://route/ link. MethodPresetsImport takes the text of a preset file there too.
 type PresetLink struct {
+	Link string `json:"link"`
+}
+
+// PresetPreview is the preset of a link or a file, read before it is imported.
+type PresetPreview struct {
+	Preset PresetCopy `json:"preset"`
+	// Same is the user's preset of that name, whatever its case, for MethodPresetsReplace to replace; none when the
+	// name is free or a built-in preset's.
+	Same *PresetCopy `json:"same,omitempty"`
+	// NewName is the name MethodPresetsImport gives it: its own, or with a number when that is taken.
+	NewName string `json:"newName"`
+}
+
+// PresetReplace puts the preset of a link or the text of a file in the place of the user's preset ID of the same
+// name: it keeps the ID, so it stays chosen and in its place in the list, and an advanced one stays advanced.
+type PresetReplace struct {
+	ID   string `json:"id"`
 	Link string `json:"link"`
 }
 
@@ -1334,6 +1354,10 @@ const (
 	// MethodPresetsFile gives a preset as a file, which MethodPresetsImport reads as it does a link.
 	MethodPresetsFile   = "presets.file"
 	MethodPresetsImport = "presets.import"
+	// MethodPresetsRead reads what MethodPresetsImport takes without adding it; MethodPresetsReplace takes it in
+	// place of the user's preset of the same name.
+	MethodPresetsRead    = "presets.read"
+	MethodPresetsReplace = "presets.replace"
 	// MethodPresetsCheck checks the rules of a preset without saving them; a wrong one fails with a RuleProblem as
 	// the data of the error.
 	MethodPresetsCheck = "presets.check"

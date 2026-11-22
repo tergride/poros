@@ -42,6 +42,8 @@ import {
   MethodPresetsExport,
   MethodPresetsGet,
   MethodPresetsImport,
+  MethodPresetsRead,
+  MethodPresetsReplace,
   MethodPresetsList,
   MethodPresetsReadLists,
   MethodPresetsRemove,
@@ -401,10 +403,19 @@ ${vless('se.example.com', 'Sweden')}` })
     expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: ' home ' }))).toBe(ReasonPresetNameTaken)
     expect(await reasonOf(core.call(MethodPresetsSave, { ...draft, name: 'All traffic' }))).toBe(ReasonPresetNameTaken)
 
+    // As in the engine: an import reads whose name it has, and replaces that preset in place.
+    const read = await core.call(MethodPresetsRead, { link })
+    expect(read).toMatchObject({ newName: 'Home 3', same: { id: saved.id } })
+    expect(await core.call(MethodPresetsReplace, { id: saved.id, link })).toMatchObject({ id: saved.id, name: 'Home', rules: 3 })
+    expect(await reasonOf(core.call(MethodPresetsReplace, { id: imported.id, link }))).toBe(ReasonNotFound)
+
     // An advanced preset never becomes simple again.
     const advanced = await core.call(MethodPresetsSave, { ...stored, advanced: true })
     expect(advanced.advanced).toBe(true)
     expect(await reasonOf(core.call(MethodPresetsSave, { ...stored, advanced: false }))).toBe(ReasonInvalidValue)
+    // As in the engine: what an import refuses does not come in over an advanced preset either.
+    const refused = `poros://route/${btoa(JSON.stringify({ kind: 'poros-preset', v: 1, name: 'Home', direct_dns: 'local' })).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')}`
+    expect(await reasonOf(core.call(MethodPresetsReplace, { id: saved.id, link: refused }))).toBe(ReasonAdvancedOnly)
 
     await core.call(MethodPresetsRemove, { id: saved.id })
     expect((await core.call(MethodSettingsGet)).preset).toBe('all')

@@ -43,8 +43,8 @@ const selected = computed({
   set: (id: string) => void attempt(() => core.updateSettings({ preset: id })),
 })
 
-function imported(preset: Preset): void {
-  ui.notice = { tone: 'info', text: t('settings.presets.imported', { name: preset.name }) }
+function imported(preset: Preset, replaced: boolean): void {
+  ui.notice = { tone: 'info', text: t(replaced ? 'settings.presets.replaced' : 'settings.presets.imported', { name: preset.name }) }
 }
 
 function open(id: string): void {

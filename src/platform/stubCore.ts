@@ -105,8 +105,10 @@ import {
   MethodPresetsFile,
   MethodPresetsImport,
   MethodPresetsList,
+  MethodPresetsRead,
   MethodPresetsReadLists,
   MethodPresetsRemove,
+  MethodPresetsReplace,
   MethodPresetsSave,
   MethodPresetsWriteLists,
   MethodServersAdd,
@@ -824,6 +826,7 @@ export function createStubCore(): CoreClient {
   const nameTaken = (name: string, id: string): boolean =>
     builtins.some((b) => b.name.toLowerCase() === name.toLowerCase()) ||
     copies.some((c) => c.id !== id && c.name.trim().toLowerCase() === name.toLowerCase())
+  const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase()
   const freeName = (name: string): string => {
     let free = name.trim()
     for (let n = 2; free && nameTaken(free, ''); n++) free = `${name.trim()} ${n}`
@@ -837,7 +840,7 @@ export function createStubCore(): CoreClient {
     settings = { ...settings, server: next?.id ?? '' }
     emit(EventSettingsChanged, { ...settings })
   }
-  const saveCopy = (draft: PresetCopy): Preset => {
+  const checkCopy = (draft: PresetCopy) => {
     if (draft.builtin) throw failed(ReasonInvalidValue, 'a built-in preset does not change')
     const name = draft.name.trim()
     if (!name) throw failed(ReasonInvalidValue, 'the preset needs a name')
@@ -848,6 +851,10 @@ export function createStubCore(): CoreClient {
     const base = foundation(draft.basedOn)
     if (!base) throw failed(ReasonUnknownPreset, `there is no built-in preset "${draft.basedOn}"`)
     const rules = checkRules({ advanced: draft.advanced, rules: draft.rules })
+    return { name, base, rules }
+  }
+  const saveCopy = (draft: PresetCopy): Preset => {
+    const { name, base, rules } = checkCopy(draft)
     if (nameTaken(name, draft.id)) throw failed(ReasonPresetNameTaken, `there is a preset named "${name}" already`)
     const old = copies.find((c) => c.id === draft.id)
     if (draft.id && !old) throw failed(ReasonNotFound, `there is no preset "${draft.id}"`)
@@ -1162,6 +1169,19 @@ export function createStubCore(): CoreClient {
       const copy = decodeLink(link)
       return saveCopy({ ...copy, name: freeName(copy.name) })
     },
+    [MethodPresetsRead]: ({ link }) => {
+      const copy = decodeLink(link)
+      const name = copy.name.trim()
+      const same = copies.find((c) => sameName(c.name, name))
+      return { preset: { ...copy, name }, newName: freeName(name), ...(same && { same: copyOf(same.id) }) }
+    },
+    [MethodPresetsReplace]: ({ id, link }) => {
+      const copy = decodeLink(link)
+      checkCopy(copy)
+      const old = copies.find((c) => c.id === id)
+      if (!old || !sameName(old.name, copy.name)) throw failed(ReasonNotFound, `there is no preset "${id}" named "${copy.name}"`)
+      return saveCopy({ ...copy, id, name: copy.name.trim(), advanced: copy.advanced || old.advanced })
+    },
     // A device made up as Cloudflare would give it: the stub asks no one.
     [MethodWARPRegister]: ({ mode }) => {
       if (![WARPModeWireGuard, WARPModeMASQUE].includes(mode)) throw failed(ReasonInvalidValue, `mode must be wireguard or masque, not "${mode}"`)
@@ -1249,7 +1269,9 @@ export function createStubCore(): CoreClient {
       return backupInfo(file)
     },
     [MethodConnectionStart]: () => {
-      setConnection({ ...idle, state: ConnectionStarting })
+      // As in the core: a start tells the preset it reads and comes up with that one.
+      const { preset } = settings
+      setConnection({ ...idle, state: ConnectionStarting, preset })
       settle(() => {
         if (!servers.some((s) => s.id === settings.server)) {
           return { ...idle, error: ReasonNoServer, errorText: 'no server is chosen' }
@@ -1271,6 +1293,7 @@ export function createStubCore(): CoreClient {
             ...(profiles.get(settings.server)?.chain?.servers ?? []),
           ],
           endpoints: endpoints.on().map((e) => e.id),
+          preset,
           tun: settings.tun,
           systemProxy: settings.systemProxy,
           since: Date.now(),

@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { ConnectionRunning, KillSwitchAlways, MethodSubscriptionsAdd } from '@/platform/core-types'
+import { ConnectionRunning, ConnectionStarting, KillSwitchAlways, MethodPresetsSave, MethodSubscriptionsAdd } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 import { useConnect } from './useConnect'
@@ -50,7 +50,7 @@ describe('settings saved under a running connection', () => {
   it('count a preset saved while it runs, and leave nothing to apply once the connection stops', async () => {
     const core = await running()
     const restart = useRestartNeeded()
-    restart.presetEdited = true
+    restart.presetSaved(core.connection.preset!)
     expect(restart.needed).toBe(true)
     restart.dialogOpen = true
 
@@ -59,5 +59,48 @@ describe('settings saved under a running connection', () => {
     expect(restart.needed).toBe(false)
     expect(restart.dialogOpen).toBe(false)
     expect(core.running).toBe(false)
+  })
+
+  it('go by the preset the connection was built of, not by the chosen one', async () => {
+    const core = await running()
+    const restart = useRestartNeeded()
+    const make = (name: string) =>
+      core.core().call(MethodPresetsSave, { id: '', builtin: false, basedOn: '', name, advanced: false, rules: [], dns: '', directDns: '', default: '', inherited: [] })
+    const [first, second] = [await make('First'), await make('Second')]
+    await core.updateSettings({ preset: first.id })
+    // Saved before the start reads it: the connection has it.
+    restart.presetSaved(first.id)
+    await useConnect().connect()
+    await settle()
+    expect(restart.needed).toBe(false)
+
+    await core.updateSettings({ preset: second.id })
+    expect(restart.presetInUse(first.id)).toBe(true)
+    expect(restart.presetInUse(second.id)).toBe(false)
+    restart.presetSaved(second.id)
+    await core.updateSettings({ preset: first.id })
+    expect(restart.needed).toBe(false)
+
+    await core.updateSettings({ preset: second.id })
+    restart.presetSaved(first.id)
+    await core.updateSettings({ preset: first.id })
+    expect(restart.needed).toBe(true)
+
+    await useConnect().connect()
+    expect(core.connection.state).toBe(ConnectionStarting)
+    expect(restart.presetInUse(first.id)).toBe(true)
+    restart.presetSaved(first.id)
+    await settle()
+    expect(core.connection.state).toBe(ConnectionRunning)
+    expect(restart.needed).toBe(true)
+
+    // Chosen while it starts: the connection still comes up with the one before.
+    await useConnect().connect()
+    await core.updateSettings({ preset: second.id })
+    await settle()
+    expect(core.connection.preset).toBe(first.id)
+    expect(restart.needed).toBe(true)
+    await core.updateSettings({ preset: first.id })
+    expect(restart.needed).toBe(false)
   })
 })

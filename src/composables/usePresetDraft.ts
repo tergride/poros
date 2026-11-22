@@ -1,4 +1,4 @@
-import { type ComputedRef, type InjectionKey, type Ref, computed, inject, provide, ref } from 'vue'
+import { type ComputedRef, type InjectionKey, type Ref, computed, inject, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { sentence, useFailure } from '@/composables/useReason'
@@ -7,6 +7,7 @@ import { isCoreError } from '@/platform'
 import type { Preset, PresetCopy, PresetRule } from '@/platform/core-types'
 import { MethodPresetsCheck, MethodPresetsGet, MethodPresetsSave } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
+import { useUiStore } from '@/stores/ui'
 
 /**
  * The rules an editor works on, shared by the list of rules, the rule dialog and the lists window: those of a preset,
@@ -95,6 +96,7 @@ export function provideRuleDraft(value: RuleDraft): void {
 
 export function providePresetDraft(): PresetDraft {
   const core = useCoreStore()
+  const ui = useUiStore()
   const { t, te } = useI18n()
   const rules = ruleDraft(false)
   const { draft, failure, told } = rules
@@ -145,6 +147,20 @@ export function providePresetDraft(): PresetDraft {
     },
     shownName,
   }
+  // A draft of a replaced preset would save the old one back, so it goes at once, with what is open over it. At
+  // once also for the route change that follows an import: there are no changes left to ask about.
+  watch(
+    () => ui.replacedPreset,
+    (replaced) => {
+      if (!replaced || draft.value?.id !== replaced.id) return
+      draft.value = null
+      value.listsOpen.value = false
+      value.ruleOpen.value = null
+      value.toAdvancedOpen.value = false
+      void value.load(replaced.id)
+    },
+    { flush: 'sync' },
+  )
   provide(presetKey, value)
   provideRuleDraft(value)
   return value

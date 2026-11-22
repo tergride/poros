@@ -352,6 +352,99 @@ test('the routing of the advanced mode edits presets beside their list and waits
   await expect(page.getByTestId('rule-row')).toHaveCount(2)
 })
 
+test('a replaced preset takes the place of its draft in «Routing»', async ({ page }) => {
+  await toAdvanced(page)
+  const linkTo = (advanced: boolean, sites: string[]) =>
+    `poros://route/${Buffer.from(
+      JSON.stringify({
+        kind: 'poros-preset',
+        v: 1,
+        name: 'Games',
+        advanced,
+        rules: sites.map((site) => ({ conditions: [{ kind: 'suffix', values: [site] }], action: 'proxy' })),
+      }),
+    ).toString('base64url')}`
+  const send = (link: string) =>
+    page.evaluate((detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })), [link])
+  const asking = page.getByRole('dialog', { name: 'Пресет с таким названием уже есть' })
+
+  await send(linkTo(true, ['old.example']))
+  await page.getByTestId('link-preset-add').click()
+  await page.getByTestId('rail-routing').click()
+  await page.getByTestId('routing-preset').filter({ hasText: 'Games' }).click()
+  await page.getByTestId('rule-new-value').fill('edited.example')
+  await page.getByTestId('rule-new-value').press('Enter')
+  await expect(page.getByTestId('savebar')).toBeVisible()
+
+  await send(linkTo(false, ['one.example', 'two.example', 'three.example']))
+  await expect(asking.getByTestId('same-preset-stays-advanced')).toBeVisible()
+  await shot(page, 'adv-same-preset')
+  await asking.getByTestId('same-preset-replace').click()
+  await expect(asking).toBeHidden()
+  await expect(page.getByTestId('savebar')).toBeHidden()
+  await expect(page.getByTestId('rule-value')).toHaveCount(3)
+  await expect(page.getByTestId('preset-advanced')).toBeVisible()
+
+  // Imported from «Routing», it is shown at once, with no question of unsaved changes.
+  await page.getByTestId('rule-new-value').fill('edited.example')
+  await page.getByTestId('rule-new-value').press('Enter')
+  await expect(page.getByTestId('savebar')).toBeVisible()
+  await page.getByTestId('preset-import').click()
+  await page.getByTestId('import-link').fill(linkTo(true, ['four.example', 'five.example']))
+  await page.getByTestId('import-add').click()
+  await asking.getByTestId('same-preset-replace').click()
+  await expect(asking).toBeHidden()
+  await expect(page.getByRole('dialog', { name: 'Сохранить изменения?' })).toBeHidden()
+  await expect(page.getByTestId('savebar')).toBeHidden()
+  await expect(page.getByTestId('rule-value')).toHaveCount(2)
+  await expect(page.getByTestId('rule-value').first()).toHaveValue('four.example')
+  await expect(page.getByTestId('routing-preset')).toHaveCount(3)
+})
+
+test('an import into «Routing» says what it did, and takes a paste only on top', async ({ page }) => {
+  await toAdvanced(page)
+  const linkTo = (name: string) => `poros://route/${Buffer.from(JSON.stringify({ kind: 'poros-preset', v: 1, name })).toString('base64url')}`
+  const paste = (text: string) =>
+    page.evaluate((value) => {
+      const data = new DataTransfer()
+      data.setData('text/plain', value)
+      ;(document.activeElement ?? document.body).dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+    }, text)
+  const bring = async (name: string) => {
+    await page.getByTestId('preset-import').click()
+    await page.getByTestId('import-link').fill(linkTo(name))
+    await page.getByTestId('import-add').click()
+  }
+  const notice = page.getByTestId('notice')
+  const presets = page.getByTestId('routing-preset')
+  const asking = page.getByTestId('same-preset')
+
+  await page.getByTestId('rail-routing').click()
+  await bring('Games')
+  await expect(notice).toContainText('Пресет «Games» добавлен.')
+  await presets.filter({ hasText: 'Весь трафик' }).click()
+  await expect(notice).toBeHidden()
+  await bring('Games')
+  await page.getByTestId('same-preset-replace').click()
+  await expect(page.getByTestId('preset-name')).toHaveValue('Games')
+  await expect(notice).toContainText('Пресет «Games» заменён.')
+
+  // A link brings its question over «Import a preset»: what is pasted is not for the dialog under it.
+  await page.getByTestId('preset-import').click()
+  await page.evaluate((detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })), [linkTo('Games')])
+  await expect(asking).toBeVisible()
+  await paste(linkTo('Pasted'))
+  await paste(linkTo('Games'))
+  await page.waitForTimeout(300)
+  await expect(asking).toHaveCount(1)
+  await expect(presets).toHaveCount(3)
+  await page.keyboard.press('Escape')
+  await expect(asking).toBeHidden()
+  await paste(linkTo('Pasted'))
+  await expect(page.getByTestId('import-preset')).toBeHidden()
+  await expect(presets).toHaveCount(4)
+})
+
 test('the dialog opened last is the one on top, with the focus and the clicks', async ({ page }) => {
   await toAdvanced(page)
   const linkTo = (name: string, sites: string[]) => {
@@ -402,6 +495,22 @@ test('the dialog opened last is the one on top, with the focus and the clicks', 
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
+  // Two questions: the button the user sees is the one that is clicked.
+  await page.getByTestId('preset-import').click()
+  await page.getByTestId('import-link').fill(linkTo('Games', ['one.example', 'two.example']))
+  await page.getByTestId('import-add').click()
+  await expect(page.getByTestId('same-preset')).toContainText('«Games»')
+  await send(linkTo('Work', ['one.example', 'two.example', 'three.example']))
+  await expect(page.getByTestId('same-preset')).toHaveCount(2)
+  await expect.poll(middle).toEqual({ text: expect.stringContaining('«Work»'), focused: true })
+  await page.getByRole('dialog').getByTestId('same-preset-replace').click()
+  await expect(row('Work')).toContainText('3')
+  await expect(row('Games')).toContainText('1')
+  await expect.poll(middle).toEqual({ text: expect.stringContaining('«Games»'), focused: true })
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
   // A larger dialog stays under the shade of a smaller one, and so does a list open in it until that one closes.
   await row('Games').click()
   await page.getByTestId('rule-new').click()
@@ -430,6 +539,43 @@ test('the dialog opened last is the one on top, with the focus and the clicks', 
   await expect(page.getByTestId('palette')).toBeVisible()
   await send(linkTo('Films', ['films.example']))
   await expect.poll(middle).toEqual({ text: expect.stringContaining('«Films»'), focused: true })
+})
+
+test('a question under another reads its presets again after the answer', async ({ page }) => {
+  await toAdvanced(page)
+  const linkTo = (count: number) => {
+    const rules = Array.from({ length: count }, (_, i) => ({ conditions: [{ kind: 'suffix', values: [`s${i}.example`] }], action: 'proxy' }))
+    return `poros://route/${Buffer.from(JSON.stringify({ kind: 'poros-preset', v: 1, name: 'Games', rules })).toString('base64url')}`
+  }
+  const send = (link: string) =>
+    page.evaluate((detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })), [link])
+  const questions = page.getByTestId('same-preset')
+  const top = page.getByRole('dialog')
+  const twoQuestions = async () => {
+    await page.getByTestId('preset-import').click()
+    await page.getByTestId('import-link').fill(linkTo(2))
+    await page.getByTestId('import-add').click()
+    await expect(questions).toHaveCount(1)
+    await send(linkTo(5))
+    await expect(questions).toHaveCount(2)
+  }
+
+  await send(linkTo(1))
+  await page.getByTestId('link-preset-add').click()
+  await page.getByTestId('rail-routing').click()
+
+  await twoQuestions()
+  await top.getByTestId('same-preset-create').click()
+  await expect(questions).toHaveCount(1)
+  await expect(questions).toContainText('появится «Games 3»')
+  await top.getByTestId('same-preset-create').click()
+  await expect(page.getByTestId('routing-preset').filter({ hasText: 'Games 3' })).toBeVisible()
+
+  await twoQuestions()
+  await top.getByTestId('same-preset-replace').click()
+  await expect(questions).toHaveCount(1)
+  await expect(page.getByTestId('same-preset-current')).toContainText('5 правил')
+  await expect(page.getByTestId('same-preset-incoming')).toContainText('2 правила')
 })
 
 test('endpoints run beside the server with any preset, with their own rules, files and data for signing in', async ({ page }) => {

@@ -28,9 +28,9 @@ const back = () => router.push('/settings/presets')
 async function save(): Promise<void> {
   const saved = await editor.save()
   if (!saved) return
+  restart.presetSaved(saved.id)
   // The preset in use changes; a running connection takes it when the user restarts it from the chip.
   await core.updateSettings({ preset: saved.id })
-  if (core.running) restart.presetEdited = true
   await back()
 }
 </script>

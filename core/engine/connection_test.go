@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -173,6 +174,45 @@ func TestConnectionThroughSingBox(t *testing.T) {
 	}
 	if !portFree(net.JoinHostPort("127.0.0.1", strconv.Itoa(int(e.mixedPort)))) {
 		t.Fatal("a stopped connection must free its port")
+	}
+}
+
+// The preset is told as the start reads it, and stays the connection's whatever is chosen after.
+func TestConnectionTellsItsPreset(t *testing.T) {
+	e, states := openConnectionTest(t)
+	useServer(t, e, fmt.Sprintf("trojan://secret@127.0.0.1:%d?security=none#local", freePort(t)))
+	if state, _ := e.StartConnection(); state.Preset != "" {
+		t.Fatalf("the preset is told before it is read: %+v", state)
+	}
+	var told []string
+	timeout := time.After(30 * time.Second)
+	for settled := false; !settled; {
+		select {
+		case state := <-states:
+			told = append(told, state.State+":"+state.Preset)
+			settled = state.State == ConnectionRunning || state.State == ConnectionIdle
+		case <-timeout:
+			t.Fatal("the connection did not settle in 30 seconds")
+		}
+	}
+	if want := []string{"starting:", "starting:through", "running:through"}; !slices.Equal(told, want) {
+		t.Fatalf("the start told %q, want %q", told, want)
+	}
+
+	settings, err := e.Settings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.Preset = standardPreset
+	if _, err = e.SetSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	if state := e.ConnectionState(); state.Preset != "through" {
+		t.Errorf("another preset chosen became the connection's: %+v", state)
+	}
+	e.StopConnection()
+	if state := waitState(t, states); state.State != ConnectionIdle || state.Preset != "" {
+		t.Errorf("stop: %+v", state)
 	}
 }
 

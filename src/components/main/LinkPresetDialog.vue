@@ -3,22 +3,27 @@ import { Info, Layers, Plus } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import SameNamePresetDialog from '@/components/presets/SameNamePresetDialog.vue'
 import { Button, Dialog } from '@/components/ui'
+import { usePresetSummary } from '@/composables/usePresetSummary'
 import { useFailure } from '@/composables/useReason'
-import { ActionProxy, MethodPresetsImport } from '@/platform/core-types'
+import type { Preset } from '@/platform/core-types'
+import { MethodPresetsImport } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
-// A poros://route/ link from a browser or a messenger: the preset is added only after a yes.
+// A poros://route/ link from a browser or a messenger: the preset is added only after a yes, and under the name of
+// the user's preset it is the question of SameNamePresetDialog.
 const core = useCoreStore()
 const ui = useUiStore()
 const reason = useFailure()
-const { t, te } = useI18n()
+const summaryOf = usePresetSummary()
+const { t } = useI18n()
 const busy = ref(false)
 const failure = ref('')
 
 const open = computed({
-  get: () => ui.linkPreset !== null,
+  get: () => ui.linkPreset !== null && !ui.linkPreset.same,
   set: (shown: boolean) => {
     if (!shown) ui.linkPreset = null
   },
@@ -27,18 +32,12 @@ const open = computed({
 watch(open, () => (failure.value = ''))
 
 const preset = computed(() => ui.linkPreset?.preset)
-const summary = computed(() => {
-  const p = preset.value
-  if (!p) return ''
-  const rules = t('presets.rules', { n: p.rules.length }, p.rules.length)
-  const base = te(`presets.name.${p.basedOn}`) ? t(`presets.name.${p.basedOn}`) : p.basedOn
-  const parts = [`${p.basedOn ? t('presets.copyOf', { base }) : t('presets.alone')}: ${rules}.`]
-  if (p.advanced) parts.push(t('linkPreset.advanced'))
-  // A link that sends the rest past the server or blocks it says so: the user should know before adding it.
-  if (p.default && p.default !== ActionProxy) parts.push(t(`linkPreset.default.${p.default}`))
-  if (p.dns || p.directDns) parts.push(t('linkPreset.dns'))
-  return parts.join(' ')
-})
+const summary = computed(() => (preset.value ? summaryOf(preset.value) : ''))
+
+function answered(saved: Preset, replaced: boolean): void {
+  ui.linkPreset = null
+  if (replaced) ui.notice = { tone: 'info', text: t('settings.presets.replaced', { name: saved.name }) }
+}
 
 async function add(): Promise<void> {
   const link = ui.linkPreset?.link
@@ -71,4 +70,5 @@ async function add(): Promise<void> {
       <Button variant="primary" :disabled="busy" data-testid="link-preset-add" @click="add"><Plus />{{ t('linkPreset.add') }}</Button>
     </template>
   </Dialog>
+  <SameNamePresetDialog :incoming="ui.linkPreset" @cancel="ui.linkPreset = null" @refreshed="(read) => (ui.linkPreset = read)" @done="answered" />
 </template>

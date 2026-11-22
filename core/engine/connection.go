@@ -301,6 +301,8 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if !found {
 		return ConnectionState{}, failure(ReasonNoServer, "the chosen server is no longer in its subscription")
 	}
+	// Told before it is read: a save between the two asks for a restart too many rather than for none.
+	e.tellPreset(ctx, settings.Preset)
 	preset, endpointsOn, found, err := e.connectionPreset(settings.Preset)
 	if err != nil {
 		return ConnectionState{}, err
@@ -528,13 +530,26 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		return ConnectionState{}, ctx.Err()
 	}
 	state := ConnectionState{State: ConnectionRunning, ServerID: settings.Server, Tun: settings.Tun, Servers: e.serversThrough(settings.Server),
-		Endpoints: preset.Endpoints, Since: e.now().UnixMilli()}
+		Endpoints: preset.Endpoints, Preset: settings.Preset, Since: e.now().UnixMilli()}
 	if err = e.syncProxyOf(settings); err != nil {
 		state.Error, state.ErrorText = ReasonSystemProxyFailed, err.Error()
 		log.Printf("connection: system proxy: %v", err)
 	}
 	state.SystemProxy = settings.SystemProxy && err == nil
 	return state, nil
+}
+
+// tellPreset adds the preset to the state of a start. A newer request cancels ctx under conn.mu, so a start that is
+// out of date tells nothing.
+func (e *Engine) tellPreset(ctx context.Context, id string) {
+	e.conn.mu.Lock()
+	defer e.conn.mu.Unlock()
+	if ctx.Err() != nil {
+		return
+	}
+	state := e.conn.state
+	state.Preset = id
+	e.setState(state)
 }
 
 // syncProxyOf points the system proxy at Poros when the settings ask for it and gives it back otherwise. Apply may

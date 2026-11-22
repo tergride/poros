@@ -409,7 +409,9 @@ test('a preset is shared as a QR code, a link and a file, and imported from each
     await page.getByTestId('preset-import').click()
     await expect(dialog).toBeVisible()
   }
+  // Each brings the name of a preset there is: Poros asks, and here it adds a new one.
   const added = async (name: string) => {
+    await page.getByTestId('same-preset-create').click()
     await expect(dialog, `the dialog closes on «${name}» added`).toBeHidden()
     await expect(page.getByText(`Пресет «${name}» добавлен.`)).toBeVisible()
   }
@@ -530,6 +532,132 @@ test('poros:// links open a dialog and add only after a yes', async ({ page }) =
   await page.keyboard.press('Escape')
   await page.getByRole('link', { name: /Пресет:/ }).click()
   await expect(page.getByText('Дом', { exact: true })).toBeVisible()
+})
+
+test('an import under a taken name asks to replace the preset or to add a new one', async ({ page }) => {
+  await throughWizard(page)
+  const linkTo = (name: string, sites: string[]) =>
+    `poros://route/${Buffer.from(
+      JSON.stringify({
+        kind: 'poros-preset',
+        v: 1,
+        name,
+        rules: sites.map((site) => ({ conditions: [{ kind: 'suffix', values: [site] }], action: 'proxy' })),
+        default: 'direct',
+      }),
+    ).toString('base64url')}`
+  const send = (link: string) =>
+    page.evaluate((detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })), [link])
+  const asking = page.getByRole('dialog', { name: 'Пресет с таким названием уже есть' })
+  const presets = page.getByTestId('preset')
+
+  await send(linkTo('Игры', ['old.example']))
+  await page.getByTestId('link-preset-add').click()
+  await page.getByRole('link', { name: /Пресет:/ }).click()
+  await presets.filter({ hasText: 'Игры' }).getByRole('radio').click()
+  await page.getByRole('link', { name: 'К серверам' }).click()
+  await page.getByTestId('system').click()
+  await page.getByTestId('start').click()
+  await expect(page.getByTestId('portal-state')).toContainText('Подключено')
+
+  // A link from the browser: what there is and what comes, and nothing changes without an answer.
+  await send(linkTo('игры', ['new.example', 'more.example']))
+  await expect(asking).toContainText('В «Моих пресетах» уже есть «Игры»')
+  await expect(asking.getByTestId('same-preset-current')).toContainText('1 правило')
+  await expect(asking.getByTestId('same-preset-incoming')).toContainText('2 правила')
+  await expect(asking.getByTestId('same-preset-incoming')).toContainText('По умолчанию трафик идёт напрямую.')
+  await expect(asking).toContainText('появится «игры 2»')
+  await expect(asking.getByTestId('same-preset-in-use')).toBeVisible()
+  await expect(asking.getByRole('button', { name: 'Отмена' }), 'Enter at once replaces nothing').toBeFocused()
+  await shot(page, 'same-preset')
+  await page.keyboard.press('Escape')
+  await expect(asking).toBeHidden()
+  await page.getByRole('link', { name: /Пресет:/ }).click()
+  await expect(presets).toHaveCount(3)
+  await expect(presets.nth(2)).toContainText('1 правило')
+  await expect(page.getByTestId('restart-chip')).toBeHidden()
+
+  await send(linkTo('игры', ['new.example', 'more.example']))
+  await asking.getByTestId('same-preset-create').click()
+  await expect(asking).toBeHidden()
+  await expect(presets).toHaveCount(4)
+  await expect(presets.nth(3)).toContainText('игры 2')
+  await expect(page.getByTestId('restart-chip')).toBeHidden()
+
+  // The editor has changes of its own: replaced, it shows the new preset and cannot save the old one back.
+  await presets.nth(2).getByRole('button', { name: 'Изменить' }).click()
+  await page.getByTestId('rule-new-value').fill('edited.example')
+  await page.getByTestId('rule-new-value').press('Enter')
+  await expect(page.getByTestId('rule-value')).toHaveCount(2)
+  await send(linkTo('Игры', ['new.example', 'more.example', 'third.example']))
+  await asking.getByTestId('same-preset-replace').click()
+  await expect(asking).toBeHidden()
+  await expect(page.getByTestId('rule-value')).toHaveCount(3)
+  await expect(page.getByTestId('rule-value').first()).toHaveValue('new.example')
+  await expect(page.getByTestId('restart-chip'), 'the running connection has the old preset').toBeVisible()
+  await page.getByTestId('preset-save').click()
+  await expect(presets).toHaveCount(4)
+  await expect(presets.nth(2)).toContainText('3 правила')
+  await expect(presets.nth(2).getByRole('radio')).toBeChecked()
+
+  // «Import a preset»: Cancel goes back to it with the link still there, Replace closes both.
+  await page.getByTestId('preset-import').click()
+  const importing = page.getByRole('dialog', { name: 'Импорт пресета' })
+  const last = linkTo('Игры', ['last.example'])
+  await importing.getByTestId('import-link').fill(last)
+  await importing.getByTestId('import-link').press('Enter')
+  await expect(asking).toBeVisible()
+  await expect(importing).toBeHidden()
+  await page.keyboard.press('Escape')
+  await expect(asking).toBeHidden()
+  await expect(importing.getByTestId('import-link')).toHaveValue(last)
+  await importing.getByTestId('import-add').click()
+  await asking.getByTestId('same-preset-replace').click()
+  await expect(asking).toBeHidden()
+  await expect(importing).toBeHidden()
+  await expect(page.getByText('Пресет «Игры» заменён.')).toBeVisible()
+  await expect(presets).toHaveCount(4)
+  await expect(presets.nth(2)).toContainText('1 правило')
+  await expect(presets.nth(2).getByRole('radio')).toBeChecked()
+})
+
+test('a replaced preset of the connection waits for a restart, chosen or not', async ({ page }) => {
+  await throughWizard(page)
+  const send = (name: string, site: string) => {
+    const rules = [{ conditions: [{ kind: 'suffix', values: [site] }], action: 'proxy' }]
+    const link = `poros://route/${Buffer.from(JSON.stringify({ kind: 'poros-preset', v: 1, name, rules })).toString('base64url')}`
+    return page.evaluate((detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })), [link])
+  }
+  const asking = page.getByRole('dialog', { name: 'Пресет с таким названием уже есть' })
+  const presets = page.getByTestId('preset')
+  const choose = (name: string) => presets.filter({ hasText: name }).getByRole('radio').click()
+
+  for (const name of ['Работа', 'Музыка']) {
+    await send(name, 'old.example')
+    await page.getByTestId('link-preset-add').click()
+    await expect(page.getByTestId('link-preset-add')).toBeHidden()
+  }
+  await page.getByRole('link', { name: /Пресет:/ }).click()
+  await choose('Работа')
+  await page.getByRole('link', { name: 'К серверам' }).click()
+  await page.getByTestId('system').click()
+  await page.getByTestId('start').click()
+  await expect(page.getByTestId('portal-state')).toContainText('Подключено')
+  await page.getByRole('link', { name: /Пресет:/ }).click()
+  await choose('Музыка')
+
+  await send('Музыка', 'music.example')
+  await expect(asking).toBeVisible()
+  await expect(asking.getByTestId('same-preset-in-use'), 'the chosen one is not the one of the connection').toBeHidden()
+  await page.keyboard.press('Escape')
+  await expect(asking).toBeHidden()
+
+  await send('Работа', 'work.example')
+  await expect(asking.getByTestId('same-preset-in-use')).toBeVisible()
+  await asking.getByTestId('same-preset-replace').click()
+  await expect(asking).toBeHidden()
+  await choose('Работа')
+  await expect(page.getByTestId('restart-chip'), 'the connection has the old rules').toBeVisible()
 })
 
 test('settings of a running connection offer a restart', async ({ page }) => {

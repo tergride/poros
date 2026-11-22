@@ -347,6 +347,7 @@
       "import": "Import a preset",
       "create": "Create a preset",
       "imported": "Preset “{name}” added.",
+      "replaced": "The preset “{name}” is replaced.",
       "removeTitle": "Remove the preset?",
       "removeText": "“{name}” will be gone. If it is chosen, Poros goes back to “{base}”.",
       "importTitle": "Import a preset",
@@ -690,6 +691,18 @@
       "block": "By default, traffic is blocked."
     },
     "advanced": "An advanced preset."
+  },
+  "samePreset": {
+    "title": "A preset with this name exists",
+    "text": "“My presets” already has “{name}”. Replace it or create a new one?",
+    "current": "Now",
+    "incoming": "Import",
+    "replaceHint": "“Replace”: the current one becomes the same as the imported one, and your changes to it are lost.",
+    "createHint": "“Create new”: “{name}” appears, and the current one does not change.",
+    "staysAdvanced": "The current preset is advanced and stays so after it is replaced.",
+    "inUse": "The connection runs on this preset: once replaced, it will need a restart.",
+    "create": "Create new",
+    "replace": "Replace"
   },
   "knownSubscription": {
     "title": "Subscription already added",

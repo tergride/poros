@@ -262,7 +262,7 @@ func TestRobustConcurrency(t *testing.T) {
 			}
 		}},
 		{"presets", 2, func(r *rand.Rand) {
-			switch r.IntN(4) {
+			switch r.IntN(5) {
 			case 0:
 				call(MethodPresetsSave, PresetCopy{BasedOn: standardPreset, Name: fmt.Sprintf("Copy %d", r.IntN(1000)),
 					Rules: []PresetRule{rule(CondSuffix, fmt.Sprintf("s%d.example", r.IntN(100)), ActionDirect)}})
@@ -273,6 +273,11 @@ func TestRobustConcurrency(t *testing.T) {
 				}
 			case 2:
 				call(MethodPresetsRemove, ByID{ID: pick(r, presetIDs(true))})
+			case 3:
+				id := pick(r, presetIDs(true))
+				if link, err := e.ExportPreset(id); err == nil {
+					call(MethodPresetsReplace, PresetReplace{ID: id, Link: link.Link})
+				}
 			default:
 				if link, err := e.ExportPreset(pick(r, presetIDs(true))); err == nil {
 					call(MethodPresetsImport, link)

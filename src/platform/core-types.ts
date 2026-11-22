@@ -714,6 +714,11 @@ export interface ConnectionState {
    */
   endpoints?: string[];
   /**
+   * Preset is the ID of the preset the connection is built of, told as a start reads it; the settings may choose
+   * another by now. What is saved of it from then on waits for a restart.
+   */
+  preset?: string;
+  /**
    * Since is when the connection came up, Unix milliseconds.
    */
   since: number /* int64 */;
@@ -1252,6 +1257,29 @@ export interface PresetListsRead {
  * PresetLink is a preset as a poros://route/ link. MethodPresetsImport takes the text of a preset file there too.
  */
 export interface PresetLink {
+  link: string;
+}
+/**
+ * PresetPreview is the preset of a link or a file, read before it is imported.
+ */
+export interface PresetPreview {
+  preset: PresetCopy;
+  /**
+   * Same is the user's preset of that name, whatever its case, for MethodPresetsReplace to replace; none when the
+   * name is free or a built-in preset's.
+   */
+  same?: PresetCopy;
+  /**
+   * NewName is the name MethodPresetsImport gives it: its own, or with a number when that is taken.
+   */
+  newName: string;
+}
+/**
+ * PresetReplace puts the preset of a link or the text of a file in the place of the user's preset ID of the same
+ * name: it keeps the ID, so it stays chosen and in its place in the list, and an advanced one stays advanced.
+ */
+export interface PresetReplace {
+  id: string;
   link: string;
 }
 /**
@@ -2010,6 +2038,15 @@ export const MethodPresetsFile = "presets.file";
  * Methods the core answers.
  */
 export const MethodPresetsImport = "presets.import";
+/**
+ * MethodPresetsRead reads what MethodPresetsImport takes without adding it; MethodPresetsReplace takes it in
+ * place of the user's preset of the same name.
+ */
+export const MethodPresetsRead = "presets.read";
+/**
+ * Methods the core answers.
+ */
+export const MethodPresetsReplace = "presets.replace";
 /**
  * MethodPresetsCheck checks the rules of a preset without saving them; a wrong one fails with a RuleProblem as
  * the data of the error.

@@ -4,16 +4,18 @@ import { useEventListener } from '@vueuse/core'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import SameNamePresetDialog from '@/components/presets/SameNamePresetDialog.vue'
 import { Button, Dialog, Input } from '@/components/ui'
 import { importAccept, importableIn, usePresetImport } from '@/composables/usePresetImport'
 import type { Preset } from '@/platform/core-types'
 
 // «Import a preset»: a picture of its QR code or its file, dropped on the field, picked by a click on it or pasted,
-// or its link under it. The dialog closes on the preset added; what fails is said in it.
+// or its link under it. The dialog closes on the preset added; what fails is said in it. A name of the user's preset
+// puts the question of SameNamePresetDialog in its place, and Cancel there comes back to it.
 const open = defineModel<boolean>('open', { default: false })
-const emit = defineEmits<{ added: [preset: Preset] }>()
+const emit = defineEmits<{ added: [preset: Preset, replaced: boolean] }>()
 const { t } = useI18n()
-const { busy, error, fromText, fromFile } = usePresetImport()
+const { busy, error, taken, fromText, fromFile } = usePresetImport()
 const link = ref('')
 const dragging = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -23,14 +25,19 @@ watch(open, (now) => {
   if (!now) return
   link.value = ''
   error.value = ''
+  taken.value = null
   dragging.value = false
 })
 
 async function done(adding: Promise<Preset | null>): Promise<void> {
   const preset = await adding
-  if (!preset) return
+  if (preset) finish(preset, false)
+}
+
+function finish(preset: Preset, replaced: boolean): void {
   open.value = false
-  emit('added', preset)
+  taken.value = null
+  emit('added', preset, replaced)
 }
 
 function addLink(): void {
@@ -75,7 +82,7 @@ function drop(event: DragEvent): void {
 // A picture or a file pasted while the dialog is on top, wherever the focus is, is imported at once; pasted text goes
 // into the field of the link, and outside it is added.
 useEventListener(document, 'paste', (event: ClipboardEvent) => {
-  if (open.value && !busy.value && !covered()) pasted(event)
+  if (open.value && !taken.value && !busy.value && !covered()) pasted(event)
 })
 
 // A modal dialog hides those under it from assistive technology, this one too when a link brings its own over it.
@@ -99,7 +106,7 @@ function pasted(event: ClipboardEvent): void {
 </script>
 
 <template>
-  <Dialog v-model:open="open" :title="t('settings.presets.importTitle')" class="w-[560px]">
+  <Dialog :open="open && !taken" :title="t('settings.presets.importTitle')" class="w-[560px]" @update:open="(shown: boolean) => (open = shown)">
     <template #icon><Import /></template>
     <template #actions>
       <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="open = false"><X /></Button>
@@ -153,4 +160,10 @@ function pasted(event: ClipboardEvent): void {
       </p>
     </div>
   </Dialog>
+  <SameNamePresetDialog
+    :incoming="open ? taken : null"
+    @cancel="taken = null"
+    @refreshed="(read) => (taken = read.same ? read : null)"
+    @done="finish"
+  />
 </template>

@@ -2,11 +2,16 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { reasonOf, useFailure } from '@/composables/useReason'
-import type { Preset } from '@/platform/core-types'
-import { MethodPresetsImport, MethodQRRead, ReasonInvalidLink } from '@/platform/core-types'
+import type { Preset, PresetPreview } from '@/platform/core-types'
+import { MethodPresetsImport, MethodPresetsRead, MethodQRRead, ReasonInvalidLink } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 const presetPrefix = 'poros://route/'
+
+/** A preset about to be imported: what the core read of it and the link or the text of the file it read. */
+export interface IncomingPreset extends PresetPreview {
+  link: string
+}
 
 /** The pictures the core reads QR codes from. */
 export const pictureTypes = ['image/png', 'image/jpeg', 'image/gif']
@@ -39,7 +44,8 @@ async function base64Of(blob: Blob): Promise<string> {
 
 /**
  * Adds a preset from a poros://route/ link, a picture of its QR code or its file. The core reads the picture and the
- * file; what goes wrong is told in error, in the words of what the user gave.
+ * file; what goes wrong is told in error, in the words of what the user gave. A name of the user's preset adds
+ * nothing: it waits in taken for the question of SameNamePresetDialog.
  */
 export function usePresetImport() {
   const core = useCoreStore()
@@ -47,6 +53,7 @@ export function usePresetImport() {
   const { t } = useI18n()
   const busy = ref(false)
   const error = ref('')
+  const taken = ref<IncomingPreset | null>(null)
 
   async function linkOnPicture(picture: Blob): Promise<string> {
     if (picture.size > maxPicture) throw new Error(t('reason.bad_picture'))
@@ -61,7 +68,13 @@ export function usePresetImport() {
     busy.value = true
     error.value = ''
     try {
-      return await core.core().call(MethodPresetsImport, { link: await find() })
+      const link = await find()
+      const preview = await core.core().call(MethodPresetsRead, { link })
+      if (preview.same) {
+        taken.value = { ...preview, link }
+        return null
+      }
+      return await core.core().call(MethodPresetsImport, { link })
     } catch (failed) {
       error.value = fromFile && reasonOf(failed) === ReasonInvalidLink ? t('settings.presets.notPresetFile') : failure(failed)
       return null
@@ -84,7 +97,7 @@ export function usePresetImport() {
     return Promise.resolve(null)
   }
 
-  return { busy, error, fromText, fromFile }
+  return { busy, error, taken, fromText, fromFile }
 }
 
 /** Keeps a file dropped outside every drop zone from opening in the window in place of Poros. */

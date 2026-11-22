@@ -259,6 +259,20 @@ for (const { lang, locale } of languages) {
         await page.getByTestId('new-preset-create').click()
         await expect(page.getByTestId('preset-name')).toBeVisible()
         await check(page, 'preset')
+
+        // The question of an import under a taken name, with a long one.
+        const named = JSON.stringify({ kind: 'poros-preset', v: 1, name: 'A long name of a preset with rules for many sites and programs', default: 'direct' })
+        const send = () =>
+          page.evaluate(
+            (detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })),
+            [`poros://route/${Buffer.from(named).toString('base64url')}`],
+          )
+        await send()
+        await page.getByTestId('link-preset-add').click()
+        await expect(page.getByTestId('link-preset-add')).toBeHidden()
+        await send()
+        await expect(page.getByTestId('same-preset-replace')).toBeVisible()
+        await check(page, 'same-preset')
       })
 
       test('the advanced mode', async ({ page }) => {

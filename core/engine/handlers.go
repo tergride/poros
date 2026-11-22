@@ -53,6 +53,8 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodPresetsExport:       withParams(func(p ByID) (PresetLink, error) { return e.ExportPreset(p.ID) }),
 		MethodPresetsFile:         withParams(func(p ByID) (PresetFile, error) { return e.ExportPresetFile(p.ID) }),
 		MethodPresetsImport:       withParams(e.ImportPreset),
+		MethodPresetsRead:         withParams(e.ReadPreset),
+		MethodPresetsReplace:      withParams(e.ReplacePreset),
 		MethodPresetsCheck:        withParams(CheckPresetRules),
 		MethodPresetsWriteLists:   withParams(WritePresetLists),
 		MethodPresetsReadLists:    withParams(ReadPresetLists),
