@@ -379,6 +379,14 @@ func TestParsePreset(t *testing.T) {
 
 func golden(t *testing.T, name string, data []byte) {
 	t.Helper()
+	// The installed roots differ by machine.
+	if text := dnsRoots(); text != "" {
+		roots, err := json.Marshal(text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data = bytes.ReplaceAll(data, roots, []byte(`"the roots of public DNS"`))
+	}
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, data, "", "  "); err != nil {
 		t.Fatal(err)

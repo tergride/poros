@@ -65,14 +65,16 @@ func dnsServer(text, tag string, dialer option.DialerOptions, resolver string) (
 			path = remoteDNSPath
 		}
 		return option.DNSServerOptions{Type: C.DNSTypeHTTPS, Tag: tag, Options: &option.RemoteHTTPSDNSServerOptions{
-			RemoteTLSDNSServerOptions: option.RemoteTLSDNSServerOptions{RemoteDNSServerOptions: remote},
+			RemoteTLSDNSServerOptions: option.RemoteTLSDNSServerOptions{RemoteDNSServerOptions: remote, OutboundTLSOptionsContainer: dnsTLS(host)},
 			Path:                      path,
 		}}, nil
 	case "tls":
 		if parsed.Path != "" {
 			return option.DNSServerOptions{}, invalid
 		}
-		return option.DNSServerOptions{Type: C.DNSTypeTLS, Tag: tag, Options: &option.RemoteTLSDNSServerOptions{RemoteDNSServerOptions: remote}}, nil
+		return option.DNSServerOptions{Type: C.DNSTypeTLS, Tag: tag, Options: &option.RemoteTLSDNSServerOptions{
+			RemoteDNSServerOptions: remote, OutboundTLSOptionsContainer: dnsTLS(host),
+		}}, nil
 	case "udp":
 		if parsed.Path != "" || net.ParseIP(host) == nil {
 			return option.DNSServerOptions{}, invalid

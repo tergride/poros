@@ -9,6 +9,10 @@
         "tag": "dns-remote",
         "detour": "proxy",
         "server": "8.8.8.8",
+        "tls": {
+          "enabled": true,
+          "certificate": "the roots of public DNS"
+        },
         "path": "/dns-query"
       },
       {
