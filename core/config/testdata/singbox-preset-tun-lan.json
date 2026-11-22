@@ -84,6 +84,22 @@
   "route": {
     "rules": [
       {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": "tun-in",
+            "ip_version": 6
+          },
+          {
+            "port": 53,
+            "invert": true
+          }
+        ],
+        "action": "reject",
+        "no_drop": true
+      },
+      {
         "action": "sniff"
       },
       {
@@ -98,7 +114,8 @@
             "invert": true
           }
         ],
-        "action": "reject"
+        "action": "reject",
+        "no_drop": true
       },
       {
         "action": "resolve",

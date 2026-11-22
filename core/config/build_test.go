@@ -324,7 +324,8 @@ func TestPresetRules(t *testing.T) {
 	}
 	golden(t, "singbox-preset-tun-lan.json", data)
 
-	if rule := configs.SingBox.Route.Rules[2]; rule.DefaultOptions.Action != C.RuleActionTypeResolve ||
+	// The refusal of the TUN before the sniffing, the one after it, then the resolving.
+	if rule := configs.SingBox.Route.Rules[3]; rule.DefaultOptions.Action != C.RuleActionTypeResolve ||
 		rule.DefaultOptions.ResolveOptions.Strategy != option.DomainStrategy(C.DomainStrategyIPv4Only) {
 		t.Errorf("without IPv6 the names of connections resolve to IPv4 here, so that the server does not pick IPv6: %+v", rule)
 	}
@@ -543,8 +544,10 @@ func TestAdvancedRules(t *testing.T) {
 		t.Errorf("inverted: %+v", notMine)
 	}
 	dns := configs.SingBox.DNS.Rules
-	if len(dns) != 3 || dns[0].Type != C.RuleTypeLogical || !dns[1].DefaultOptions.Invert || dns[1].DefaultOptions.RouteOptions.Server != TagDNSRemote ||
-		dns[2].DefaultOptions.ProcessPathRegex[0] != `(?i)\\games\\` {
+	// Before each direct one, the answer of no IPv6 addresses for a network without IPv6.
+	if len(dns) != 5 || dns[0].LogicalOptions.Action != C.RuleActionTypePredefined || dns[3].LogicalOptions.Action != C.RuleActionTypePredefined ||
+		dns[1].Type != C.RuleTypeLogical || !dns[2].DefaultOptions.Invert || dns[2].DefaultOptions.RouteOptions.Server != TagDNSRemote ||
+		dns[4].DefaultOptions.ProcessPathRegex[0] != `(?i)\\games\\` {
 		t.Errorf("names follow the rules on names and programs only: %+v", dns)
 	}
 	servers := configs.SingBox.DNS.Servers
@@ -691,10 +694,11 @@ func TestDNSSettings(t *testing.T) {
 	}
 	options := build(in)
 	dns := options.DNS
-	// Two answers of two families, the hosts file, FakeIP, then the rule of the preset.
-	if len(dns.Rules) != 7 || dns.Rules[0].DefaultOptions.Action != C.RuleActionTypePredefined || dns.Rules[0].DefaultOptions.Domain[0] != "nas.home" ||
+	// Two answers of two families, the hosts file, FakeIP, then the two rules of the preset's one: for a network without
+	// IPv6 and for the rest.
+	if len(dns.Rules) != 8 || dns.Rules[0].DefaultOptions.Action != C.RuleActionTypePredefined || dns.Rules[0].DefaultOptions.Domain[0] != "nas.home" ||
 		dns.Rules[4].DefaultOptions.RouteOptions.Server != tagDNSHosts || dns.Rules[5].DefaultOptions.RouteOptions.Server != tagDNSFake ||
-		dns.Rules[6].DefaultOptions.RouteOptions.Server != TagDNSDirect {
+		dns.Rules[6].LogicalOptions.Action != C.RuleActionTypePredefined || dns.Rules[7].DefaultOptions.RouteOptions.Server != TagDNSDirect {
 		t.Fatalf("answers, hosts and FakeIP come before the rules: %+v", dns.Rules)
 	}
 	if answer := dns.Rules[1].DefaultOptions.PredefinedOptions.Answer; len(answer) != 1 || !strings.Contains(answer[0].String(), "fd00::20") {

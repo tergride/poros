@@ -234,7 +234,7 @@ const defaultSettings: Settings = {
   updateBeta: false,
   hotkeys: { show: '', presets: '', system: '', tun: '', start: '' },
   menuKeys: { search: 'Ctrl+K', paste: 'Ctrl+V', newProfile: '', scanQr: '', updateAll: '', testGroup: '', startStop: '', reset: '', settings: '', logs: '', wizard: '' },
-  ipv6: true,
+  ipv6: false,
   realityOnXray: true,
   dnsRemote: '',
   dnsDirect: '',

@@ -20,7 +20,6 @@ func DefaultSettings() Settings {
 		UIMode:                 "simple",
 		Preset:                 "all",
 		CheckIP:                true,
-		IPv6:                   true,
 		RealityOnXray:          true,
 		MuxProtocol:            "smux",
 		MuxConcurrency:         defaultMuxConcurrency,

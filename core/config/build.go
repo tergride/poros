@@ -37,6 +37,9 @@ const (
 	tagDNSFake   = "dns-fake"
 )
 
+// ipv6Global holds the IPv6 addresses of the internet: private and link-local ones are outside it.
+var ipv6Global = netip.MustParsePrefix("2000::/3")
+
 // The ranges of FakeIP. IPv6 takes a documentation range: the TUN keeps fc00::/7 out.
 var (
 	fakeIPRange4 = netip.MustParsePrefix("198.18.0.0/15")
@@ -460,7 +463,11 @@ func tunExcluded(preset Preset, t TunOptions) badoption.Listable[netip.Prefix] {
 }
 
 func buildRoute(in Input, preset Preset) *option.RouteOptions {
-	rules := []option.Rule{actionRule(option.RawDefaultRule{}, option.RuleAction{Action: C.RuleActionTypeSniff})}
+	var rules []option.Rule
+	if in.DisableIPv6 && in.Tun {
+		rules = append(rules, tunIPv6Block())
+	}
+	rules = append(rules, actionRule(option.RawDefaultRule{}, option.RuleAction{Action: C.RuleActionTypeSniff}))
 	if in.DisableIPv6 {
 		rules = append(rules, ipv6Block(), actionRule(option.RawDefaultRule{}, option.RuleAction{
 			Action:         C.RuleActionTypeResolve,
@@ -503,6 +510,7 @@ func buildRoute(in Input, preset Preset) *option.RouteOptions {
 }
 
 // ipv6Block refuses IPv6 connections at once, so that programs fall back to IPv4; DNS over IPv6 is still answered.
+// Of the TUN's it has what tunIPv6Block leaves: port 53.
 func ipv6Block() option.Rule {
 	return option.Rule{Type: C.RuleTypeLogical, LogicalOptions: option.LogicalRule{
 		RawLogicalRule: option.RawLogicalRule{Mode: C.LogicalTypeAnd, Rules: []option.Rule{
@@ -512,8 +520,33 @@ func ipv6Block() option.Rule {
 				Invert:   true,
 			}}},
 		}},
-		RuleAction: option.RuleAction{Action: C.RuleActionTypeReject},
+		RuleAction: refusal(),
 	}}
+}
+
+// tunIPv6Block refuses IPv6 of the TUN before the handshake. It comes before the sniffing, where sing-box stops
+// deciding about a TCP connection before it: a program that got the handshake does not go on to IPv4. Port 53 is the
+// DNS, which the TUN answers itself.
+func tunIPv6Block() option.Rule {
+	return option.Rule{Type: C.RuleTypeLogical, LogicalOptions: option.LogicalRule{
+		RawLogicalRule: option.RawLogicalRule{Mode: C.LogicalTypeAnd, Rules: []option.Rule{
+			{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultRule{RawDefaultRule: option.RawDefaultRule{
+				Inbound:   badoption.Listable[string]{tagTun},
+				IPVersion: 6,
+			}}},
+			{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultRule{RawDefaultRule: option.RawDefaultRule{
+				Port:   badoption.Listable[uint16]{53},
+				Invert: true,
+			}}},
+		}},
+		RuleAction: refusal(),
+	}}
+}
+
+// refusal tells each connection it is refused. By default sing-box turns to dropping them in silence after 50 in 30
+// seconds, and a program would wait for each before it tries IPv4.
+func refusal() option.RuleAction {
+	return option.RuleAction{Action: C.RuleActionTypeReject, RejectOptions: option.RejectActionOptions{NoDrop: true}}
 }
 
 // lanGuard keeps other devices on the mixed inbound away from this computer's own services.
@@ -645,29 +678,52 @@ func buildDNS(in Input, preset Preset, endpoints []profile.Profile) (*option.DNS
 			DNSRuleAction:     route(tagDNSFake),
 		}})
 	}
-	final := TagDNSRemote
+	final, byRules := TagDNSRemote, false
 	switch in.DNS.Routing {
 	case RoutingProxy:
 	case RoutingDirect:
 		final = TagDNSDirect
 	default:
-		for _, rule := range preset.Rules {
-			if rule.Action != ActionRoute {
-				continue
-			}
-			server := TagDNSRemote
+		byRules = true
+		if preset.DefaultOutbound == OutboundDirect {
+			final = TagDNSDirect
+		}
+	}
+	// The names of direct connections get no IPv6 address while the network has none: the TUN takes a connection
+	// before its way out fails, and a program that got it does not go on to IPv4. The rules go in their order, so
+	// that a name of the server keeps its addresses, whichever DNS answers it.
+	withhold := in.Tun && !in.DisableIPv6
+	for _, rule := range preset.Rules {
+		if rule.Action != ActionRoute {
+			continue
+		}
+		server := final
+		if byRules {
+			server = TagDNSRemote
 			if rule.Outbound == OutboundDirect {
 				server = TagDNSDirect
 			} else if n, ok := endpointIndex(rule.Outbound); ok {
 				server = dnsEndpointTag(n)
 			}
-			if dns, ok := dnsRule(rule, route(server)); ok {
-				rules = append(rules, dns)
+		}
+		dns, ok := dnsRule(rule, route(server))
+		if !ok {
+			continue
+		}
+		if withhold {
+			match, _ := dnsRule(rule, option.DNSRuleAction{})
+			if rule.Outbound == OutboundDirect {
+				rules = append(rules, withoutIPv6(noAddresses(), match))
+			} else if !byRules {
+				rules = append(rules, withoutIPv6(route(server), match))
 			}
 		}
-		if preset.DefaultOutbound == OutboundDirect {
-			final = TagDNSDirect
+		if byRules {
+			rules = append(rules, dns)
 		}
+	}
+	if withhold && preset.DefaultOutbound == OutboundDirect {
+		rules = append(rules, withoutIPv6(noAddresses()))
 	}
 	options := &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: servers, Rules: rules, Final: final}}
 	client := &options.DNSClientOptions
@@ -682,6 +738,31 @@ func buildDNS(in Input, preset Preset, endpoints []profile.Profile) (*option.DNS
 		client.ClientSubnet = (*badoption.Prefixable)(&subnet)
 	}
 	return options, nil
+}
+
+// withoutIPv6 gives action to the queries for IPv6 addresses that all of matches take, while the adapter of the
+// default route has no global IPv6 address. Each query looks anew, so a change of the network needs no restart.
+func withoutIPv6(action option.DNSRuleAction, matches ...option.DNSRule) option.DNSRule {
+	global := ipv6Global
+	parts := []option.DNSRule{
+		{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{RawDefaultDNSRule: option.RawDefaultDNSRule{
+			QueryType: badoption.Listable[option.DNSQueryType]{option.DNSQueryType(28)},
+		}}},
+		{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{RawDefaultDNSRule: option.RawDefaultDNSRule{
+			DefaultInterfaceAddress: badoption.Listable[*badoption.Prefixable]{(*badoption.Prefixable)(&global)},
+			Invert:                  true,
+		}}},
+	}
+	return option.DNSRule{Type: C.RuleTypeLogical, LogicalOptions: option.LogicalDNSRule{
+		RawLogicalDNSRule: option.RawLogicalDNSRule{Mode: C.LogicalTypeAnd, Rules: append(parts, matches...)},
+		DNSRuleAction:     action,
+	}}
+}
+
+// noAddresses answers that the name is there and has no address of the kind asked.
+func noAddresses() option.DNSRuleAction {
+	success := option.DNSRCode(0)
+	return option.DNSRuleAction{Action: C.RuleActionTypePredefined, PredefinedOptions: option.DNSRouteActionPredefined{Rcode: &success}}
 }
 
 func dnsEndpointTag(i int) string {
