@@ -550,7 +550,7 @@ func routeRule(rule Rule) option.Rule {
 		action.RouteOptions.Outbound = rule.Outbound
 	}
 	conditions := rule.conditions()
-	if rule.destinations() <= 1 {
+	if !rule.separate() {
 		var raw option.RawDefaultRule
 		for _, fill := range conditions {
 			fill(&raw)
@@ -718,13 +718,15 @@ func dnsRule(rule Rule, action option.DNSRuleAction) (option.DNSRule, bool) {
 	add(len(rule.DomainSuffix) > 0, func(raw *option.RawDefaultDNSRule) { raw.DomainSuffix = aceList(rule.DomainSuffix) })
 	add(len(rule.DomainKeyword) > 0, func(raw *option.RawDefaultDNSRule) { raw.DomainKeyword = rule.DomainKeyword })
 	add(len(rule.DomainRegex) > 0, func(raw *option.RawDefaultDNSRule) { raw.DomainRegex = rule.DomainRegex })
-	add(len(rule.ProcessName) > 0, func(raw *option.RawDefaultDNSRule) { raw.ProcessName = rule.ProcessName })
-	add(len(rule.ProcessPath) > 0, func(raw *option.RawDefaultDNSRule) { raw.ProcessPath = rule.ProcessPath })
-	add(len(rule.ProcessPathRegex) > 0, func(raw *option.RawDefaultDNSRule) { raw.ProcessPathRegex = rule.ProcessPathRegex })
+	for _, p := range rule.programs() {
+		add(true, func(raw *option.RawDefaultDNSRule) {
+			raw.ProcessName, raw.ProcessPath, raw.ProcessPathRegex = p.names, p.paths, p.patterns
+		})
+	}
 	if len(fills) == 0 {
 		return option.DNSRule{}, false
 	}
-	if rule.destinations() <= 1 {
+	if !rule.separate() {
 		var raw option.RawDefaultDNSRule
 		for _, fill := range fills {
 			fill(&raw)

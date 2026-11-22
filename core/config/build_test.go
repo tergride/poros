@@ -312,6 +312,16 @@ func TestPresetRules(t *testing.T) {
 	if err = boxmain.Check(data); err != nil {
 		t.Fatalf("sing-box refuses the config: %v", err)
 	}
+	// Each system matches programs by fields of its own, which the tests of programs check: the golden file has them
+	// as the preset does.
+	program := programsByName([]string{"steam.exe"})
+	for _, pattern := range program.patterns {
+		written, err := json.Marshal(pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data = bytes.ReplaceAll(data, []byte(`"process_path_regex":`+string(written)), []byte(`"process_name":"steam.exe"`))
+	}
 	golden(t, "singbox-preset-tun-lan.json", data)
 
 	if rule := configs.SingBox.Route.Rules[2]; rule.DefaultOptions.Action != C.RuleActionTypeResolve ||
@@ -325,7 +335,7 @@ func TestPresetRules(t *testing.T) {
 	}
 	dns := configs.SingBox.DNS.Rules
 	if len(dns) != 2 || dns[0].DefaultOptions.RouteOptions.Server != TagDNSDirect || dns[0].DefaultOptions.DomainSuffix[1] != ".xn--p1ai" ||
-		dns[1].DefaultOptions.ProcessName[0] != "steam.exe" {
+		!slices.Equal(dns[1].DefaultOptions.ProcessName, program.names) || !slices.Equal(dns[1].DefaultOptions.ProcessPathRegex, program.patterns) {
 		t.Errorf("direct names and programs resolve with the system DNS, in rule order: %+v", dns)
 	}
 }

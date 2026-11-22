@@ -255,10 +255,38 @@ func (r Rule) conditions() []condition {
 	add(r.IPIsPrivate, func(raw *option.RawDefaultRule) { raw.IPIsPrivate = true })
 	add(len(r.SourceIPCIDR) > 0, func(raw *option.RawDefaultRule) { raw.SourceIPCIDR = prefixList(r.SourceIPCIDR) })
 	add(len(r.Port)+len(r.PortRange) > 0, func(raw *option.RawDefaultRule) { raw.Port, raw.PortRange = r.Port, r.PortRange })
-	add(len(r.ProcessName) > 0, func(raw *option.RawDefaultRule) { raw.ProcessName = r.ProcessName })
-	add(len(r.ProcessPath) > 0, func(raw *option.RawDefaultRule) { raw.ProcessPath = r.ProcessPath })
-	add(len(r.ProcessPathRegex) > 0, func(raw *option.RawDefaultRule) { raw.ProcessPathRegex = r.ProcessPathRegex })
+	for _, p := range r.programs() {
+		add(true, func(raw *option.RawDefaultRule) {
+			raw.ProcessName, raw.ProcessPath, raw.ProcessPathRegex = p.names, p.paths, p.patterns
+		})
+	}
 	return list
+}
+
+// programs are the programs of one condition, in the fields sing-box matches them by on this system.
+type programs struct {
+	names, paths, patterns []string
+}
+
+// programs gives the conditions on programs the rule has.
+func (r Rule) programs() []programs {
+	var list []programs
+	if len(r.ProcessName) > 0 {
+		list = append(list, programsByName(r.ProcessName))
+	}
+	if len(r.ProcessPath) > 0 {
+		list = append(list, programsByPath(r.ProcessPath))
+	}
+	if len(r.ProcessPathRegex) > 0 {
+		list = append(list, programs{patterns: r.ProcessPathRegex})
+	}
+	return list
+}
+
+// separate tells whether each condition needs a rule of its own, all of which must match: two on the destination
+// would match by either, and two on programs can share a field.
+func (r Rule) separate() bool {
+	return r.destinations() > 1 || len(r.programs()) > 1
 }
 
 // destinations counts the conditions on the destination address. sing-box matches a default rule when any of these

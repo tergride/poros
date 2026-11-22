@@ -436,7 +436,7 @@ type Connection struct {
 	Destination string `json:"destination"`
 	// Inbound and Outbound are tags of the connection's config: the TUN or the local proxy; the server (proxy),
 	// direct, an endpoint (endpoint-1 is the first of ConnectionState.Endpoints) or WARP. Rule is the rule that sent it
-	// there, "" for the default.
+	// there, "" for the default, with the program as its file is named.
 	Inbound  string `json:"inbound"`
 	Outbound string `json:"outbound"`
 	Rule     string `json:"rule"`

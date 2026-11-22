@@ -6,8 +6,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/trafficcontrol"
 
+	"PorosCore/config"
 	"PorosCore/internal/jsonrpc"
 )
 
@@ -50,14 +52,36 @@ func connectionOf(m *trafficcontrol.TrackerMetadata) Connection {
 		destination.Fqdn = meta.Domain
 	}
 	c.Destination = destination.String()
-	if m.Rule != nil {
-		c.Rule = m.Rule.String()
-	}
+	var programPaths []string
 	if owner := meta.ProcessInfo; owner != nil && len(owner.ProcessPaths) > 0 {
-		c.ProcessPath = owner.ProcessPaths[0]
+		programPaths = owner.ProcessPaths
+		c.ProcessPath = programPaths[0]
 		c.Process = filepath.Base(c.ProcessPath)
 	}
+	if m.Rule != nil {
+		text := m.Rule.String()
+		if len(programPaths) > 1 && strings.Contains(text, "process_path_regex=") {
+			programPaths = matchedFirst(m.Rule, meta, programPaths)
+		}
+		c.Rule = config.RuleText(text, programPaths)
+	}
 	return c
+}
+
+// matchedFirst puts first the path the rule matches by: a service has two, of its DLL and of the program that hosts
+// it, and the text of a pattern does not tell which one it found.
+func matchedFirst(rule adapter.Rule, meta adapter.InboundContext, paths []string) []string {
+	for i, path := range paths {
+		owner := *meta.ProcessInfo
+		owner.ProcessPaths = []string{path}
+		alone := meta
+		alone.ProcessInfo = &owner
+		alone.ResetRuleCache()
+		if rule.Match(&alone) {
+			return slices.Concat(paths[i:], paths[:i])
+		}
+	}
+	return paths
 }
 
 // CloseConnections closes one connection, or all of them without an ID.
