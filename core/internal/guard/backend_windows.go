@@ -350,6 +350,29 @@ func appIDFromFile(path string) (*fwpByteBlob, error) {
 	return appID, nil
 }
 
+var procRtlDowncaseUnicodeChar = windows.NewLazySystemDLL("ntdll.dll").NewProc("RtlDowncaseUnicodeChar")
+
+// appConditions match PorosCore by its app ID. That is the path in lower case, and FwpmGetAppIdFromFileName0 lowers
+// ASCII alone: a folder such as "Мои программы" keeps its capitals. So the ID Windows gave goes along with the one
+// lowered by the case table of NTFS and the kernel; both name the same file.
+func appConditions(appID *fwpByteBlob, pin *runtime.Pinner) []fwpmFilterCondition0 {
+	given := unsafe.Slice((*uint16)(unsafe.Pointer(appID.data)), appID.size/2)
+	lower := make([]uint16, len(given))
+	for i, unit := range given {
+		r1, _, _ := procRtlDowncaseUnicodeChar.Call(uintptr(unit))
+		lower[i] = uint16(r1)
+	}
+	conditions := []fwpmFilterCondition0{condition(conditionALEAppID, fwpMatchEqual, fwpByteBlobType, uintptr(unsafe.Pointer(appID)))}
+	if slices.Equal(given, lower) {
+		return conditions
+	}
+	pin.Pin(&lower[0])
+	blob := &fwpByteBlob{size: appID.size, data: (*uint8)(unsafe.Pointer(&lower[0]))}
+	pin.Pin(blob)
+	// Conditions on one field match when any of them does.
+	return append(conditions, condition(conditionALEAppID, fwpMatchEqual, fwpByteBlobType, uintptr(unsafe.Pointer(blob))))
+}
+
 // Matched by alias only: matching the tun's address would also permit a LAN that reuses its range.
 func findTuns(name string) ([]tunAdapter, error) {
 	rows, err := winipcfg.GetIfTable2Ex(winipcfg.MibIfEntryNormal)
@@ -381,9 +404,7 @@ func isTunAlias(alias, name string) bool {
 
 func baseRules(cfg *config, appID *fwpByteBlob, pin *runtime.Pinner) []wfpRule {
 	rules := []wfpRule{
-		{"permit Poros", aleLayers, weightApp, fwpActionPermit, []fwpmFilterCondition0{
-			condition(conditionALEAppID, fwpMatchEqual, fwpByteBlobType, uintptr(unsafe.Pointer(appID))),
-		}},
+		{"permit Poros", aleLayers, weightApp, fwpActionPermit, appConditions(appID, pin)},
 		{"permit loopback", aleLayers, weightLoopback, fwpActionPermit, []fwpmFilterCondition0{
 			condition(conditionFlags, fwpMatchFlagsAllSet, fwpUint32, fwpConditionFlagIsLoopback),
 		}},

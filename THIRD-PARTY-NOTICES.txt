@@ -56,6 +56,13 @@ sing, the library of sing-box
     third_party/sing with one change: DialParallel in common/network/multi.go lets go of the context of the attempt
     that won, which otherwise stayed in memory for every connection.
 
+sing-tun, the TUN library of sing-box
+    GPL-3.0-or-later. Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>. Poros builds it from a copy in
+    third_party/sing-tun with one change: Strict Route permits the program by its path in lower case too, so that
+    its DNS works from a folder with capitals other than ASCII.
+    Its internal/wintun is Wintun, Copyright (C) 2017-2021 WireGuard LLC: the Go code under MIT, the signed wintun.dll
+    unmodified and used through its API only, under the Prebuilt Binaries License of Wintun at https://www.wintun.net.
+
 Xray-core
     MPL-2.0. Copyright (c) Project X. Its source code is the Go module github.com/xtls/xray-core at the version
     named in core/go.mod of the Poros source.

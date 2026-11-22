@@ -212,3 +212,8 @@ tool github.com/gzuidhof/tygo
 // DialParallel of sing keeps the context of the winning attempt alive among the children of a long-lived context, a
 // little memory for every connection through the TUN. The copy fixes it until sing does; then this line and the copy go.
 replace github.com/sagernet/sing => ../third_party/sing
+
+// Strict Route of sing-tun permits the program by the app ID that FwpmGetAppIdFromFileName0 lowers in ASCII alone,
+// while Windows compares the whole path in lower case. The copy permits both until sing-tun does; then this line and
+// the copy go.
+replace github.com/sagernet/sing-tun => ../third_party/sing-tun

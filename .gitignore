@@ -10,6 +10,8 @@
 *.o
 *.obj
 *.pdb
+# Embedded by the copy of sing-tun: without them it does not build
+!/third_party/sing-tun/internal/wintun/*/wintun.dll
 
 # Dependencies and test output
 node_modules/
