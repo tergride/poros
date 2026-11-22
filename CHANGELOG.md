@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.4.0
+
+<!-- ru -->
+- **Kill switch рядом с zapret и GoodbyeDPI:** раньше вместе с ними Kill switch закрывал весь интернет. Пока загружен их драйвер WinDivert, Kill switch работает в совместимом режиме: пропускает пакеты, которые WinDivert отправляет дальше, а остальное блокирует как обычно. В это время рядом с чипом Kill switch в заголовке стоит восклицательный знак с подсказкой.
+- **Папка с кириллицей в пути:** если в названии папки Poros есть заглавные буквы не латиницей, Kill switch больше не блокирует сам Poros, а Strict Route — его DNS.
+- **Первая страница без ожидания:** сразу после включения компьютера первая страница больше не ждёт около 20 секунд. Сертификаты DNS Google, Cloudflare и Quad9 Poros проверяет сам: по встроенным корням и по корням, установленным в Windows.
+- **IPv6 по умолчанию выключен:** сайты, которые идут напрямую, открываются в сетях без IPv6, программы сразу переходят на IPv4. Сохранённые настройки не меняются. Серверам и сетям только с IPv6 нужен включённый IPv6.
+- **Программы в правилах** совпадают по имени и по пути в любом регистре: правило для `game.exe` срабатывает и для `Game.exe`.
+- **Импорт пресета под занятым именем** спрашивает: «Заменить», «Создать новый» или «Отмена». После замены пресет остаётся выбранным и на своём месте.
+- **Окна:** окно, открытое последним, всегда сверху и получает клики и фокус.
+
+<!-- en -->
+- **Kill switch next to zapret and GoodbyeDPI:** the kill switch used to cut the whole internet next to them. While their WinDivert driver is loaded, the kill switch works in compatible mode: it lets out the packets WinDivert sends on and blocks the rest as usual. Meanwhile an exclamation mark with a hint stands next to the kill switch chip in the title bar.
+- **A folder with Cyrillic in its path:** when the name of the Poros folder has capital letters other than Latin, the kill switch no longer blocks Poros itself, nor Strict Route its DNS.
+- **The first page without a wait:** right after the computer starts, the first page no longer waits about 20 seconds. Poros verifies the certificates of the Google, Cloudflare and Quad9 DNS itself, by the built-in roots and the roots installed in Windows.
+- **IPv6 is off by default:** sites that go direct open in networks without IPv6, as programs move to IPv4 at once. Saved settings stay as they are. Servers and networks with IPv6 only need IPv6 turned on.
+- **Programs in rules** match by name and by path in any letter case: a rule for `game.exe` also catches `Game.exe`.
+- **Importing a preset under a taken name** asks: "Replace", "Create new" or "Cancel". After a replace the preset stays chosen and in its place.
+- **Dialogs:** the dialog opened last is always on top and gets the clicks and the focus.
+
 ## 0.3.0
 
 <!-- ru -->
