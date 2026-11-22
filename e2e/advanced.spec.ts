@@ -352,6 +352,86 @@ test('the routing of the advanced mode edits presets beside their list and waits
   await expect(page.getByTestId('rule-row')).toHaveCount(2)
 })
 
+test('the dialog opened last is the one on top, with the focus and the clicks', async ({ page }) => {
+  await toAdvanced(page)
+  const linkTo = (name: string, sites: string[]) => {
+    const rules = sites.map((site) => ({ conditions: [{ kind: 'suffix', values: [site] }], action: 'proxy' }))
+    return `poros://route/${Buffer.from(JSON.stringify({ kind: 'poros-preset', v: 1, name, advanced: true, rules })).toString('base64url')}`
+  }
+  const send = (link: string) =>
+    page.evaluate((detail) => window.dispatchEvent(new CustomEvent('poros-links', { detail })), [link])
+  // The dialog or list painted at a point. A dialog under another takes no clicks and elementFromPoint passes over
+  // it, so everything takes them for the look.
+  const paintedAt = (x: number, y: number) =>
+    page.evaluate(
+      ([left, top]) => {
+        const style = document.createElement('style')
+        style.textContent = '* { pointer-events: auto !important }'
+        document.head.append(style)
+        const layer = document.elementFromPoint(left!, top!)?.closest('[role="dialog"], [role="listbox"]')
+        style.remove()
+        return { text: layer?.textContent ?? '', focused: !!layer?.contains(document.activeElement) }
+      },
+      [x, y],
+    )
+  const middle = () => paintedAt(590, 380)
+
+  for (const name of ['Games', 'Work']) {
+    await send(linkTo(name, ['old.example']))
+    await page.getByTestId('link-preset-add').click()
+    await expect(page.getByTestId('link-preset-add')).toBeHidden()
+  }
+  await page.getByTestId('rail-routing').click()
+  const row = (name: string) => page.getByTestId('routing-preset').filter({ hasText: name })
+
+  // A link over «Import a preset»: what the user sees on top takes the clicks, and what is pasted is not for the
+  // dialog under it.
+  await page.getByTestId('preset-import').click()
+  await send(linkTo('Fresh', ['fresh.example']))
+  await expect.poll(middle).toEqual({ text: expect.stringContaining('«Fresh»'), focused: true })
+  await page.evaluate((text) => {
+    const data = new DataTransfer()
+    data.setData('text/plain', text)
+    ;(document.activeElement ?? document.body).dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  }, linkTo('Pasted', ['pasted.example']))
+  await page.waitForTimeout(300)
+  await expect(row('Pasted')).toHaveCount(0)
+  await page.getByRole('dialog').getByTestId('link-preset-add').click()
+  await expect(row('Fresh')).toBeVisible()
+  await expect.poll(middle).toEqual({ text: expect.stringContaining('Импорт пресета'), focused: true })
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // A larger dialog stays under the shade of a smaller one, and so does a list open in it until that one closes.
+  await row('Games').click()
+  await page.getByTestId('rule-new').click()
+  const ruleDialog = page.getByRole('dialog', { name: 'Правило', exact: true })
+  const under = (await ruleDialog.boundingBox())!
+  await ruleDialog.getByRole('combobox').first().click()
+  const list = page.locator('[role="listbox"]')
+  const first = list.getByRole('option').first()
+  await expect(first).toBeFocused()
+  const option = (await first.boundingBox())!
+  await send(linkTo('Music', ['music.example']))
+  await expect.poll(middle).toEqual({ text: expect.stringContaining('«Music»'), focused: true })
+  const overList = await paintedAt(option.x + option.width / 2, option.y + option.height / 2)
+  expect(overList.text, 'an open list does not show over the dialog').not.toContain('Сайт и поддомены')
+  expect((await paintedAt(under.x + 12, under.y + 12)).text, 'the shade covers the dialog under it').toBe('')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('link-preset-add')).toBeHidden()
+  await expect(first).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(list).toBeHidden()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // The search is a dialog too.
+  await page.keyboard.press('Control+K')
+  await expect(page.getByTestId('palette')).toBeVisible()
+  await send(linkTo('Films', ['films.example']))
+  await expect.poll(middle).toEqual({ text: expect.stringContaining('«Films»'), focused: true })
+})
+
 test('endpoints run beside the server with any preset, with their own rules, files and data for signing in', async ({ page }) => {
   await toAdvanced(page)
   const encode = (text: string) => Buffer.from(text).toString('base64url')

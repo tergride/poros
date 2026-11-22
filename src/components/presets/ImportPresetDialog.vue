@@ -17,6 +17,7 @@ const { busy, error, fromText, fromFile } = usePresetImport()
 const link = ref('')
 const dragging = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const content = ref<HTMLElement | null>(null)
 
 watch(open, (now) => {
   if (!now) return
@@ -71,11 +72,16 @@ function drop(event: DragEvent): void {
   take(event.dataTransfer?.files)
 }
 
-// A picture or a file pasted while the dialog is open, wherever the focus is, is imported at once; pasted text goes
+// A picture or a file pasted while the dialog is on top, wherever the focus is, is imported at once; pasted text goes
 // into the field of the link, and outside it is added.
 useEventListener(document, 'paste', (event: ClipboardEvent) => {
-  if (open.value && !busy.value) pasted(event)
+  if (open.value && !busy.value && !covered()) pasted(event)
 })
+
+// A modal dialog hides those under it from assistive technology, this one too when a link brings its own over it.
+function covered(): boolean {
+  return !!content.value?.closest('[aria-hidden="true"]')
+}
 
 function pasted(event: ClipboardEvent): void {
   const file = importableIn(event.clipboardData?.files)
@@ -98,7 +104,7 @@ function pasted(event: ClipboardEvent): void {
     <template #actions>
       <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="open = false"><X /></Button>
     </template>
-    <div class="grid gap-4" data-testid="import-preset">
+    <div ref="content" class="grid gap-4" data-testid="import-preset">
       <button
         type="button"
         :disabled="busy"

@@ -137,6 +137,14 @@
     zoom: 1.125;
   }
 
+  /*
+   * The lists and menus float after the app, so over its dialogs. One that a dialog opens over goes under the shade
+   * of that dialog: its clicks are the dialog's by then. Not hidden, which would lose the focus to give back to it.
+   */
+  [data-reka-popper-content-wrapper][aria-hidden='true'] {
+    z-index: 40 !important;
+  }
+
   :focus-visible {
     outline: 2px solid var(--blue);
     outline-offset: 2px;

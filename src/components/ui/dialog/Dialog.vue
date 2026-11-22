@@ -10,9 +10,11 @@ const open = defineModel<boolean>('open', { default: false })
 
 <template>
   <DialogRoot v-model:open="open">
-    <!-- Inside the app, so that a large text size scales the dialog with it. -->
-    <DialogPortal to="#app">
-      <DialogOverlay class="fixed inset-0 z-40 bg-s0/75" />
+    <!-- Inside the app, so that a large text size scales the dialog with it. There only while open: the dialog opened
+         last comes last, over the others, as it has the focus and the clicks. force-mount puts it there at once, not a
+         tick later, when what loads in it would change what takes the first focus. -->
+    <DialogPortal v-if="open" to="#app" force-mount>
+      <DialogOverlay class="fixed inset-0 z-50 bg-s0/75" />
       <DialogContent
         :aria-describedby="undefined"
         :class="
