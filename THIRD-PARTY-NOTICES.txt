@@ -63,6 +63,10 @@ sing-tun, the TUN library of sing-box
     Its internal/wintun is Wintun, Copyright (C) 2017-2021 WireGuard LLC: the Go code under MIT, the signed wintun.dll
     unmodified and used through its API only, under the Prebuilt Binaries License of Wintun at https://www.wintun.net.
 
+Bee2, the cryptographic library of the Belarusian standards
+    Apache-2.0. Copyright (c) The Bee2 authors. Poros ports to Go, in core/internal/stb, its belt (STB 34.101.31),
+    bash (STB 34.101.77) and bign (STB 34.101.45) and its reading of the key containers of STB 34.101.78.
+
 Xray-core
     MPL-2.0. Copyright (c) Project X. Its source code is the Go module github.com/xtls/xray-core at the version
     named in core/go.mod of the Poros source.
