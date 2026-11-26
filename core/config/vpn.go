@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -23,8 +24,35 @@ func pemLines(text string) badoption.Listable[string] {
 	return badoption.Listable[string]{text}
 }
 
+// openVPNDefaultCiphers are what OpenVPN offers without data-ciphers, and sing-box too.
+var openVPNDefaultCiphers = []string{"AES-256-GCM", "AES-128-GCM", "CHACHA20-POLY1305"}
+
+// openVPNDataCiphers reads the cipher of a config as OpenVPN 2.6 does in TLS mode, where sing-box refuses it: the
+// fallback for a server without cipher negotiation, and, without data-ciphers, one more cipher offered. OpenVPN|BY
+// offers its belt alone.
+func openVPNDataCiphers(p profile.Profile) (ciphers []string, fallback string) {
+	o := p.OpenVPN
+	ciphers, fallback = o.DataCiphers, o.DataCiphersFallback
+	if o.Cipher == "" {
+		return ciphers, fallback
+	}
+	if fallback == "" {
+		fallback = o.Cipher
+	}
+	if len(ciphers) == 0 {
+		if p.Type != profile.TypeOpenVPNBY {
+			ciphers = slices.Clone(openVPNDefaultCiphers)
+		}
+		if !slices.ContainsFunc(ciphers, func(c string) bool { return strings.EqualFold(c, o.Cipher) }) {
+			ciphers = append(ciphers, o.Cipher)
+		}
+	}
+	return ciphers, fallback
+}
+
 func openVPNEndpoint(p profile.Profile, tag string) (option.Endpoint, error) {
 	o := p.OpenVPN
+	ciphers, fallback := openVPNDataCiphers(p)
 	options := &option.OpenVPNClientEndpointOptions{
 		ServerOptions:          option.ServerOptions{Server: ace(p.Server), ServerPort: uint16(p.ServerPort)},
 		OpenVPNEndpointOptions: option.OpenVPNEndpointOptions{MTU: uint32(o.MTU)},
@@ -34,9 +62,8 @@ func openVPNEndpoint(p profile.Profile, tag string) (option.Endpoint, error) {
 		Password:               o.Password,
 		StaticChallenge:        o.StaticChallenge,
 		StaticChallengeEcho:    o.StaticChallengeEcho,
-		Cipher:                 o.Cipher,
-		DataCiphers:            o.DataCiphers,
-		DataCiphersFallback:    o.DataCiphersFallback,
+		DataCiphers:            ciphers,
+		DataCiphersFallback:    fallback,
 		Auth:                   o.Auth,
 		Compression:            o.Compression,
 		CompressionLZO:         o.CompressionLZO,

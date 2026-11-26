@@ -228,7 +228,7 @@ export const TypeCustom = "custom";
  */
 export const TypeDirect = "direct";
 /**
- * Profile is one server. Exactly the part of Type is set: the one named by it, and openvpn for OpenVPN|BY.
+ * Profile is one server. Exactly the part of Type is set: the one PartOf names.
  */
 export interface Profile {
   type: string;

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -31,6 +32,30 @@ func testBignClient(t *testing.T, password string) (ca, cert, key string, plain 
 		t.Fatal(err)
 	}
 	return string(stbtest.PEM(authority.Cert)), string(stbtest.PEM(client.Cert)), string(locked), client.Key
+}
+
+// cipher of a config is what OpenVPN 2.6 makes of it in TLS mode, where sing-box takes none: the fallback, and without
+// data-ciphers one more cipher offered; OpenVPN|BY offers belt alone.
+func TestOpenVPNCipherInTLSMode(t *testing.T) {
+	for name, tt := range map[string]struct {
+		kind             string
+		cipher, fallback string
+		data             []string
+		want             []string
+		wantFallback     string
+	}{
+		"cipher alone":               {profile.TypeOpenVPN, "AES-256-CBC", "", nil, []string{"AES-256-GCM", "AES-128-GCM", "CHACHA20-POLY1305", "AES-256-CBC"}, "AES-256-CBC"},
+		"a default cipher":           {profile.TypeOpenVPN, "aes-256-gcm", "", nil, openVPNDefaultCiphers, "aes-256-gcm"},
+		"with data-ciphers":          {profile.TypeOpenVPN, "AES-256-CBC", "", []string{"AES-128-GCM"}, []string{"AES-128-GCM"}, "AES-256-CBC"},
+		"with a fallback of its own": {profile.TypeOpenVPN, "AES-256-CBC", "BF-CBC", nil, []string{"AES-256-GCM", "AES-128-GCM", "CHACHA20-POLY1305", "AES-256-CBC"}, "BF-CBC"},
+		"no cipher":                  {profile.TypeOpenVPN, "", "", []string{"AES-128-GCM"}, []string{"AES-128-GCM"}, ""},
+		"OpenVPN|BY":                 {profile.TypeOpenVPNBY, "belt-cfb256", "", nil, []string{"belt-cfb256"}, "belt-cfb256"},
+	} {
+		p := profile.Profile{Type: tt.kind, OpenVPN: &profile.OpenVPN{Cipher: tt.cipher, DataCiphersFallback: tt.fallback, DataCiphers: tt.data}}
+		if got, fallback := openVPNDataCiphers(p); !slices.Equal(got, tt.want) || fallback != tt.wantFallback {
+			t.Errorf("%s: %v, %q", name, got, fallback)
+		}
+	}
 }
 
 // The key of OpenVPN|BY reaches sing-box open, with BTLS over TLS 1.2 for the control channel; a password that does
