@@ -139,7 +139,7 @@ func (hs *serverHandshake) sendServerFlight() error {
 	if cfg.ClientAuth >= tls.RequestClientCert {
 		request := &certificateRequest{
 			certificateTypes:    []uint8{certificateTypeBignSign},
-			signatureAlgorithms: supportedSignatureAlgorithms,
+			signatureAlgorithms: signatureAlgorithmsFor(hs.cert.PrivateKey.Curve),
 		}
 		if err := c.writeHandshake(request.marshal(), &hs.transcript); err != nil {
 			return err

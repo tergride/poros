@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -317,5 +318,24 @@ func TestContextCancel(t *testing.T) {
 	err := Client(cc, &Config{InsecureSkipVerify: true}).HandshakeContext(ctx)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("handshake against a silent peer: %v", err)
+	}
+}
+
+// TestSignatureAlgorithmsFor checks that the offered list starts with the own curve: OpenSSL signs with the first
+// algorithm of its key type in the peer's list.
+func TestSignatureAlgorithmsFor(t *testing.T) {
+	if algs := signatureAlgorithmsFor(nil); !slices.Equal(algs, supportedSignatureAlgorithms) {
+		t.Fatalf("without a curve: %04x", algs)
+	}
+	for _, curve := range []*bign.Curve{bign.Curve256, bign.Curve384, bign.Curve512} {
+		algs := signatureAlgorithmsFor(curve)
+		if len(algs) != len(supportedSignatureAlgorithms) {
+			t.Fatalf("level %d: %04x", curve.Level, algs)
+		}
+		for i, alg := range algs {
+			if (i < 2) != (signatureCurve(alg) == curve) {
+				t.Fatalf("level %d: %04x", curve.Level, algs)
+			}
+		}
 	}
 }

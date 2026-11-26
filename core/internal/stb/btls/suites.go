@@ -118,6 +118,24 @@ func signatureFor(curve *bign.Curve, peer []uint16) (uint16, bool) {
 	return 0, false
 }
 
+// signatureAlgorithmsFor is the list to offer with the algorithms of the own curve first, or in the usual order
+// without a curve. OpenSSL with bee2evp signs ServerKeyExchange and CertificateVerify with the first algorithm of the
+// peer's list for its key type whatever the curve, so a peer on the same curve then signs with one that fits its key.
+func signatureAlgorithmsFor(curve *bign.Curve) []uint16 {
+	algs := make([]uint16, 0, len(supportedSignatureAlgorithms))
+	for _, alg := range supportedSignatureAlgorithms {
+		if signatureCurve(alg) == curve {
+			algs = append(algs, alg)
+		}
+	}
+	for _, alg := range supportedSignatureAlgorithms {
+		if signatureCurve(alg) != curve {
+			algs = append(algs, alg)
+		}
+	}
+	return algs
+}
+
 func isSupportedSignature(alg uint16) bool {
 	return signatureCurve(alg) != nil
 }
