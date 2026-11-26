@@ -1,9 +1,11 @@
 # Patched copies
 
 Copies of Go modules with a change Poros needs before the project itself has it. `core/go.mod` points at each with a
-`replace` line; once the project has the change, the copy and its line go.
+`replace` line; once the project has the change, the copy and its line go. The change in `sing-openvpn` is not a fix
+but a set of points that plug in other cryptography, so that copy stays until sing-openvpn has such points of its own.
 
 | Copy | Version | Change |
 |---|---|---|
 | `sing` | `github.com/sagernet/sing` v0.9.7-0.20261023115510-03a6cce64bf7 | `common/network/multi.go`: `DialParallel` lets go of the context of the attempt that won. Before, it stayed a child of the dial's context, and through the TUN that context lives as long as Poros stays connected, so every connection to a server named by a domain with several addresses left a little memory behind. `core/internal/patches` checks it |
 | `sing-tun` | `github.com/sagernet/sing-tun` v0.9.7-0.20261023115453-611d83b7a57b | `internal/winsys/helper.go` and `tun_windows.go`: Strict Route permits the program by its app ID wholly in lower case as well. `FwpmGetAppIdFromFileName0` lowers ASCII alone, so from a folder such as `Мои программы` the permit never matched, and the block of DNS stopped the program's own. `core/internal/patches` checks it. The copy has no `.gitignore` of sing-tun, which would hide files of it |
+| `sing-openvpn` | `github.com/sagernet/sing-openvpn` v0.1.1-0.20261020061844-7d24ecd92837 | `extension.go`: `RegisterTLSProvider`, `RegisterDataCipher` and `RegisterDigest`. The control channel runs over the `TLSConn` interface instead of `*tls.Conn`; a provider that serves the `tls-cipher` list builds the connections and checks the chain of the peer (`tls_config.go`, `peer_certificate_verifier.go`), the rest of the checks stay as they are. Registered ciphers in CBC, CFB or OFB mode and digests are taken by the data channel, static keys and tls-auth, by name in any letter case (`data_codec_static.go`, `data_codec_stream.go`, `options_validation.go`). A cipher registered as `Chained` runs in TLS mode as one chain per key and direction from a zero IV, for peers that take no IV of a packet: one stream in CFB and OFB, and in CBC the last ciphertext block of the packet before as the IV of the next, with the first block of an incoming packet read by whichever IV gives the packet ID expected next (`data_codec_cbc.go`, `data_codec_stream.go`). `core/internal/stb/ovpn` plugs in BTLS, belt and bash for OpenVPN\|BY, `core/internal/patches` checks it |

@@ -217,3 +217,8 @@ replace github.com/sagernet/sing => ../third_party/sing
 // while Windows compares the whole path in lower case. The copy permits both until sing-tun does; then this line and
 // the copy go.
 replace github.com/sagernet/sing-tun => ../third_party/sing-tun
+
+// sing-openvpn talks TLS through crypto/tls alone and knows only its own data ciphers. The copy adds the points where
+// Poros plugs in BTLS, belt and bash for OpenVPN|BY; it stays until sing-openvpn has such points, then this line and
+// the copy go.
+replace github.com/sagernet/sing-openvpn => ../third_party/sing-openvpn
