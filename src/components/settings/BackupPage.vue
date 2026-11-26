@@ -1,22 +1,33 @@
 <script setup lang="ts">
 import { Download, TriangleAlert, Upload, X } from '@lucide/vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import BackupPassword from '@/components/settings/BackupPassword.vue'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import RestoreDialog from '@/components/settings/RestoreDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Banner, Button, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
-import { useFailure } from '@/composables/useReason'
+import { reasonOf, useFailure } from '@/composables/useReason'
 import { useSettingsDraft } from '@/composables/useSettingsDraft'
+import { backupHasSecrets } from '@/lib/backup'
 import { appControls } from '@/platform'
-import { type BackupInfo, BackupOTP, BackupProfiles, BackupRouting, BackupSettings, MethodBackupCreate, MethodBackupInspect } from '@/platform/core-types'
+import {
+  type BackupInfo,
+  BackupOTP,
+  BackupProfiles,
+  BackupRouting,
+  BackupSettings,
+  MethodBackupCreate,
+  MethodBackupInspect,
+  ReasonBackupPassword,
+} from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 // «Backup»: the data of Poros in one file and back. The simple mode keeps all of it; the advanced one picks the
-// parts to keep and to put back. The file holds the keys of the servers as they are.
+// parts to keep and to put back. The file holds the keys of the servers as they are, unless a password seals it whole.
 const core = useCoreStore()
 const ui = useUiStore()
 const attempt = useAttempt()
@@ -28,17 +39,29 @@ const parts = [BackupProfiles, BackupRouting, BackupSettings, BackupOTP]
 const chosen = ref<string[]>([...parts])
 const toggle = (part: string, on: boolean) => (chosen.value = on ? [...chosen.value, part] : chosen.value.filter((p) => p !== part))
 
+const secret = computed(() =>
+  backupHasSecrets(advanced ? chosen.value : parts, { settings: core.settings, groups: core.groups, endpoints: core.endpoints, otp: core.otp }),
+)
+const encrypt = ref(false)
+const password = ref('')
+const repeat = ref('')
+const sealed = computed(() => secret.value && encrypt.value)
+const ready = computed(() => !sealed.value || (password.value !== '' && password.value === repeat.value))
+
 async function create(): Promise<void> {
   await attempt(async () => {
-    const file = await core.core().call(MethodBackupCreate, { parts: advanced ? chosen.value : parts })
+    const chosenParts = advanced ? chosen.value : parts
+    const file = await core.core().call(MethodBackupCreate, sealed.value ? { parts: chosenParts, password: password.value } : { parts: chosenParts })
     const path = await appControls.saveFile(file.name, t('settings.backup.kind'), file.text)
-    if (path) ui.notice = { tone: 'info', text: t('settings.backup.saved', { path }) }
+    if (!path) return
+    ui.notice = { tone: 'info', text: t('settings.backup.saved', { path }) }
+    password.value = repeat.value = ''
   })
 }
 
 // The chosen file: what it holds, then the dialog that restores it.
 const fileInput = ref<HTMLInputElement | null>(null)
-const reading = ref<{ name: string; text: string; info: BackupInfo } | null>(null)
+const reading = ref<{ name: string; text: string; info: BackupInfo | null } | null>(null)
 const dialog = ref(false)
 async function read(): Promise<void> {
   const file = fileInput.value?.files?.[0]
@@ -46,7 +69,14 @@ async function read(): Promise<void> {
   if (!file) return
   try {
     const text = await file.text()
-    const info = await core.core().call(MethodBackupInspect, { text })
+    // A sealed backup tells what it holds once the dialog has its password.
+    const info = await core
+      .core()
+      .call(MethodBackupInspect, { text })
+      .catch((error: unknown) => {
+        if (reasonOf(error) === ReasonBackupPassword) return null
+        throw error
+      })
     reading.value = { name: file.name, text, info }
     dialog.value = true
   } catch (error) {
@@ -77,10 +107,11 @@ function done(info: BackupInfo): void {
           <span>{{ t(`settings.backup.part.${part}`) }}<br /><span class="text-xs text-t3">{{ t(`settings.backup.partHint.${part}`) }}</span></span>
         </label>
       </div>
-      <p class="my-2.5 flex items-center gap-2.5 rounded-[10px] border border-line bg-s1 px-3.5 py-2.5 text-[13px]">
+      <BackupPassword v-if="secret" v-model:on="encrypt" v-model:password="password" v-model:repeat="repeat" />
+      <p v-if="secret && !encrypt" class="my-2.5 flex items-center gap-2.5 rounded-[10px] border border-line bg-s1 px-3.5 py-2.5 text-[13px]">
         <TriangleAlert class="size-4 flex-none text-warn" />{{ t('settings.backup.secret') }}
       </p>
-      <Button size="sm" :disabled="chosen.length === 0 || !core.ready" data-testid="backup-create" @click="create()">
+      <Button size="sm" :disabled="chosen.length === 0 || !core.ready || !ready" data-testid="backup-create" @click="create()">
         <Upload />{{ t('settings.backup.createMore') }}
       </Button>
     </SettingsCard>
@@ -92,8 +123,9 @@ function done(info: BackupInfo): void {
   </template>
   <SettingsCard v-else>
     <OptionRow :title="t('settings.backup.create')" :hint="t('settings.backup.createHint')">
-      <Button :disabled="!core.ready" data-testid="backup-create" @click="create()"><Upload />{{ t('settings.backup.createButton') }}</Button>
+      <Button :disabled="!core.ready || !ready" data-testid="backup-create" @click="create()"><Upload />{{ t('settings.backup.createButton') }}</Button>
     </OptionRow>
+    <BackupPassword v-if="secret" v-model:on="encrypt" v-model:password="password" v-model:repeat="repeat" />
     <OptionRow :title="t('settings.backup.restore')" :hint="t('settings.backup.restoreHint')">
       <Button :disabled="!core.ready" data-testid="backup-choose" @click="fileInput?.click()"><Download />{{ t('settings.backup.choose') }}</Button>
     </OptionRow>

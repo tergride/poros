@@ -12,6 +12,7 @@ import (
 	"github.com/sagernet/bbolt"
 
 	"PorosCore/internal/jsonrpc"
+	"PorosCore/internal/secrets"
 )
 
 const (
@@ -37,6 +38,13 @@ type backupFile struct {
 	Endpoints []endpointRecord          `json:"endpoints,omitempty"`
 	Settings  *Settings                 `json:"settings,omitempty"`
 	OTP       []OTPEntry                `json:"otp,omitempty"`
+}
+
+// sealedBackup is a backup sealed with a password: only its kind and version are open.
+type sealedBackup struct {
+	Kind   string                  `json:"kind"`
+	V      int                     `json:"v"`
+	Sealed *secrets.PasswordSealed `json:"sealed,omitempty"`
 }
 
 func invalidBackup(format string, args ...any) error {
@@ -110,17 +118,57 @@ func (e *Engine) CreateBackup(p BackupParts) (BackupFile, error) {
 		file.Settings = &settings
 	}
 	data, err := json.MarshalIndent(file, "", "  ")
+	if err == nil && p.Password != "" {
+		data, err = sealBackup(file, p.Password)
+	}
 	if err != nil {
 		return BackupFile{}, err
 	}
 	return BackupFile{Name: "poros-backup-" + now.Format("2006-01-02") + ".json", Text: string(data)}, nil
 }
 
+func sealBackup(file backupFile, password string) ([]byte, error) {
+	data, err := json.Marshal(file)
+	if err != nil {
+		return nil, err
+	}
+	sealed, err := secrets.SealWithPassword(data, password, backupKind)
+	if err != nil {
+		return nil, err
+	}
+	return json.MarshalIndent(sealedBackup{Kind: backupKind, V: backupVersion, Sealed: &sealed}, "", "  ")
+}
+
+// openBackup gives the JSON of a backup: a sealed one opened with its password, any other as it is, for readBackup
+// to tell what is wrong with it.
+func openBackup(text, password string) ([]byte, error) {
+	data := []byte(strings.TrimSpace(text))
+	var sealed sealedBackup
+	if json.Unmarshal(data, &sealed) != nil || sealed.Sealed == nil || sealed.Kind != backupKind || sealed.V != backupVersion {
+		return data, nil
+	}
+	if password == "" {
+		return nil, jsonrpc.Failed(ReasonBackupPassword, "the backup is sealed with a password")
+	}
+	plain, err := sealed.Sealed.OpenWithPassword(password, backupKind)
+	switch {
+	case errors.Is(err, secrets.ErrWrongPassword):
+		return nil, jsonrpc.Failed(ReasonBackupPasswordWrong, "the password does not open the backup")
+	case err != nil:
+		return nil, invalidBackup("%v", err)
+	}
+	return plain, nil
+}
+
 // readBackup reads a backup and checks the parts it has, each as its own save would: a backup with a part that
 // cannot be taken is refused whole.
-func (e *Engine) readBackup(text string) (backupFile, error) {
+func (e *Engine) readBackup(text, password string) (backupFile, error) {
 	var file backupFile
-	if err := json.Unmarshal([]byte(strings.TrimSpace(text)), &file); err != nil {
+	data, err := openBackup(text, password)
+	if err != nil {
+		return file, err
+	}
+	if err := json.Unmarshal(data, &file); err != nil {
 		return file, invalidBackup("the file is no JSON of a backup: %v", err)
 	}
 	if file.Kind != backupKind {
@@ -164,6 +212,9 @@ func (e *Engine) readBackup(text string) (backupFile, error) {
 				return file, invalidBackup("a code of OTP has no ID or the ID of another")
 			}
 			ids[entry.ID] = true
+			if entry.Lost && entry.Secret == "" {
+				continue
+			}
 			if problem := entry.entry().Check(); problem != nil {
 				return file, invalidBackup("OTP: %v", problem)
 			}
@@ -180,7 +231,7 @@ func checkBackupServers(file backupFile) error {
 			return invalidBackup("a group has no ID or the ID of another")
 		case g.Kind != GroupSubscription && g.Kind != GroupManual:
 			return invalidBackup("the group %q is of no known kind", g.ID)
-		case g.Kind == GroupSubscription && !strings.HasPrefix(g.URL, "http://") && !strings.HasPrefix(g.URL, "https://"):
+		case g.Kind == GroupSubscription && (g.URL != "" || len(g.Lost) == 0) && !strings.HasPrefix(g.URL, "http://") && !strings.HasPrefix(g.URL, "https://"):
 			return invalidBackup("the subscription %q has no link", g.ID)
 		}
 		groups[g.ID] = true
@@ -194,6 +245,10 @@ func checkBackupServers(file backupFile) error {
 				return invalidBackup("a server has no ID or the ID of another")
 			}
 			servers[s.ID] = true
+			// What lost its secrets on another computer comes as it is, and is checked when they are typed in again.
+			if len(stillLost(s.Profile, s.Lost)) > 0 {
+				continue
+			}
 			if err := s.Profile.Validate(); err != nil {
 				return invalidBackup("the server %q: %v", s.Profile.Name, err)
 			}
@@ -237,7 +292,10 @@ func checkBackupEndpoints(endpoints []endpointRecord) error {
 		if nameTakenBy(endpoints[:i], record.Profile.Name, record.ID) {
 			return invalidBackup("two endpoints are named %q", record.Profile.Name)
 		}
-		if _, err := checkEndpoint(record.entry()); err != nil {
+		// Only secrets lost on another computer leave an endpoint on with data it needs: it comes as it is.
+		entry := record.entry()
+		entry.On = entry.On && len(entry.Need) == 0
+		if _, err := checkEndpoint(entry); err != nil {
 			return invalidBackup("the endpoint %q: %v", record.Profile.Name, err)
 		}
 	}
@@ -255,7 +313,7 @@ func backupInfo(file backupFile) BackupInfo {
 
 // InspectBackup tells what a backup holds, after the same checks as a restore.
 func (e *Engine) InspectBackup(p BackupText) (BackupInfo, error) {
-	file, err := e.readBackup(p.Text)
+	file, err := e.readBackup(p.Text, p.Password)
 	if err != nil {
 		return BackupInfo{}, err
 	}
@@ -266,7 +324,7 @@ func (e *Engine) InspectBackup(p BackupText) (BackupInfo, error) {
 // connection stops first: its server and preset may go. The chosen server and preset that are gone afterwards give
 // way to none and to the standard preset; the rights at sign-in stay as they are, being of this computer.
 func (e *Engine) RestoreBackup(p BackupRestore) (BackupInfo, error) {
-	file, err := e.readBackup(p.Text)
+	file, err := e.readBackup(p.Text, p.Password)
 	if err != nil {
 		return BackupInfo{}, err
 	}

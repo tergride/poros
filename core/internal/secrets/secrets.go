@@ -1,6 +1,6 @@
 // Package secrets keeps the secrets of the data file. One data key, sealed for this computer (DPAPI on Windows),
 // encrypts each secret with AES-256-GCM; the rest of a record stays as it is, so what a record lacks is plain to see
-// where the key cannot be opened.
+// where the key cannot be opened. A file for another computer, as a backup, is sealed with a password instead.
 package secrets
 
 import (

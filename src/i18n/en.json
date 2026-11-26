@@ -643,7 +643,7 @@
     "backup": {
       "lead": "Subscriptions, presets and settings in one file.",
       "create": "Create a backup",
-      "createHint": "The file holds the keys of the servers as plain text — keep it like a password.",
+      "createHint": "Without a password, the file holds the keys of the servers as plain text — keep it like a password.",
       "createButton": "Create",
       "restore": "Restore from a backup",
       "restoreHint": "Poros shows what the file holds and replaces the current data.",
@@ -661,7 +661,7 @@
         "settings": "All settings of Poros, DNS and WARP among them.",
         "otp": "The codes of «Tools → OTP»."
       },
-      "secret": "The file holds the keys of the servers and the OTP secrets as plain text. Keep it like a password.",
+      "secret": "Without a password, the file holds the keys of the servers and the OTP secrets as plain text. Keep it like a password.",
       "createMore": "Create a backup…",
       "restoreTitle": "Restore",
       "restoreChosenHint": "Poros shows what the file holds and replaces the parts you choose. The connection stops.",
@@ -680,7 +680,15 @@
       "replaceChosen": "The parts you check replace the current ones whole; the rest stays.",
       "replaceAll": "The data of the file replaces the current data.",
       "stops": "The connection stops.",
-      "restoreButton": "Restore"
+      "restoreButton": "Restore",
+      "encrypt": "Encrypt with a password",
+      "encryptHint": "Poros does not keep the password: without it the backup cannot be restored.",
+      "encryptNote": "The whole file is encrypted with AES-256-GCM under a key that Argon2id derives from the password. Only the kind of the file stays readable.",
+      "password": "Password",
+      "repeat": "Repeat the password",
+      "mismatch": "The passwords differ.",
+      "locked": "{file} is encrypted with a password.",
+      "unlock": "Open"
     }
   },
   "linkPreset": {
@@ -1088,7 +1096,9 @@
     "scan_unsupported": "Poros cannot take a snapshot of the screen on this system yet",
     "scan_failed": "Windows refused a snapshot of the screen",
     "bad_picture": "the picture is no PNG, JPEG or GIF, is damaged or too large",
-    "invalid_backup": "this is no backup of Poros, or it has an error"
+    "invalid_backup": "this is no backup of Poros, or it has an error",
+    "backup_password": "the backup is encrypted: enter its password",
+    "backup_password_wrong": "the password does not open the backup"
   },
   "units": {
     "B": "B",

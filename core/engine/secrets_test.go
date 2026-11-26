@@ -366,3 +366,37 @@ func TestSecretsOfAnotherComputer(t *testing.T) {
 		t.Errorf("a link typed in again, after a restart: %+v, %v", groups, err)
 	}
 }
+
+// A backup made where secrets were lost restores with their records still waiting for them.
+func TestBackupKeepsLostSecrets(t *testing.T) {
+	dir := tempDir(t)
+	e, _ := openTest(t, dir)
+	f := fillSecrets(t, e)
+	e.Close()
+	changeData(t, dir, func(tx *bbolt.Tx) error {
+		return tx.Bucket(bucketMeta).Put(keyDataKey, append([]byte{1}, bytes.Repeat([]byte{0x5a}, 230)...))
+	})
+	e, _ = reopenSecretsTest(t, dir)
+	file, err := e.CreateBackup(BackupParts{Parts: []string{BackupProfiles, BackupRouting, BackupOTP}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	target, _ := openTest(t, tempDir(t))
+	if _, err = target.RestoreBackup(BackupRestore{Text: file.Text}); err != nil {
+		t.Fatal(err)
+	}
+	if servers, err := target.Servers(ServersQuery{GroupID: f.mine}); err != nil || len(servers) != 2 ||
+		!slices.Equal(servers[0].Need, []string{"trojan.password"}) || !slices.Equal(servers[1].Need, []string{customSecret}) {
+		t.Errorf("servers: %+v, %v", servers, err)
+	}
+	if groups, err := target.Groups(); err != nil || groups[0].URL != "" || !slices.Equal(groups[0].Need, []string{"url"}) {
+		t.Errorf("the subscription: %+v, %v", groups, err)
+	}
+	if endpoints, err := target.Endpoints(); err != nil || !slices.Equal(endpoints[0].Need, []string{SignInPassword, SignInCert, SignInKey}) {
+		t.Errorf("the endpoint: %+v, %v", endpoints, err)
+	}
+	if codes, err := target.OTPCodes(); err != nil || !codes[0].Lost {
+		t.Errorf("the code of OTP: %+v, %v", codes, err)
+	}
+}

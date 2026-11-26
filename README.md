@@ -57,7 +57,7 @@ on [sing-box](https://github.com/SagerNet/sing-box) and [Xray-core](https://gith
 
 Poros has no installer. Its data, the WebView2 profile included, stays in `config` next to `Poros.exe`, so deleting the folder removes Poros. If the folder is read-only, Poros says so and exits. One Poros runs per Windows user.
 
-Passwords, keys, subscription links and OTP secrets in `config` are encrypted for this computer with Windows DPAPI. A copy of the folder on another computer opens without them: servers wait for their secrets until you enter them again. To move everything, use a backup from the tools.
+Passwords, keys, subscription links and OTP secrets in `config` are encrypted for this computer with Windows DPAPI. A copy of the folder on another computer opens without them: servers wait for their secrets until you enter them again. To move everything, make a backup in the settings; with a password it is encrypted whole.
 
 ## Updates
 

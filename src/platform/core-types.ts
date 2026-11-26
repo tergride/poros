@@ -1836,10 +1836,12 @@ export const BackupSettings = "settings";
  */
 export const BackupOTP = "otp";
 /**
- * BackupParts picks the parts of a backup.
+ * BackupParts picks the parts of a backup. With a password the whole file is sealed: AES-256-GCM under the key
+ * Argon2id derives from it. Without one it holds the secrets as plain text.
  */
 export interface BackupParts {
   parts: string[];
+  password?: string;
 }
 /**
  * BackupFile is a backup to save: its JSON and a name for the file.
@@ -1849,18 +1851,20 @@ export interface BackupFile {
   text: string;
 }
 /**
- * BackupText is a backup read from a file.
+ * BackupText is a backup read from a file, with its password if it is sealed.
  */
 export interface BackupText {
   text: string;
+  password?: string;
 }
 /**
  * BackupRestore is a backup read from a file and the parts of it to put in place of the current ones; no parts are
- * all it has.
+ * all it has. A sealed backup needs its password.
  */
 export interface BackupRestore {
   text: string;
   parts: string[];
+  password?: string;
 }
 /**
  * BackupInfo is what a backup holds: when and by which Poros it was made, its parts and how much of each.
@@ -2504,3 +2508,12 @@ export const ReasonBadPicture = "bad_picture";
  * says what.
  */
 export const ReasonInvalidBackup = "invalid_backup";
+/**
+ * ReasonBackupPassword is a backup sealed with a password, asked for without one; ReasonBackupPasswordWrong one
+ * that the password does not open.
+ */
+export const ReasonBackupPassword = "backup_password";
+/**
+ * Reasons in the data of a failed request, and in Group.Error, for the interface to translate.
+ */
+export const ReasonBackupPasswordWrong = "backup_password_wrong";

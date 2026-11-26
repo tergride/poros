@@ -1252,9 +1252,11 @@ const (
 	BackupOTP      = "otp"
 )
 
-// BackupParts picks the parts of a backup.
+// BackupParts picks the parts of a backup. With a password the whole file is sealed: AES-256-GCM under the key
+// Argon2id derives from it. Without one it holds the secrets as plain text.
 type BackupParts struct {
-	Parts []string `json:"parts"`
+	Parts    []string `json:"parts"`
+	Password string   `json:"password,omitempty"`
 }
 
 // BackupFile is a backup to save: its JSON and a name for the file.
@@ -1263,16 +1265,18 @@ type BackupFile struct {
 	Text string `json:"text"`
 }
 
-// BackupText is a backup read from a file.
+// BackupText is a backup read from a file, with its password if it is sealed.
 type BackupText struct {
-	Text string `json:"text"`
+	Text     string `json:"text"`
+	Password string `json:"password,omitempty"`
 }
 
 // BackupRestore is a backup read from a file and the parts of it to put in place of the current ones; no parts are
-// all it has.
+// all it has. A sealed backup needs its password.
 type BackupRestore struct {
-	Text  string   `json:"text"`
-	Parts []string `json:"parts"`
+	Text     string   `json:"text"`
+	Parts    []string `json:"parts"`
+	Password string   `json:"password,omitempty"`
 }
 
 // BackupInfo is what a backup holds: when and by which Poros it was made, its parts and how much of each.
@@ -1568,4 +1572,8 @@ const (
 	// ReasonInvalidBackup is a file that is no backup of Poros, or one with a part that cannot be taken; the message
 	// says what.
 	ReasonInvalidBackup = "invalid_backup"
+	// ReasonBackupPassword is a backup sealed with a password, asked for without one; ReasonBackupPasswordWrong one
+	// that the password does not open.
+	ReasonBackupPassword      = "backup_password"
+	ReasonBackupPasswordWrong = "backup_password_wrong"
 )

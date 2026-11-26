@@ -23,6 +23,8 @@ import type {
 } from './core-types'
 import {
   ActionBlock,
+  ReasonBackupPassword,
+  ReasonBackupPasswordWrong,
   ReasonInvalidBackup,
   ActionDirect,
   ActionProxy,
@@ -406,12 +408,26 @@ interface StubBackup {
   otp?: OTPEntry[]
 }
 
-function readBackup(text: string): StubBackup {
+/** A backup sealed with a password, as the stub writes it: the file and its password side by side, unlike the core. */
+interface StubSealed {
+  kind: string
+  v: number
+  sealed: { password: string; data: string }
+}
+
+function readBackup(text: string, password?: string): StubBackup {
   let file: StubBackup
   try {
     file = JSON.parse(text) as StubBackup
-  } catch {
-    throw failed(ReasonInvalidBackup, 'the file is no JSON of a backup')
+    const sealed = (file as Partial<StubSealed>).sealed
+    if (sealed) {
+      if (!password) throw failed(ReasonBackupPassword, 'the backup is sealed with a password')
+      if (password !== sealed.password) throw failed(ReasonBackupPasswordWrong, 'the password does not open the backup')
+      file = JSON.parse(sealed.data) as StubBackup
+    }
+  } catch (error) {
+    if (error instanceof SyntaxError) throw failed(ReasonInvalidBackup, 'the file is no JSON of a backup')
+    throw error
   }
   if (file?.kind !== 'poros-backup' || file.v !== 1) throw failed(ReasonInvalidBackup, 'the file is no backup of Poros')
   return file
@@ -1226,7 +1242,7 @@ export function createStubCore(): CoreClient {
     [MethodQREncode]: ({ text }) => stubQrEncode(text),
     [MethodQRScan]: () => stubQrScan(),
     [MethodQRRead]: ({ image }) => stubQrRead(image),
-    [MethodBackupCreate]: ({ parts }) => {
+    [MethodBackupCreate]: ({ parts, password }) => {
       if (parts.length === 0) throw failed(ReasonInvalidBackup, 'a backup needs a part')
       const has = (part: string) => parts.includes(part)
       const file: StubBackup = {
@@ -1240,9 +1256,10 @@ export function createStubCore(): CoreClient {
         ...(has('settings') ? { settings } : {}),
         ...(has('otp') ? { otp: otp.all() } : {}),
       }
-      return { name: `poros-backup-${new Date().toISOString().slice(0, 10)}.json`, text: JSON.stringify(file, null, 2) }
+      const sealed: StubSealed | null = password ? { kind: 'poros-backup', v: 1, sealed: { password, data: JSON.stringify(file) } } : null
+      return { name: `poros-backup-${new Date().toISOString().slice(0, 10)}.json`, text: JSON.stringify(sealed ?? file, null, 2) }
     },
-    [MethodBackupInspect]: ({ text }) => backupInfo(readBackup(text)),
+    [MethodBackupInspect]: ({ text, password }) => backupInfo(readBackup(text, password)),
     [MethodEndpointsList]: () => endpoints.list(),
     [MethodEndpointsGet]: ({ id }) => endpoints.get(id),
     [MethodEndpointsSave]: (entry) => endpoints.save(entry),
@@ -1250,8 +1267,8 @@ export function createStubCore(): CoreClient {
     [MethodEndpointsMove]: (move) => endpoints.move(move),
     [MethodEndpointsExport]: (p) => endpoints.exportFile(p),
     [MethodEndpointsImport]: (p) => endpoints.importFile(p),
-    [MethodBackupRestore]: ({ text, parts }) => {
-      const file = readBackup(text)
+    [MethodBackupRestore]: ({ text, parts, password }) => {
+      const file = readBackup(text, password)
       const chosen = parts.length ? parts : file.parts
       if (chosen.some((part) => !file.parts.includes(part))) throw failed(ReasonInvalidBackup, 'the backup has no such part')
       if (connection.state !== ConnectionIdle) setConnection({ ...idle })

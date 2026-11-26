@@ -1391,6 +1391,39 @@ test('«Backup» saves the chosen parts in a file and restores them after showin
   await expect(page.getByTestId('notice')).toContainText('Это не резервная копия Poros')
 })
 
+test('a backup with a password shows nothing of what it holds and opens only with its password', async ({ page }) => {
+  await toAdvanced(page)
+  await page.getByTestId('rail-settings').click()
+  await page.locator('a[href="#/adv/settings/backup"]').click()
+  await page.getByTestId('backup-encrypt').click()
+  await page.getByTestId('backup-password').fill('correct horse')
+  await page.getByTestId('backup-repeat').fill('correct hors')
+  await expect(page.getByTestId('backup-mismatch')).toContainText('Пароли не совпадают')
+  await expect(page.getByTestId('backup-create')).toBeDisabled()
+  await page.getByTestId('backup-repeat').fill('correct horse')
+  await expect(page.getByTestId('backup-mismatch')).toHaveCount(0)
+  await shot(page, 'adv-backup-password')
+  const saving = page.waitForEvent('download')
+  await page.getByTestId('backup-create').click()
+  const download = await saving
+  const buffer = (await import('node:fs')).readFileSync(await download.path())
+  expect(Object.keys(JSON.parse(buffer.toString('utf8')) as object)).toEqual(['kind', 'v', 'sealed'])
+  await expect(page.getByTestId('backup-password')).toHaveValue('')
+
+  // The file under its own name, which the dialog shows.
+  await page.getByTestId('backup-file').setInputFiles({ name: download.suggestedFilename(), mimeType: 'application/json', buffer })
+  await expect(page.getByTestId('restore-locked')).toContainText('зашифрован паролем')
+  await page.getByTestId('restore-password').fill('correct horse ')
+  await page.getByTestId('restore-unlock').click()
+  await expect(page.getByTestId('restore-error')).toContainText('Пароль не подходит к этой копии')
+  await shot(page, 'adv-backup-locked')
+  await page.getByTestId('restore-password').fill('correct horse')
+  await page.getByTestId('restore-password').press('Enter')
+  await expect(page.getByTestId('restore-dialog')).toContainText('серверов: 3')
+  await page.getByTestId('restore-confirm').click()
+  await expect(page.getByTestId('backup-restored')).toContainText('Восстановлено из копии от')
+})
+
 test('the simple mode keeps all of its data in one backup and puts all of it back', async ({ page }) => {
   await throughWizard(page)
   await page.getByTestId('portal-settings').click()

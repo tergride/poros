@@ -146,3 +146,54 @@ func TestBackupWithAWrongPartChangesNothing(t *testing.T) {
 		t.Errorf("no groups came: %+v", groups)
 	}
 }
+
+// A backup with a password shows nothing of what it holds, and only its password opens it.
+func TestBackupWithAPassword(t *testing.T) {
+	source, serverID, _, codeID := backupSource(t)
+	file, err := source.CreateBackup(BackupParts{Parts: backupParts, Password: "correct horse"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var outer map[string]json.RawMessage
+	if err = json.Unmarshal([]byte(file.Text), &outer); err != nil || len(outer) != 3 || outer["sealed"] == nil {
+		t.Fatalf("a sealed backup: %s, %v", file.Text, err)
+	}
+	for _, open := range []string{"trojan.example.com", "JBSWY3DPEHPK3PXP", "GitHub", "parts"} {
+		if strings.Contains(file.Text, open) {
+			t.Errorf("%s lies open in a sealed backup", open)
+		}
+	}
+
+	target, _ := openTest(t, tempDir(t))
+	if _, err = target.InspectBackup(BackupText{Text: file.Text}); reason(err) != ReasonBackupPassword {
+		t.Errorf("without its password: %v", err)
+	}
+	if _, err = target.RestoreBackup(BackupRestore{Text: file.Text, Password: "correct horse "}); reason(err) != ReasonBackupPasswordWrong {
+		t.Errorf("a wrong password: %v", err)
+	}
+	if groups, _ := target.Groups(); len(groups) != 0 {
+		t.Fatalf("a refused restore changed the groups: %+v", groups)
+	}
+	info, err := target.InspectBackup(BackupText{Text: file.Text, Password: "correct horse"})
+	if err != nil || info.Servers != 1 || info.Codes != 1 || len(info.Parts) != len(backupParts) {
+		t.Fatalf("info: %+v, %v", info, err)
+	}
+	if _, err = target.RestoreBackup(BackupRestore{Text: file.Text, Password: "correct horse"}); err != nil {
+		t.Fatal(err)
+	}
+	if p, found, _ := target.serverProfile(serverID); !found || p.Trojan.Password != "pw" {
+		t.Errorf("the restored server: %+v %t", p, found)
+	}
+	if entry, err := target.OTPEntry(codeID); err != nil || entry.Secret != "JBSWY3DPEHPK3PXP" {
+		t.Errorf("the restored code: %+v %v", entry, err)
+	}
+
+	// A password given for a backup without one is not needed.
+	plain, err := source.CreateBackup(BackupParts{Parts: backupParts})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = target.InspectBackup(BackupText{Text: plain.Text, Password: "correct horse"}); err != nil {
+		t.Errorf("a plain backup with a password: %v", err)
+	}
+}
