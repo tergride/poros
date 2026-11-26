@@ -72,6 +72,7 @@ var allPreset = Preset{
 // sampleLinks covers every protocol and transport the builder writes; each must build and pass the core's check.
 func sampleLinks(t *testing.T) map[string]string {
 	ca, staticKey := testCA(t), testStaticKey(t)
+	bignCA, bignCert, bignKey, _ := testBignClient(t, "secret")
 	leg := xhttpExtra(t, map[string]any{
 		"xPaddingBytes": "100-1000",
 		"downloadSettings": map[string]any{
@@ -134,6 +135,9 @@ func sampleLinks(t *testing.T) map[string]string {
 			`"remotes":[{"server":"o2.example.com","port":443,"network":"tcp"}],"username":"u","password":"pw","ca":` + jsonString(t, ca) +
 			`,"control_wrap":{"type":"tls_crypt","key":` + jsonString(t, staticKey) + `},"verify_name":"o.example.com",` +
 			`"remote_cert_tls":"server","data_ciphers":["AES-256-GCM"],"compression":"lz4-v2","ping_interval":"10s","ping_restart":"60s"}}`),
+		"openvpn-by": porosLink(`{"type":"openvpn-by","name":"by","server":"by.example.com","server_port":443,"openvpn":{"network":"tcp",` +
+			`"ca":` + jsonString(t, bignCA) + `,"cert":` + jsonString(t, bignCert) + `,"key":` + jsonString(t, bignKey) + `,"key_password":"secret",` +
+			`"tls_cipher":["DHE-BIGN-WITH-BELT-DWP-HBELT","DHT-BIGN-WITH-BELT-CTR-MAC-HBELT"],"data_ciphers":["belt-cbc256","belt-cfb256"],"auth":"bash512"}}`),
 		"openconnect": porosLink(`{"type":"openconnect","name":"office","server":"gw.example.com","server_port":8443,` +
 			`"openconnect":{"flavor":"anyconnect","path":"/staff","username":"u","password":"pw","ca":` + jsonString(t, ca) + `}}`),
 		"masque": porosLink(`{"type":"masque","name":"masque","server":"m.example.com","server_port":443,"masque":{"username":"u",` +

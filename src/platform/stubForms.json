@@ -3977,6 +3977,279 @@
       ]
     },
     {
+      "type": "openvpn-by",
+      "fields": [
+        {
+          "path": "name",
+          "label": "name",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server",
+          "label": "server",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "server_port",
+          "label": "port",
+          "kind": "number",
+          "tab": "common"
+        },
+        {
+          "path": "openvpn.network",
+          "label": "openvpn.network",
+          "kind": "select",
+          "tab": "common",
+          "options": [
+            "",
+            "udp",
+            "udp4",
+            "udp6",
+            "tcp",
+            "tcp4",
+            "tcp6"
+          ]
+        },
+        {
+          "path": "openvpn.username",
+          "label": "username",
+          "kind": "text",
+          "tab": "common"
+        },
+        {
+          "path": "openvpn.password",
+          "label": "password",
+          "kind": "secret",
+          "tab": "common"
+        },
+        {
+          "path": "openvpn.otp",
+          "label": "otp",
+          "kind": "otp",
+          "tab": "common"
+        },
+        {
+          "path": "openvpn.ca",
+          "label": "pem.ca",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.cert",
+          "label": "pem.cert",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.key",
+          "label": "pem.key",
+          "kind": "lines",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.key_password",
+          "label": "pem.keyPassword",
+          "kind": "secret",
+          "tab": "security",
+          "when": [
+            {
+              "path": "openvpn.key"
+            }
+          ]
+        },
+        {
+          "path": "openvpn.tls_cipher",
+          "label": "openvpn.tlsCipher",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.peer_fingerprint",
+          "label": "openvpn.fingerprint",
+          "kind": "list",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.control_wrap.type",
+          "label": "openvpn.wrap",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "",
+            "tls_auth",
+            "tls_crypt",
+            "tls_crypt_v2"
+          ]
+        },
+        {
+          "path": "openvpn.control_wrap.key",
+          "label": "openvpn.wrapKey",
+          "kind": "lines",
+          "tab": "security",
+          "when": [
+            {
+              "path": "openvpn.control_wrap.type"
+            }
+          ]
+        },
+        {
+          "path": "openvpn.control_wrap.direction",
+          "label": "openvpn.wrapDirection",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "",
+            "server",
+            "client"
+          ],
+          "when": [
+            {
+              "path": "openvpn.control_wrap.type",
+              "in": [
+                "tls_auth"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "openvpn.verify_name",
+          "label": "openvpn.verifyName",
+          "kind": "text",
+          "tab": "security"
+        },
+        {
+          "path": "openvpn.verify_name_type",
+          "label": "openvpn.verifyNameType",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "",
+            "subject",
+            "name",
+            "name-prefix"
+          ],
+          "when": [
+            {
+              "path": "openvpn.verify_name"
+            }
+          ]
+        },
+        {
+          "path": "openvpn.remote_cert_tls",
+          "label": "openvpn.remoteCertTls",
+          "kind": "select",
+          "tab": "security",
+          "options": [
+            "",
+            "server",
+            "client",
+            "none"
+          ]
+        },
+        {
+          "path": "openvpn.cipher",
+          "label": "openvpn.cipher",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.data_ciphers",
+          "label": "openvpn.dataCiphers",
+          "kind": "list",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.auth",
+          "label": "openvpn.auth",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "bash512",
+            "bash384",
+            "bash256",
+            "belt-hash"
+          ]
+        },
+        {
+          "path": "openvpn.compression",
+          "label": "openvpn.compression",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "none",
+            "no",
+            "lz4",
+            "lz4-v2",
+            "stub",
+            "stub-v2",
+            "disabled",
+            "off"
+          ]
+        },
+        {
+          "path": "openvpn.compression_lzo",
+          "label": "openvpn.lzo",
+          "kind": "select",
+          "tab": "advanced",
+          "options": [
+            "",
+            "none",
+            "no",
+            "yes",
+            "adaptive",
+            "asym",
+            "disabled",
+            "off"
+          ]
+        },
+        {
+          "path": "openvpn.mtu",
+          "label": "mtu",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.mss_fix",
+          "label": "openvpn.mssFix",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.fragment",
+          "label": "openvpn.fragment",
+          "kind": "number",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.ping_interval",
+          "label": "openvpn.ping",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.ping_restart",
+          "label": "openvpn.pingRestart",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.renegotiate_interval",
+          "label": "openvpn.renegotiate",
+          "kind": "text",
+          "tab": "advanced"
+        },
+        {
+          "path": "openvpn.static_challenge",
+          "label": "openvpn.challenge",
+          "kind": "text",
+          "tab": "advanced"
+        }
+      ]
+    },
+    {
       "type": "openconnect",
       "fields": [
         {
@@ -4080,7 +4353,7 @@
         },
         {
           "path": "openconnect.key_password",
-          "label": "openconnect.keyPassword",
+          "label": "pem.keyPassword",
           "kind": "secret",
           "tab": "security",
           "when": [
@@ -4366,6 +4639,29 @@
         "server": "",
         "server_port": 1194,
         "openvpn": {}
+      }
+    },
+    {
+      "id": "openvpn-by",
+      "kind": "vpn",
+      "profile": {
+        "type": "openvpn-by",
+        "server": "",
+        "server_port": 443,
+        "openvpn": {
+          "network": "tcp",
+          "tls_cipher": [
+            "DHE-BIGN-WITH-BELT-DWP-HBELT",
+            "DHT-BIGN-WITH-BELT-DWP-HBELT",
+            "DHE-BIGN-WITH-BELT-CTR-MAC-HBELT",
+            "DHT-BIGN-WITH-BELT-CTR-MAC-HBELT"
+          ],
+          "data_ciphers": [
+            "belt-cbc256",
+            "belt-cfb256"
+          ],
+          "auth": "bash512"
+        }
       }
     },
     {

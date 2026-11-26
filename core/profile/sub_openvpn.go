@@ -126,20 +126,64 @@ func openVPNDirection(value string) string {
 // pasted file has no folder to read the files it names from.
 func parseOpenVPNConfig(text []byte, d *Document) {
 	d.Format = FormatOpenVPN
-	p, err := readOpenVPNConfig(text)
+	p, files, err := readOpenVPNConfig(text)
+	if err == nil {
+		err = files.first
+	}
 	d.add(1, "", p, err)
 }
 
-func readOpenVPNConfig(text []byte) (Profile, error) {
+// OpenVPNFiles tells which keys, certificates and sign-in an .ovpn file reads from files of their own.
+type OpenVPNFiles struct {
+	CA, Cert, Key bool
+	// WrapKey is the key of tls-auth, tls-crypt or tls-crypt-v2.
+	WrapKey bool
+	// Credentials is the name and the password of auth-user-pass.
+	Credentials bool
+	// first is the refusal of a document, which has no folder to read them from.
+	first error
+}
+
+// Any tells a file of any of them.
+func (f OpenVPNFiles) Any() bool { return f.CA || f.Cert || f.Key || f.WrapKey || f.Credentials }
+
+// ReadOpenVPNConfig reads an .ovpn file as one server whose keys and certificates may be files of their own: those
+// stay empty, and files tells which, for the user to choose them. The profile is not checked, as it cannot pass before
+// they are in.
+func ReadOpenVPNConfig(text []byte) (Profile, OpenVPNFiles, error) {
+	text = trimDocument(text)
+	if !isOpenVPNConfig(text) {
+		return Profile{}, OpenVPNFiles{}, errors.New("this is no .ovpn file")
+	}
+	return readOpenVPNConfig(text)
+}
+
+func readOpenVPNConfig(text []byte) (Profile, OpenVPNFiles, error) {
+	var files OpenVPNFiles
 	lines, err := splitOpenVPNConfig(text)
 	if err != nil {
-		return Profile{}, err
+		return Profile{}, files, err
 	}
 	o := &OpenVPN{}
 	var remotes []OpenVPNRemote
 	port, name, keyDirection := 1194, "", ""
-	fileError := func(directive, file string) error {
-		return fmt.Errorf("the config reads %s from the file %q: put the file inline as <%s>...</%s>", directive, file, directive, directive)
+	readsFile := func(directive, file string) {
+		if files.first == nil {
+			files.first = fmt.Errorf("the config reads %s from the file %q: put the file inline as <%s>...</%s>", directive, file, directive, directive)
+		}
+		switch directive {
+		case "ca":
+			files.CA = true
+		case "cert":
+			files.Cert = true
+		case "key":
+			files.Key = true
+		case "auth-user-pass":
+			files.Credentials = true
+		default:
+			files.WrapKey = true
+			o.ControlWrap.Type = strings.ReplaceAll(directive, "-", "_")
+		}
 	}
 	for _, line := range lines {
 		args := line.args
@@ -151,7 +195,7 @@ func readOpenVPNConfig(text []byte) (Profile, error) {
 		case "<connection>":
 			sub, err := splitOpenVPNConfig([]byte(line.body))
 			if err != nil {
-				return Profile{}, err
+				return Profile{}, files, err
 			}
 			r, network := OpenVPNRemote{}, ""
 			for _, item := range sub {
@@ -192,21 +236,21 @@ func readOpenVPNConfig(text []byte) (Profile, error) {
 		case "<peer-fingerprint>":
 			o.PeerFingerprint = append(o.PeerFingerprint, strings.Fields(line.body)...)
 		case "<pkcs12>", "pkcs12":
-			return Profile{}, unsupported("PKCS#12 keys are not supported; export the certificate and key as PEM")
+			return Profile{}, files, unsupported("PKCS#12 keys are not supported; export the certificate and key as PEM")
 		case "mode":
 			if !strings.EqualFold(value, "p2p") {
-				return Profile{}, errors.New("this is the config of an OpenVPN server, not of a client")
+				return Profile{}, files, errors.New("this is the config of an OpenVPN server, not of a client")
 			}
 		case "dev", "dev-type":
 			if strings.HasPrefix(strings.ToLower(value), "tap") {
-				return Profile{}, unsupported("OpenVPN over a TAP device is not supported; only TUN works")
+				return Profile{}, files, unsupported("OpenVPN over a TAP device is not supported; only TUN works")
 			}
 		case "remote":
 			remotes = append(remotes, openVPNRemote(args))
 		case "proto":
 			network, ok := openVPNNetwork(value)
 			if !ok {
-				return Profile{}, unsupported("the OpenVPN protocol %q is not supported", value)
+				return Profile{}, files, unsupported("the OpenVPN protocol %q is not supported", value)
 			}
 			o.Network = network
 		case "port", "rport":
@@ -217,16 +261,16 @@ func readOpenVPNConfig(text []byte) (Profile, error) {
 			o.RemoteRandom = true
 		case "auth-user-pass":
 			if value != "" {
-				return Profile{}, fileError("auth-user-pass", value)
+				readsFile(args[0], value)
 			}
 		case "static-challenge":
 			o.StaticChallenge = value
 			o.StaticChallengeEcho = len(args) > 2 && args[2] == "1"
 		case "secret", "<secret>":
-			return Profile{}, unsupported("OpenVPN's static key mode, which OpenVPN itself is retiring, is not supported")
+			return Profile{}, files, unsupported("OpenVPN's static key mode, which OpenVPN itself is retiring, is not supported")
 		case "ca", "cert", "key", "tls-auth", "tls-crypt", "tls-crypt-v2":
 			if value != "" && value != "[inline]" {
-				return Profile{}, fileError(args[0], value)
+				readsFile(args[0], value)
 			}
 			if args[0] == "tls-auth" && len(args) > 2 {
 				keyDirection = openVPNDirection(args[2])
@@ -245,6 +289,8 @@ func readOpenVPNConfig(text []byte) (Profile, error) {
 			}
 		case "remote-cert-tls":
 			o.RemoteCertTLS = value
+		case "tls-cipher":
+			o.TLSCipher = strings.Split(strings.ToUpper(value), ":")
 		case "tls-version-min":
 			o.TLSVersionMin = value
 		case "tls-version-max":
@@ -298,7 +344,7 @@ func readOpenVPNConfig(text []byte) (Profile, error) {
 		name = openVPNFriendlyName(text)
 	}
 	if len(remotes) == 0 {
-		return Profile{}, errors.New("the config names no remote server")
+		return Profile{}, files, errors.New("the config names no remote server")
 	}
 	// The first remote is the profile's server, and its protocol the profile's; the others keep their own where it
 	// differs.
@@ -327,7 +373,39 @@ func readOpenVPNConfig(text []byte) (Profile, error) {
 		}
 		o.Remotes = append(o.Remotes, r)
 	}
-	return Profile{Type: TypeOpenVPN, Name: name, Server: first.Server, ServerPort: first.Port, OpenVPN: o}, nil
+	// A block inline after all is no file to choose.
+	files.CA, files.Cert, files.Key = files.CA && o.CA == "", files.Cert && o.Cert == "", files.Key && o.Key == ""
+	files.WrapKey = files.WrapKey && o.ControlWrap.Key == ""
+	files.Credentials = files.Credentials && o.Username == ""
+	if !files.Any() {
+		files.first = nil
+	}
+	kind := TypeOpenVPN
+	if isOpenVPNBY(o) {
+		kind = TypeOpenVPNBY
+		if len(o.TLSCipher) == 0 {
+			o.TLSCipher = slices.Clone(btlsSuites)
+		}
+	} else {
+		// Plain OpenVPN runs the suites of Go's TLS by its own choice.
+		o.TLSCipher = nil
+	}
+	return Profile{Type: kind, Name: name, Server: first.Server, ServerPort: first.Port, OpenVPN: o}, files, nil
+}
+
+// isOpenVPNBY tells a config of OpenVPN|BY: BTLS suites in tls-cipher, or belt and bash for the data channel.
+func isOpenVPNBY(o *OpenVPN) bool {
+	for _, suite := range o.TLSCipher {
+		if slices.Contains(btlsSuites, suite) {
+			return true
+		}
+	}
+	for _, name := range append(slices.Clone(o.DataCiphers), o.Cipher, o.DataCiphersFallback, o.Auth) {
+		if name = strings.ToLower(name); strings.HasPrefix(name, "belt-") || strings.HasPrefix(name, "bash") {
+			return true
+		}
+	}
+	return false
 }
 
 // openVPNRemote reads remote host [port] [proto].

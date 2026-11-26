@@ -503,8 +503,8 @@ export interface Server {
   name: string;
   /**
    * Protocol is the type of its profile: vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http, anytls,
-   * wireguard, hysteria, naive, ssh, snell, openvpn, openconnect, masque, chain, custom or direct. A chain, Direct and
-   * a custom outbound have no host or port.
+   * wireguard, hysteria, naive, ssh, snell, openvpn, openvpn-by, openconnect, masque, chain, custom or direct. A
+   * chain, Direct and a custom outbound have no host or port.
    */
   protocol: string;
   host: string;
@@ -1375,6 +1375,11 @@ export interface ServersAdded {
    * Skips groups the items of the text that did not become servers by reason.
    */
   skips: SkipReason[];
+  /**
+   * Draft is an .ovpn that reads keys, certificates or its sign-in from files of their own, added as nothing yet:
+   * the profile of it without them, for the editor to fill in and save.
+   */
+  draft?: profile.Profile;
 }
 /**
  * ServerProfile is a server with all of its settings.
@@ -1660,15 +1665,15 @@ export interface OTPLink {
   link: string;
 }
 /**
- * Endpoint is an OpenVPN or OpenConnect connection of its own that runs alongside the server with any preset while
- * it is on: the networks its server announces go through it, and so does the traffic of its rules, before the rules
- * of any preset. This is it as the list shows it.
+ * Endpoint is an OpenVPN, OpenVPN|BY or OpenConnect connection of its own that runs alongside the server with any
+ * preset while it is on: the networks its server announces go through it, and so does the traffic of its rules, before
+ * the rules of any preset. This is it as the list shows it.
  */
 export interface Endpoint {
   id: string;
   name: string;
   /**
-   * Type is openvpn or openconnect.
+   * Type is openvpn, openvpn-by or openconnect.
    */
   type: string;
   on: boolean;
@@ -1693,38 +1698,51 @@ export interface EndpointEntry {
   need: string[];
 }
 /**
- * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
- * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ * Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+ * endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+ * protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
  */
 export const SignInUsername = "username";
 /**
- * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
- * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ * Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+ * endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+ * protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
  */
 export const SignInPassword = "password";
 /**
- * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
- * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ * Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+ * endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+ * protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ */
+export const SignInCA = "ca";
+/**
+ * Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+ * endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+ * protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
  */
 export const SignInCert = "cert";
 /**
- * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
- * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ * Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+ * endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+ * protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
  */
 export const SignInKey = "key";
 /**
- * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
- * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ * Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+ * endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+ * protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
  */
 export const SignInKeyPassword = "keyPassword";
 /**
- * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
- * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ * Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+ * endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+ * protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
  */
 export const SignInWrapKey = "wrapKey";
 /**
- * Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
- * of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+ * Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+ * endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+ * protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
  */
 export const SignInOTP = "otp";
 /**
@@ -2363,6 +2381,11 @@ export const ReasonEndpointNameTaken = "endpoint_name_taken";
  * ReasonSignInMissing is an endpoint turned on while the data for signing in its file came without is missing.
  */
 export const ReasonSignInMissing = "sign_in_missing";
+/**
+ * ReasonKeyPassword is a server or an endpoint of OpenVPN|BY whose key its password does not open, or one without
+ * the password it needs; ErrorText names it.
+ */
+export const ReasonKeyPassword = "key_password";
 /**
  * ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
  */

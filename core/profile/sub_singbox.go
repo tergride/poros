@@ -1066,6 +1066,7 @@ type singBoxOpenVPNOptions struct {
 		RemoteCertificateTLS  string      `json:"remote_certificate_tls"`
 		VersionMin            string      `json:"version_min"`
 		VersionMax            string      `json:"version_max"`
+		Cipher                string      `json:"cipher"`
 		ControlWrap           *struct {
 			Type      string      `json:"type"`
 			Key       singBoxList `json:"key"`
@@ -1157,12 +1158,24 @@ func singBoxOpenVPNEndpoint(raw json.RawMessage) (Profile, error) {
 		v.CA, v.Cert, v.Key = singBoxPEM(t.Certificate), singBoxPEM(t.ClientCertificate), singBoxPEM(t.ClientKey)
 		v.PeerFingerprint = linkList(strings.Join(t.PeerFingerprint, ","))
 		v.RemoteCertTLS, v.TLSVersionMin, v.TLSVersionMax = t.RemoteCertificateTLS, t.VersionMin, t.VersionMax
+		if t.Cipher != "" {
+			v.TLSCipher = strings.Split(strings.ToUpper(t.Cipher), ":")
+		}
 		if w := t.ControlWrap; w != nil && w.Type != "" {
 			if err := singBoxFileError(w.KeyPath); err != nil {
 				return Profile{}, err
 			}
 			v.ControlWrap = OpenVPNControlWrap{Type: w.Type, Key: singBoxPEM(w.Key), Direction: w.Direction}
 		}
+	}
+	// The suites of OpenVPN|BY make it one; plain OpenVPN runs those of Go's TLS by its own choice.
+	if isOpenVPNBY(v) {
+		p.Type = TypeOpenVPNBY
+		if len(v.TLSCipher) == 0 {
+			v.TLSCipher = slices.Clone(btlsSuites)
+		}
+	} else {
+		v.TLSCipher = nil
 	}
 	p.OpenVPN = v
 	return p, nil

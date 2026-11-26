@@ -100,6 +100,7 @@ const protocolNames: Record<string, string> = {
   ssh: 'SSH',
   snell: 'Snell',
   openvpn: 'OpenVPN',
+  'openvpn-by': 'OpenVPN|BY',
   openconnect: 'OpenConnect',
   masque: 'MASQUE',
   shadowtls: 'ShadowTLS',

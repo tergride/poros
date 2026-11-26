@@ -674,6 +674,63 @@ test('endpoints run beside the server with any preset, with their own rules, fil
   await expect(page.getByTestId('endpoint-name')).toHaveValue('Офис')
 })
 
+test('OpenVPN|BY comes from «New profile» and from an .ovpn whose keys are files, which «From file…» reads', async ({ page }) => {
+  await toAdvanced(page)
+  const pem = (kind: string, name: string) => ({ name, mimeType: 'application/x-pem-file', buffer: Buffer.from(`-----BEGIN ${kind}-----\nAAAA\n-----END ${kind}-----\n`) })
+  const fromFile = (dialog: ReturnType<Page['getByRole']>, path: string, file: ReturnType<typeof pem>) =>
+    dialog.locator(`[data-field="${path}"] [data-testid="field-file"]`).setInputFiles(file)
+
+  // «New profile» starts it as the client of OpenVPN|BY does: TCP, the BTLS suites, belt and bash.
+  await page.getByTestId('new-profile').click()
+  await page.getByTestId('new-openvpn-by').click()
+  const editor = page.getByRole('dialog', { name: 'Новый профиль' })
+  await expect(editor.getByTestId('profile-chip')).toHaveText('OpenVPN|BY')
+  await editor.getByRole('tab', { name: 'Безопасность' }).click()
+  await expect(editor.getByLabel('tls-cipher')).toHaveValue(/^DHE-BIGN-WITH-BELT-DWP-HBELT, DHT-BIGN-WITH-BELT-DWP-HBELT/)
+  await expect(editor.locator('[data-field="openvpn.key_password"] input')).toBeDisabled()
+  await shot(page, 'adv-profile-openvpn-by')
+  await editor.getByRole('button', { name: 'Отмена' }).click()
+  await expect(editor).toBeHidden()
+
+  // An .ovpn that keeps its keys in files opens in the editor, where «From file…» puts each file into its field.
+  const ovpn = 'client\ndev tun\nproto tcp\nremote by.example.com 443\nca CA_crt.pem\ncert client_crt.pem\nkey client_pr.pem\n' +
+    'tls-cipher DHE-BIGN-WITH-BELT-DWP-HBELT\ndata-ciphers belt-cfb256\nauth bash512\n'
+  await page.getByRole('button', { name: 'Импорт' }).click()
+  await page.getByRole('menuitem', { name: 'Ввести ссылку…' }).click()
+  await page.getByTestId('import-text').fill(ovpn)
+  await page.getByTestId('import-add').click()
+  await expect(page.getByTestId('notice')).toContainText('в отдельных файлах')
+  await expect(editor.getByTestId('profile-chip')).toHaveText('OpenVPN|BY')
+  await editor.getByRole('tab', { name: 'Безопасность' }).click()
+  await fromFile(editor, 'openvpn.ca', pem('CERTIFICATE', 'CA_crt.pem'))
+  await expect(editor.getByLabel('Сертификат центра (CA)')).toHaveValue('-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----')
+  await fromFile(editor, 'openvpn.cert', pem('CERTIFICATE', 'client_crt.pem'))
+  await fromFile(editor, 'openvpn.key', pem('ENCRYPTED PRIVATE KEY', 'client_pr.pem'))
+  await editor.getByLabel('Пароль ключа').fill('secret')
+  await shot(page, 'adv-profile-openvpn-by-files')
+  await editor.getByTestId('profile-save').click()
+  await expect(editor).toBeHidden()
+  await page.getByTestId('group-item').nth(1).click()
+  await expect(page.getByTestId('profile-row')).toContainText('by.example.com')
+
+  // As an endpoint it needs the files and the password of the key, and «From file…» reads them there too.
+  await page.getByTestId('rail-routing').click()
+  await page.getByTestId('routing-tab-endpoints').click()
+  await page.getByTestId('endpoint-import').click()
+  await page.getByTestId('endpoint-import-file').setInputFiles({ name: 'office.ovpn', mimeType: 'text/plain', buffer: Buffer.from(ovpn) })
+  const fill = page.getByRole('dialog', { name: 'Данные для входа в «by.example.com»' })
+  await expect(fill.locator('[data-field]')).toHaveCount(4)
+  await fromFile(fill, 'openvpn.ca', pem('CERTIFICATE', 'CA_crt.pem'))
+  await fromFile(fill, 'openvpn.cert', pem('CERTIFICATE', 'client_crt.pem'))
+  await fromFile(fill, 'openvpn.key', pem('ENCRYPTED PRIVATE KEY', 'client_pr.pem'))
+  await fill.getByLabel('Пароль ключа').fill('secret')
+  await shot(page, 'adv-routing-endpoint-fill-openvpn-by')
+  await fill.getByTestId('endpoint-fill-done').click()
+  await expect(fill).toBeHidden()
+  await expect(page.getByTestId('endpoint-need')).toHaveCount(0)
+  await expect(page.getByTestId('routing-endpoint')).toContainText('by.example.com')
+})
+
 test('the DNS settings of the advanced mode take answers, the cache and an own dns object, and wait for Save', async ({ page }) => {
   await toAdvanced(page)
   await page.getByTestId('rail-settings').click()

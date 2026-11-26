@@ -6,7 +6,7 @@ import ProfileField from '@/components/adv/ProfileField.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { useEndpointDraft } from '@/composables/useEndpointDraft'
 import { useProfileForms } from '@/composables/useProfileForms'
-import { fieldState, getAt, holds } from '@/lib/profileForm'
+import { fieldState, getAt, holds, partOf } from '@/lib/profileForm'
 import type { Field } from '@/platform/profile-types'
 import { TabAdvanced, TabCommon, TabSecurity } from '@/platform/profile-types'
 
@@ -23,7 +23,7 @@ const type = computed(() => entry.value?.profile.type ?? '')
 const form = computed(() => (forms.value ? formOf(type.value) : undefined))
 
 function signIn(field: Field): boolean {
-  const own = ['username', 'password', 'otp', 'cert', 'key', 'key_password'].map((name) => `${type.value}.${name}`)
+  const own = ['username', 'password', 'otp', 'cert', 'key', 'key_password'].map((name) => `${partOf(type.value)}.${name}`)
   if (own.includes(field.path)) return true
   return field.path === 'openvpn.control_wrap.key' && getAt(profile.value, 'openvpn.control_wrap.type') === 'tls_crypt_v2'
 }

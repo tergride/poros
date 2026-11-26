@@ -346,8 +346,8 @@ type Server struct {
 	GroupID string `json:"groupId"`
 	Name    string `json:"name"`
 	// Protocol is the type of its profile: vless, vmess, trojan, shadowsocks, hysteria2, tuic, socks, http, anytls,
-	// wireguard, hysteria, naive, ssh, snell, openvpn, openconnect, masque, chain, custom or direct. A chain, Direct and
-	// a custom outbound have no host or port.
+	// wireguard, hysteria, naive, ssh, snell, openvpn, openvpn-by, openconnect, masque, chain, custom or direct. A
+	// chain, Direct and a custom outbound have no host or port.
 	Protocol string `json:"protocol"`
 	Host     string `json:"host"`
 	Port     int    `json:"port"`
@@ -928,6 +928,9 @@ type ServersAdded struct {
 	IDs []string `json:"ids"`
 	// Skips groups the items of the text that did not become servers by reason.
 	Skips []SkipReason `json:"skips"`
+	// Draft is an .ovpn that reads keys, certificates or its sign-in from files of their own, added as nothing yet:
+	// the profile of it without them, for the editor to fill in and save.
+	Draft *profile.Profile `json:"draft,omitempty"`
 }
 
 // ServerProfile is a server with all of its settings.
@@ -1147,13 +1150,13 @@ type OTPLink struct {
 	Link string `json:"link"`
 }
 
-// Endpoint is an OpenVPN or OpenConnect connection of its own that runs alongside the server with any preset while
-// it is on: the networks its server announces go through it, and so does the traffic of its rules, before the rules
-// of any preset. This is it as the list shows it.
+// Endpoint is an OpenVPN, OpenVPN|BY or OpenConnect connection of its own that runs alongside the server with any
+// preset while it is on: the networks its server announces go through it, and so does the traffic of its rules, before
+// the rules of any preset. This is it as the list shows it.
 type Endpoint struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	// Type is openvpn or openconnect.
+	// Type is openvpn, openvpn-by or openconnect.
 	Type  string `json:"type"`
 	On    bool   `json:"on"`
 	Rules int    `json:"rules"`
@@ -1172,11 +1175,13 @@ type EndpointEntry struct {
 	Need []string `json:"need"`
 }
 
-// Data for signing in that a file of an endpoint can leave out, as Endpoint.Need names them. SignInWrapKey is the key
-// of tls-crypt-v2, the client's own; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
+// Data for signing in that an endpoint can come without, as Endpoint.Need names them: left out of the file of an
+// endpoint, or read by an .ovpn from files of their own. SignInWrapKey is the key of the control channel's
+// protection; SignInOTP is a code of «Tools → OTP» to choose for {otp}.
 const (
 	SignInUsername    = "username"
 	SignInPassword    = "password"
+	SignInCA          = "ca"
 	SignInCert        = "cert"
 	SignInKey         = "key"
 	SignInKeyPassword = "keyPassword"
@@ -1498,6 +1503,9 @@ const (
 	ReasonEndpointNameTaken = "endpoint_name_taken"
 	// ReasonSignInMissing is an endpoint turned on while the data for signing in its file came without is missing.
 	ReasonSignInMissing = "sign_in_missing"
+	// ReasonKeyPassword is a server or an endpoint of OpenVPN|BY whose key its password does not open, or one without
+	// the password it needs; ErrorText names it.
+	ReasonKeyPassword = "key_password"
 	// ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
 	ReasonSystemProxyFailed = "system_proxy_failed"
 	// ReasonStopTimeout is a connection that did not close in time; the core has to restart to let go of it.

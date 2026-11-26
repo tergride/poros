@@ -427,6 +427,10 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		}
 	}
 	configs, err := config.Build(in)
+	var locked *config.KeyPasswordError
+	if errors.As(err, &locked) {
+		return ConnectionState{}, failure(ReasonKeyPassword, "%s: %v", locked.Server, locked.Err)
+	}
 	if errors.Is(err, profile.ErrUnsupported) {
 		return ConnectionState{}, failure(ReasonServerUnsupported, "%v", err)
 	}

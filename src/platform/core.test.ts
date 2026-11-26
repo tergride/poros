@@ -506,6 +506,22 @@ ${vless('se.example.com', 'Sweden')}` })
     expect(lists.lists).toEqual({ endpoint: 'suffix:wiki.example' })
   })
 
+  it('reads an .ovpn of OpenVPN|BY with its keys in files as the engine does', async () => {
+    const core = createStubCore()
+    const text = 'client\ndev tun\nproto tcp\nremote by.example.com 443\nca CA_crt.pem\ncert client_crt.pem\nkey client_pr.pem\n' +
+      'tls-cipher DHE-BIGN-WITH-BELT-DWP-HBELT\ndata-ciphers belt-cfb256\nauth bash512\n'
+    const endpoint = await core.call(MethodEndpointsImport, { text })
+    expect(endpoint).toMatchObject({ type: 'openvpn-by', on: false, need: ['ca', 'cert', 'key', 'keyPassword'] })
+    const entry = await core.call(MethodEndpointsGet, { id: endpoint.id })
+    Object.assign(entry.profile.openvpn!, { ca: 'CA', cert: 'CERT', key: '-----BEGIN PRIVATE KEY-----' })
+    expect((await core.call(MethodEndpointsSave, entry)).need).toEqual([])
+
+    // As a server it adds nothing yet: the editor takes the files.
+    const added = await core.call(MethodServersAdd, { groupId: '', newGroup: 'Mine', text })
+    expect(added.ids).toEqual([])
+    expect(added.draft).toMatchObject({ type: 'openvpn-by', server: 'by.example.com', openvpn: { tls_cipher: ['DHE-BIGN-WITH-BELT-DWP-HBELT'] } })
+  })
+
   it('keeps WARP in the settings and its rules in an advanced preset, as the engine does', async () => {
     const core = createStubCore()
     const settings = await core.call(MethodSettingsGet)

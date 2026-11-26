@@ -1,5 +1,7 @@
 package profile
 
+import "slices"
+
 // The editor of the advanced mode draws one form from these descriptions: each field names where it lives in the
 // stored profile, how it is edited, on which tab, and what it depends on. The interface names a field by its label,
 // which its languages translate.
@@ -254,6 +256,46 @@ func pemFields(prefix string) []Field {
 	}
 }
 
+// openVPNFields are the settings of OpenVPN; by gives those of OpenVPN|BY, which adds the password of the key and the
+// BTLS suites and takes the digest of its HMAC from a short list.
+func openVPNFields(by bool) []Field {
+	fields := join(addressFields(), []Field{
+		field("openvpn.network", "openvpn.network", FieldSelect, TabCommon).options(openVPNNetworks...),
+		field("openvpn.username", "username", FieldText, TabCommon),
+		field("openvpn.password", "password", FieldSecret, TabCommon),
+		field("openvpn.otp", "otp", FieldOTP, TabCommon),
+	}, pemFields("openvpn"))
+	auth := field("openvpn.auth", "openvpn.auth", FieldText, TabAdvanced)
+	if by {
+		fields = append(fields,
+			field("openvpn.key_password", "pem.keyPassword", FieldSecret, TabSecurity).when("openvpn.key"),
+			field("openvpn.tls_cipher", "openvpn.tlsCipher", FieldList, TabSecurity),
+		)
+		auth = field("openvpn.auth", "openvpn.auth", FieldSelect, TabAdvanced).options(bashDigests...)
+	}
+	return append(fields,
+		field("openvpn.peer_fingerprint", "openvpn.fingerprint", FieldList, TabSecurity),
+		field("openvpn.control_wrap.type", "openvpn.wrap", FieldSelect, TabSecurity).options("", "tls_auth", "tls_crypt", "tls_crypt_v2"),
+		field("openvpn.control_wrap.key", "openvpn.wrapKey", FieldLines, TabSecurity).when("openvpn.control_wrap.type"),
+		field("openvpn.control_wrap.direction", "openvpn.wrapDirection", FieldSelect, TabSecurity).options("", "server", "client").when("openvpn.control_wrap.type", "tls_auth"),
+		field("openvpn.verify_name", "openvpn.verifyName", FieldText, TabSecurity),
+		field("openvpn.verify_name_type", "openvpn.verifyNameType", FieldSelect, TabSecurity).options("", "subject", "name", "name-prefix").when("openvpn.verify_name"),
+		field("openvpn.remote_cert_tls", "openvpn.remoteCertTls", FieldSelect, TabSecurity).options("", "server", "client", "none"),
+		field("openvpn.cipher", "openvpn.cipher", FieldText, TabAdvanced),
+		field("openvpn.data_ciphers", "openvpn.dataCiphers", FieldList, TabAdvanced),
+		auth,
+		field("openvpn.compression", "openvpn.compression", FieldSelect, TabAdvanced).options("", "none", "no", "lz4", "lz4-v2", "stub", "stub-v2", "disabled", "off"),
+		field("openvpn.compression_lzo", "openvpn.lzo", FieldSelect, TabAdvanced).options("", "none", "no", "yes", "adaptive", "asym", "disabled", "off"),
+		field("openvpn.mtu", "mtu", FieldNumber, TabAdvanced),
+		field("openvpn.mss_fix", "openvpn.mssFix", FieldNumber, TabAdvanced),
+		field("openvpn.fragment", "openvpn.fragment", FieldNumber, TabAdvanced),
+		field("openvpn.ping_interval", "openvpn.ping", FieldText, TabAdvanced),
+		field("openvpn.ping_restart", "openvpn.pingRestart", FieldText, TabAdvanced),
+		field("openvpn.renegotiate_interval", "openvpn.renegotiate", FieldText, TabAdvanced),
+		field("openvpn.static_challenge", "openvpn.challenge", FieldText, TabAdvanced),
+	)
+}
+
 // Forms gives the form of every type of profile: those «New profile» makes, and Hysteria v1, which comes only from
 // links and subscriptions.
 func Forms() []ProfileForm {
@@ -376,32 +418,8 @@ func Forms() []ProfileForm {
 			field("wireguard.mtu", "mtu", FieldNumber, TabAdvanced),
 			field("wireguard.persistent_keepalive", "wireguard.keepalive", FieldNumber, TabAdvanced),
 		})},
-		{Type: TypeOpenVPN, Fields: join(addressFields(), []Field{
-			field("openvpn.network", "openvpn.network", FieldSelect, TabCommon).options(openVPNNetworks...),
-			field("openvpn.username", "username", FieldText, TabCommon),
-			field("openvpn.password", "password", FieldSecret, TabCommon),
-			field("openvpn.otp", "otp", FieldOTP, TabCommon),
-		}, pemFields("openvpn"), []Field{
-			field("openvpn.peer_fingerprint", "openvpn.fingerprint", FieldList, TabSecurity),
-			field("openvpn.control_wrap.type", "openvpn.wrap", FieldSelect, TabSecurity).options("", "tls_auth", "tls_crypt", "tls_crypt_v2"),
-			field("openvpn.control_wrap.key", "openvpn.wrapKey", FieldLines, TabSecurity).when("openvpn.control_wrap.type"),
-			field("openvpn.control_wrap.direction", "openvpn.wrapDirection", FieldSelect, TabSecurity).options("", "server", "client").when("openvpn.control_wrap.type", "tls_auth"),
-			field("openvpn.verify_name", "openvpn.verifyName", FieldText, TabSecurity),
-			field("openvpn.verify_name_type", "openvpn.verifyNameType", FieldSelect, TabSecurity).options("", "subject", "name", "name-prefix").when("openvpn.verify_name"),
-			field("openvpn.remote_cert_tls", "openvpn.remoteCertTls", FieldSelect, TabSecurity).options("", "server", "client", "none"),
-			field("openvpn.cipher", "openvpn.cipher", FieldText, TabAdvanced),
-			field("openvpn.data_ciphers", "openvpn.dataCiphers", FieldList, TabAdvanced),
-			field("openvpn.auth", "openvpn.auth", FieldText, TabAdvanced),
-			field("openvpn.compression", "openvpn.compression", FieldSelect, TabAdvanced).options("", "none", "no", "lz4", "lz4-v2", "stub", "stub-v2", "disabled", "off"),
-			field("openvpn.compression_lzo", "openvpn.lzo", FieldSelect, TabAdvanced).options("", "none", "no", "yes", "adaptive", "asym", "disabled", "off"),
-			field("openvpn.mtu", "mtu", FieldNumber, TabAdvanced),
-			field("openvpn.mss_fix", "openvpn.mssFix", FieldNumber, TabAdvanced),
-			field("openvpn.fragment", "openvpn.fragment", FieldNumber, TabAdvanced),
-			field("openvpn.ping_interval", "openvpn.ping", FieldText, TabAdvanced),
-			field("openvpn.ping_restart", "openvpn.pingRestart", FieldText, TabAdvanced),
-			field("openvpn.renegotiate_interval", "openvpn.renegotiate", FieldText, TabAdvanced),
-			field("openvpn.static_challenge", "openvpn.challenge", FieldText, TabAdvanced),
-		})},
+		{Type: TypeOpenVPN, Fields: openVPNFields(false)},
+		{Type: TypeOpenVPNBY, Fields: openVPNFields(true)},
 		{Type: TypeOpenConnect, Fields: join(addressFields(), []Field{
 			field("openconnect.flavor", "openconnect.flavor", FieldSelect, TabCommon).options(openConnectFlavors...),
 			field("openconnect.path", "transport.path", FieldText, TabCommon),
@@ -412,7 +430,7 @@ func Forms() []ProfileForm {
 			field("openconnect.peer_fingerprint", "openconnect.fingerprint", FieldList, TabSecurity),
 			field("openconnect.insecure", "tls.insecure", FieldBool, TabSecurity).unless("openconnect.peer_fingerprint"),
 		}, pemFields("openconnect"), []Field{
-			field("openconnect.key_password", "openconnect.keyPassword", FieldSecret, TabSecurity).when("openconnect.key"),
+			field("openconnect.key_password", "pem.keyPassword", FieldSecret, TabSecurity).when("openconnect.key"),
 			field("openconnect.no_udp", "openconnect.noUdp", FieldBool, TabAdvanced),
 			field("openconnect.mtu", "mtu", FieldNumber, TabAdvanced),
 		})},
@@ -465,6 +483,10 @@ func NewProfiles() []NewProfile {
 	wireGuard.WireGuard = &WireGuard{Address: []string{}}
 	openVPN := at(TypeOpenVPN, 1194)
 	openVPN.OpenVPN = &OpenVPN{}
+	// As the client config of OpenVPN|BY: TCP, the BTLS suites with DWP first, belt-cbc first since its chain of IVs
+	// suits every server.
+	openVPNBY := at(TypeOpenVPNBY, 443)
+	openVPNBY.OpenVPN = &OpenVPN{Network: "tcp", TLSCipher: slices.Clone(btlsSuites), DataCiphers: []string{"belt-cbc256", "belt-cfb256"}, Auth: "bash512"}
 	openConnect := at(TypeOpenConnect, 443)
 	openConnect.OpenConnect = &OpenConnect{}
 	return []NewProfile{
@@ -473,7 +495,8 @@ func NewProfiles() []NewProfile {
 		{TypeSOCKS, "proxy", socks}, {TypeHTTP, "proxy", http}, {TypeNaive, "proxy", naive}, {TypeSSH, "proxy", ssh},
 		{TypeSnell, "proxy", snell},
 		{TypeHysteria2, "quic", hysteria2}, {TypeTUIC, "quic", tuic}, {TypeMASQUE, "quic", masque},
-		{TypeWireGuard, "vpn", wireGuard}, {TypeOpenVPN, "vpn", openVPN}, {TypeOpenConnect, "vpn", openConnect},
+		{TypeWireGuard, "vpn", wireGuard}, {TypeOpenVPN, "vpn", openVPN}, {TypeOpenVPNBY, "vpn", openVPNBY},
+		{TypeOpenConnect, "vpn", openConnect},
 		{TypeChain, "compound", Profile{Type: TypeChain, Chain: &Chain{Servers: []string{}}}},
 		{TypeCustom, "compound", Profile{Type: TypeCustom, Custom: &Custom{JSON: []byte(`{"type":"","server":"","server_port":443}`)}}},
 		{TypeDirect, "compound", Profile{Type: TypeDirect, Direct: &Direct{}}},

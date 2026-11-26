@@ -173,6 +173,12 @@ func (e *Engine) AddServers(req AddServers) (ServersAdded, error) {
 	if err != nil {
 		return ServersAdded{}, jsonrpc.Failed(ReasonNoServers, "%s", err.Error())
 	}
+	// An .ovpn that keeps its keys in files of their own goes to the editor, where the user chooses them.
+	if doc.Format == profile.FormatOpenVPN && len(doc.Profiles) == 0 {
+		if p, files, err := profile.ReadOpenVPNConfig([]byte(text)); err == nil && files.Any() {
+			return ServersAdded{IDs: []string{}, Skips: []SkipReason{}, Draft: &p}, nil
+		}
+	}
 	if len(doc.Profiles) == 0 {
 		message := "the text holds no servers"
 		if doc.SkippedCount > 0 {

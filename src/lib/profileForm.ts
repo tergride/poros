@@ -1,6 +1,12 @@
 import type { Field, FieldCondition, Profile, ProfileForm } from '@/platform/profile-types'
+import { TypeOpenVPN, TypeOpenVPNBY } from '@/platform/profile-types'
 
 type Json = Record<string, unknown>
+
+/** The key of a type's own part in the profile: the type itself, and openvpn for OpenVPN|BY. */
+export function partOf(type: string): string {
+  return type === TypeOpenVPNBY ? TypeOpenVPN : type
+}
 
 const isObject = (value: unknown): value is Json => typeof value === 'object' && value !== null && !Array.isArray(value)
 

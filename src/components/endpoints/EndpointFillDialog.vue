@@ -7,8 +7,9 @@ import ProfileField from '@/components/adv/ProfileField.vue'
 import { Banner, Button, Dialog } from '@/components/ui'
 import { useEndpointDraft } from '@/composables/useEndpointDraft'
 import { useProfileForms } from '@/composables/useProfileForms'
+import { partOf } from '@/lib/profileForm'
 import type { Field, Profile } from '@/platform/profile-types'
-import { SignInCert, SignInKey, SignInKeyPassword, SignInOTP, SignInPassword, SignInUsername, SignInWrapKey } from '@/platform/core-types'
+import { SignInCA, SignInCert, SignInKey, SignInKeyPassword, SignInOTP, SignInPassword, SignInUsername, SignInWrapKey } from '@/platform/core-types'
 
 // The data for signing in an endpoint's file came without: only the fields of what it needs, written into the draft
 // of the editor. Later puts them back as they were; Done saves the endpoint, which stays as on or off as it was.
@@ -26,21 +27,23 @@ watch(open, (now) => {
   void load().catch(() => undefined)
 })
 
-const pathOf: Record<string, (type: string) => string> = {
-  [SignInUsername]: (type) => `${type}.username`,
-  [SignInPassword]: (type) => `${type}.password`,
-  [SignInCert]: (type) => `${type}.cert`,
-  [SignInKey]: (type) => `${type}.key`,
-  [SignInKeyPassword]: () => 'openconnect.key_password',
-  [SignInWrapKey]: () => 'openvpn.control_wrap.key',
-  [SignInOTP]: (type) => `${type}.otp`,
+const keyOf: Record<string, string> = {
+  [SignInUsername]: 'username',
+  [SignInPassword]: 'password',
+  [SignInCA]: 'ca',
+  [SignInCert]: 'cert',
+  [SignInKey]: 'key',
+  [SignInKeyPassword]: 'key_password',
+  [SignInWrapKey]: 'control_wrap.key',
+  [SignInOTP]: 'otp',
 }
 const profile = computed(() => entry.value?.profile as unknown as Record<string, unknown> | undefined)
 const fields = computed<Field[]>(() => {
   const current = entry.value
   const form = forms.value ? formOf(current?.profile.type ?? '') : undefined
   if (!current || !form) return []
-  const paths = current.need.map((name) => pathOf[name]?.(current.profile.type)).filter(Boolean)
+  const part = partOf(current.profile.type)
+  const paths = current.need.map((name) => keyOf[name] && `${part}.${keyOf[name]}`).filter(Boolean)
   return form.fields.filter((field) => paths.includes(field.path))
 })
 

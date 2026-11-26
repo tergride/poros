@@ -90,18 +90,21 @@ func (e *Engine) EndpointEntry(id string) (EndpointEntry, error) {
 }
 
 // signInOrder is the order Need names the data for signing in in.
-var signInOrder = []string{SignInUsername, SignInPassword, SignInCert, SignInKey, SignInKeyPassword, SignInWrapKey, SignInOTP}
+var signInOrder = []string{SignInUsername, SignInPassword, SignInCA, SignInCert, SignInKey, SignInKeyPassword, SignInWrapKey, SignInOTP}
 
 // signInFields gives the data for signing in of a profile by the names Need takes, as pointers into a copy of its part
-// that the profile now holds. The key of tls-crypt-v2 is the client's own; those of tls-auth and tls-crypt are the
-// server's, shared by all its clients.
+// that the profile now holds.
 func signInFields(p *profile.Profile) map[string]*string {
 	switch {
-	case p.Type == profile.TypeOpenVPN && p.OpenVPN != nil:
+	case (p.Type == profile.TypeOpenVPN || p.Type == profile.TypeOpenVPNBY) && p.OpenVPN != nil:
 		o := *p.OpenVPN
 		p.OpenVPN = &o
-		fields := map[string]*string{SignInUsername: &o.Username, SignInPassword: &o.Password, SignInCert: &o.Cert, SignInKey: &o.Key, SignInOTP: &o.OTP}
-		if o.ControlWrap.Type == "tls_crypt_v2" {
+		fields := map[string]*string{SignInUsername: &o.Username, SignInPassword: &o.Password, SignInCA: &o.CA, SignInCert: &o.Cert,
+			SignInKey: &o.Key, SignInOTP: &o.OTP}
+		if p.Type == profile.TypeOpenVPNBY {
+			fields[SignInKeyPassword] = &o.KeyPassword
+		}
+		if o.ControlWrap.Type != "" {
 			fields[SignInWrapKey] = &o.ControlWrap.Key
 		}
 		return fields
@@ -115,7 +118,8 @@ func signInFields(p *profile.Profile) map[string]*string {
 }
 
 // stillNeeded is what of need the profile lacks yet, in signInOrder; a name it has no such data for is dropped. A code
-// of OTP is needed only while {otp} may sign in: the name or the password has it or is still missing.
+// of OTP is needed only while {otp} may sign in: the name or the password has it or is still missing. The password of
+// the key is needed only while the key is protected by one, or is not there to tell.
 func stillNeeded(need []string, p profile.Profile) []string {
 	fields := signInFields(&p)
 	missing := func(name string) bool {
@@ -124,7 +128,11 @@ func stillNeeded(need []string, p profile.Profile) []string {
 	}
 	var left []string
 	for _, name := range signInOrder {
-		if missing(name) && (name != SignInOTP || usesOTP(fields) || missing(SignInUsername) || missing(SignInPassword)) {
+		switch {
+		case !missing(name):
+		case name == SignInOTP && !usesOTP(fields) && !missing(SignInUsername) && !missing(SignInPassword):
+		case name == SignInKeyPassword && *fields[SignInKey] != "" && !strings.Contains(*fields[SignInKey], "ENCRYPTED"):
+		default:
 			left = append(left, name)
 		}
 	}
@@ -141,26 +149,19 @@ func usesOTP(fields map[string]*string) bool {
 	return false
 }
 
-// checkEndpoint reads an endpoint as it is kept: an OpenVPN or OpenConnect profile with a name, rules of an endpoint,
-// and what it still needs to sign in. It cannot be on while it needs any.
+// checkEndpoint reads an endpoint as it is kept: an OpenVPN, OpenVPN|BY or OpenConnect profile with a name, rules of
+// an endpoint, and what it still needs to sign in. It cannot be on while it needs any.
 func checkEndpoint(entry EndpointEntry) (endpointRecord, error) {
 	p := entry.Profile
 	p.Name = strings.TrimSpace(p.Name)
-	if p.Type != profile.TypeOpenVPN && p.Type != profile.TypeOpenConnect {
-		return endpointRecord{}, jsonrpc.Failed(ReasonInvalidValue, "an endpoint is an OpenVPN or OpenConnect connection, not %q", p.Type)
+	if !profile.IsEndpointType(p.Type) {
+		return endpointRecord{}, jsonrpc.Failed(ReasonInvalidValue, "an endpoint is an OpenVPN, OpenVPN|BY or OpenConnect connection, not %q", p.Type)
 	}
 	if p.Name == "" {
 		return endpointRecord{}, jsonrpc.Failed(ReasonInvalidValue, "the endpoint needs a name")
 	}
 	need := stillNeeded(entry.Need, p)
-	// The protection of the control channel waits for its key while that is what the endpoint needs.
-	check := p
-	if slices.Contains(need, SignInWrapKey) && check.OpenVPN != nil {
-		o := *check.OpenVPN
-		o.ControlWrap = profile.OpenVPNControlWrap{}
-		check.OpenVPN = &o
-	}
-	if err := check.Validate(); err != nil {
+	if err := waiting(p, need).Validate(); err != nil {
 		return endpointRecord{}, jsonrpc.Failed(ReasonInvalidValue, "%s: %v", p.Name, err)
 	}
 	rules, err := checkRules(endpointRules, entry.Rules)
@@ -172,6 +173,31 @@ func checkEndpoint(entry EndpointEntry) (endpointRecord, error) {
 		return endpointRecord{}, jsonrpc.Failed(ReasonSignInMissing, "%s lacks data for signing in: %s", p.Name, strings.Join(record.Need, ", "))
 	}
 	return record, nil
+}
+
+// waiting is the profile as it is checked while it needs data of an OpenVPN file: what it waits for is checked once it
+// is in, so the CA and the client's pair stand in as empty PEM blocks of their kind, and the protection of the control
+// channel waits whole for its key.
+func waiting(p profile.Profile, need []string) profile.Profile {
+	if p.OpenVPN == nil {
+		return p
+	}
+	o := *p.OpenVPN
+	block := func(kind string) string { return "-----BEGIN " + kind + "-----\n-----END " + kind + "-----" }
+	for _, name := range need {
+		switch name {
+		case SignInCA:
+			o.CA = block("CERTIFICATE")
+		case SignInCert:
+			o.Cert = block("CERTIFICATE")
+		case SignInKey:
+			o.Key = block("PRIVATE KEY")
+		case SignInWrapKey:
+			o.ControlWrap = profile.OpenVPNControlWrap{}
+		}
+	}
+	p.OpenVPN = &o
+	return p
 }
 
 func nameTakenBy(records []endpointRecord, name, id string) bool {
@@ -278,7 +304,7 @@ func (e *Engine) ExportEndpoint(p EndpointExport) (EndpointFile, error) {
 	}
 	if !p.SignIn {
 		for _, name := range signInOrder {
-			if field, ok := fields[name]; ok && name != SignInOTP && *field != "" {
+			if field, ok := fields[name]; ok && personal(prof, name) && *field != "" {
 				*field = ""
 				need = append(need, name)
 			}
@@ -291,6 +317,19 @@ func (e *Engine) ExportEndpoint(p EndpointExport) (EndpointFile, error) {
 		return EndpointFile{}, err
 	}
 	return EndpointFile{Name: fileName(prof.Name) + ".json", Text: string(data) + "\n"}, nil
+}
+
+// personal tells the data for signing in that is the user's own and stays out of a file without it. The CA and the
+// keys of tls-auth and tls-crypt are the server's, shared by all its clients; the key of tls-crypt-v2 is the client's
+// own. The code of OTP is this computer's, and stays out of any file.
+func personal(p profile.Profile, name string) bool {
+	switch name {
+	case SignInOTP, SignInCA:
+		return false
+	case SignInWrapKey:
+		return p.OpenVPN != nil && p.OpenVPN.ControlWrap.Type == "tls_crypt_v2"
+	}
+	return true
 }
 
 // ImportEndpoint adds an endpoint, off, from the file of one or from an .ovpn file. It needs the data for signing in
@@ -347,22 +386,25 @@ func readEndpointFile(text string) (EndpointEntry, error) {
 	return EndpointEntry{Profile: file.Profile, Rules: rules, Need: file.Need}, nil
 }
 
-// readOpenVPNFile reads an .ovpn file as an endpoint without rules. One that asks for a name and a password it has not
-// got needs them.
+// readOpenVPNFile reads an .ovpn file as an endpoint without rules. It needs what it reads from files of their own, a
+// name and a password it asks for and has not got, and the password of a key that has one.
 func readOpenVPNFile(text string) (EndpointEntry, error) {
-	document, err := profile.ParseDocument([]byte(text))
-	if err == nil && document.Format != profile.FormatOpenVPN {
-		err = fmt.Errorf("this is no .ovpn file")
-	}
-	if err == nil && len(document.Profiles) == 0 && len(document.Skipped) > 0 {
-		err = fmt.Errorf("%s", document.Skipped[0].Reason)
-	}
-	if err != nil || len(document.Profiles) == 0 {
+	p, files, err := profile.ReadOpenVPNConfig([]byte(text))
+	if err != nil {
 		return EndpointEntry{}, jsonrpc.Failed(ReasonInvalidLink, "it holds no Poros endpoint and no OpenVPN config: %v", err)
 	}
-	entry := EndpointEntry{Profile: document.Profiles[0], Rules: []PresetRule{}}
-	if o := entry.Profile.OpenVPN; o != nil && o.Username == "" && asksSignIn(text) {
-		entry.Need = []string{SignInUsername, SignInPassword}
+	entry := EndpointEntry{Profile: p, Rules: []PresetRule{}}
+	signIn := p.OpenVPN.Username == "" && (files.Credentials || asksSignIn(text))
+	for _, need := range []struct {
+		name string
+		on   bool
+	}{
+		{SignInUsername, signIn}, {SignInPassword, signIn}, {SignInCA, files.CA}, {SignInCert, files.Cert}, {SignInKey, files.Key},
+		{SignInKeyPassword, true}, {SignInWrapKey, files.WrapKey},
+	} {
+		if need.on {
+			entry.Need = append(entry.Need, need.name)
+		}
 	}
 	return entry, nil
 }

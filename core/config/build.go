@@ -357,7 +357,7 @@ func endpointParts(preset Preset, profiles []profile.Profile) ([]option.Endpoint
 	}
 	var endpoints []option.Endpoint
 	for i, p := range profiles {
-		if p.Type != profile.TypeOpenVPN && p.Type != profile.TypeOpenConnect {
+		if !profile.IsEndpointType(p.Type) {
 			return nil, fmt.Errorf("endpoint %d: %s is no OpenVPN or OpenConnect profile", i+1, p.Type)
 		}
 		if err := p.Validate(); err != nil {

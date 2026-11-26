@@ -17,6 +17,7 @@ import { useAttempt } from '@/composables/useAttempt'
 import { provideEndpointDraft } from '@/composables/useEndpointDraft'
 import { useProfileForms } from '@/composables/useProfileForms'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
+import { protocolName } from '@/lib/format'
 import type { Endpoint, PresetRule } from '@/platform/core-types'
 import { MethodEndpointsMove, MethodEndpointsRemove, MethodServersGet } from '@/platform/core-types'
 import type { Profile } from '@/platform/profile-types'
@@ -83,7 +84,7 @@ async function add(type: string): Promise<void> {
     await loadForms()
     const fresh = forms.value?.new.find((n) => n.profile.type === type)?.profile ?? ({ type, [type]: {} } as unknown as Profile)
     const profile = JSON.parse(JSON.stringify(fresh)) as Profile
-    begin({ ...profile, name: freeName(type === 'openvpn' ? 'OpenVPN' : 'OpenConnect') })
+    begin({ ...profile, name: freeName(protocolName(type, t)) })
   })
 }
 
@@ -202,7 +203,7 @@ onBeforeRouteUpdate(ask)
     <div v-if="entry" class="flex min-w-0 flex-1 flex-col">
       <div class="flex flex-none flex-wrap items-center gap-2 border-b border-line px-5 py-2.5">
         <Input v-model="entry.profile.name" class="h-[30px] w-[220px] shrink-0" :aria-label="t('presetEdit.name')" data-testid="endpoint-name" />
-        <span class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] text-t2">{{ entry.profile.type === 'openvpn' ? 'OpenVPN' : 'OpenConnect' }}</span>
+        <span class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] text-t2">{{ protocolName(entry.profile.type, t) }}</span>
         <label class="ml-1.5 flex items-center gap-2 text-[13px] text-t2" :title="entry.need.length > 0 ? t('endpoints.needShort') : undefined">
           <Switch v-model="on" :disabled="entry.need.length > 0" :aria-label="t('endpoints.on')" data-testid="endpoint-on" />{{ t('endpoints.on') }}
         </label>

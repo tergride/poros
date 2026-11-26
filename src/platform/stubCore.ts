@@ -160,6 +160,9 @@ import {
   ReasonServerUnsupported,
   ReasonSingleServer,
   ReasonSubscriptionURL,
+  SignInCA,
+  SignInCert,
+  SignInKey,
   ReasonPresetNameTaken,
   ReasonAdvancedOnly,
   ReasonUnknownPreset,
@@ -174,7 +177,7 @@ import type { CoreClient, CoreError, CoreEvent, CoreEvents, CoreMethod, CoreMeth
 import type { Profile } from './profile-types'
 import stubForms from './stubForms.json'
 import { checkDnsObject, checkDnsSettings } from './stubDns'
-import { createStubEndpoints } from './stubEndpoints'
+import { createStubEndpoints, partKey, readOpenVPN } from './stubEndpoints'
 import { createStubOtp } from './stubOtp'
 import { stubQrEncode, stubQrRead, stubQrScan } from './stubQr'
 import { checkRules, readLists, writeLists } from './stubPresets'
@@ -509,7 +512,7 @@ const compoundTypes = ['chain', 'custom', 'direct']
 
 /** Enough of profile.Validate for the screens: a type with its part, an address and a port. */
 function validProfile(p: Profile): boolean {
-  const part = (p as unknown as Record<string, unknown>)[p.type]
+  const part = (p as unknown as Record<string, unknown>)[partKey(p.type)]
   if (typeof part !== 'object' || part === null) return false
   return compoundTypes.includes(p.type) || (!!p.server?.trim() && p.server_port >= 1 && p.server_port <= 65535)
 }
@@ -1006,6 +1009,8 @@ export function createStubCore(): CoreClient {
     [MethodServersAdd]: ({ groupId, newGroup: newName, text }) => {
       const body = text.trim()
       if (/^https?:\/\/[^\s:@/]+(\/\S*)?$/i.test(body)) throw failed(ReasonSubscriptionURL, "this is a subscription's link: add it as a subscription")
+      const ovpn = readOpenVPN(body)
+      if (ovpn?.need.some((name) => [SignInCA, SignInCert, SignInKey].includes(name))) return { group: groupList()[0]!, ids: [], skips: [], draft: ovpn.profile }
       const lines = body.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'))
       const read = lines.map(readShareLink)
       const found = read.filter((p): p is Profile => p !== null)
@@ -1085,7 +1090,7 @@ export function createStubCore(): CoreClient {
     [MethodServersCheck]: ({ profile }) => checkProfile(profile),
     [MethodServersExport]: ({ id }) => {
       findServer(id)
-      const { type, server, server_port, [type]: part } = profiles.get(id)! as unknown as Record<string, unknown> & { type: string }
+      const { type, server, server_port, [partKey(type)]: part } = profiles.get(id)! as unknown as Record<string, unknown> & { type: string }
       const outbound = { type, tag: 'proxy', server, server_port, ...(part as object) }
       return { core: CoreSingBox, json: JSON.stringify(outbound, null, 2) }
     },

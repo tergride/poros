@@ -295,7 +295,7 @@ func (c *otpCodes) fill(p profile.Profile) (profile.Profile, error) {
 	var user, password *string
 	var id string
 	switch {
-	case p.Type == profile.TypeOpenVPN && p.OpenVPN != nil:
+	case (p.Type == profile.TypeOpenVPN || p.Type == profile.TypeOpenVPNBY) && p.OpenVPN != nil:
 		o := *p.OpenVPN
 		p.OpenVPN, user, password, id = &o, &o.Username, &o.Password, o.OTP
 	case p.Type == profile.TypeOpenConnect && p.OpenConnect != nil:

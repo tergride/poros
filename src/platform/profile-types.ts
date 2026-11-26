@@ -203,6 +203,11 @@ export const TypeSnell = "snell";
  */
 export const TypeOpenVPN = "openvpn";
 /**
+ * TypeOpenVPNBY is OpenVPN with the Belarusian cryptography of OpenVPN|BY servers: BTLS, belt and bash. Its part
+ * is the openvpn one.
+ */
+export const TypeOpenVPNBY = "openvpn-by";
+/**
  * Types of servers, as stored.
  */
 export const TypeOpenConnect = "openconnect";
@@ -223,7 +228,7 @@ export const TypeCustom = "custom";
  */
 export const TypeDirect = "direct";
 /**
- * Profile is one server. Exactly the part named by Type is set.
+ * Profile is one server. Exactly the part of Type is set: the one named by it, and openvpn for OpenVPN|BY.
  */
 export interface Profile {
   type: string;
@@ -461,6 +466,10 @@ export interface OpenVPN {
   ca?: string;
   cert?: string;
   key?: string;
+  /**
+   * KeyPassword opens a Key protected by a password, of OpenVPN|BY only.
+   */
+  key_password?: string;
   peer_fingerprint?: string[];
   control_wrap?: OpenVPNControlWrap;
   /**
@@ -469,6 +478,10 @@ export interface OpenVPN {
   verify_name?: string;
   verify_name_type?: string;
   remote_cert_tls?: string;
+  /**
+   * TLSCipher are the BTLS suites of the control channel, tls-cipher, of OpenVPN|BY only.
+   */
+  tls_cipher?: string[];
   tls_version_min?: string;
   tls_version_max?: string;
   cipher?: string;

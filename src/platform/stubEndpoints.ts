@@ -6,6 +6,7 @@ import {
   ReasonInvalidValue,
   ReasonNotFound,
   ReasonSignInMissing,
+  SignInCA,
   SignInCert,
   SignInKey,
   SignInKeyPassword,
@@ -20,7 +21,9 @@ import { checkRules } from './stubPresets'
 // The endpoints of the stub core as core/engine/endpoints.go keeps them: the list in the user's order, the data for
 // signing in a file leaves out, and the files themselves.
 
-const signInOrder = [SignInUsername, SignInPassword, SignInCert, SignInKey, SignInKeyPassword, SignInWrapKey, SignInOTP]
+const signInOrder = [SignInUsername, SignInPassword, SignInCA, SignInCert, SignInKey, SignInKeyPassword, SignInWrapKey, SignInOTP]
+const endpointTypes = ['openvpn', 'openvpn-by', 'openconnect']
+const btlsSuites = ['DHE-BIGN-WITH-BELT-DWP-HBELT', 'DHT-BIGN-WITH-BELT-DWP-HBELT', 'DHE-BIGN-WITH-BELT-CTR-MAC-HBELT', 'DHT-BIGN-WITH-BELT-CTR-MAC-HBELT']
 
 function failed(reason: string, message: string): CoreError {
   return { code: 1, message, data: { reason } }
@@ -28,11 +31,14 @@ function failed(reason: string, message: string): CoreError {
 
 type Part = Record<string, unknown> & { control_wrap?: { type?: string; key?: string } }
 
+/** The key of a type's own part, as PartOf of core/profile names it. */
+export const partKey = (type: string) => (type === 'openvpn-by' ? 'openvpn' : type)
+
 /** The fields of the data for signing in of a profile, as get and set over its part. */
 function signInFields(profile: Profile): Map<string, { get: () => string; set: (value: string) => void }> {
-  const part = (profile as unknown as Record<string, Part | undefined>)[profile.type]
+  const part = (profile as unknown as Record<string, Part | undefined>)[partKey(profile.type)]
   const fields = new Map<string, { get: () => string; set: (value: string) => void }>()
-  if (!part || (profile.type !== 'openvpn' && profile.type !== 'openconnect')) return fields
+  if (!part || !endpointTypes.includes(profile.type)) return fields
   const field = (name: string, key: string) =>
     fields.set(name, { get: () => String(part[key] ?? ''), set: (value) => (value ? (part[key] = value) : delete part[key]) })
   field(SignInUsername, 'username')
@@ -40,20 +46,31 @@ function signInFields(profile: Profile): Map<string, { get: () => string; set: (
   field(SignInCert, 'cert')
   field(SignInKey, 'key')
   field(SignInOTP, 'otp')
-  if (profile.type === 'openconnect') field(SignInKeyPassword, 'key_password')
-  if (profile.type === 'openvpn' && part.control_wrap?.type === 'tls_crypt_v2') {
+  if (profile.type !== 'openconnect') field(SignInCA, 'ca')
+  if (profile.type !== 'openvpn') field(SignInKeyPassword, 'key_password')
+  if (profile.type !== 'openconnect' && part.control_wrap?.type) {
     const wrap = part.control_wrap
     fields.set(SignInWrapKey, { get: () => wrap.key ?? '', set: (value) => (wrap.key = value) })
   }
   return fields
 }
 
-// A code of OTP is needed only while {otp} may sign in: the name or the password has it or is still missing.
+// A code of OTP is needed only while {otp} may sign in: the name or the password has it or is still missing. The
+// password of the key only while the key has one or is not there to tell.
 function stillNeeded(need: string[], profile: Profile): string[] {
   const fields = signInFields(profile)
   const missing = (name: string) => need.includes(name) && fields.get(name)?.get() === ''
   const otp = [SignInUsername, SignInPassword].some((name) => missing(name) || fields.get(name)?.get().includes('{otp}'))
-  return signInOrder.filter((name) => missing(name) && (name !== SignInOTP || otp))
+  const key = fields.get(SignInKey)?.get() ?? ''
+  const locked = key === '' || key.includes('ENCRYPTED')
+  return signInOrder.filter((name) => missing(name) && (name !== SignInOTP || otp) && (name !== SignInKeyPassword || locked))
+}
+
+// The user's own data for signing in, which a file without it leaves out: not the CA and the keys of tls-auth and
+// tls-crypt, the server's, nor the code of OTP, this computer's.
+function personal(profile: Profile, name: string): boolean {
+  if (name === SignInOTP || name === SignInCA) return false
+  return name !== SignInWrapKey || (profile as unknown as Record<string, Part | undefined>).openvpn?.control_wrap?.type === 'tls_crypt_v2'
 }
 
 function fileName(name: string): string {
@@ -61,22 +78,28 @@ function fileName(name: string): string {
   return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim().replace(/[. ]+$/, '') || 'preset'
 }
 
-/** Enough of an .ovpn file for the screens: the first remote, the protocol, the name, the CA and auth-user-pass. */
-function readOpenVPN(text: string): EndpointEntry | null {
+/**
+ * Enough of an .ovpn file for the screens: the first remote, the protocol, the name, the CA, auth-user-pass, the
+ * cryptography of OpenVPN|BY and the keys read from files, which it needs.
+ */
+export function readOpenVPN(text: string): EndpointEntry | null {
   const remote = /^\s*remote\s+(\S+)(?:\s+(\d+))?/m.exec(text)
   if (!remote || !/^\s*(client|dev)\b/m.test(text)) return null
-  const proto = /^\s*proto\s+(\S+)/m.exec(text)?.[1]
+  const value = (directive: string) => new RegExp(`^\\s*${directive}\\s+(\\S+)`, 'm').exec(text)?.[1]
   const name = /^\s*setenv\s+FRIENDLY_NAME\s+(.+)$/m.exec(text)?.[1]?.trim() ?? ''
   const ca = /<ca>\s*([\s\S]*?)\s*<\/ca>/i.exec(text)?.[1] ?? ''
   const signIn = /^\s*auth-user-pass\s*$/m.test(text)
-  const profile = {
-    type: 'openvpn',
-    name: name || remote[1]!,
-    server: remote[1]!,
-    server_port: Number(remote[2] ?? 1194),
-    openvpn: { network: proto ?? 'udp', ca },
-  } as unknown as Profile
-  return { id: '', on: false, profile, rules: [], need: signIn ? [SignInUsername, SignInPassword] : [] }
+  const by = /\b(BIGN|belt-|bash\d)/i.test(text)
+  const part: Record<string, unknown> = { network: value('proto') ?? 'udp', ca }
+  if (by) Object.assign(part, { tls_cipher: value('tls-cipher')?.split(':') ?? btlsSuites, data_ciphers: value('data-ciphers')?.split(':'), auth: value('auth') })
+  const profile = { type: by ? 'openvpn-by' : 'openvpn', name: name || remote[1]!, server: remote[1]!, server_port: Number(remote[2] ?? 1194), openvpn: part }
+  const files = [
+    [SignInCA, 'ca'],
+    [SignInCert, 'cert'],
+    [SignInKey, 'key'],
+  ].filter(([, directive]) => value(directive!) !== undefined && value(directive!) !== '[inline]')
+  const need = [...(signIn ? [SignInUsername, SignInPassword] : []), ...files.map(([n]) => n!), ...(by ? [SignInKeyPassword] : [])]
+  return { id: '', on: false, profile: profile as unknown as Profile, rules: [], need }
 }
 
 export function createStubEndpoints(changed: (list: Endpoint[]) => void, nextId: () => string) {
@@ -94,7 +117,7 @@ export function createStubEndpoints(changed: (list: Endpoint[]) => void, nextId:
   function check(entry: EndpointEntry): EndpointEntry {
     const profile = structuredClone(entry.profile)
     profile.name = (profile.name ?? '').trim()
-    if (profile.type !== 'openvpn' && profile.type !== 'openconnect') throw failed(ReasonInvalidValue, 'an endpoint is an OpenVPN or OpenConnect connection')
+    if (!endpointTypes.includes(profile.type)) throw failed(ReasonInvalidValue, 'an endpoint is an OpenVPN, OpenVPN|BY or OpenConnect connection')
     if (!profile.name) throw failed(ReasonInvalidValue, 'the endpoint needs a name')
     if (!profile.server?.trim() || !(profile.server_port >= 1 && profile.server_port <= 65535)) throw failed(ReasonInvalidValue, `${profile.name}: the server is missing`)
     const rules = checkRules({ advanced: true, endpoint: true, rules: entry.rules })
@@ -141,7 +164,7 @@ export function createStubEndpoints(changed: (list: Endpoint[]) => void, nextId:
       if (!signIn) {
         for (const name of signInOrder) {
           const field = fields.get(name)
-          if (name !== SignInOTP && field?.get()) {
+          if (personal(entry.profile, name) && field?.get()) {
             field.set('')
             need.push(name)
           }

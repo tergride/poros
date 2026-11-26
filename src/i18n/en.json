@@ -883,10 +883,10 @@
   "endpoints": {
     "title": "Endpoints",
     "empty": "No endpoints",
-    "emptyText": "An endpoint is an OpenVPN or OpenConnect connection that runs alongside the server. The networks its server announces go through it, and so does the traffic of its rules, with any preset.",
+    "emptyText": "An endpoint is an OpenVPN, OpenVPN{'|'}BY or OpenConnect connection that runs alongside the server. The networks its server announces go through it, and so does the traffic of its rules, with any preset.",
     "add": "Add",
     "copyOf": "Copy of a profile",
-    "noProfiles": "There are no OpenVPN or OpenConnect profiles",
+    "noProfiles": "There are no OpenVPN, OpenVPN{'|'}BY or OpenConnect profiles",
     "import": "Import",
     "importFile": "Import a file",
     "on": "On",
@@ -907,10 +907,11 @@
     "needOf": {
       "username": "the user name",
       "password": "the password",
+      "ca": "the authority certificate (CA)",
       "cert": "the client certificate",
       "key": "the client key",
       "keyPassword": "the key password",
-      "wrapKey": "the tls-crypt-v2 key",
+      "wrapKey": "the control channel protection key",
       "otp": "the OTP code"
     },
     "fill": "Enter…",
@@ -1078,6 +1079,7 @@
     "endpoint_failed": "an endpoint did not connect",
     "endpoint_name_taken": "there is an endpoint with that name already",
     "sign_in_missing": "the endpoint has no data for signing in",
+    "key_password": "the password of the OpenVPN{'|'}BY key is wrong or missing. Enter it in the «Key password» field",
     "warp_failed": "Cloudflare gave no WARP configuration",
     "otp_missing": "the server has {'{otp}'} in its user name or password, but no OTP code is chosen, or the chosen one is gone. Choose a code in the «OTP code» field of the profile",
     "invalid_otp": "the OTP code was not saved",
@@ -1244,7 +1246,7 @@
       "duplicates": "Already there: {n}. | Already there: {n}. | Already there: {n}.",
       "emptyTitle": "No codes yet",
       "emptyText": "Add a secret or an otpauth:// link, import codes from Google Authenticator, or scan a QR code on the screen.",
-      "note": "In an OpenVPN or OpenConnect profile, choose a code in the «OTP code» field and put {'{otp}'} in the user name or password: Poros puts the current code there at every connection. The codes are in the tray menu too — a click copies the code.",
+      "note": "In an OpenVPN, OpenVPN{'|'}BY or OpenConnect profile, choose a code in the «OTP code» field and put {'{otp}'} in the user name or password: Poros puts the current code there at every connection. The codes are in the tray menu too — a click copies the code.",
       "next": "Next code",
       "seconds": "{n} s",
       "copy": "Copy code",
@@ -1417,6 +1419,7 @@
     "added": "Added: {added}.",
     "addedSkipped": "Added: {added}. Not added: {skipped}, which cannot run or are broken.",
     "addFailed": "The profiles were not added: {reason}",
+    "ovpnFiles": "The config keeps its keys and certificates in files of their own. Choose them in the editor with «From file…», then save the profile.",
     "linkTitle": "Add the server from the link?",
     "linkText": "The link leads to one server.",
     "newProfile": "Profile",
@@ -1488,6 +1491,8 @@
     "excludes": "Does not work with “{name}”",
     "notJson": "This is not JSON",
     "notValue": "This value does not fit",
+    "fromFile": "From file…",
+    "fileTooLarge": "The file is larger than 1 MB",
     "jsonLine": "JSON error on line {line}",
     "jsonNoType": "A profile is a JSON object with a type field",
     "jsonHint": "The profile as Poros stores it. The core checks it as you type; errors show under the tabs.",
@@ -1600,10 +1605,12 @@
       "pem": {
         "ca": "Authority certificate (CA)",
         "cert": "Client certificate",
-        "key": "Client key"
+        "key": "Client key",
+        "keyPassword": "Key password"
       },
       "openvpn": {
         "network": "Network",
+        "tlsCipher": "tls-cipher",
         "fingerprint": "Server fingerprints",
         "wrap": "Control channel protection",
         "wrapKey": "Protection key",
@@ -1627,7 +1634,6 @@
         "flavor": "Gateway",
         "group": "Group",
         "fingerprint": "Gateway fingerprints",
-        "keyPassword": "Key password",
         "noUdp": "No DTLS (TCP only)"
       },
       "chain": {
@@ -1812,7 +1818,8 @@
         "server": "An https:// address"
       },
       "openvpn": {
-        "fingerprint": "SHA-256 of the server certificate, split by commas"
+        "fingerprint": "SHA-256 of the server certificate, split by commas",
+        "tlsCipher": "BTLS suites of the control channel, split by commas, in order of preference"
       },
       "chain": {
         "servers": "The first server is dialled directly, each next one through the one before"

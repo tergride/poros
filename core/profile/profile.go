@@ -22,6 +22,9 @@ const (
 	TypeSSH         = "ssh"
 	TypeSnell       = "snell"
 	TypeOpenVPN     = "openvpn"
+	// TypeOpenVPNBY is OpenVPN with the Belarusian cryptography of OpenVPN|BY servers: BTLS, belt and bash. Its part
+	// is the openvpn one.
+	TypeOpenVPNBY   = "openvpn-by"
 	TypeOpenConnect = "openconnect"
 	TypeMASQUE      = "masque"
 	TypeChain       = "chain"
@@ -29,7 +32,21 @@ const (
 	TypeDirect      = "direct"
 )
 
-// Profile is one server. Exactly the part named by Type is set.
+// IsEndpointType tells a type of profile an endpoint may be: OpenVPN, OpenVPN|BY and OpenConnect, which bring the
+// networks of their servers along.
+func IsEndpointType(kind string) bool {
+	return kind == TypeOpenVPN || kind == TypeOpenVPNBY || kind == TypeOpenConnect
+}
+
+// PartOf names the part of a type of profile in its JSON: the type itself, and openvpn for OpenVPN|BY.
+func PartOf(kind string) string {
+	if kind == TypeOpenVPNBY {
+		return TypeOpenVPN
+	}
+	return kind
+}
+
+// Profile is one server. Exactly the part of Type is set: the one PartOf names.
 type Profile struct {
 	Type       string `json:"type"`
 	Name       string `json:"name,omitempty"`
@@ -213,15 +230,19 @@ type OpenVPN struct {
 	StaticChallenge     string `json:"static_challenge,omitempty"`
 	StaticChallengeEcho bool   `json:"static_challenge_echo,omitempty"`
 	// CA, Cert and Key are PEM blocks: the authority of the server's certificate, and the client's own pair.
-	CA              string             `json:"ca,omitempty"`
-	Cert            string             `json:"cert,omitempty"`
-	Key             string             `json:"key,omitempty"`
+	CA   string `json:"ca,omitempty"`
+	Cert string `json:"cert,omitempty"`
+	Key  string `json:"key,omitempty"`
+	// KeyPassword opens a Key protected by a password, of OpenVPN|BY only.
+	KeyPassword     string             `json:"key_password,omitempty"`
 	PeerFingerprint []string           `json:"peer_fingerprint,omitempty"`
 	ControlWrap     OpenVPNControlWrap `json:"control_wrap,omitzero"`
 	// VerifyName is verify-x509-name; VerifyNameType is "", "subject", "name" or "name-prefix".
-	VerifyName          string   `json:"verify_name,omitempty"`
-	VerifyNameType      string   `json:"verify_name_type,omitempty"`
-	RemoteCertTLS       string   `json:"remote_cert_tls,omitempty"`
+	VerifyName     string `json:"verify_name,omitempty"`
+	VerifyNameType string `json:"verify_name_type,omitempty"`
+	RemoteCertTLS  string `json:"remote_cert_tls,omitempty"`
+	// TLSCipher are the BTLS suites of the control channel, tls-cipher, of OpenVPN|BY only.
+	TLSCipher           []string `json:"tls_cipher,omitempty"`
 	TLSVersionMin       string   `json:"tls_version_min,omitempty"`
 	TLSVersionMax       string   `json:"tls_version_max,omitempty"`
 	Cipher              string   `json:"cipher,omitempty"`

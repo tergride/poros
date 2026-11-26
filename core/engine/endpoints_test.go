@@ -1,7 +1,10 @@
 package engine
 
 import (
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -10,6 +13,8 @@ import (
 	"github.com/sagernet/bbolt"
 
 	"PorosCore/config"
+	"PorosCore/internal/stb/stbkey"
+	"PorosCore/internal/stb/stbtest"
 	"PorosCore/profile"
 )
 
@@ -218,6 +223,85 @@ func TestEndpointFromOVPN(t *testing.T) {
 	unnamed := strings.ReplaceAll(strings.ReplaceAll(text, "setenv FRIENDLY_NAME Office\n", ""), "auth-user-pass\n", "")
 	if imported, err = e.ImportEndpoint(EndpointText{Text: unnamed}); err != nil || imported.Name != "vpn.example.com" || len(imported.Need) != 0 {
 		t.Errorf("an .ovpn without a name and a sign-in: %+v, %v", imported, err)
+	}
+}
+
+// testOVPNBY is a config of OpenVPN|BY as its client writes one, with the CA and the client's pair in files beside it.
+const testOVPNBY = "\xef\xbb\xbfclient\r\ndev tun\r\nproto tcp\r\nremote by.example.com 443\r\nsetenv FRIENDLY_NAME Office\r\nca CA_crt.pem\r\n" +
+	"cert client_crt.pem\r\nkey client_pr.pem\r\ntls-cipher DHE-BIGN-WITH-BELT-DWP-HBELT\r\ncipher belt-cfb256\r\n" +
+	"data-ciphers belt-cfb256\r\nauth bash512\r\ntls-version-max 1.2\r\ntls-version-min 1.2\r\n"
+
+// An .ovpn of OpenVPN|BY with its keys in files needs them, and the password of the key while the key has one or is
+// not there to tell; a file without the data for signing in keeps the CA, the server's.
+func TestEndpointFromOVPNBY(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	imported, err := e.ImportEndpoint(EndpointText{Text: testOVPNBY})
+	want := []string{SignInCA, SignInCert, SignInKey, SignInKeyPassword}
+	if err != nil || imported.Type != profile.TypeOpenVPNBY || imported.Name != "Office" || imported.On || !slices.Equal(imported.Need, want) {
+		t.Fatalf("the files are needed: %+v, %v", imported, err)
+	}
+	certificate, _ := testCertificate(t)
+	locked := "-----BEGIN ENCRYPTED PRIVATE KEY-----\nAAAA\n-----END ENCRYPTED PRIVATE KEY-----"
+	entry, _ := e.EndpointEntry(imported.ID)
+	o := entry.Profile.OpenVPN
+	o.CA, o.Cert, o.Key = certificate, certificate, locked
+	if saved, err := e.SaveEndpoint(entry); err != nil || !slices.Equal(saved.Need, []string{SignInKeyPassword}) {
+		t.Fatalf("a key under a password needs it: %+v, %v", saved, err)
+	}
+	entry.On, o.KeyPassword = true, "secret"
+	if saved, err := e.SaveEndpoint(entry); err != nil || !saved.On || len(saved.Need) != 0 {
+		t.Fatalf("filled in, it turns on: %+v, %v", saved, err)
+	}
+
+	safe, err := e.ExportEndpoint(EndpointExport{ID: imported.ID})
+	if err != nil || !strings.Contains(safe.Text, "BEGIN CERTIFICATE") || strings.Contains(safe.Text, "secret") || strings.Contains(safe.Text, "PRIVATE KEY") {
+		t.Fatalf("a file without the data for signing in keeps the CA alone: %s, %v", safe.Text, err)
+	}
+	again, err := e.ImportEndpoint(EndpointText{Text: safe.Text})
+	if err != nil || !slices.Equal(again.Need, []string{SignInCert, SignInKey, SignInKeyPassword}) {
+		t.Fatalf("it comes back needing the client's own: %+v, %v", again, err)
+	}
+	entry, _ = e.EndpointEntry(again.ID)
+	o = entry.Profile.OpenVPN
+	o.Cert, o.Key = certificate, "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----"
+	if saved, err := e.SaveEndpoint(entry); err != nil || len(saved.Need) != 0 {
+		t.Errorf("an open key needs no password: %+v, %v", saved, err)
+	}
+}
+
+// A key of OpenVPN|BY that its password does not open fails «Start» with a reason of its own and the server's name.
+func TestStartRefusesAShutKey(t *testing.T) {
+	e, states := openConnectionTest(t)
+	client, err := stbtest.Issue(stbtest.Options{Name: "client", KeyUsage: x509.KeyUsageDigitalSignature}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locked, err := stbkey.Encrypt(client.Key, []byte("secret"), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certificate := string(stbtest.PEM(client.Cert))
+	useServer(t, e, porosLink(t, fmt.Sprintf(`{"type":"openvpn-by","name":"Office","server":"127.0.0.1","server_port":%d,"openvpn":{`+
+		`"network":"tcp","ca":%s,"cert":%s,"key":%s,"key_password":"wrong","tls_cipher":["DHE-BIGN-WITH-BELT-DWP-HBELT"],`+
+		`"data_ciphers":["belt-cbc256"],"auth":"bash512"}}`, freePort(t), jsonText(t, certificate), jsonText(t, certificate), jsonText(t, string(locked)))))
+	e.StartConnection()
+	if state := waitState(t, states); state.State != ConnectionIdle || state.Error != ReasonKeyPassword || !strings.HasPrefix(state.ErrorText, "Office: ") {
+		t.Fatalf("a wrong password of the key: %+v", state)
+	}
+}
+
+// An .ovpn that keeps its keys in files adds nothing yet: it goes to the editor, where they are chosen.
+func TestAddServersOVPNDraft(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	added, err := e.AddServers(AddServers{NewGroup: "Mine", Text: testOVPNBY})
+	if err != nil || added.Draft == nil || len(added.IDs) != 0 || added.Draft.Type != profile.TypeOpenVPNBY || added.Draft.Name != "Office" {
+		t.Fatalf("a draft: %+v, %v", added, err)
+	}
+	if groups, _ := e.Groups(); slices.ContainsFunc(groups, func(g Group) bool { return g.Name == "Mine" }) {
+		t.Error("a draft makes no group")
+	}
+	if _, err = e.AddServers(AddServers{NewGroup: "Mine", Text: "client\ndev tun\nremote v.example.com\n"}); reason(err) != ReasonNoServers {
+		t.Errorf("an .ovpn without a CA and without files is no draft: %v", err)
 	}
 }
 

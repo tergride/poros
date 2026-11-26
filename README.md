@@ -34,8 +34,8 @@ on [sing-box](https://github.com/SagerNet/sing-box) and [Xray-core](https://gith
 ## What it does
 
 - **Simple mode:** a first-run wizard, subscriptions and servers with latency tests, TUN and the system proxy each on its own, routing presets with your own lists, an IP and DNS leak check.
-- **Advanced mode:** your own groups and profiles, the profile editor, chains, routing rules, OpenVPN and OpenConnect endpoints, DNS and WARP, settings for inbounds, TUN, protocols, network and security, connections, the log and traffic statistics.
-- **Protocols:** VLESS with REALITY and XHTTP, VMess, Trojan, Shadowsocks and ShadowTLS, Hysteria and Hysteria2, TUIC, AnyTLS, WireGuard, Naive, SSH, Snell, SOCKS and HTTP, OpenVPN, OpenConnect, MASQUE. Subscriptions come as links, base64, Clash YAML and sing-box or Xray JSON.
+- **Advanced mode:** your own groups and profiles, the profile editor, chains, routing rules, OpenVPN, OpenVPN|BY and OpenConnect endpoints, DNS and WARP, settings for inbounds, TUN, protocols, network and security, connections, the log and traffic statistics.
+- **Protocols:** VLESS with REALITY and XHTTP, VMess, Trojan, Shadowsocks and ShadowTLS, Hysteria and Hysteria2, TUIC, AnyTLS, WireGuard, Naive, SSH, Snell, SOCKS and HTTP, OpenVPN, OpenVPN|BY with the Belarusian BTLS, belt and bash, OpenConnect, MASQUE. Subscriptions come as links, base64, Clash YAML and sing-box or Xray JSON.
 - **Kill switch:** when the connection drops, VPN traffic does not go around the server. It is on while connected by default and can stay on always. It works next to zapret and GoodbyeDPI: while their WinDivert driver is loaded, it works in compatible mode: it lets out the raw TCP and UDP packets of the Windows System process, which is how the driver sends packets on, and marks it in the title bar.
 - **Tools:** OTP codes, QR codes, a speed test, Ctrl+K search, hotkeys, backups.
 - **System:** a tray menu with the preset choice, start with Windows, `poros://` links, updates.

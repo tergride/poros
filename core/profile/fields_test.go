@@ -59,7 +59,7 @@ func TestFormsMatchTheProfile(t *testing.T) {
 	for _, form := range Forms() {
 		types[form.Type] = true
 		own := func(path string) bool {
-			return path == "name" || path == "server" || path == "server_port" || strings.HasPrefix(path, form.Type+".")
+			return path == "name" || path == "server" || path == "server_port" || strings.HasPrefix(path, PartOf(form.Type)+".")
 		}
 		for _, f := range form.Fields {
 			got, ok := typeAt(f.Path)
@@ -135,6 +135,13 @@ func TestFormChoicesAreValid(t *testing.T) {
 		ovpn.OpenVPN = &OpenVPN{Network: network, PeerFingerprint: []string{"AA:BB"}}
 		if err := ovpn.Validate(); err != nil {
 			t.Errorf("OpenVPN over %q: %v", network, err)
+		}
+	}
+	by := Profile{Type: TypeOpenVPNBY, Server: "vpn.example.com", ServerPort: 443}
+	for _, auth := range options(TypeOpenVPNBY, "openvpn.auth") {
+		by.OpenVPN = &OpenVPN{PeerFingerprint: []string{"AA:BB"}, TLSCipher: btlsSuites, DataCiphers: beltCiphers, Auth: auth}
+		if err := by.Validate(); err != nil {
+			t.Errorf("OpenVPN|BY with auth %s: %v", auth, err)
 		}
 	}
 	snell := Profile{Type: TypeSnell, Server: "snell.example.com", ServerPort: 443}

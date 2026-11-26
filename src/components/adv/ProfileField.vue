@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Eye, EyeOff, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, Eye, EyeOff, FileUp, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -11,7 +11,7 @@ import { FieldServers } from '@/platform/profile-types'
 import { useCoreStore } from '@/stores/core'
 
 // One field of the profile editor, drawn by its kind; it writes straight into the profile. An inactive field shows
-// its value greyed out with why it does not apply.
+// its value greyed out with why it does not apply. A key or a certificate in PEM can come from a file.
 const props = defineProps<{ field: Field; profile: Record<string, unknown>; reason: string; serverId: string }>()
 
 const core = useCoreStore()
@@ -116,6 +116,19 @@ function onText(input: string): void {
 }
 const shown = ref(false)
 
+// A key or a certificate from a file the user picks: its text goes into the field, the file itself stays where it is.
+const maxFile = 1 << 20
+const fileInput = ref<HTMLInputElement | null>(null)
+const fileError = ref('')
+async function fromFile(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  fileError.value = file.size > maxFile ? t('profileEditor.fileTooLarge') : ''
+  if (!fileError.value) put((await file.text()).trim())
+}
+
 // The servers of a chain, in order, picked from the other servers.
 const chosen = computed(() => (Array.isArray(value.value) ? (value.value as string[]) : []))
 const nameOf = (id: string) => {
@@ -163,7 +176,20 @@ const wide = computed(() => ['lines', 'json', 'headers', FieldServers].includes(
     </span>
   </label>
   <div v-else :class="['grid min-w-0 content-start gap-1.5', wide && 'col-span-2', inactive && 'opacity-55']" :data-field="field.path">
-    <span class="text-xs text-t3">{{ label }}</span>
+    <span v-if="kind === 'lines'" class="flex items-center gap-2 text-xs text-t3">
+      {{ label }}
+      <button
+        type="button"
+        class="ml-auto inline-flex cursor-pointer items-center gap-1 hover:text-t1 disabled:cursor-not-allowed [&_svg]:size-3.5"
+        :disabled="inactive"
+        data-testid="field-from-file"
+        @click="fileInput?.click()"
+      >
+        <FileUp />{{ t('profileEditor.fromFile') }}
+      </button>
+      <input ref="fileInput" type="file" class="hidden" data-testid="field-file" @change="fromFile" />
+    </span>
+    <span v-else class="text-xs text-t3">{{ label }}</span>
     <Select
       v-if="kind === 'select' || kind === 'utls' || kind === 'security'"
       v-model="choice"
@@ -225,6 +251,7 @@ const wide = computed(() => ['lines', 'json', 'headers', FieldServers].includes(
       @update:model-value="onText"
     />
     <span v-if="invalid" class="text-xs text-warn">{{ t(kind === 'json' ? 'profileEditor.notJson' : 'profileEditor.notValue') }}</span>
+    <span v-else-if="fileError" class="text-xs text-warn">{{ fileError }}</span>
     <span v-else-if="reason || hint" class="text-xs text-t3">{{ reason || hint }}</span>
   </div>
 </template>

@@ -101,6 +101,13 @@ export function useProfileActions() {
           ui.notice = { tone: 'warn', text: t('profiles.addFailed', { reason: reason(error) }) }
           return
         }
+        // An .ovpn with its keys in files of their own opens in the editor, where they are chosen.
+        if (added.draft) {
+          const into = target ? { groupId: target.id, newGroup: '' } : { groupId: '', newGroup: newGroup || t('profiles.myServers') }
+          if (!ui.profileEdit) ui.profileEdit = { id: '', profile: added.draft, target: into }
+          tell(t('profiles.ovpnFiles'))
+          return
+        }
         const skipped = added.skips.reduce((sum, skip) => sum + skip.count, 0)
         tell(skipped ? t('profiles.addedSkipped', { added: t('servers.count', added.ids.length), skipped }) : t('profiles.added', { added: t('servers.count', added.ids.length) }))
       }),

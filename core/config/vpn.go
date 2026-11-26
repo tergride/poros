@@ -1,13 +1,17 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"net"
 	"strconv"
+	"strings"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json/badoption"
 
+	"PorosCore/internal/stb/stbkey"
 	"PorosCore/profile"
 )
 
@@ -74,8 +78,45 @@ func openVPNEndpoint(p profile.Profile, tag string) (option.Endpoint, error) {
 	if w := o.ControlWrap; w.Type != "" {
 		tls.ControlWrap = &option.OpenVPNControlWrapOptions{Type: w.Type, Key: pemLines(w.Key), Direction: w.Direction}
 	}
+	if p.Type == profile.TypeOpenVPNBY {
+		// BTLS is defined for TLS 1.2 alone, and the suites in tls-cipher hand the control channel to it.
+		tls.Cipher, tls.VersionMin, tls.VersionMax = strings.Join(o.TLSCipher, ":"), "1.2", "1.2"
+		key, err := openKey(p)
+		if err != nil {
+			return option.Endpoint{}, err
+		}
+		tls.ClientKey = pemLines(key)
+	}
 	options.TLS = tls
 	return option.Endpoint{Type: C.TypeOpenVPNClient, Tag: tag, Options: options}, nil
+}
+
+// KeyPasswordError is a key of OpenVPN|BY that its password does not open, or one without the password it needs.
+type KeyPasswordError struct {
+	// Server is the name of the profile.
+	Server string
+	Err    error
+}
+
+func (e *KeyPasswordError) Error() string { return e.Err.Error() }
+func (e *KeyPasswordError) Unwrap() error { return e.Err }
+
+// openKey opens the bign key of an OpenVPN|BY profile with its password: sing-box takes the key as it is, so it gets
+// it open, in memory only.
+func openKey(p profile.Profile) (string, error) {
+	o := p.OpenVPN
+	if o.Key == "" {
+		return "", nil
+	}
+	key, err := stbkey.ParsePrivateKey([]byte(o.Key), []byte(o.KeyPassword))
+	switch {
+	case errors.Is(err, stbkey.ErrPasswordRequired) || errors.Is(err, stbkey.ErrBadPassword):
+		return "", &KeyPasswordError{Server: p.Name, Err: err}
+	case err != nil:
+		return "", fmt.Errorf("the client key of OpenVPN|BY: %w", err)
+	}
+	data, err := stbkey.EncodePEM(key)
+	return string(data), err
 }
 
 func openConnectEndpoint(p profile.Profile, tag string) option.Endpoint {

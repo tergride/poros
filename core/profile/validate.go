@@ -112,7 +112,9 @@ func (p Profile) Validate() error {
 	case TypeSnell:
 		return p.Snell.validate()
 	case TypeOpenVPN:
-		return p.OpenVPN.validate()
+		return p.OpenVPN.validate(false)
+	case TypeOpenVPNBY:
+		return p.OpenVPN.validate(true)
 	case TypeOpenConnect:
 		return p.OpenConnect.validate()
 	case TypeMASQUE:
@@ -123,8 +125,22 @@ func (p Profile) Validate() error {
 
 var openVPNNetworks = []string{"", "udp", "udp4", "udp6", "tcp", "tcp4", "tcp6"}
 
-// validate checks the choices against what sing-box's OpenVPN takes and that the keys are PEM blocks.
-func (o *OpenVPN) validate() error {
+// The cryptography of OpenVPN|BY that Poros runs: the BTLS suites of STB 34.101.65, DWP first as OpenVPN|BY lists
+// them, the belt ciphers of the data channel and the digests of its HMAC.
+var (
+	btlsSuites = []string{
+		"DHE-BIGN-WITH-BELT-DWP-HBELT", "DHT-BIGN-WITH-BELT-DWP-HBELT", "DHE-BIGN-WITH-BELT-CTR-MAC-HBELT", "DHT-BIGN-WITH-BELT-CTR-MAC-HBELT",
+	}
+	beltCiphers = []string{"belt-cbc256", "belt-cfb256", "belt-cbc192", "belt-cfb192", "belt-cbc128", "belt-cfb128"}
+	bashDigests = []string{"bash512", "bash384", "bash256", "belt-hash"}
+)
+
+// validate checks the choices against what sing-box's OpenVPN takes and that the keys are PEM blocks; by is
+// OpenVPN|BY, which runs its own cryptography alone.
+func (o *OpenVPN) validate(by bool) error {
+	if err := o.validateCryptography(by); err != nil {
+		return err
+	}
 	choices := []struct {
 		value, what string
 		allowed     []string
@@ -173,6 +189,46 @@ func (o *OpenVPN) validate() error {
 		return errors.New("the key of the control channel protection is missing")
 	case o.CA == "" && len(o.PeerFingerprint) == 0:
 		return errors.New("OpenVPN needs the CA of the server's certificate or its fingerprint")
+	}
+	return nil
+}
+
+// validateCryptography keeps OpenVPN|BY to the cryptography it runs, BTLS over TLS 1.2 with belt and bash, and the
+// settings of it out of plain OpenVPN.
+func (o *OpenVPN) validateCryptography(by bool) error {
+	if !by {
+		if len(o.TLSCipher) > 0 || o.KeyPassword != "" {
+			return unsupported("the TLS suites and the password of the key are settings of OpenVPN|BY")
+		}
+		return nil
+	}
+	if len(o.TLSCipher) == 0 {
+		return errors.New("OpenVPN|BY needs the BTLS suites of its control channel")
+	}
+	for _, suite := range o.TLSCipher {
+		if !slices.Contains(btlsSuites, suite) {
+			return unsupported("OpenVPN|BY runs the BTLS suites alone, not %q", suite)
+		}
+	}
+	for _, v := range []string{o.TLSVersionMin, o.TLSVersionMax} {
+		if v != "" && v != "1.2" {
+			return unsupported("BTLS is defined for TLS 1.2 alone, not %s", v)
+		}
+	}
+	ciphers := append(slices.Clone(o.DataCiphers), o.Cipher, o.DataCiphersFallback)
+	if !slices.ContainsFunc(ciphers, func(c string) bool { return c != "" }) {
+		return errors.New("OpenVPN|BY needs a belt cipher of its data channel")
+	}
+	for _, c := range ciphers {
+		if c != "" && !slices.Contains(beltCiphers, strings.ToLower(c)) {
+			return unsupported("OpenVPN|BY runs the belt ciphers alone, not %q", c)
+		}
+	}
+	switch {
+	case o.Auth == "":
+		return errors.New("OpenVPN|BY needs the digest of its HMAC: bash256, bash384, bash512 or belt-hash")
+	case !slices.Contains(bashDigests, strings.ToLower(o.Auth)):
+		return unsupported("OpenVPN|BY runs the HMAC of bash256, bash384, bash512 or belt-hash, not %q", o.Auth)
 	}
 	return nil
 }
@@ -465,12 +521,13 @@ func (p Profile) validatePart() error {
 		{TypeOpenVPN, p.OpenVPN != nil}, {TypeOpenConnect, p.OpenConnect != nil}, {TypeMASQUE, p.MASQUE != nil},
 		{TypeChain, p.Chain != nil}, {TypeCustom, p.Custom != nil}, {TypeDirect, p.Direct != nil},
 	}
+	kind := PartOf(p.Type)
 	known := false
 	for _, part := range parts {
 		switch {
-		case part.kind == p.Type && !part.set:
+		case part.kind == kind && !part.set:
 			return fmt.Errorf("the %s settings are missing", p.Type)
-		case part.kind == p.Type:
+		case part.kind == kind:
 			known = true
 		case part.set:
 			return fmt.Errorf("a %s server carries %s settings", p.Type, part.kind)
