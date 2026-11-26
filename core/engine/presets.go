@@ -281,7 +281,19 @@ func (e *Engine) storeCopy(record copyRecord) (Preset, error) {
 	}
 	if err := e.db.Update(func(tx *bbolt.Tx) error {
 		if record.ID == "" {
+			// The list goes by AddedAt: a preset made within the same millisecond as the last one still comes after it.
 			record.ID, record.AddedAt = newID(), e.now().UnixMilli()
+			err := tx.Bucket(bucketPresets).ForEach(func(key, _ []byte) error {
+				var other copyRecord
+				if _, err := getJSON(tx, bucketPresets, key, &other); err != nil {
+					return err
+				}
+				record.AddedAt = max(record.AddedAt, other.AddedAt+1)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 			return putJSON(tx, bucketPresets, []byte(record.ID), record)
 		}
 		var old copyRecord

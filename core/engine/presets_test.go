@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"PorosCore/config"
 	"PorosCore/internal/jsonrpc"
@@ -44,6 +45,34 @@ func problemOf(t *testing.T, err error) RuleProblem {
 		t.Fatalf("no rule problem: %+v", rpcErr)
 	}
 	return problem
+}
+
+// Presets made within one millisecond keep the order they were made in, whatever their IDs.
+func TestPresetsKeepTheirOrderWithinAMillisecond(t *testing.T) {
+	e, _ := openTest(t, t.TempDir())
+	clock := time.UnixMilli(1_700_000_000_000)
+	e.now = func() time.Time { return clock }
+	var made []string
+	for _, name := range []string{"Zeta", "Alpha", "Mid", "Beta", "Omega", "Gamma"} {
+		saved, err := e.SavePreset(PresetCopy{BasedOn: "all", Name: name, Rules: []PresetRule{rule(CondSuffix, "example.org", ActionDirect)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		made = append(made, saved.ID)
+	}
+	list, err := e.Presets()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order []string
+	for _, p := range list {
+		if !p.Builtin {
+			order = append(order, p.ID)
+		}
+	}
+	if !slices.Equal(order, made) {
+		t.Errorf("the presets came out as %v, made as %v", order, made)
+	}
 }
 
 func TestPresetCopies(t *testing.T) {
