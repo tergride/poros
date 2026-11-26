@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.0
+
+<!-- ru -->
+- **OpenVPN|BY:** профили и конечные точки для серверов OpenVPN|BY с белорусской криптографией — BTLS, belt и bash. Poros сам узнаёт такой `.ovpn`. Ключ bign под паролем открывается паролем из профиля, а при неверном пароле «Старт» останавливается и называет сервер.
+- **`.ovpn` с ключами в отдельных файлах** больше не отказывает при импорте: профиль открывается в редакторе, ключи и сертификаты выбираются кнопкой «Из файла…». Конечная точка из такого файла показывает, каких данных не хватает.
+- **Строка `cipher` в `.ovpn`:** конфиги с ней, а это большинство файлов, больше не падают при «Старте».
+- **Секреты зашифрованы:** пароли, ключи, ссылки подписок, секреты OTP, пароль локального прокси и ключи WARP больше не лежат в данных Poros открытым текстом. Их защищает DPAPI Windows для этого компьютера.
+- **Папка на другом компьютере** открывается без секретов. Такие серверы помечены ключом, а у подписки без ссылки есть кнопка «Ввести ссылку». При неудачном «Старте» Poros подсказывает, куда ввести данные: ссылку подписки, профиль в редакторе или резервную копию. Коды OTP без секрета ждут, пока его введут.
+- **Резервная копия с паролем:** если в копии есть секреты, её можно целиком зашифровать паролем (AES-256-GCM, ключ из пароля получается Argon2id). При восстановлении Poros спросит пароль. Копия без пароля работает как раньше.
+- **Пресеты** остаются в том порядке, в котором их создали.
+- **Баннеры** в узком окне переносят кнопки под текст.
+
+<!-- en -->
+- **OpenVPN|BY:** profiles and endpoints for OpenVPN|BY servers with Belarusian cryptography — BTLS, belt and bash. Poros recognizes such an `.ovpn` by itself. A bign key under a password opens with the password from the profile, and a wrong password stops Start and names the server.
+- **An `.ovpn` with its keys in separate files** no longer fails to import: the profile opens in the editor, and the keys and certificates are chosen with "From file…". An endpoint from such a file shows which data is missing.
+- **The `cipher` line in `.ovpn`:** configs with it, which is most files, no longer fail at Start.
+- **Secrets are encrypted:** passwords, keys, subscription links, OTP secrets, the password of the local proxy and the WARP keys no longer lie in Poros's data as plain text. Windows DPAPI protects them for this computer.
+- **The folder on another computer** opens without its secrets. Such servers carry a key mark, and a subscription without its link has an "Enter the link" button. After a failed Start, Poros shows where to enter the data: the subscription link, the profile in the editor or a backup. OTP codes without their secret wait until it is entered.
+- **Backups with a password:** when a backup holds secrets, it can be encrypted whole with a password (AES-256-GCM, with the key derived from the password by Argon2id). Poros asks for the password when restoring. A backup without a password works as before.
+- **Presets** keep the order they were created in.
+- **Banners** in a narrow window move their buttons under the text.
+
 ## 0.4.0
 
 <!-- ru -->
