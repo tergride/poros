@@ -16,6 +16,8 @@ import (
 type serverRecord struct {
 	ID      string          `json:"id"`
 	Profile profile.Profile `json:"profile"`
+	// Lost names the secrets of the profile sealed on another computer, which this one cannot open.
+	Lost []string `json:"lost,omitempty"`
 }
 
 func (r serverRecord) view(groupID string) Server {
@@ -38,6 +40,7 @@ func (r serverRecord) view(groupID string) Server {
 		Port:     p.ServerPort,
 		Country:  flagCountry(name),
 		Security: p.Security(),
+		Need:     r.Lost,
 	}
 }
 

@@ -290,6 +290,9 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 	if settings.Server == "" {
 		return ConnectionState{}, failure(ReasonNoServer, "no server is chosen")
 	}
+	if err := e.checkSecrets(settings); err != nil {
+		return ConnectionState{}, err
+	}
 	server, links, found, err := e.serverWithLinks(settings.Server)
 	var missing missingLink
 	if errors.As(err, &missing) {

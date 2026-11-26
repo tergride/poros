@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/base64"
+	"reflect"
 	"testing"
 )
 
@@ -50,14 +51,14 @@ func TestOutsideLinks(t *testing.T) {
 	server := `{"type":"trojan","name":"🇩🇪 Home","server":"de.example.com","server_port":443,"trojan":{"password":"p","tls":{"enabled":true}}}`
 	info, err = e.ParseLink(OutsideLink{Link: "poros://add/" + encode(server)})
 	if err != nil || info.Kind != LinkServer || info.Server == nil ||
-		*info.Server != (Server{Name: "🇩🇪 Home", Protocol: "trojan", Host: "de.example.com", Port: 443, Country: "DE"}) {
+		!reflect.DeepEqual(*info.Server, Server{Name: "🇩🇪 Home", Protocol: "trojan", Host: "de.example.com", Port: 443, Country: "DE"}) {
 		t.Fatalf("server link: %+v, %v", info, err)
 	}
 
 	throne := `{"type":"trojan","tag":"Throne","server":"th.example.com","server_port":8443,"password":"p"}`
 	info, err = e.ParseLink(OutsideLink{Link: "throne://add/" + encode(throne)})
 	if err != nil || info.Kind != LinkServer || info.Server == nil ||
-		*info.Server != (Server{Name: "Throne", Protocol: "trojan", Host: "th.example.com", Port: 8443, Security: "none"}) {
+		!reflect.DeepEqual(*info.Server, Server{Name: "Throne", Protocol: "trojan", Host: "th.example.com", Port: 8443, Security: "none"}) {
 		t.Fatalf("Throne server link: %+v, %v", info, err)
 	}
 

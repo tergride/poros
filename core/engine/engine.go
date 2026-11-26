@@ -129,6 +129,12 @@ func Open(cfg Config) (*Engine, error) {
 		db.Close()
 		return nil, err
 	}
+	box, err := openDataKey(db)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("the data key: %w", err)
+	}
+	boxes.Store(db, box)
 	userAgent := "Poros"
 	if cfg.Version != "" {
 		userAgent += "/" + cfg.Version
@@ -162,6 +168,7 @@ func Open(cfg Config) (*Engine, error) {
 	e.latency.results = map[string]int{}
 	e.results.speed, e.results.ip = map[string]ServerSpeed{}, map[string]ServerIP{}
 	if err = e.loadTraffic(); err != nil {
+		boxes.Delete(db)
 		db.Close()
 		return nil, err
 	}
@@ -204,7 +211,9 @@ func (e *Engine) Close() error {
 	err := e.closeConnection()
 	e.closeKillSwitch()
 	e.saveTraffic()
-	return errors.Join(err, e.closeHistory(), e.db.Close())
+	err = errors.Join(err, e.closeHistory(), e.db.Close())
+	boxes.Delete(e.db)
+	return err
 }
 
 func newID() string {

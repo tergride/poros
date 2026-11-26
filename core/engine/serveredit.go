@@ -255,6 +255,8 @@ func (e *Engine) SaveServer(req SaveServer) (Server, error) {
 				return serverNotFound(req.ID)
 			}
 			groupID = s.groups[g].ID
+			// A secret lost on another computer stays lost until the user types it in.
+			r.Lost = stillLost(r.Profile, s.servers[groupID][i].Lost)
 			s.servers[groupID][i] = r
 		} else {
 			g, err := s.manualGroup(req.GroupID)

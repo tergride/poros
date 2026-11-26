@@ -261,6 +261,9 @@ type Group struct {
 	Error     string        `json:"error"`
 	ErrorText string        `json:"errorText"`
 	Settings  GroupSettings `json:"settings"`
+	// Need is ["url"] for a subscription whose link was saved on another computer and that this one cannot open: it
+	// waits for the link, and an update fails with secrets_lost.
+	Need []string `json:"need,omitempty"`
 }
 
 // GroupSettings change how the servers of a group connect and, for a subscription, how it downloads and updates.
@@ -366,6 +369,9 @@ type Server struct {
 	SpeedUp     string `json:"speedUp"`
 	ExitIP      string `json:"exitIp"`
 	ExitCountry string `json:"exitCountry"`
+	// Need names the secrets of the profile, such as trojan.password, that were saved on another computer and that
+	// this one cannot open: the server waits for them, and a start with it fails with secrets_lost.
+	Need []string `json:"need,omitempty"`
 }
 
 // ServerLatency is a delay test result: Latency in milliseconds, -1 when the server did not answer.
@@ -1088,6 +1094,9 @@ type OTPEntry struct {
 	Digits    int    `json:"digits"`
 	Period    int    `json:"period"`
 	Counter   uint64 `json:"counter"`
+	// Lost is a secret saved on another computer that this one cannot open: Secret is empty and the entry gives no
+	// codes until a secret is saved again.
+	Lost bool `json:"lost,omitempty"`
 }
 
 // OTPCode is an entry as the list shows it, without its secret. A TOTP code comes with the time it gives way to the
@@ -1102,6 +1111,8 @@ type OTPCode struct {
 	Code    string `json:"code"`
 	// Until is when Code stops, in Unix milliseconds; 0 without a code.
 	Until int64 `json:"until"`
+	// Lost is an entry whose secret was saved on another computer: it has no code.
+	Lost bool `json:"lost,omitempty"`
 }
 
 // OTPText is text with codes: otpauth:// and otpauth-migration:// links and bare base32 secrets by line, or JSON.
@@ -1506,6 +1517,10 @@ const (
 	// ReasonKeyPassword is a server or an endpoint of OpenVPN|BY whose key its password does not open, or one without
 	// the password it needs; ErrorText names it.
 	ReasonKeyPassword = "key_password"
+	// ReasonSecretsLost is a server, an endpoint, a subscription, a code of OTP or a setting whose secrets were saved
+	// on another computer, which this one cannot open; ErrorText names it. They wait to be typed in again or to come
+	// back from a backup.
+	ReasonSecretsLost = "secrets_lost"
 	// ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
 	ReasonSystemProxyFailed = "system_proxy_failed"
 	// ReasonStopTimeout is a connection that did not close in time; the core has to restart to let go of it.

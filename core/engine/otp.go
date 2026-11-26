@@ -45,8 +45,8 @@ func otpProblemOf(p otp.Problem) OTPProblem {
 
 // code is what the list shows of an entry: a TOTP code with its end, nothing for HOTP.
 func (e OTPEntry) code(now time.Time) OTPCode {
-	c := OTPCode{ID: e.ID, Name: e.Name, Account: e.Account, Kind: e.Kind, Digits: e.Digits, Period: e.Period}
-	if e.Kind == otp.KindTOTP {
+	c := OTPCode{ID: e.ID, Name: e.Name, Account: e.Account, Kind: e.Kind, Digits: e.Digits, Period: e.Period, Lost: e.Lost}
+	if e.Kind == otp.KindTOTP && !e.Lost {
 		code, until := e.entry().TOTP(now)
 		c.Code, c.Until = code, until.UnixMilli()
 	}
@@ -164,6 +164,8 @@ func (e *Engine) SaveOTP(entry OTPEntry) (OTPEntry, error) {
 	if problem := entry.entry().Check(); problem != nil {
 		return OTPEntry{}, invalidOTP(*problem)
 	}
+	// The check took a secret: one lost on another computer is typed in again.
+	entry.Lost = false
 	e.writeMu.Lock()
 	err := e.db.Update(func(tx *bbolt.Tx) error {
 		entries, err := loadOTP(tx)
@@ -238,6 +240,9 @@ func (e *Engine) OTPCodeNow(id string) (OTPCode, error) {
 		if i < 0 {
 			return jsonrpc.Failed(ReasonNotFound, "there is no code of OTP %q", id)
 		}
+		if entries[i].Lost {
+			return lostOTP(entries[i])
+		}
 		code = entries[i].code(e.now())
 		if entries[i].Kind != otp.KindHOTP {
 			return nil
@@ -259,7 +264,14 @@ func (e *Engine) OTPLink(id string) (OTPLink, error) {
 	if err != nil {
 		return OTPLink{}, err
 	}
+	if entry.Lost {
+		return OTPLink{}, lostOTP(entry)
+	}
 	return OTPLink{Link: entry.entry().Link()}, nil
+}
+
+func lostOTP(entry OTPEntry) error {
+	return jsonrpc.Failed(ReasonSecretsLost, "the code of OTP %q was saved on another computer, and its secret cannot be read here", entry.Name)
 }
 
 // otpCodes gives the codes of {otp} for the sign-ins of one start or test. A test takes TOTP codes alone: each HOTP
@@ -278,6 +290,8 @@ func (c *otpCodes) code(p profile.Profile, id string) (string, error) {
 	switch {
 	case id == "" || i < 0:
 		return "", failure(ReasonOTPMissing, "%s signs in with {otp}, but no code of OTP is chosen for it, or the chosen one is gone", name)
+	case c.entries[i].Lost:
+		return "", failure(ReasonSecretsLost, "%s signs in with the code of OTP %q, which was saved on another computer", name, c.entries[i].Name)
 	case c.entries[i].Kind != otp.KindHOTP:
 		code, _ := c.entries[i].entry().TOTP(c.now)
 		return code, nil

@@ -30,6 +30,8 @@ type groupRecord struct {
 	Error     string        `json:"error,omitempty"`
 	ErrorText string        `json:"errorText,omitempty"`
 	Settings  GroupSettings `json:"settings,omitzero"`
+	// Lost is ["url"] for a link sealed on another computer, which this one cannot open.
+	Lost []string `json:"lost,omitempty"`
 }
 
 func (r groupRecord) manual() bool { return r.Kind == GroupManual }
@@ -63,6 +65,7 @@ func (r groupRecord) view() Group {
 		Error:      r.Error,
 		ErrorText:  r.ErrorText,
 		Settings:   r.Settings,
+		Need:       r.Lost,
 	}
 }
 

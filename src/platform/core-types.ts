@@ -383,6 +383,11 @@ export interface Group {
   error: string;
   errorText: string;
   settings: GroupSettings;
+  /**
+   * Need is ["url"] for a subscription whose link was saved on another computer and that this one cannot open: it
+   * waits for the link, and an update fails with secrets_lost.
+   */
+  need?: string[];
 }
 /**
  * GroupSettings change how the servers of a group connect and, for a subscription, how it downloads and updates.
@@ -534,6 +539,11 @@ export interface Server {
   speedUp: string;
   exitIp: string;
   exitCountry: string;
+  /**
+   * Need names the secrets of the profile, such as trojan.password, that were saved on another computer and that
+   * this one cannot open: the server waits for them, and a start with it fails with secrets_lost.
+   */
+  need?: string[];
 }
 /**
  * ServerLatency is a delay test result: Latency in milliseconds, -1 when the server did not answer.
@@ -1593,6 +1603,11 @@ export interface OTPEntry {
   digits: number /* int */;
   period: number /* int */;
   counter: number /* uint64 */;
+  /**
+   * Lost is a secret saved on another computer that this one cannot open: Secret is empty and the entry gives no
+   * codes until a secret is saved again.
+   */
+  lost?: boolean;
 }
 /**
  * OTPCode is an entry as the list shows it, without its secret. A TOTP code comes with the time it gives way to the
@@ -1610,6 +1625,10 @@ export interface OTPCode {
    * Until is when Code stops, in Unix milliseconds; 0 without a code.
    */
   until: number /* int64 */;
+  /**
+   * Lost is an entry whose secret was saved on another computer: it has no code.
+   */
+  lost?: boolean;
 }
 /**
  * OTPText is text with codes: otpauth:// and otpauth-migration:// links and bare base32 secrets by line, or JSON.
@@ -2386,6 +2405,12 @@ export const ReasonSignInMissing = "sign_in_missing";
  * the password it needs; ErrorText names it.
  */
 export const ReasonKeyPassword = "key_password";
+/**
+ * ReasonSecretsLost is a server, an endpoint, a subscription, a code of OTP or a setting whose secrets were saved
+ * on another computer, which this one cannot open; ErrorText names it. They wait to be typed in again or to come
+ * back from a backup.
+ */
+export const ReasonSecretsLost = "secrets_lost";
 /**
  * ReasonSystemProxyFailed is a connection that runs without the system proxy, which could not be set.
  */

@@ -29,7 +29,8 @@ func createBuckets(db *bbolt.DB) error {
 	})
 }
 
-// getJSON decodes the value over v, so fields missing in the stored value keep what v had.
+// getJSON decodes the value over v, so fields missing in the stored value keep what v had. The secrets of servers,
+// subscriptions, endpoints, codes of OTP and the settings come out open.
 func getJSON(tx *bbolt.Tx, bucket, key []byte, v any) (bool, error) {
 	data := tx.Bucket(bucket).Get(key)
 	if data == nil {
@@ -38,10 +39,20 @@ func getJSON(tx *bbolt.Tx, bucket, key []byte, v any) (bool, error) {
 	if err := json.Unmarshal(data, v); err != nil {
 		return true, fmt.Errorf("decode %s/%s: %w", bucket, key, err)
 	}
+	if box := boxOf(tx); box != nil {
+		openValue(box, v)
+	}
 	return true, nil
 }
 
+// putJSON stores the value with its secrets sealed; the caller's value stays as it was.
 func putJSON(tx *bbolt.Tx, bucket, key []byte, v any) error {
+	if box := boxOf(tx); box != nil {
+		var err error
+		if v, err = sealValue(box, v); err != nil {
+			return fmt.Errorf("seal %s/%s: %w", bucket, key, err)
+		}
+	}
 	data, err := json.Marshal(v)
 	if err != nil {
 		return err

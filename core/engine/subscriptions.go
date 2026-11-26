@@ -83,6 +83,9 @@ func (e *Engine) hasURL(link string) bool {
 // download fetches and reads a subscription as its group asks. Its errors leave out the URL, which carries the
 // user's token.
 func (e *Engine) download(ctx context.Context, rec groupRecord) (profile.Document, subfetch.Info, *updateFailure) {
+	if len(rec.Lost) > 0 {
+		return profile.Document{}, subfetch.Info{}, &updateFailure{ReasonSecretsLost, "the link of the subscription was saved on another computer, and it cannot be read here"}
+	}
 	settings, err := e.Settings()
 	if err != nil {
 		return profile.Document{}, subfetch.Info{}, &updateFailure{ReasonFetchFailed, err.Error()}

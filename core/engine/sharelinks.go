@@ -23,11 +23,14 @@ func (e *Engine) profilesOf(ids []string) ([]profile.Profile, error) {
 			if g < 0 {
 				return serverNotFound(id)
 			}
-			p := store.servers[store.groups[g].ID][i].Profile
-			if p.Type == profile.TypeChain {
+			rec := store.servers[store.groups[g].ID][i]
+			if rec.Profile.Type == profile.TypeChain {
 				return jsonrpc.Failed(ReasonInvalidValue, "a chain is made of the servers of this Poros and has no link: share its servers")
 			}
-			profiles = append(profiles, p)
+			if len(rec.Lost) > 0 {
+				return jsonrpc.Failed(ReasonSecretsLost, "%s", lostSecrets(rec.view(store.groups[g].ID).Name).Error())
+			}
+			profiles = append(profiles, rec.Profile)
 		}
 		return nil
 	})
@@ -65,9 +68,12 @@ func (e *Engine) ExportServer(req ByID) (ServerConfig, error) {
 	}
 	p, links, found, err := e.serverWithLinks(req.ID)
 	var missing missingLink
+	var lost connError
 	switch {
 	case errors.As(err, &missing):
 		return ServerConfig{}, jsonrpc.Failed(ReasonNoServer, "%v", err)
+	case errors.As(err, &lost):
+		return ServerConfig{}, jsonrpc.Failed(lost.reason, "%s", lost.text)
 	case err != nil:
 		return ServerConfig{}, err
 	case !found:

@@ -125,7 +125,7 @@ func (e *Engine) ConfigureGroup(req ConfigureGroup) (Group, error) {
 			if slices.ContainsFunc(store.groups, func(r groupRecord) bool { return r.URL == url }) {
 				return jsonrpc.Failed(ReasonDuplicate, "this subscription is already added")
 			}
-			rec.URL = url
+			rec.URL, rec.Lost = url, nil
 		}
 		rec.Settings = req.Settings
 		return putJSON(tx, bucketGroups, []byte(rec.ID), rec)
@@ -148,13 +148,20 @@ func resolveServer(s *serverStore, id string) (p profile.Profile, links []profil
 	}
 	group := s.groups[g]
 	p = withGroupAddress(group, s.servers[group.ID][i].Profile)
+	if rec := s.servers[group.ID][i]; len(rec.Lost) > 0 {
+		return p, nil, true, lostSecrets(rec.view(group.ID).Name)
+	}
 	// One server named by ID, with the address of its own group.
 	server := func(id string) (profile.Profile, error) {
 		g, i := s.locate(id)
 		if g < 0 {
 			return profile.Profile{}, missingLink(id)
 		}
-		return withGroupAddress(s.groups[g], s.servers[s.groups[g].ID][i].Profile), nil
+		rec := s.servers[s.groups[g].ID][i]
+		if len(rec.Lost) > 0 {
+			return profile.Profile{}, lostSecrets(rec.view(s.groups[g].ID).Name)
+		}
+		return withGroupAddress(s.groups[g], rec.Profile), nil
 	}
 	if p.Type == profile.TypeChain {
 		for _, linkID := range p.Chain.Servers {

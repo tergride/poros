@@ -20,6 +20,7 @@ const detailed = new Set([
   'endpoint_failed',
   'sign_in_missing',
   'key_password',
+  'secrets_lost',
   'warp_failed',
   'system_proxy_failed',
   'kill_switch_failed',

@@ -1080,6 +1080,7 @@
     "endpoint_name_taken": "there is an endpoint with that name already",
     "sign_in_missing": "the endpoint has no data for signing in",
     "key_password": "the password of the OpenVPN{'|'}BY key is wrong or missing. Enter it in the «Key password» field of the server or the endpoint",
+    "secrets_lost": "the passwords and keys were saved on another computer and cannot be read here. Enter them again or restore a backup",
     "warp_failed": "Cloudflare gave no WARP configuration",
     "otp_missing": "the server has {'{otp}'} in its user name or password, but no OTP code is chosen, or the chosen one is gone. Choose a code in the «OTP code» field of the profile",
     "invalid_otp": "the OTP code was not saved",

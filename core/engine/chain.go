@@ -16,6 +16,11 @@ func (m missingLink) Error() string {
 	return fmt.Sprintf("the server %q of the chain is no longer in its group", string(m))
 }
 
+// lostSecrets is the failure of a server whose secrets were saved on another computer.
+func lostSecrets(name string) error {
+	return failure(ReasonSecretsLost, "%s was saved on another computer, and its secrets cannot be read here", name)
+}
+
 // serverWithLinks reads what a server connects with, as resolveServer gives it, in one transaction.
 func (e *Engine) serverWithLinks(id string) (p profile.Profile, links []profile.Profile, found bool, err error) {
 	err = e.db.View(func(tx *bbolt.Tx) error {

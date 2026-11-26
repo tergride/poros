@@ -57,6 +57,8 @@ on [sing-box](https://github.com/SagerNet/sing-box) and [Xray-core](https://gith
 
 Poros has no installer. Its data, the WebView2 profile included, stays in `config` next to `Poros.exe`, so deleting the folder removes Poros. If the folder is read-only, Poros says so and exits. One Poros runs per Windows user.
 
+Passwords, keys, subscription links and OTP secrets in `config` are encrypted for this computer with Windows DPAPI. A copy of the folder on another computer opens without them: servers wait for their secrets until you enter them again. To move everything, use a backup from the tools.
+
 ## Updates
 
 Poros checks this repository's releases at start and every four hours, downloads a new version in the background and installs it when you press **Restart and update**. Help in the settings turns the automatic check off and turns on beta versions, which are pre-releases here. To update by hand, unpack the new archive over the folder: it has no `config`, so your data stays.
