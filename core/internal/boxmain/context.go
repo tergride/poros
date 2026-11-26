@@ -8,6 +8,9 @@ import (
 	"github.com/sagernet/sing-box/include"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing/service"
+
+	// OpenVPN of sing-box takes BTLS, belt and bash for OpenVPN|BY.
+	_ "PorosCore/internal/stb/ovpn"
 )
 
 var disableColor bool

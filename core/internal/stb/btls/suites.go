@@ -118,9 +118,9 @@ func signatureFor(curve *bign.Curve, peer []uint16) (uint16, bool) {
 	return 0, false
 }
 
-// signatureAlgorithmsFor is the list to offer with the algorithms of the own curve first, or in the usual order
-// without a curve. OpenSSL with bee2evp signs ServerKeyExchange and CertificateVerify with the first algorithm of the
-// peer's list for its key type whatever the curve, so a peer on the same curve then signs with one that fits its key.
+// signatureAlgorithmsFor is the list of CertificateRequest with the algorithms of the own curve first, or in the usual
+// order without a curve. OpenSSL with bee2evp as a client signs CertificateVerify with the first algorithm of the
+// server's list for its key type whatever the curve, so a client on the same curve then signs with one that fits.
 func signatureAlgorithmsFor(curve *bign.Curve) []uint16 {
 	algs := make([]uint16, 0, len(supportedSignatureAlgorithms))
 	for _, alg := range supportedSignatureAlgorithms {
@@ -130,6 +130,20 @@ func signatureAlgorithmsFor(curve *bign.Curve) []uint16 {
 	}
 	for _, alg := range supportedSignatureAlgorithms {
 		if signatureCurve(alg) != curve {
+			algs = append(algs, alg)
+		}
+	}
+	return algs
+}
+
+// curveSignatureAlgorithms lists the algorithms of one curve alone, which a client with a certificate offers. A
+// server of OpenSSL that keeps its own order of algorithms, as OpenVPN sets it, signs ServerKeyExchange with the first
+// one of that order the client offers for its key type, whatever the curve, so a longer list may leave it none that
+// fits its key.
+func curveSignatureAlgorithms(curve *bign.Curve) []uint16 {
+	var algs []uint16
+	for _, alg := range supportedSignatureAlgorithms {
+		if signatureCurve(alg) == curve {
 			algs = append(algs, alg)
 		}
 	}

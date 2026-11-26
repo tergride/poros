@@ -9,7 +9,6 @@ import (
 	"io"
 	"slices"
 
-	"PorosCore/internal/stb/bign"
 	"PorosCore/internal/stb/stbkey"
 )
 
@@ -37,15 +36,15 @@ func (c *Conn) clientHandshake() error {
 		return err
 	}
 	hs := &clientHandshake{c: c}
-	var curve *bign.Curve
+	signatures := supportedSignatureAlgorithms
 	if cert != nil {
-		curve = cert.PrivateKey.Curve
+		signatures = curveSignatureAlgorithms(cert.PrivateKey.Curve)
 	}
 	hs.hello = &clientHello{
 		version:                      versionTLS12,
 		random:                       make([]byte, randomLength),
 		compressionMethods:           []uint8{compressionNone},
-		signatureAlgorithms:          signatureAlgorithmsFor(curve),
+		signatureAlgorithms:          signatures,
 		secureRenegotiationSupported: true,
 		extendedMasterSecret:         true,
 	}

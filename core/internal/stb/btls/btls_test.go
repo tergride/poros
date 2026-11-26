@@ -321,8 +321,8 @@ func TestContextCancel(t *testing.T) {
 	}
 }
 
-// TestSignatureAlgorithmsFor checks that the offered list starts with the own curve: OpenSSL signs with the first
-// algorithm of its key type in the peer's list.
+// TestSignatureAlgorithmsFor checks that CertificateRequest starts with the own curve and that a client with a
+// certificate offers its curve alone: OpenSSL signs with the first algorithm of its key type it may take.
 func TestSignatureAlgorithmsFor(t *testing.T) {
 	if algs := signatureAlgorithmsFor(nil); !slices.Equal(algs, supportedSignatureAlgorithms) {
 		t.Fatalf("without a curve: %04x", algs)
@@ -336,6 +336,9 @@ func TestSignatureAlgorithmsFor(t *testing.T) {
 			if (i < 2) != (signatureCurve(alg) == curve) {
 				t.Fatalf("level %d: %04x", curve.Level, algs)
 			}
+		}
+		if own := curveSignatureAlgorithms(curve); !slices.Equal(own, algs[:2]) {
+			t.Fatalf("level %d: the client offers %04x", curve.Level, own)
 		}
 	}
 }
