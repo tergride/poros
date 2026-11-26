@@ -12,6 +12,7 @@ import {
   OTPSHA512,
   ReasonInvalidOTP,
   ReasonNotFound,
+  ReasonSecretsLost,
 } from './core-types'
 
 // «Tools → OTP» of the stub core: the entries and their checks as core/internal/otp keeps them. The codes are not
@@ -102,6 +103,7 @@ export function createStubOtp(announce: (codes: OTPCode[]) => void, nextId: () =
   let entries: OTPEntry[] = []
   const codeOf = (e: OTPEntry): OTPCode => {
     const code: OTPCode = { id: e.id, name: e.name, account: e.account, kind: e.kind, digits: e.digits, period: e.period, code: '', until: 0 }
+    if (e.lost) return { ...code, lost: true }
     if (e.kind === OTPKindTOTP) {
       const step = Math.floor(Date.now() / 1000 / e.period)
       code.code = fakeCode(e.secret, step, e.digits)
@@ -116,11 +118,20 @@ export function createStubOtp(announce: (codes: OTPCode[]) => void, nextId: () =
     if (i < 0) throw { code: 1, message: `there is no code of OTP "${id}"`, data: { reason: ReasonNotFound } } satisfies CoreError
     return i
   }
+  // As the core: a secret saved on another computer gives no codes and no link.
+  const withSecret = (id: string) => {
+    const i = index(id)
+    const e = entries[i]!
+    if (e.lost) {
+      throw { code: 1, message: `the code of OTP "${e.name}" was saved on another computer, and its secret cannot be read here`, data: { reason: ReasonSecretsLost } } satisfies CoreError
+    }
+    return i
+  }
   return {
     list,
     /** The code {otp} stands for at a start: as the core, a HOTP code moves its counter. */
     code(id: string): OTPCode {
-      const i = index(id)
+      const i = withSecret(id)
       const e = entries[i]!
       const code = codeOf(e)
       if (e.kind === OTPKindHOTP) {
@@ -153,8 +164,8 @@ export function createStubOtp(announce: (codes: OTPCode[]) => void, nextId: () =
       if (result.added) changed()
       return result
     },
-    save(draft: OTPEntry): OTPEntry {
-      const entry = { ...draft, name: draft.name.trim(), account: draft.account.trim(), secret: normalizeSecret(draft.secret) || draft.secret }
+    save({ lost: _, ...draft }: OTPEntry): OTPEntry {
+      const entry: OTPEntry = { ...draft, name: draft.name.trim(), account: draft.account.trim(), secret: normalizeSecret(draft.secret) || draft.secret }
       if (entry.kind === OTPKindHOTP) entry.period = 0
       else entry.counter = 0
       const problem = problemOf(entry)
@@ -177,7 +188,7 @@ export function createStubOtp(announce: (codes: OTPCode[]) => void, nextId: () =
       return null
     },
     link(id: string): string {
-      const e = entries[index(id)]!
+      const e = entries[withSecret(id)]!
       const label = e.account ? `${e.name}:${e.account}` : e.name
       return `otpauth://${e.kind}/${encodeURIComponent(label)}?secret=${e.secret}&issuer=${encodeURIComponent(e.name)}`
     },

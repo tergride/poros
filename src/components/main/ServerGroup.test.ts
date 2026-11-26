@@ -52,7 +52,7 @@ const servers: Server[] = [
   { id: 's2', groupId: 'g1', name: 'Finland', protocol: 'trojan', host: 'fi.example.com', port: 443, country: 'FI', latency: 0, security: '', upload: 0, download: 0, speedDown: '', speedUp: '', exitIp: '', exitCountry: '' },
 ]
 
-function mountGroup(props: Partial<{ group: Group }>) {
+function mountGroup(props: Partial<{ group: Group; servers: Server[] }>) {
   return mount(ServerGroup, {
     props: { group, servers, selected: 's1', open: true, updating: false, ...props },
     global: { plugins: [createAppI18n(['ru-RU'])] },
@@ -89,5 +89,19 @@ describe('a group of servers', () => {
     expect(wrapper.find('button[aria-label="Обновить подписку"]').exists()).toBe(false)
     expect(wrapper.find('button[aria-label="Действия с группой"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-testid="server"]')).toHaveLength(2)
+  })
+
+  it('takes the link of a subscription saved on another computer instead of an update, and marks its servers', async () => {
+    const wrapper = mountGroup({
+      group: { ...group, url: '', need: ['url'] },
+      servers: servers.map((s) => ({ ...s, need: [`${s.protocol}.uuid`] })),
+    })
+    expect(wrapper.text()).toContain('2 сервера · ждёт ссылку')
+    expect(wrapper.find('button[aria-label="Обновить подписку"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid="server-lost"]')).toHaveLength(2)
+    expect(wrapper.find('[data-testid="server-lost"]').attributes('title')).toBe('Пароли и ключи сохранены на другом компьютере')
+    await wrapper.find('[data-testid="group-link-again"]').trigger('click')
+    expect(wrapper.emitted('linkAgain')).toHaveLength(1)
+    expect(mountGroup({}).find('[data-testid="server-lost"]').exists()).toBe(false)
   })
 })

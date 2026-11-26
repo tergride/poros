@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, Copy, Gauge, MoreHorizontal, Pencil, RefreshCw, Trash2 } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Copy, Gauge, KeyRound, MoreHorizontal, Pencil, RefreshCw, Trash2 } from '@lucide/vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -17,6 +17,7 @@ const emit = defineEmits<{
   update: []
   test: []
   copyLink: []
+  linkAgain: []
   rename: []
   remove: []
 }>()
@@ -24,12 +25,15 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const now = useClock(60_000)
 
-// A group of the user's has no provider: no quota, no update and no link.
+// A group of the user's has no provider: no quota, no update and no link. A subscription whose link was saved on
+// another computer takes the link again instead of an update.
 const manual = computed(() => props.group.kind === GroupManual)
+const lost = computed(() => !manual.value && !!props.group.need?.length)
 const used = computed(() => props.group.upload + props.group.download)
 const summary = computed(() => {
   const servers = t('servers.count', props.group.servers)
   if (manual.value) return t('list.manualGroup', { servers })
+  if (lost.value) return t('list.needsLink', { servers })
   if (!props.group.updatedAt) return t('list.groupNever', { servers })
   return t('list.group', { servers, when: formatAgo(props.group.updatedAt, now.value, locale.value) })
 })
@@ -53,20 +57,25 @@ function latencyText(latency: number): string {
         <ChevronDown v-if="open" class="size-4 flex-none text-t2" /><ChevronRight v-else class="size-4 flex-none text-t2" />
         <span class="min-w-0">
           <strong class="block truncate font-semibold" :title="group.name">{{ group.name }}</strong>
-          <small class="block truncate text-xs text-t3">{{ summary }}</small>
+          <small :class="['block truncate text-xs', lost ? 'text-warn' : 'text-t3']">{{ summary }}</small>
         </span>
       </button>
       <SubscriptionQuota v-if="!manual && (group.total > 0 || group.expire > 0 || used > 0)" :group="group" class="w-[196px]" />
-      <Button v-if="!manual" variant="ghost" size="icon-sm" :aria-label="t('list.update')" :disabled="updating" @click="emit('update')">
+      <!-- A narrow window keeps the icon and gives the name its room. -->
+      <Button v-if="lost" size="sm" data-testid="group-link-again" @click="emit('linkAgain')">
+        <KeyRound /><span class="max-[1079px]:sr-only">{{ t('list.linkAgain') }}</span>
+      </Button>
+      <Button v-else-if="!manual" variant="ghost" size="icon-sm" :aria-label="t('list.update')" :disabled="updating" @click="emit('update')">
         <RefreshCw :class="updating && 'animate-spin'" />
       </Button>
       <Menu align="end" min-width="240px">
         <template #trigger>
           <Button variant="ghost" size="icon-sm" :aria-label="t(manual ? 'list.groupActions' : 'list.actions')"><MoreHorizontal /></Button>
         </template>
-        <MenuItem v-if="!manual" @select="emit('update')"><RefreshCw />{{ t('list.update') }}</MenuItem>
+        <MenuItem v-if="lost" @select="emit('linkAgain')"><KeyRound />{{ t('list.linkAgain') }}</MenuItem>
+        <MenuItem v-else-if="!manual" @select="emit('update')"><RefreshCw />{{ t('list.update') }}</MenuItem>
         <MenuItem @select="emit('test')"><Gauge />{{ t('list.test') }}</MenuItem>
-        <MenuItem v-if="!manual" @select="emit('copyLink')"><Copy />{{ t('list.copyLink') }}</MenuItem>
+        <MenuItem v-if="!manual && !lost" @select="emit('copyLink')"><Copy />{{ t('list.copyLink') }}</MenuItem>
         <MenuItem @select="emit('rename')"><Pencil />{{ t('list.rename') }}</MenuItem>
         <MenuSeparator />
         <MenuItem danger @select="emit('remove')"><Trash2 />{{ t(manual ? 'list.removeGroup' : 'list.removeSubscription') }}</MenuItem>
@@ -89,7 +98,12 @@ function latencyText(latency: number): string {
           <Flag v-if="server.country" :code="server.country" class="text-[17px]" />
           <span v-else class="font-mono text-[11px] text-t3">··</span>
         </span>
-        <span class="truncate">{{ serverTitle(server.name, server.country) }}</span>
+        <span class="flex min-w-0 items-center gap-2">
+          <span class="truncate">{{ serverTitle(server.name, server.country) }}</span>
+          <span v-if="server.need?.length" class="flex flex-none" :title="t('servers.lost')" data-testid="server-lost">
+            <KeyRound class="size-3.5 text-warn" :aria-label="t('servers.lost')" />
+          </span>
+        </span>
         <span :class="['font-mono text-[12.5px] font-medium whitespace-nowrap', toneClass[latencyTone(server.latency)]]">
           {{ latencyText(server.latency) }}
         </span>

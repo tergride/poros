@@ -62,18 +62,21 @@ describe('the tray menu', () => {
   })
 
   it('lists the codes of OTP while there are any, and a click copies one', () => {
-    const codes = [{ id: 'o1', name: 'GitHub' }, { id: 'o2', name: 'Office' }] as OTPCode[]
+    const codes = [{ id: 'o1', name: 'GitHub' }, { id: 'o2', name: 'Office' }, { id: 'o3', name: 'Lost', lost: true }] as OTPCode[]
     const act = actions()
     const items = trayMenu({ ...state(), otp: codes }, act, words)
     expect(texts(items)).toEqual(['off', 'Connect', '—', 'Route: home', 'Codes', '—', 'TUN', 'System', '—', 'Show', 'Exit'])
     const menu = items[4]
     if (menu?.kind !== 'submenu') throw new Error('no codes submenu')
-    expect(texts(menu.items)).toEqual(['GitHub', 'Office', '—', 'A click copies'])
+    expect(texts(menu.items)).toEqual(['GitHub', 'Office', 'Lost', '—', 'A click copies'])
     const office = menu.items[1]
     if (office?.kind !== 'item') throw new Error('no item')
     office.action?.()
     expect(act.copyOtp).toHaveBeenCalledWith('o2')
-    expect(menu.items[3]).toMatchObject({ enabled: false })
+    expect(office.enabled).toBe(true)
+    // A code whose secret was saved on another computer has nothing to copy.
+    expect(menu.items[2]).toMatchObject({ enabled: false })
+    expect(menu.items[4]).toMatchObject({ enabled: false })
   })
 
   it('marks what is chosen and acts on it', () => {

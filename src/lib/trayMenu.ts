@@ -100,7 +100,13 @@ export function trayFallback(down: boolean, actions: Pick<TrayActions, 'show' | 
 function otpMenu(state: TrayState, actions: TrayActions, words: TrayWords): TrayItem[] {
   const codes = state.otp ?? []
   if (codes.length === 0) return []
-  const items: TrayItem[] = codes.map((code) => ({ kind: 'item', text: words.otpName(code), enabled: !state.coreDown, action: () => actions.copyOtp(code.id) }))
+  // A code whose secret was saved on another computer has nothing to copy.
+  const items: TrayItem[] = codes.map((code) => ({
+    kind: 'item',
+    text: words.otpName(code),
+    enabled: !state.coreDown && !code.lost,
+    action: () => actions.copyOtp(code.id),
+  }))
   return [{ kind: 'submenu', text: words.otp(), items: [...items, separator, { kind: 'item', text: words.otpHint(), enabled: false }] }]
 }
 

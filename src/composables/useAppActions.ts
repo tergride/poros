@@ -23,9 +23,11 @@ export function useAppActions() {
       void router.push('/adv/profiles')
       profiles.newProfile(null)
     },
-    // One subscription that fails does not keep the others from their update.
+    // One subscription that fails does not keep the others from their update; one that waits for its link is left.
     updateAll: async () => {
-      for (const g of core.groups.filter((g) => g.kind !== GroupManual)) await attempt(() => core.core().call(MethodSubscriptionsUpdate, { id: g.id }))
+      for (const g of core.groups.filter((g) => g.kind !== GroupManual && !g.need?.length)) {
+        await attempt(() => core.core().call(MethodSubscriptionsUpdate, { id: g.id }))
+      }
     },
     testAll: () => attempt(() => core.testServers('')),
     // As the first item of the tray: Stop while a connection runs or the kill switch holds after a lost one.

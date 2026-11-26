@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Check, Copy, Download, MoreHorizontal, Plus, QrCode, RefreshCw, ScanLine, SquarePen, Trash2 } from '@lucide/vue'
+import { ArrowDown, ArrowUp, Check, Copy, Download, KeyRound, MoreHorizontal, Plus, QrCode, RefreshCw, ScanLine, SquarePen, Trash2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -17,7 +17,8 @@ import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 // «Tools → OTP»: the codes of the user's sign-ins. A TOTP code counts down and the list asks the core again when one
-// runs out; a HOTP code shows on «Next code», since each one moves the counter of the server.
+// runs out; a HOTP code shows on «Next code», since each one moves the counter of the server. A code whose secret was
+// saved on another computer has none until the secret is typed in again.
 const core = useCoreStore()
 const ui = useUiStore()
 const attempt = useAttempt()
@@ -134,12 +135,14 @@ async function remove(): Promise<void> {
           <div class="min-w-0">
             <div class="truncate">{{ title(c) }}</div>
             <span v-if="subtitle(c)" class="block truncate text-xs text-t3">{{ subtitle(c) }}</span>
+            <span v-if="c.lost" class="block truncate text-xs text-warn" data-testid="otp-lost">{{ t('adv.tools.lost') }}</span>
           </div>
           <b :class="['font-mono text-[19px] font-medium tracking-[.08em]', !codeOf(c) && 'text-t3']" data-testid="otp-code">
             {{ codeOf(c) ? groupCode(codeOf(c)) : hiddenCode(c.digits) }}
           </b>
           <div class="flex items-center gap-1.5">
-            <Button v-if="c.kind === OTPKindHOTP" size="sm" data-testid="otp-next" @click="next(c)"><RefreshCw />{{ t('adv.tools.next') }}</Button>
+            <Button v-if="c.lost" size="sm" data-testid="otp-secret-again" @click="edit(c)"><KeyRound />{{ t('adv.tools.secretAgain') }}</Button>
+            <Button v-else-if="c.kind === OTPKindHOTP" size="sm" data-testid="otp-next" @click="next(c)"><RefreshCw />{{ t('adv.tools.next') }}</Button>
             <span v-else class="inline-flex h-[22px] min-w-[44px] items-center justify-center rounded-md bg-s4 px-2 text-[11.5px] text-t2" data-testid="otp-left">
               {{ t('adv.tools.seconds', { n: secondsLeft(c.until, now) }) }}
             </span>
@@ -151,7 +154,7 @@ async function remove(): Promise<void> {
                 <Button variant="ghost" size="icon-sm" :aria-label="t('adv.tools.actions')" data-testid="otp-menu"><MoreHorizontal /></Button>
               </template>
               <MenuItem :disabled="!codeOf(c)" @select="copy(c)"><Copy />{{ t('adv.tools.copy') }}</MenuItem>
-              <MenuItem data-testid="otp-qr" @select="showQr(c)"><QrCode />{{ t('qr.menu') }}</MenuItem>
+              <MenuItem :disabled="c.lost" data-testid="otp-qr" @select="showQr(c)"><QrCode />{{ t('qr.menu') }}</MenuItem>
               <MenuItem data-testid="otp-edit" @select="edit(c)"><SquarePen />{{ t('adv.tools.edit') }}</MenuItem>
               <MenuSeparator />
               <MenuItem :disabled="i === 0" data-testid="otp-up" @select="move(c, -1)"><ArrowUp />{{ t('adv.tools.up') }}</MenuItem>

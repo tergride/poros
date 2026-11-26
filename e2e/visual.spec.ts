@@ -1,5 +1,7 @@
 import { type Locator, type Page, expect, test } from '@playwright/test'
 
+import { restoreFromAnotherComputer } from './lost'
+
 // Reference screenshots of the key screens and dialogs of both modes, in Russian at 1180×760, against the core in
 // memory. A change of a screen shows as a difference from its reference in test-results; after an intended change the
 // references are written again with --update-snapshots and looked at. The clock stands still, so that «updated this
@@ -142,6 +144,30 @@ test('the settings of the simple mode, a backup to restore and the change of mod
   await page.getByTestId('mode-chip').click()
   await expect(page.getByRole('dialog', { name: 'Перейти в расширенный режим?' })).toBeVisible()
   await snap(page, 'dialog-mode')
+})
+
+test('data saved on another computer: its marks, the refused start and the link of a subscription', async ({ page }) => {
+  await throughWizard(page)
+  await visit(page, '/settings/backup')
+  await restoreFromAnotherComputer(page)
+  await visit(page, '/main')
+  await connectWithSystem(page)
+  await expect(page.getByTestId('connection-error')).toBeVisible()
+  await snap(page, 'main-secrets-lost')
+  await page.getByTestId('lost-link-again').click()
+  await expect(page.getByRole('dialog', { name: 'Ссылка подписки' })).toBeVisible()
+  await snap(page, 'dialog-link-again')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toBeHidden()
+
+  await page.getByRole('button', { name: 'Меню' }).click()
+  await page.getByTestId('segment-advanced').click()
+  await expect(page.getByTestId('profiles-table')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('segment-advanced')).toBeHidden()
+  await snap(page, 'adv-profiles-secrets-lost')
+  await visit(page, '/adv/tools/otp')
+  await snap(page, 'adv-tools-otp-lost')
 })
 
 test('the advanced mode: its sections, settings, a QR code and the connections', async ({ page }) => {

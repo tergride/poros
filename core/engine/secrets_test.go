@@ -344,6 +344,9 @@ func TestSecretsOfAnotherComputer(t *testing.T) {
 	if _, err = e.UpdateSubscription(t.Context(), f.sub); err != nil || f.provider.requests() != requests+1 {
 		t.Fatalf("an update with the link: %v", err)
 	}
+	if subServers, err = e.Servers(ServersQuery{GroupID: f.sub}); err != nil || len(subServers) != 1 || len(subServers[0].Need) != 0 {
+		t.Errorf("the update brings the server of the subscription with its secrets: %+v, %v", subServers, err)
+	}
 	code, err := e.OTPEntry(f.otp)
 	if err != nil {
 		t.Fatal(err)

@@ -159,6 +159,7 @@ import {
   ReasonNoServers,
   ReasonNotFound,
   ReasonNotManual,
+  ReasonSecretsLost,
   ReasonServerUnsupported,
   ReasonSingleServer,
   ReasonSubscriptionURL,
@@ -613,6 +614,20 @@ function serverOf(p: Profile, id: string, groupId: string): Server {
   return { id, groupId, name, protocol: p.type, host: p.server, port: p.server_port, country, latency: 0, ...noMeasures, security }
 }
 
+// As core/engine/secrets.go: a secret saved on another computer stays lost while its field is empty.
+function stillLost(need: string[] | undefined, p: Profile): string[] | undefined {
+  const kept = (need ?? []).filter((name) => {
+    let value: unknown = p
+    for (const key of name.split('.')) value = (value as Record<string, unknown> | null | undefined)?.[key]
+    return value === undefined || value === null || value === ''
+  })
+  return kept.length > 0 ? kept : undefined
+}
+
+function lostSecrets(server: Server): CoreError {
+  return failed(ReasonSecretsLost, `${server.name} was saved on another computer, and its secrets cannot be read here`)
+}
+
 /** The rules of core/engine/links.go: nothing is added, the link is only read. */
 function parseOutsideLink(link: string): LinkInfo {
   const match = /^(poros|throne):\/\/([^/]*)\/?(.*)$/i.exec(link.trim())
@@ -729,6 +744,12 @@ export function createStubCore(): CoreClient {
   const findServer = (id: string) => {
     const server = servers.find((s) => s.id === id)
     if (!server) throw failed(ReasonNotFound, `there is no server "${id}"`)
+    return server
+  }
+  // As the core: a server that waits for its secrets gives no link and no config.
+  const withSecrets = (id: string) => {
+    const server = findServer(id)
+    if (server.need?.length) throw lostSecrets(server)
     return server
   }
   // The group of the chosen server before a change, so that a choice that went away stays in that group.
@@ -961,7 +982,9 @@ export function createStubCore(): CoreClient {
       if ((settings.removeUnavailable || settings.sortByLatency) && !settings.test) {
         throw failed(ReasonInvalidValue, 'removing unavailable servers and sorting by delay go by the test after the update')
       }
-      const configured = { ...group, url: url.trim() || group.url, settings: { ...settings } }
+      // A link typed in again is no longer lost.
+      const { need, ...kept } = group
+      const configured = url.trim() ? { ...kept, url: url.trim(), settings: { ...settings } } : { ...kept, ...(need && { need }), settings: { ...settings } }
       groups = groups.map((g) => (g.id === id ? configured : g))
       changed(id)
       return groupList().find((g) => g.id === id)!
@@ -1010,8 +1033,11 @@ export function createStubCore(): CoreClient {
     [MethodSubscriptionsUpdate]: ({ id }) => {
       const group = find(id)
       if (group.kind === GroupManual) throw failed(ReasonInvalidValue, `the group "${id}" is no subscription`)
+      if (group.need?.length) throw failed(ReasonSecretsLost, 'the link of the subscription was saved on another computer, and it cannot be read here')
       const sub = { ...group, updatedAt: Date.now() }
       groups = groups.map((g) => (g.id === id ? sub : g))
+      // The provider brings its servers whole, their secrets with them.
+      servers = servers.map(({ need, ...s }) => (s.groupId === id ? s : { ...s, ...(need && { need }) }))
       changed(id)
       return noChanges(sub)
     },
@@ -1056,7 +1082,8 @@ export function createStubCore(): CoreClient {
       let saved: Server
       if (id) {
         const old = findServer(id)
-        saved = { ...serverOf(profile, id, old.groupId), latency: old.latency }
+        const need = stillLost(old.need, profile)
+        saved = { ...serverOf(profile, id, old.groupId), latency: old.latency, ...(need && { need }) }
         profiles.set(id, profile)
         servers = servers.map((s) => (s.id === id ? saved : s))
       } else saved = addServer(profile, manual(groupId).id)
@@ -1098,14 +1125,14 @@ export function createStubCore(): CoreClient {
       changed(...touched)
       return { ids: moved }
     },
-    [MethodServersLinks]: ({ ids }) => ({ links: ids.map((id) => (findServer(id), writeShareLink(profiles.get(id)!))) }),
+    [MethodServersLinks]: ({ ids }) => ({ links: ids.map((id) => (withSecrets(id), writeShareLink(profiles.get(id)!))) }),
     [MethodServersDeepLinks]: ({ ids }) => ({
-      links: ids.map((id) => (findServer(id), 'poros://add/' + encodeBase64(JSON.stringify(profiles.get(id)!)))),
+      links: ids.map((id) => (withSecrets(id), 'poros://add/' + encodeBase64(JSON.stringify(profiles.get(id)!)))),
     }),
     [MethodServersForms]: () => structuredClone(forms),
     [MethodServersCheck]: ({ profile }) => checkProfile(profile),
     [MethodServersExport]: ({ id }) => {
-      findServer(id)
+      withSecrets(id)
       const { type, server, server_port, [partKey(type)]: part } = profiles.get(id)! as unknown as Record<string, unknown> & { type: string }
       const outbound = { type, tag: 'proxy', server, server_port, ...(part as object) }
       return { core: CoreSingBox, json: JSON.stringify(outbound, null, 2) }
@@ -1298,9 +1325,9 @@ export function createStubCore(): CoreClient {
       const { preset } = settings
       setConnection({ ...idle, state: ConnectionStarting, preset })
       settle(() => {
-        if (!servers.some((s) => s.id === settings.server)) {
-          return { ...idle, error: ReasonNoServer, errorText: 'no server is chosen' }
-        }
+        const chosen = servers.find((s) => s.id === settings.server)
+        if (!chosen) return { ...idle, error: ReasonNoServer, errorText: 'no server is chosen' }
+        if (chosen.need?.length) return { ...idle, error: ReasonSecretsLost, errorText: lostSecrets(chosen).message }
         if (settings.tun && !status.elevated) {
           return { ...idle, error: ReasonNeedsElevation, errorText: 'TUN needs administrator rights' }
         }

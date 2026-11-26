@@ -9,6 +9,7 @@ import {
   FolderInput,
   Gauge,
   Globe,
+  KeyRound,
   Link,
   LoaderCircle,
   MoreHorizontal,
@@ -75,6 +76,9 @@ watch(
   { immediate: true },
 )
 const manual = computed(() => group.value?.kind === GroupManual)
+// A subscription whose link was saved on another computer takes the link again instead of an update.
+const needsLink = (g: Group) => g.kind !== GroupManual && !!g.need?.length
+const lost = computed(() => !!group.value && needsLink(group.value))
 const count = (id: string) => core.servers.filter((s) => s.groupId === id).length
 
 const query = ref('')
@@ -131,6 +135,7 @@ function result(s: Server): string {
 const updatedText = computed(() => {
   const g = group.value
   if (!g || g.kind === GroupManual) return t('profiles.manualText')
+  if (needsLink(g)) return t('profiles.needsLink')
   const host = (() => {
     try {
       return new URL(g.url).hostname
@@ -154,7 +159,7 @@ async function updateGroup(g: Group): Promise<void> {
   }
 }
 async function updateAll(): Promise<void> {
-  for (const g of core.groups.filter((g) => g.kind !== GroupManual)) await updateGroup(g)
+  for (const g of core.groups.filter((g) => g.kind !== GroupManual && !needsLink(g))) await updateGroup(g)
 }
 
 function clean(kind: 'unavailable' | 'duplicates' | 'insecure'): Promise<void> {
@@ -321,6 +326,9 @@ async function importEntered(): Promise<void> {
         >
           <Folder v-if="g.kind === GroupManual" class="size-4 flex-none" /><Link v-else class="size-4 flex-none" />
           <span class="min-w-0 flex-1 truncate">{{ g.name }}</span>
+          <span v-if="needsLink(g)" class="flex flex-none" :title="t('profiles.needsLink')">
+            <KeyRound class="size-3.5 text-warn" :aria-label="t('profiles.needsLink')" />
+          </span>
           <span class="text-xs text-t3">{{ count(g.id) }}</span>
         </button>
       </div>
@@ -333,13 +341,16 @@ async function importEntered(): Promise<void> {
         <div class="flex flex-none flex-wrap items-center gap-3 border-b border-line px-4 py-3">
           <div class="min-w-[180px] flex-1">
             <h2 class="truncate font-disp text-[17px] font-normal" data-testid="group-title">{{ group.name }}</h2>
-            <small class="block truncate text-xs text-t3">{{ updatedText }}</small>
+            <small :class="['block truncate text-xs', lost ? 'text-warn' : 'text-t3']">{{ updatedText }}</small>
           </div>
           <div class="ml-auto flex flex-wrap items-center justify-end gap-3">
             <!-- The header of a subscription: its quota and its end date, as in the simple mode. -->
             <SubscriptionQuota v-if="!manual" :group="group" class="w-[230px]" />
             <div class="flex items-center gap-3">
-              <Button v-if="!manual" size="sm" :disabled="updating || !core.ready" @click="updateGroup(group)">
+              <Button v-if="lost" size="sm" :disabled="!core.ready" data-testid="group-link-again" @click="ui.linkAgain = group.id">
+                <KeyRound />{{ t('list.linkAgain') }}
+              </Button>
+              <Button v-else-if="!manual" size="sm" :disabled="updating || !core.ready" @click="updateGroup(group)">
                 <RefreshCw :class="updating && 'animate-spin'" />{{ t('profiles.update') }}
               </Button>
               <Button variant="ghost" size="icon-sm" :aria-label="t('profiles.editGroup')" data-testid="edit-group" @click="editing = group"><Pencil /></Button>
@@ -347,9 +358,10 @@ async function importEntered(): Promise<void> {
                 <template #trigger>
                   <Button variant="ghost" size="icon-sm" :aria-label="t('profiles.groupActions')"><MoreHorizontal /></Button>
                 </template>
-                <MenuItem v-if="!manual" @select="updateGroup(group)"><RefreshCw />{{ t('profiles.update') }}</MenuItem>
+                <MenuItem v-if="lost" @select="ui.linkAgain = group!.id"><KeyRound />{{ t('list.linkAgain') }}</MenuItem>
+                <MenuItem v-else-if="!manual" @select="updateGroup(group)"><RefreshCw />{{ t('profiles.update') }}</MenuItem>
                 <MenuItem @select="attempt(() => core.testServers(group!.id))"><Gauge />{{ t('list.test') }}</MenuItem>
-                <MenuItem v-if="!manual" @select="attempt(() => actions.copyText(group!.url))"><Copy />{{ t('list.copyLink') }}</MenuItem>
+                <MenuItem v-if="!manual && !lost" @select="attempt(() => actions.copyText(group!.url))"><Copy />{{ t('list.copyLink') }}</MenuItem>
                 <MenuItem @select="editing = group"><SquarePen />{{ t('profiles.editGroupMenu') }}</MenuItem>
                 <MenuSeparator />
                 <MenuItem :shortcut="keys?.updateAll" @select="updateAll()"><Radar />{{ t('profiles.updateAll') }}</MenuItem>
@@ -441,6 +453,9 @@ async function importEntered(): Promise<void> {
                         <Play v-if="running(s)" class="size-3.5 flex-none fill-current" />
                         <Flag v-if="s.country" :code="s.country" />
                         <span class="truncate">{{ serverTitle(s.name, s.country) }}</span>
+                        <span v-if="s.need?.length" class="flex flex-none" :title="t('servers.lost')" data-testid="server-lost">
+                          <KeyRound class="size-3.5 text-warn" :aria-label="t('servers.lost')" />
+                        </span>
                       </span>
                     </td>
                     <td :class="['px-2.5 py-2 whitespace-nowrap', toneClass[latencyTone(s.latency)]]">{{ result(s) || '—' }}</td>

@@ -44,6 +44,8 @@ export const useUiStore = defineStore('ui', () => {
   const knownSubscription = ref('')
   // A group to open and bring into sight in the list of the mode.
   const focusGroup = ref('')
+  // The ID of a subscription whose link was saved on another computer: the dialog takes the link again.
+  const linkAgain = ref('')
   const logs = ref(false)
   const notice = ref<Notice | null>(null)
   // The dialog that moves to the other mode of the interface, opened from the chip of the title bar.
@@ -62,6 +64,7 @@ export const useUiStore = defineStore('ui', () => {
     replacedPreset,
     knownSubscription,
     focusGroup,
+    linkAgain,
     logs,
     notice,
     modeDialog,

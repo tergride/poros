@@ -153,7 +153,8 @@
     }
   },
   "servers": {
-    "count": "{n} servers | {n} server | {n} servers"
+    "count": "{n} servers | {n} server | {n} servers",
+    "lost": "The passwords and keys were saved on another computer"
   },
   "portal": {
     "off": "Not connected",
@@ -201,6 +202,8 @@
     "runWizard": "Run quick setup",
     "group": "{servers} · updated {when}",
     "groupNever": "{servers}",
+    "needsLink": "{servers} · waiting for its link",
+    "linkAgain": "Enter the link",
     "quota": "{used} of {total}",
     "until": "until {date}",
     "unlimited": "no limit",
@@ -719,6 +722,11 @@
     "text": "The subscription “{name}” is in Poros already.",
     "show": "Show",
     "update": "Update"
+  },
+  "linkAgain": {
+    "title": "Subscription link",
+    "text": "The link of “{name}” was saved on another computer and cannot be read here. Enter it again: the update brings the servers back with their passwords and keys.",
+    "save": "Save and update"
   },
   "presetEdit": {
     "back": "Presets",
@@ -1259,6 +1267,8 @@
       "emptyText": "Add a secret or an otpauth:// link, import codes from Google Authenticator, or scan a QR code on the screen.",
       "note": "In an OpenVPN, OpenVPN{'|'}BY or OpenConnect profile, choose a code in the «OTP code» field and put {'{otp}'} in the user name or password: Poros puts the current code there at every connection. The codes are in the tray menu too — a click copies the code.",
       "next": "Next code",
+      "lost": "The secret was saved on another computer",
+      "secretAgain": "Enter the secret",
       "seconds": "{n} s",
       "copy": "Copy code",
       "actions": "Code actions",
@@ -1351,6 +1361,7 @@
     "myServers": "My servers",
     "noGroups": "No subscriptions and no groups of your own yet.",
     "manualText": "Your own group, profiles added by hand",
+    "needsLink": "The link was saved on another computer",
     "updated": "updated {when}",
     "update": "Update",
     "editGroup": "Edit the group",
@@ -1435,6 +1446,7 @@
     "linkText": "The link leads to one server.",
     "newProfile": "Profile",
     "edit": "Edit…",
+    "editLost": "Edit the profile",
     "editFirst": "Edit before adding"
   },
   "groupEditor": {
@@ -1498,6 +1510,7 @@
     "copyLink": "Copy link",
     "coreHint": "The profile runs on {core}",
     "problem": "The core will not start the profile: {problem}",
+    "lost": "Saved on another computer and not readable here: {fields}. Enter them again.",
     "needs": "Works only with “{name}”",
     "excludes": "Does not work with “{name}”",
     "notJson": "This is not JSON",

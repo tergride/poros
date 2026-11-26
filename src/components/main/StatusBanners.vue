@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { Download, RefreshCw, ScrollText, X } from '@lucide/vue'
+import { Download, KeyRound, RefreshCw, ScrollText, SquarePen, X } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 import CoreBanner from '@/components/main/CoreBanner.vue'
 import { Banner, Button } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
+import { useProfileActions } from '@/composables/useProfileActions'
 import { sentence, useFailure, useReason } from '@/composables/useReason'
 import { useUpdates } from '@/composables/useUpdates'
-import { ReasonKillSwitchFailed, ReasonKillSwitchNeedsElevation, ReasonKillSwitchTaken } from '@/platform/core-types'
+import { GroupManual, ReasonKillSwitchFailed, ReasonKillSwitchNeedsElevation, ReasonKillSwitchTaken, ReasonSecretsLost } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
@@ -17,7 +19,9 @@ import { useUiStore } from '@/stores/ui'
 // TUN, TLS spoofing or kill switch, the connection's failure, an update, and what the last action did.
 const core = useCoreStore()
 const ui = useUiStore()
+const router = useRouter()
 const connect = useConnect()
+const profiles = useProfileActions()
 const updates = useUpdates()
 const reason = useReason()
 const failure = useFailure()
@@ -65,6 +69,19 @@ const connectionErrorText = computed(() =>
 function closeConnectionError(): void {
   errorClosed.value = `${core.connection.error}:${core.connection.since}:${core.connection.errorText}`
 }
+
+// A start refused for secrets saved on another computer leads to where they are typed in again: the link of the
+// chosen server's subscription, the editor of the advanced mode, and a backup for the rest.
+const advanced = computed(() => core.settings?.uiMode === 'advanced')
+const secretsLost = computed(() => core.connection.error === ReasonSecretsLost)
+const lostServer = computed(() => {
+  const server = core.servers.find((s) => s.id === core.settings?.server)
+  return server?.need?.length ? server : null
+})
+const lostGroup = computed(() => {
+  const group = core.groups.find((g) => g.id === lostServer.value?.groupId)
+  return group && group.kind !== GroupManual && group.need?.length ? group : null
+})
 </script>
 
 <template>
@@ -103,7 +120,16 @@ function closeConnectionError(): void {
   <Banner v-if="connectionError" data-testid="connection-error">
     {{ connectionErrorText }}
     <template #actions>
-      <Button size="sm" @click="ui.logs = true"><ScrollText />{{ t('menu.logs') }}</Button>
+      <template v-if="secretsLost">
+        <Button v-if="lostGroup" size="sm" data-testid="lost-link-again" @click="ui.linkAgain = lostGroup.id"><KeyRound />{{ t('list.linkAgain') }}</Button>
+        <Button v-else-if="lostServer && advanced" size="sm" data-testid="lost-edit" @click="profiles.edit(lostServer.id)">
+          <SquarePen />{{ t('profiles.editLost') }}
+        </Button>
+        <Button size="sm" data-testid="lost-backup" @click="router.push(advanced ? '/adv/settings/backup' : '/settings/backup')">
+          <Download />{{ t('settings.backup.restore') }}
+        </Button>
+      </template>
+      <Button v-else size="sm" @click="ui.logs = true"><ScrollText />{{ t('menu.logs') }}</Button>
       <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="closeConnectionError()"><X /></Button>
     </template>
   </Banner>

@@ -149,6 +149,7 @@ watch(
           @update="update(group.group)"
           @test="attempt(() => core.testServers(group.group.id))"
           @copy-link="copyLink(group.group)"
+          @link-again="ui.linkAgain = group.group.id"
           @rename="startRename(group.group)"
           @remove="removing = group.group"
         />

@@ -10,7 +10,7 @@ import { useProfileForms } from '@/composables/useProfileForms'
 import { useReason } from '@/composables/useReason'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
 import { protocolName } from '@/lib/format'
-import { cleanProfile, fieldState, getAt, holds, jsonErrorLine, securityOf } from '@/lib/profileForm'
+import { cleanProfile, fieldState, getAt, holds, isSet, jsonErrorLine, securityOf } from '@/lib/profileForm'
 import type { ServerCheck } from '@/platform/core-types'
 import { CoreXray, MethodGroupsAdd, MethodServersCheck, MethodServersSave } from '@/platform/core-types'
 import type { Field, FieldCondition, Profile } from '@/platform/profile-types'
@@ -85,6 +85,20 @@ const shown = computed(() => {
     .filter((f) => f.state !== 'hidden')
 })
 const fieldsOf = (id: string) => shown.value.filter((f) => f.field.tab === id)
+
+// The secrets of the server that were saved on another computer and are still empty here, by the names of their fields.
+const lostFields = computed(() => {
+  const profile = draft.value
+  const need = core.servers.find((s) => s.id === ui.profileEdit?.id)?.need ?? []
+  if (!profile || !form.value || need.length === 0) return ''
+  return need
+    .filter((name) => !isSet(getAt(profile, name)))
+    .map((name) => {
+      const field = form.value?.fields.find((f) => f.path === name)
+      return field ? t(`profileEditor.field.${field.label}`) : name
+    })
+    .join(', ')
+})
 
 // The type can change: the profile starts again from what «New profile» gives, with its name and address.
 const compound = ['chain', 'custom', 'direct']
@@ -240,6 +254,7 @@ async function save(): Promise<void> {
           <span v-else class="text-xs text-t3">{{ t('profileEditor.jsonHint') }}</span>
         </TabsContent>
       </template>
+      <p v-if="lostFields" class="mt-3 text-xs text-warn" data-testid="profile-lost">{{ t('profileEditor.lost', { fields: lostFields }) }}</p>
       <p v-if="check?.problem" class="mt-3 text-xs text-warn" data-testid="profile-problem">{{ t('profileEditor.problem', { problem: check.problem }) }}</p>
       <Banner v-if="failure" class="mt-3" data-testid="profile-failure">{{ failure }}</Banner>
       <template #footer>
