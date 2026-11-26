@@ -72,7 +72,7 @@ func (r *releaseServer) set(change func(*releaseServer)) {
 // openUpdatesTest opens an engine of version on the feed; withUpdater puts updater.exe next to the program.
 func openUpdatesTest(t *testing.T, dir, feed, version string, withUpdater bool) *Engine {
 	t.Helper()
-	program := t.TempDir()
+	program := tempDir(t)
 	if withUpdater {
 		if err := os.WriteFile(filepath.Join(program, updaterName), []byte("updater"), 0o644); err != nil {
 			t.Fatal(err)
@@ -107,7 +107,7 @@ func settled(state UpdateState) bool {
 
 func TestUpdatesDownloadAndInstall(t *testing.T) {
 	releases := newReleaseServer(t, "0.1.1")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	e := openUpdatesTest(t, dir, releases.url, "0.1.0", true)
 	if state := e.UpdatesState(); !state.Available || state.Current != "0.1.0" || state.State != UpdateIdle {
 		t.Fatalf("a build with a version and the updater updates itself: %+v", state)
@@ -180,7 +180,7 @@ func TestUpdatesWithNothingNew(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			releases.set(tc.change)
-			e := openUpdatesTest(t, t.TempDir(), releases.url, "0.1.0", true)
+			e := openUpdatesTest(t, tempDir(t), releases.url, "0.1.0", true)
 			e.CheckUpdates()
 			if state := waitUpdates(t, e, settled); state.State != UpdateIdle || state.Version != "" || state.CheckedAt == 0 || state.Error != "" {
 				t.Errorf("%+v", state)
@@ -194,7 +194,7 @@ func TestUpdatesWithNothingNew(t *testing.T) {
 
 func TestUpdatesThatFail(t *testing.T) {
 	releases := newReleaseServer(t, "0.2.0")
-	dir := t.TempDir()
+	dir := tempDir(t)
 	releases.set(func(r *releaseServer) { r.served = []byte("not the archive the feed describes") })
 	e := openUpdatesTest(t, dir, releases.url, "0.1.0", true)
 	e.CheckUpdates()
@@ -216,12 +216,12 @@ func TestUpdatesThatFail(t *testing.T) {
 	}
 
 	for _, tc := range []struct{ version, why string }{{"", "a local build"}, {"dev", "a build without a release version"}} {
-		local := openUpdatesTest(t, t.TempDir(), releases.url, tc.version, true)
+		local := openUpdatesTest(t, tempDir(t), releases.url, tc.version, true)
 		if _, err := local.CheckUpdates(); reason(err) != ReasonUpdateUnavailable || local.UpdatesState().Available {
 			t.Errorf("%s does not update itself: %v", tc.why, err)
 		}
 	}
-	bare := openUpdatesTest(t, t.TempDir(), releases.url, "0.1.0", false)
+	bare := openUpdatesTest(t, tempDir(t), releases.url, "0.1.0", false)
 	if _, err := bare.CheckUpdates(); reason(err) != ReasonUpdateUnavailable {
 		t.Errorf("a build without updater.exe does not update itself: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestUpdatesAfterAFailedInstall(t *testing.T) {
 		{"damaged\nthe archive has no Poros.exe", InstallDamaged},
 		{"something else went wrong", InstallFailed},
 	} {
-		dir := t.TempDir()
+		dir := tempDir(t)
 		folder := filepath.Join(dir, updateFolder)
 		os.MkdirAll(folder, 0o700)
 		os.WriteFile(filepath.Join(folder, "Poros-0.1.1-windows-amd64.zip"), []byte("left by the updater"), 0o600)
@@ -257,7 +257,7 @@ func TestUpdatesAfterAFailedInstall(t *testing.T) {
 
 func TestUpdatesSchedule(t *testing.T) {
 	releases := newReleaseServer(t, "0.1.0")
-	e := openUpdatesTest(t, t.TempDir(), releases.url, "0.1.0", true)
+	e := openUpdatesTest(t, tempDir(t), releases.url, "0.1.0", true)
 	now := time.Now()
 	e.now = func() time.Time { return now }
 	check := func(want int32, why string) {
@@ -335,12 +335,12 @@ func TestUpdatesBeta(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	program := t.TempDir()
+	program := tempDir(t)
 	if err := os.WriteFile(filepath.Join(program, updaterName), []byte("updater"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	open := func(betas bool) *Engine {
-		e, err := Open(Config{DataDir: t.TempDir(), Version: "0.1.0", UpdateFeed: stable.url, UpdateReleases: server.URL + "/releases.atom", ProgramDir: program})
+		e, err := Open(Config{DataDir: tempDir(t), Version: "0.1.0", UpdateFeed: stable.url, UpdateReleases: server.URL + "/releases.atom", ProgramDir: program})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -100,7 +100,7 @@ func TestPresetListsKeepPlaces(t *testing.T) {
 		t.Errorf("rules:\n%+v\nwant\n%+v", read.Rules, wantRules)
 	}
 
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	if saved, err := e.SavePreset(PresetCopy{BasedOn: "all", Name: "Lists", Advanced: true, Rules: read.Rules}); err != nil || saved.Rules != 7 {
 		t.Errorf("what the window gives is a preset to save: %+v, %v", saved, err)
 	}

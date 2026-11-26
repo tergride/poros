@@ -46,7 +46,7 @@ func endpointNames(t *testing.T, e *Engine) []string {
 
 // Endpoints keep the user's order, names that do not repeat and rules that go through them.
 func TestEndpointsKeepTheirOrder(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	office, err := e.SaveEndpoint(testEndpoint(t, "Office"))
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func TestEndpointsKeepTheirOrder(t *testing.T) {
 }
 
 func TestEndpointRefusals(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	for name, change := range map[string]func(*EndpointEntry){
 		"no VPN": func(entry *EndpointEntry) {
 			entry.Profile = profile.Profile{Type: profile.TypeTrojan, Name: "Trojan", Server: "de.example.com", ServerPort: 443, Trojan: &profile.Trojan{Password: "pw"}}
@@ -121,7 +121,7 @@ func TestEndpointRefusals(t *testing.T) {
 // A file without the data for signing in names what it left out; the import asks for exactly that, and the endpoint
 // stays off until it has it. The code of OTP is this computer's and never goes into a file.
 func TestEndpointFiles(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	code, _ := e.SaveOTP(totp("Office", "JBSWY3DPEHPK3PXP"))
 	entry := testEndpoint(t, "Office")
 	entry.On = true
@@ -192,7 +192,7 @@ func TestEndpointFiles(t *testing.T) {
 // The key of tls-crypt-v2 is the client's own: a file without the data for signing in leaves it out, and the
 // endpoint reads without it until it is back.
 func TestEndpointClientWrapKey(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	entry := testEndpoint(t, "Office")
 	entry.Profile.OpenVPN.ControlWrap = profile.OpenVPNControlWrap{Type: "tls_crypt_v2", Key: "-----BEGIN OpenVPN tls-crypt-v2 client key-----\nAAAA\n-----END OpenVPN tls-crypt-v2 client key-----"}
 	saved, err := e.SaveEndpoint(entry)
@@ -213,7 +213,7 @@ func TestEndpointClientWrapKey(t *testing.T) {
 }
 
 func TestEndpointFromOVPN(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	certificate, _ := testCertificate(t)
 	text := "client\ndev tun\nproto tcp\nremote vpn.example.com 443\nauth-user-pass\nsetenv FRIENDLY_NAME Office\n<ca>\n" + certificate + "</ca>\n"
 	imported, err := e.ImportEndpoint(EndpointText{Text: text})
@@ -234,7 +234,7 @@ const testOVPNBY = "\xef\xbb\xbfclient\r\ndev tun\r\nproto tcp\r\nremote by.exam
 // An .ovpn of OpenVPN|BY with its keys in files needs them, and the password of the key while the key has one or is
 // not there to tell; a file without the data for signing in keeps the CA, the server's.
 func TestEndpointFromOVPNBY(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	imported, err := e.ImportEndpoint(EndpointText{Text: testOVPNBY})
 	want := []string{SignInCA, SignInCert, SignInKey, SignInKeyPassword}
 	if err != nil || imported.Type != profile.TypeOpenVPNBY || imported.Name != "Office" || imported.On || !slices.Equal(imported.Need, want) {
@@ -292,7 +292,7 @@ func TestStartRefusesAShutKey(t *testing.T) {
 
 // An .ovpn that keeps its keys in files adds nothing yet: it goes to the editor, where they are chosen.
 func TestAddServersOVPNDraft(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	added, err := e.AddServers(AddServers{NewGroup: "Mine", Text: testOVPNBY})
 	if err != nil || added.Draft == nil || len(added.IDs) != 0 || added.Draft.Type != profile.TypeOpenVPNBY || added.Draft.Name != "Office" {
 		t.Fatalf("a draft: %+v, %v", added, err)
@@ -308,7 +308,7 @@ func TestAddServersOVPNDraft(t *testing.T) {
 // The endpoints that are on come right after the DNS queries, in their order, before the preset's own rules; the
 // connection reaches each by its place.
 func TestConnectionPresetHasTheEndpointsOn(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	preset, err := e.SavePreset(PresetCopy{BasedOn: "all", Name: "Home", Rules: []PresetRule{rule(CondSuffix, "example.net", ActionDirect)}})
 	if err != nil {
 		t.Fatal(err)
@@ -372,7 +372,7 @@ func TestEndpointLists(t *testing.T) {
 }
 
 func TestEndpointsInTheBackup(t *testing.T) {
-	source, _ := openTest(t, t.TempDir())
+	source, _ := openTest(t, tempDir(t))
 	entry := testEndpoint(t, "Office")
 	entry.On = true
 	saved, err := source.SaveEndpoint(entry)
@@ -383,7 +383,7 @@ func TestEndpointsInTheBackup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target, _ := openTest(t, t.TempDir())
+	target, _ := openTest(t, tempDir(t))
 	if _, err = target.SaveEndpoint(testEndpoint(t, "Mine")); err != nil {
 		t.Fatal(err)
 	}

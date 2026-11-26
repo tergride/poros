@@ -8,7 +8,7 @@ import (
 )
 
 func TestOpenTellsADamagedDataFile(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempDir(t)
 	e, _ := openTest(t, dir)
 	e.Close()
 	path := filepath.Join(dir, DataFile)

@@ -11,7 +11,7 @@ import (
 // The DNS page of the settings: what a data folder starts with, what is refused, and the servers presets take by
 // default.
 func TestDNSSettings(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	settings, err := e.Settings()
 	if err != nil || settings.DNSRouting != DNSRoutingAuto || !settings.DNSHosts || !settings.DNSCache || settings.DNSCacheSize != 4096 ||
 		settings.DNSTimeout != 10 || settings.FakeIP || settings.DNSRemote != "" || settings.DNSDirect != "" {

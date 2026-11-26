@@ -1056,9 +1056,9 @@ func TestRobustContract(t *testing.T) {
 	t.Cleanup(func() { dohServers, dohClient = servers, client })
 	dohServers, dohClient = []string{"http://" + dead + "/dns-query"}, func() *http.Client { return loopbackClient(dead) }
 
-	storeDir := t.TempDir()
+	storeDir := tempDir(t)
 	store, closeStore := openRobust(t, storeDir, page, allowed...)
-	netEngine, closeNet := openRobust(t, t.TempDir(), page, allowed...)
+	netEngine, closeNet := openRobust(t, tempDir(t), page, allowed...)
 	f := &contractFuzz{r: rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)), store: store, net: netEngine, provider: provider.url, dead: dead}
 	f.seed(t)
 

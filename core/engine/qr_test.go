@@ -12,7 +12,7 @@ import (
 )
 
 func TestEncodeQRTellsATooLongLink(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	code, err := e.EncodeQR(QRText{Text: "https://sub.example.com/u/8f3a2c"})
 	if err != nil || len(code.Rows) < 21 || len(code.Rows[0]) != len(code.Rows) {
 		t.Fatalf("a short link: %d rows, %v", len(code.Rows), err)
@@ -25,7 +25,7 @@ func TestEncodeQRTellsATooLongLink(t *testing.T) {
 // The QR code of a preset's link, sent as a picture through a messenger that compresses it to JPEG, reads back into
 // the link, and the link into the preset.
 func TestReadQRBringsAPreset(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	var rules []PresetRule
 	for _, site := range strings.Fields("alpha.example.com bravo.example.net charlie.example.org delta.example.com echo.example.net " +
 		"foxtrot.example.org golf.example.com hotel.example.net india.example.org juliett.example.com") {

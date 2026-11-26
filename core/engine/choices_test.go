@@ -24,7 +24,7 @@ func choose(t *testing.T, e *Engine, id string) {
 }
 
 func TestChosenServerFollowsWhatGoes(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	first, second := newProvider(t), newProvider(t)
 	first.serve(http.StatusOK, vless("de.example.com", "DE"), vless("fi.example.com", "FI"))
 	second.serve(http.StatusOK, vless("nl.example.com", "NL"))
@@ -64,7 +64,7 @@ func TestChosenServerFollowsWhatGoes(t *testing.T) {
 }
 
 func TestPresetNamesStayApart(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	draft := PresetCopy{BasedOn: "all", Name: "Games"}
 	games, err := e.SavePreset(draft)
 	if err != nil {

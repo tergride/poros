@@ -9,7 +9,7 @@ import (
 // backupSource is an engine with a group of the user's, a preset, a code of OTP and settings of its own.
 func backupSource(t *testing.T) (*Engine, string, string, string) {
 	t.Helper()
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	added, err := e.AddServers(AddServers{NewGroup: "Mine", Text: "trojan://pw@trojan.example.com:443?sni=example.com#Home"})
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func TestBackupThereAndBack(t *testing.T) {
 		t.Errorf("name: %s", file.Name)
 	}
 
-	target, events := openTest(t, t.TempDir())
+	target, events := openTest(t, tempDir(t))
 	info, err := target.InspectBackup(BackupText{Text: file.Text})
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +84,7 @@ func TestBackupRestoresOnlyTheChosenParts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target, _ := openTest(t, t.TempDir())
+	target, _ := openTest(t, tempDir(t))
 	own, _ := target.SaveOTP(totp("Mail", "KRSXG5BAMFZXG5BA"))
 	if _, err = target.RestoreBackup(BackupRestore{Text: file.Text, Parts: []string{BackupProfiles}}); err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestBackupWithAWrongPartChangesNothing(t *testing.T) {
 	}
 	broken, _ := json.Marshal(raw)
 
-	target, _ := openTest(t, t.TempDir())
+	target, _ := openTest(t, tempDir(t))
 	own, _ := target.SaveOTP(totp("Mail", "KRSXG5BAMFZXG5BA"))
 	for name, text := range map[string]string{
 		"a server without its address": string(broken),

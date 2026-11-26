@@ -25,12 +25,14 @@ import (
 // freePort finds a port free on loopback for TCP and UDP both: Windows keeps ranges of ports of one protocol for
 // itself that are free for the other, and a server on QUIC or WireGuard would fail to start on one of them. The
 // port is a random one, since Windows hands out the ports of either protocol in a row and a run of them can fall
-// into one such range.
+// into one such range. It lies below the ports outgoing connections take theirs from (49152 and up on Windows,
+// 32768 and up on Linux) and below those of the bridges to Xray: between this check and the start of what listens
+// on the port, a connection of another test would take it otherwise.
 func freePort(t *testing.T) uint16 {
 	t.Helper()
 	var last error
 	for range 200 {
-		port := strconv.Itoa(20000 + rand.IntN(40000))
+		port := strconv.Itoa(10000 + rand.IntN(bridgePortLow-10000))
 		packet, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", port))
 		if err != nil {
 			last = err
@@ -57,7 +59,7 @@ func openConnectionTest(t *testing.T) (*Engine, chan ConnectionState) {
 func openConnectionTestWith(t *testing.T, other Notify) (*Engine, chan ConnectionState) {
 	t.Helper()
 	states := make(chan ConnectionState, 64)
-	e, err := Open(Config{DataDir: t.TempDir(), MixedPort: freePort(t), Notify: func(method string, params any) {
+	e, err := Open(Config{DataDir: tempDir(t), MixedPort: freePort(t), Notify: func(method string, params any) {
 		switch {
 		case method == EventConnectionChanged:
 			states <- params.(ConnectionState)

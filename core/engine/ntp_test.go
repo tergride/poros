@@ -14,7 +14,7 @@ import (
 // «Network» and «Security»: the clock of the core, what is refused, and what the certificate settings give a
 // connection.
 func TestNetworkSettings(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	settings, err := e.Settings()
 	if err != nil || settings.NTP || settings.NTPServer != defaultNTPServer || settings.NTPPort != 123 || settings.NTPInterval != 30 ||
 		settings.NTPOutbound != config.OutboundDirect || settings.IgnoreTLSErrors || settings.XraySystemCerts || settings.InsecureDefault {
@@ -52,7 +52,7 @@ func TestNetworkSettings(t *testing.T) {
 
 // «Ignore TLS errors» lets subscriptions download from a server whose certificate does not check out.
 func TestIgnoreTLSErrors(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		io.WriteString(w, vless("v.example.com", "Self-signed"))
 	}))
@@ -77,7 +77,7 @@ func TestIgnoreTLSErrors(t *testing.T) {
 // The device data of the settings replace Poros's own, and a group's own replace them in turn; the debug
 // information hides what may be private.
 func TestDeviceDataAndDebugInfo(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	settings, _ := e.Settings()
 	for _, wrong := range []string{"hwid", "hwid=", "serial=1", "os=Win\ndows"} {
 		settings.DeviceData = wrong

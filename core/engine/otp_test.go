@@ -28,7 +28,7 @@ func totp(name, secret string) OTPEntry {
 }
 
 func TestOTPEntriesKeepTheirOrder(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	first, err := e.SaveOTP(OTPEntry{Name: " GitHub ", Account: "poros-dev", Secret: "jbsw y3dp ehpk 3pxp", Kind: OTPKindTOTP, Algorithm: OTPSHA1, Digits: 6, Period: 30, Counter: 9})
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func TestOTPEntriesKeepTheirOrder(t *testing.T) {
 }
 
 func TestOTPSaveNamesTheProblem(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	cases := map[string]OTPEntry{
 		otp.ReasonBadSecret:    totp("a", "JBSWY3DPEHPK3PX1"),
 		otp.ReasonNoSecret:     totp("a", ""),
@@ -111,7 +111,7 @@ func TestOTPSaveNamesTheProblem(t *testing.T) {
 }
 
 func TestOTPImportSkipsWhatIsThere(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	text := "otpauth://totp/GitHub:poros-dev?secret=JBSWY3DPEHPK3PXP&issuer=GitHub\nKRSX G5BA MFZX G5BA\nnot a code"
 	parsed, _ := e.ParseOTP(OTPText{Text: text})
 	if len(parsed.Entries) != 2 || len(parsed.Problems) != 1 || parsed.Problems[0].Line != 3 {
@@ -133,7 +133,7 @@ func TestOTPImportSkipsWhatIsThere(t *testing.T) {
 }
 
 func TestOTPCodeSpendsHOTP(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	entry, err := e.SaveOTP(OTPEntry{Name: "Office", Secret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", Kind: OTPKindHOTP, Algorithm: OTPSHA1, Digits: 6})
 	if err != nil {
 		t.Fatal(err)
@@ -245,7 +245,7 @@ func TestConnectionSignsInWithOTP(t *testing.T) {
 }
 
 func TestTestsTakeNoHOTP(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	hotp, _ := e.SaveOTP(OTPEntry{Name: "Office", Secret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", Kind: OTPKindHOTP, Algorithm: OTPSHA1, Digits: 6})
 	code, _ := e.SaveOTP(totp("Panel", "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"))
 	group, err := e.AddGroup(AddGroup{Name: "Mine"})

@@ -14,7 +14,7 @@ import (
 )
 
 func TestRenameGroup(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	p := newProvider(t)
 	p.serve(http.StatusOK, vless("de.example.com", "DE"))
 	p.headers["profile-title"] = "Provider"
@@ -34,7 +34,7 @@ func TestRenameGroup(t *testing.T) {
 }
 
 func TestDeviceInfoOnlyWhenAllowed(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	p := newProvider(t)
 	p.serve(http.StatusOK, vless("de.example.com", "DE"))
 	update, err := e.AddSubscription(t.Context(), AddSubscription{URL: p.url})
@@ -59,7 +59,7 @@ func TestDeviceInfoOnlyWhenAllowed(t *testing.T) {
 }
 
 func TestLogsGiveTheLastLines(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempDir(t)
 	e, _ := openTest(t, dir)
 	if chunk, err := e.Logs(LogsQuery{}); err != nil || len(chunk.Lines) != 0 {
 		t.Fatalf("no log yet: %+v, %v", chunk, err)

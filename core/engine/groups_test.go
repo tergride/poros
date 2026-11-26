@@ -25,7 +25,7 @@ func names(servers []Server) []string {
 }
 
 func TestGroupsOfTheUser(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	if _, err := e.AddGroup(AddGroup{Name: "  "}); reason(err) != ReasonInvalidValue {
 		t.Fatalf("a group without a name: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestGroupsOfTheUser(t *testing.T) {
 }
 
 func TestAddServers(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	text := vless("de.example.com", "🇩🇪 Germany") + "\n" + "vless://broken\n" + vless("nl.example.com", "Netherlands")
 
 	if _, err := e.AddServers(AddServers{Text: text}); reason(err) != ReasonInvalidValue {
@@ -110,7 +110,7 @@ func TestAddServers(t *testing.T) {
 }
 
 func TestEditServers(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	p := newProvider(t)
 	p.serve(200, vless("de.example.com", "Germany"), vless("nl.example.com", "Netherlands"))
 	sub, _ := e.AddSubscription(t.Context(), AddSubscription{URL: p.url})
@@ -180,7 +180,7 @@ func TestEditServers(t *testing.T) {
 }
 
 func TestRemovedServerPassesTheChoiceOn(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	p := newProvider(t)
 	p.serve(200, vless("de.example.com", "Germany"))
 	e.AddSubscription(t.Context(), AddSubscription{URL: p.url})

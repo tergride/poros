@@ -12,7 +12,7 @@ import (
 // An import under a name of the user's preset offers both: to take its place, with its ID, choice and place in the
 // list, or to be added under a name with a number.
 func TestPresetOfATakenName(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	first, err := e.SavePreset(PresetCopy{BasedOn: "all", Name: "Media", DNS: "tls://1.1.1.1", Default: ActionBlock,
 		Rules: []PresetRule{rule(CondSuffix, "old.example", ActionBlock)}})
 	if err != nil {
@@ -111,7 +111,7 @@ func TestPresetOfATakenName(t *testing.T) {
 
 // A preset renamed while its replacement waits for the write is not the one the user agreed to lose.
 func TestReplacePresetChecksTheNameAsItWrites(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	saved, err := e.SavePreset(PresetCopy{Name: "Media"})
 	if err != nil {
 		t.Fatal(err)

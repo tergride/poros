@@ -220,7 +220,7 @@ func failReconnect(t *testing.T, k ksTest) ConnectionState {
 
 func TestKillSwitchTellsTheCompatibleMode(t *testing.T) {
 	g := &fakeGuard{rights: true}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchConnected)
+	k := openKillSwitchTest(t, g, tempDir(t), KillSwitchConnected)
 	e := k.Engine
 	if err := e.armBlock(); err != nil {
 		t.Fatal(err)
@@ -250,7 +250,7 @@ func TestKillSwitchTellsTheCompatibleMode(t *testing.T) {
 
 func TestKillSwitchWithoutTunNeedsNoRights(t *testing.T) {
 	g := &fakeGuard{}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchConnected)
+	k := openKillSwitchTest(t, g, tempDir(t), KillSwitchConnected)
 	if k.KillSwitchState().On {
 		t.Fatal("the connected mode holds nothing before a Start")
 	}
@@ -270,7 +270,7 @@ func TestKillSwitchWithoutTunNeedsNoRights(t *testing.T) {
 
 func TestKillSwitchRefusesTheServerAfterALostConnection(t *testing.T) {
 	direct := webPage(t)
-	k := openKillSwitchTest(t, &fakeGuard{}, t.TempDir(), KillSwitchConnected)
+	k := openKillSwitchTest(t, &fakeGuard{}, tempDir(t), KillSwitchConnected)
 	setSettings(t, k.Engine, func(s *Settings) { s.Preset = "split" })
 	k.StartConnection()
 	waitState(t, k.states)
@@ -301,7 +301,7 @@ func TestKillSwitchRefusesTheServerAfterALostConnection(t *testing.T) {
 }
 
 func TestKillSwitchFirstFailedStartHoldsNothing(t *testing.T) {
-	k := openKillSwitchTest(t, &fakeGuard{}, t.TempDir(), KillSwitchConnected)
+	k := openKillSwitchTest(t, &fakeGuard{}, tempDir(t), KillSwitchConnected)
 	failReconnect(t, k)
 	if refusing(k.Engine) || k.KillSwitchState().On {
 		t.Fatalf("a start that never ran has nothing to hold: %+v", k.KillSwitchState())
@@ -309,7 +309,7 @@ func TestKillSwitchFirstFailedStartHoldsNothing(t *testing.T) {
 }
 
 func TestKillSwitchAlways(t *testing.T) {
-	k := openKillSwitchTest(t, &fakeGuard{}, t.TempDir(), KillSwitchAlways)
+	k := openKillSwitchTest(t, &fakeGuard{}, tempDir(t), KillSwitchAlways)
 	k.StartKillSwitch()
 	if !refusing(k.Engine) || !k.KillSwitchState().On {
 		t.Fatalf("the always mode refuses from the start: %+v", k.KillSwitchState())
@@ -340,7 +340,7 @@ func TestKillSwitchAlways(t *testing.T) {
 }
 
 func TestKillSwitchModeWhileConnected(t *testing.T) {
-	k := openKillSwitchTest(t, &fakeGuard{}, t.TempDir(), KillSwitchOff)
+	k := openKillSwitchTest(t, &fakeGuard{}, tempDir(t), KillSwitchOff)
 	k.StartConnection()
 	waitState(t, k.states)
 	if k.KillSwitchState().On {
@@ -360,7 +360,7 @@ func TestKillSwitchModeWhileConnected(t *testing.T) {
 // rights sees.
 func TestKillSwitchWithTunWithoutItsTun(t *testing.T) {
 	g := &fakeGuard{rights: true}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchConnected)
+	k := openKillSwitchTest(t, g, tempDir(t), KillSwitchConnected)
 	setSettings(t, k.Engine, func(s *Settings) { s.Tun = true })
 	k.StartConnection()
 	if state := waitState(t, k.states); state.Error != ReasonNeedsElevation {
@@ -389,7 +389,7 @@ func TestKillSwitchWithTunWithoutItsTun(t *testing.T) {
 
 func TestKillSwitchAlwaysWithTunAsksForRights(t *testing.T) {
 	g := &fakeGuard{}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchOff)
+	k := openKillSwitchTest(t, g, tempDir(t), KillSwitchOff)
 	setSettings(t, k.Engine, func(s *Settings) { s.Tun = true })
 	setMode(t, k.Engine, KillSwitchAlways)
 	deadline := time.Now().Add(5 * time.Second)
@@ -401,7 +401,7 @@ func TestKillSwitchAlwaysWithTunAsksForRights(t *testing.T) {
 		t.Fatalf("the refusal runs without its TUN and asks for rights: %+v", state)
 	}
 
-	unsupported := openKillSwitchTest(t, nil, t.TempDir(), KillSwitchOff)
+	unsupported := openKillSwitchTest(t, nil, tempDir(t), KillSwitchOff)
 	setSettings(t, unsupported.Engine, func(s *Settings) { s.Tun = true })
 	setMode(t, unsupported.Engine, KillSwitchAlways)
 	deadline = time.Now().Add(5 * time.Second)
@@ -413,7 +413,7 @@ func TestKillSwitchAlwaysWithTunAsksForRights(t *testing.T) {
 	}
 
 	// The block of another Poros on the computer: rights would not help, and the reason says whose it is.
-	taken := openKillSwitchTest(t, &fakeGuard{taken: true, rights: true}, t.TempDir(), KillSwitchOff)
+	taken := openKillSwitchTest(t, &fakeGuard{taken: true, rights: true}, tempDir(t), KillSwitchOff)
 	setSettings(t, taken.Engine, func(s *Settings) { s.Tun = true })
 	setMode(t, taken.Engine, KillSwitchAlways)
 	deadline = time.Now().Add(5 * time.Second)
@@ -427,7 +427,7 @@ func TestKillSwitchAlwaysWithTunAsksForRights(t *testing.T) {
 
 func TestKillSwitchGoesOnWithTheNextCoreOfTheWindow(t *testing.T) {
 	g := &fakeGuard{rights: true}
-	dir := t.TempDir()
+	dir := tempDir(t)
 	first := openWindowTest(t, g, dir, KillSwitchConnected, 42)
 	first.StartConnection()
 	waitState(t, first.states)
@@ -465,7 +465,7 @@ func TestKillSwitchGoesOnWithTheNextCoreOfTheWindow(t *testing.T) {
 
 func TestKillSwitchBlockComesBackAfterAFailure(t *testing.T) {
 	g := &fakeGuard{rights: true}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchOff)
+	k := openKillSwitchTest(t, g, tempDir(t), KillSwitchOff)
 	k.ks.mu.Lock()
 	k.ks.rearmEvery = time.Second
 	k.ks.mu.Unlock()
@@ -508,7 +508,7 @@ func TestKillSwitchBlockComesBackAfterAFailure(t *testing.T) {
 // A try to bring the block back that fails is repeated while the connection still wants the block.
 func TestKillSwitchBlockTriesAgainWhileItFails(t *testing.T) {
 	g := &fakeGuard{rights: true}
-	k := openKillSwitchTest(t, g, t.TempDir(), KillSwitchOff)
+	k := openKillSwitchTest(t, g, tempDir(t), KillSwitchOff)
 	k.ks.mu.Lock()
 	k.ks.rearmEvery = 200 * time.Millisecond
 	k.ks.mu.Unlock()

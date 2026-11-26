@@ -67,7 +67,7 @@ func vlessPath(host, name, path string) string {
 }
 
 func TestAddSubscriptionRejectsLinks(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	for link, want := range map[string]string{
 		"":                    ReasonInvalidURL,
 		"sub.example.com/u/1": ReasonInvalidURL,
@@ -87,7 +87,7 @@ func TestAddSubscriptionRejectsLinks(t *testing.T) {
 }
 
 func TestAddSubscription(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	p := newProvider(t)
 	p.headers["Profile-Title"] = "base64:" + base64.StdEncoding.EncodeToString([]byte("Основная подписка"))
 	p.headers["Subscription-Userinfo"] = "upload=100; download=200; total=1000; expire=1765497600"
@@ -176,7 +176,7 @@ func TestAddSubscriptionFailures(t *testing.T) {
 		"unreachable":      {0, "", ReasonFetchFailed},
 	} {
 		t.Run(name, func(t *testing.T) {
-			e, events := openTest(t, t.TempDir())
+			e, events := openTest(t, tempDir(t))
 			link := unreachable
 			if tt.status != 0 {
 				p := newProvider(t)
@@ -198,7 +198,7 @@ func TestAddSubscriptionFailures(t *testing.T) {
 }
 
 func TestUpdateSubscriptionKeepsServerIDs(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	p := newProvider(t)
 	p.serve(http.StatusOK, vless("de.example.com", "DE"), vless("nl.example.com", "NL"), vless("fi.example.com", "FI"))
 	added, err := e.AddSubscription(t.Context(), AddSubscription{URL: p.url})
@@ -232,7 +232,7 @@ func TestUpdateSubscriptionKeepsServerIDs(t *testing.T) {
 }
 
 func TestFailedUpdateKeepsServers(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	clock := time.UnixMilli(1_000_000)
 	e.now = func() time.Time { return clock }
 	p := newProvider(t)
@@ -261,7 +261,7 @@ func TestFailedUpdateKeepsServers(t *testing.T) {
 }
 
 func TestRemoveGroupAndRestart(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempDir(t)
 	e, _ := openTest(t, dir)
 	first, second := newProvider(t), newProvider(t)
 	first.serve(http.StatusOK, vless("de.example.com", "DE"))
@@ -314,7 +314,7 @@ func withInterval(updated time.Time, interval time.Duration) groupRecord {
 }
 
 func TestUpdateDue(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	clock := time.UnixMilli(1_000_000)
 	e.now = func() time.Time { return clock }
 	p := newProvider(t)

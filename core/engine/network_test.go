@@ -38,7 +38,7 @@ func TestLeakIsTheHomeProvider(t *testing.T) {
 }
 
 func TestNetworkCheckWaitsForTheUser(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	settings := DefaultSettings()
 	settings.CheckIP = false
 	if _, err := e.SetSettings(settings); err != nil {

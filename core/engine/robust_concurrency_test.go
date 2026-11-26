@@ -56,7 +56,7 @@ func TestRobustSettingsRaceRemovals(t *testing.T) {
 	if robustStress() {
 		rounds = 3000
 	}
-	e, _ := openRobust(t, t.TempDir(), webPage(t))
+	e, _ := openRobust(t, tempDir(t), webPage(t))
 	group, err := e.AddGroup(AddGroup{Name: "Race"})
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestRobustConcurrency(t *testing.T) {
 	dead := closerServer(t)
 	provider := newProvider(t)
 	provider.serve(http.StatusOK, trojanTo(dead, "Sub%20A"), trojanTo(dead, "Sub%20B"))
-	dir := t.TempDir()
+	dir := tempDir(t)
 	e, closeEngine := openRobust(t, dir, page, hostOf(t, provider.url))
 	if _, err := e.AddSubscription(t.Context(), AddSubscription{URL: provider.url}); err != nil {
 		t.Fatal(err)

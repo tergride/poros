@@ -12,7 +12,7 @@ import (
 )
 
 func TestIPv6IsOffByDefault(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	settings, err := e.Settings()
 	if err != nil || settings.IPv6 {
 		t.Fatalf("new data: IPv6 %t, %v", settings.IPv6, err)

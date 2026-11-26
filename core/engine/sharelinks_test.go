@@ -9,7 +9,7 @@ import (
 )
 
 func TestShareAndExportServers(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	reality := "vless://" + testUUID + "@de1.example.com:443?security=reality&sni=www.example.com&fp=chrome" +
 		"&pbk=Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw&sid=ab&type=tcp#Germany"
 	added, err := e.AddServers(AddServers{NewGroup: "Mine", Text: vless("fi.example.com", "Finland") + "\n" + reality})

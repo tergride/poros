@@ -3,7 +3,7 @@ package engine
 import "testing"
 
 func TestShortcutsAreCheckedAsAWhole(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	settings := DefaultSettings()
 	if settings.MenuKeys.Search != "Ctrl+K" || settings.MenuKeys.Paste != "Ctrl+V" || settings.Hotkeys != (Hotkeys{}) {
 		t.Fatalf("defaults: %+v %+v", settings.MenuKeys, settings.Hotkeys)

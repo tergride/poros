@@ -62,7 +62,7 @@ func TestRobustTestBoxesLetGo(t *testing.T) {
 		rounds = 40
 	}
 	dead := closerServer(t)
-	e, _ := openRobust(t, t.TempDir(), webPage(t))
+	e, _ := openRobust(t, tempDir(t), webPage(t))
 	links := make([]string, 250)
 	for i := range links {
 		links[i] = xhttpTo(dead, fmt.Sprintf("X%d", i))
@@ -112,7 +112,7 @@ func TestRobustLeaksOfStartStop(t *testing.T) {
 	provider := newProvider(t)
 	provider.serve(http.StatusOK, live)
 	states := make(chan ConnectionState, 64)
-	e, err := Open(Config{DataDir: t.TempDir(), MixedPort: freePort(t), ForeignUser: true, Notify: func(method string, params any) {
+	e, err := Open(Config{DataDir: tempDir(t), MixedPort: freePort(t), ForeignUser: true, Notify: func(method string, params any) {
 		if method == EventConnectionChanged {
 			states <- params.(ConnectionState)
 		}
@@ -174,7 +174,7 @@ func TestRobustLeaksOfOpenClose(t *testing.T) {
 		t.Skip("50 opens of the engine: POROS_STRESS=1")
 	}
 	skipIfElevated(t)
-	dir := t.TempDir()
+	dir := tempDir(t)
 	cycle := func(i int) {
 		t.Helper()
 		e, err := Open(Config{DataDir: dir, MixedPort: freePort(t), ForeignUser: true})

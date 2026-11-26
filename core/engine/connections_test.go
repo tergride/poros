@@ -93,7 +93,7 @@ func TestConnectionsList(t *testing.T) {
 
 // The next update of subscriptions is the soonest of those the schedule updates.
 func TestStatsNowSchedule(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	if now, _ := e.StatsNow(); now.NextSubscriptionUpdate != 0 || now.Core != "" {
 		t.Fatalf("no subscription, no connection: %+v", now)
 	}

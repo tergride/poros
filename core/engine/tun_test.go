@@ -10,7 +10,7 @@ import (
 // The TUN of the settings: as it comes it is the TUN the config builds without settings, and what would break it is
 // refused.
 func TestTunSettings(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	settings, err := e.Settings()
 	if err != nil {
 		t.Fatal(err)

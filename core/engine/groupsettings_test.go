@@ -15,7 +15,7 @@ func trojanLink(host, name string) string {
 }
 
 func TestConfigureGroup(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	p := newProvider(t)
 	p.serve(http.StatusOK, trojanLink("a.example.com", "A"), trojanLink("b.example.com", "B"))
 	sub, err := e.AddSubscription(t.Context(), AddSubscription{URL: p.url})
@@ -78,7 +78,7 @@ func TestConfigureGroup(t *testing.T) {
 }
 
 func TestUpdateActions(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	p := newProvider(t)
 	p.serve(http.StatusOK, trojanLink("a.example.com", "A"), trojanLink("b.example.com", "B"))
 	sub, err := e.AddSubscription(t.Context(), AddSubscription{URL: p.url})
@@ -161,7 +161,7 @@ func TestProfileSecurity(t *testing.T) {
 }
 
 func TestSubscriptionRequestVersions(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	rec := groupRecord{Kind: GroupSubscription, Settings: GroupSettings{TLS: "1.3", HTTP: "1.1"}}
 	request := e.requestOf(rec, Settings{SubscriptionTLS: "1.2", SubscriptionUserAgent: "v2rayN"})
 	client := request.client(e.client)

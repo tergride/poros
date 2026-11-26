@@ -49,7 +49,7 @@ func problemOf(t *testing.T, err error) RuleProblem {
 
 // Presets made within one millisecond keep the order they were made in, whatever their IDs.
 func TestPresetsKeepTheirOrderWithinAMillisecond(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	clock := time.UnixMilli(1_700_000_000_000)
 	e.now = func() time.Time { return clock }
 	var made []string
@@ -76,7 +76,7 @@ func TestPresetsKeepTheirOrderWithinAMillisecond(t *testing.T) {
 }
 
 func TestPresetCopies(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	saved, err := e.SavePreset(PresetCopy{
 		BasedOn: "all", Name: "Home", DNS: "https://1.1.1.1/dns-query",
 		Rules: []PresetRule{
@@ -186,7 +186,7 @@ func encodeLink(data string) string {
 // rest keep the user's order: a block of a subdomain works under a domain through the server, and so does an
 // exception in a subnet.
 func TestNarrowerRulesRise(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	draft := PresetCopy{BasedOn: "all", Name: "Order", Rules: []PresetRule{
 		rule(CondSuffix, "example.com", ActionProxy),
 		rule(CondIP, "10.0.0.0/8", ActionDirect),
@@ -231,7 +231,7 @@ func TestNarrowerRulesRise(t *testing.T) {
 
 // Built-in presets never change: the editor shows them, and their IDs are neither saved over nor removed.
 func TestBuiltinPresetsStay(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	before, _, _ := e.preset("all")
 	shown, err := e.PresetCopy("all")
 	if err != nil || !shown.Builtin || shown.ID != "all" || len(shown.Rules) != 0 || shown.Default != ActionProxy ||
@@ -263,7 +263,7 @@ func TestBuiltinPresetsStay(t *testing.T) {
 // A preset made from scratch has no base: it shows none, and runs on the standard rules of all traffic through the
 // server, exactly as a copy of "all" with the same rules would.
 func TestPresetFromScratch(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	rules := []PresetRule{rule(CondSuffix, "example.org", ActionDirect)}
 	saved, err := e.SavePreset(PresetCopy{Name: "Work", Rules: rules})
 	if err != nil || saved.BasedOn != "" || saved.Rules != 1 {
@@ -306,7 +306,7 @@ func TestPresetFromScratch(t *testing.T) {
 
 // The traffic no rule takes goes where the user says, and the choice travels with the preset's link.
 func TestPresetDefault(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	draft := PresetCopy{BasedOn: "all", Name: "Direct but", Default: ActionDirect, Rules: []PresetRule{rule(CondSuffix, "example.org", ActionProxy)}}
 	saved, err := e.SavePreset(draft)
 	if err != nil {
@@ -336,7 +336,7 @@ func TestPresetDefault(t *testing.T) {
 // characters; a link of plain JSON that writes every field out reads into the same preset, and a damaged or huge one
 // is refused.
 func TestPresetLinkIsShort(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	var rules []PresetRule
 	for i, word := range strings.Fields("alpha bravo charlie delta echo foxtrot golf hotel india juliett kilo lima mike " +
 		"november oscar papa quebec romeo sierra") {
@@ -396,7 +396,7 @@ func TestPresetLinkIsShort(t *testing.T) {
 // A preset goes to a file as the JSON its link holds, under a name Windows takes, and the file's text imports as the
 // link does.
 func TestPresetFile(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	rules := []PresetRule{rule(CondSuffix, "example.org", ActionProxy), rule(CondProcessName, "game.exe", ActionDirect)}
 	saved, err := e.SavePreset(PresetCopy{Name: "Work: home/office?", Default: ActionDirect, Rules: rules})
 	if err != nil {
@@ -437,7 +437,7 @@ func TestPresetFile(t *testing.T) {
 // An advanced preset has rules of several conditions and values, inverted and switched-off ones, every kind, and a
 // direct DNS; it never becomes simple again, while a simple one becomes advanced.
 func TestAdvancedPreset(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	games := PresetRule{Name: " Games over UDP ", Action: ActionDirect, Conditions: []RuleCondition{
 		{Kind: CondProcessName, Values: []string{"game.exe", "launcher", "", "GAME.EXE"}},
 		{Kind: CondNetwork, Values: []string{"UDP"}},
@@ -537,7 +537,7 @@ func TestAdvancedPreset(t *testing.T) {
 
 // presets.check answers through JSON-RPC with the checked rules, or with the problem as the data of its error.
 func TestPresetCheckThroughRPC(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	check := e.Handlers()[MethodPresetsCheck]
 	result, err := check(t.Context(), json.RawMessage(`{"advanced":false,"rules":[`+
 		`{"name":"","conditions":[{"kind":"suffix","values":["example.com"]}],"invert":false,"off":false,"action":"proxy"},`+

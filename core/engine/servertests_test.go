@@ -116,7 +116,7 @@ func TestServerTestsAndCleanup(t *testing.T) {
 }
 
 func TestResolveServers(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	added, err := e.AddServers(AddServers{NewGroup: "Mine", Text: "trojan://pw@localhost:443?security=tls#Local\n" +
 		"trojan://pw@192.0.2.1:443?security=tls#Address"})
 	if err != nil {

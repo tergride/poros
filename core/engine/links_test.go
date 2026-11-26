@@ -6,7 +6,7 @@ import (
 )
 
 func TestOutsideLinks(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	encode := func(text string) string { return base64.RawURLEncoding.EncodeToString([]byte(text)) }
 
 	info, err := e.ParseLink(OutsideLink{Link: "poros://AddSub/" + encode("https://sub.example.com/u/8f3a#My%20VPN")})

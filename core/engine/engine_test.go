@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"slices"
 	"testing"
 	"time"
@@ -16,6 +17,32 @@ import (
 type event struct {
 	method string
 	params any
+}
+
+// tempDir is a temporary folder of a test, removed after it as t.TempDir does, but tried again for a few seconds.
+// An antivirus that scans a file the test wrote may still hold it: Windows deletes such a file only once the last
+// handle goes, and until then its folder is not empty, which t.TempDir reports as a failure at once.
+func tempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "poros-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		deadline := time.Now().Add(10 * time.Second)
+		for {
+			err := os.RemoveAll(dir)
+			if err == nil {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Errorf("the folder of the test stays: %v", err)
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	})
+	return dir
 }
 
 func openTest(t *testing.T, dir string) (*Engine, *[]event) {
@@ -48,7 +75,7 @@ func reason(err error) string {
 }
 
 func TestSettingsStartFromDefaultsAndPersist(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempDir(t)
 	e, events := openTest(t, dir)
 
 	got, err := e.Settings()
@@ -76,7 +103,7 @@ func TestSettingsStartFromDefaultsAndPersist(t *testing.T) {
 }
 
 func TestSettingsRejectUnknownValues(t *testing.T) {
-	e, events := openTest(t, t.TempDir())
+	e, events := openTest(t, tempDir(t))
 	for name, change := range map[string]func(*Settings){
 		"ui mode":          func(s *Settings) { s.UIMode = "expert" },
 		"language":         func(s *Settings) { s.Language = "de" },
@@ -96,7 +123,7 @@ func TestSettingsRejectUnknownValues(t *testing.T) {
 }
 
 func TestBuiltinPresets(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	presets, err := e.Presets()
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +141,7 @@ func TestBuiltinPresets(t *testing.T) {
 }
 
 func TestOneEnginePerDataFolder(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempDir(t)
 	openTest(t, dir)
 	started := time.Now()
 	if second, err := Open(Config{DataDir: dir}); err == nil {
@@ -127,7 +154,7 @@ func TestOneEnginePerDataFolder(t *testing.T) {
 }
 
 func TestHandlersDecodeParamsStrictly(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	_, err := e.Handlers()[MethodSubscriptionsAdd](t.Context(), json.RawMessage(`{"link":"https://a.example"}`))
 	var rpcErr *jsonrpc.Error
 	if !errors.As(err, &rpcErr) || rpcErr.Code != jsonrpc.CodeInvalidParams {
@@ -140,7 +167,7 @@ func TestRightsAtSignInTakeRights(t *testing.T) {
 	if elevated() {
 		t.Skip("the core runs with administrator rights here")
 	}
-	dir := t.TempDir()
+	dir := tempDir(t)
 	e, _ := openTest(t, dir)
 	settings := DefaultSettings()
 	settings.AdminAutostart = true

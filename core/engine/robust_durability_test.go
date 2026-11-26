@@ -180,7 +180,7 @@ func TestRobustDBSurvivesKills(t *testing.T) {
 	}
 	skipIfElevated(t)
 	r := rand.New(rand.NewPCG(robustSeed(t), 4))
-	dir := t.TempDir()
+	dir := tempDir(t)
 	var waits []time.Duration
 	for round := range kills {
 		before := len(committedWrites(dir))

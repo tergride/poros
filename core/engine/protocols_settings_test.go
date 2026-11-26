@@ -6,7 +6,7 @@ import (
 
 // «Protocols and bypass»: the defaults of profiles and QUIC, what is refused, and the tuning of a connection.
 func TestProtocolSettings(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	settings, err := e.Settings()
 	if err != nil || settings.MuxDefault || settings.MuxProtocol != "smux" || settings.MuxConcurrency != 8 || settings.FragmentDefault || settings.SpoofDefault {
 		t.Fatalf("the defaults: %+v, %v", settings, err)

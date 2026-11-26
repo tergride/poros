@@ -14,7 +14,7 @@ func chainProfile(ids ...string) profile.Profile {
 }
 
 func TestSaveCompoundServers(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	mine, err := e.AddServers(AddServers{NewGroup: "Mine", Text: vless("fi.example.com", "Finland") + "\n" + vless("se.example.com", "Sweden")})
 	if err != nil {
 		t.Fatal(err)

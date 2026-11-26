@@ -10,7 +10,7 @@ import (
 // WARP in the settings: the keys of each mode are data, kept while WARP is off; on, the device of its mode must be
 // whole. Rules to WARP belong to an advanced preset and have a tab of the lists window there.
 func TestWARPSettings(t *testing.T) {
-	e, _ := openTest(t, t.TempDir())
+	e, _ := openTest(t, tempDir(t))
 	settings, err := e.Settings()
 	if err != nil || settings.WARP || settings.WARPMode != WARPModeWireGuard {
 		t.Fatalf("the defaults: %+v, %v", settings, err)

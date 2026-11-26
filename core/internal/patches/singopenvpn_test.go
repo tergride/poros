@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	mathrand "math/rand/v2"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -50,6 +51,9 @@ func TestOpenVPNOverBTLS(t *testing.T) {
 			serverWrap, clientWrap := tlsCryptV2Keys(t)
 
 			serverPort, proxyPort := freePort(t), freePort(t)
+			for proxyPort == serverPort {
+				proxyPort = freePort(t)
+			}
 			runBox(t, fmt.Sprintf(`{"log":{"level":"warn"},"endpoints":[{"type":"openvpn-server","tag":"ovpn-in","listen":"127.0.0.1",`+
 				`"listen_port":%d,"network":"tcp","address":["10.8.0.1/24"],"data_ciphers":[%q],"auth":"bash512",`+
 				`"tls":{"certificate":%s,"key":%s,"client_certificate":%s,"verify_client_certificate":"require",`+
@@ -156,13 +160,21 @@ func tlsCryptV2Keys(t *testing.T) (server, client []byte) {
 		pem.EncodeToMemory(&pem.Block{Type: "OpenVPN tls-crypt-v2 client key", Bytes: wrapped})
 }
 
-// freePort finds a port free on loopback.
+// freePort finds a port free on loopback, below the ports outgoing connections take theirs from (49152 and up on
+// Windows, 32768 and up on Linux): between this check and the start of the server, a connection would take it
+// otherwise.
 func freePort(t *testing.T) uint16 {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	var last error
+	for range 200 {
+		port := 10000 + mathrand.IntN(10000)
+		listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		if err == nil {
+			listener.Close()
+			return uint16(port)
+		}
+		last = err
 	}
-	defer listener.Close()
-	return uint16(listener.Addr().(*net.TCPAddr).Port)
+	t.Fatalf("no port is free: %v", last)
+	return 0
 }
