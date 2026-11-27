@@ -879,6 +879,14 @@ type PresetFile struct {
 	Text string `json:"text"`
 }
 
+// RunningProgram is a program running now, for a rule by program: the name of its file and its whole path, "" when
+// the system does not tell it. System is a program of the system itself, from its folder or without a path.
+type RunningProgram struct {
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	System bool   `json:"system"`
+}
+
 // OutsideLink is a link that came from outside Poros, such as a browser.
 type OutsideLink struct {
 	Link string `json:"link"`
@@ -1393,6 +1401,9 @@ const (
 	// the rules with that text and the lines it could not read; neither saves anything.
 	MethodPresetsWriteLists = "presets.writeLists"
 	MethodPresetsReadLists  = "presets.readLists"
+	// MethodProgramsRunning gives the programs running now, each file once: those of the user by name, then those of
+	// the system.
+	MethodProgramsRunning = "programs.running"
 	// MethodLinksParse reads a poros:// link without adding anything.
 	MethodLinksParse = "links.parse"
 	// MethodLogsGet gives the lines of the core's log after a byte, or the last ones.

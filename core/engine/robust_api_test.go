@@ -330,6 +330,7 @@ func contractMethods() map[string]contractMethod {
 			lists, _ := WritePresetLists(rules)
 			return PresetListsInput{Advanced: rules.Advanced, Endpoint: rules.Endpoint, Rules: rules.Rules, Lists: lists.Lists}
 		}},
+		MethodProgramsRunning: none,
 		MethodLinksParse: {params: OutsideLink{}, base: func(f *contractFuzz) any {
 			links := []string{f.pool.deepLink, f.pool.presetLink,
 				"poros://addsub/" + base64.RawURLEncoding.EncodeToString([]byte(f.provider+"#Provider")),

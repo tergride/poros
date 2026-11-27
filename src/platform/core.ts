@@ -56,6 +56,7 @@ import type {
   PresetReplace,
   PresetRules,
   RuleProblem,
+  RunningProgram,
   MoveServers,
   RenameGroup,
   SaveServer,
@@ -150,6 +151,7 @@ import {
   MethodPresetsReplace,
   MethodPresetsSave,
   MethodPresetsWriteLists,
+  MethodProgramsRunning,
   MethodServersAdd,
   MethodServersClone,
   MethodServersDeepLinks,
@@ -226,6 +228,7 @@ export interface CoreMethods {
   [MethodWARPRegister]: { params: WARPRegister; result: Settings }
   [MethodPresetsWriteLists]: { params: PresetRules; result: PresetLists }
   [MethodPresetsReadLists]: { params: PresetListsInput; result: PresetListsRead }
+  [MethodProgramsRunning]: { params: undefined; result: RunningProgram[] }
   [MethodLinksParse]: { params: OutsideLink; result: LinkInfo }
   [MethodConnectionStart]: { params: undefined; result: ConnectionState }
   [MethodConnectionStop]: { params: undefined; result: ConnectionState }

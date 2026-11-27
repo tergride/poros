@@ -1,5 +1,5 @@
 import type { CoreError } from './core'
-import type { PresetListProblem, PresetLists, PresetListsInput, PresetListsRead, PresetRule, PresetRules, RuleProblem } from './core-types'
+import type { PresetListProblem, PresetLists, PresetListsInput, PresetListsRead, PresetRule, PresetRules, RuleProblem, RunningProgram } from './core-types'
 import {
   ActionBlock,
   ActionDirect,
@@ -282,3 +282,15 @@ export function readLists({ advanced, endpoint = false, rules, lists }: PresetLi
   }
   return { rules: narrowFirst(result), problems }
 }
+
+/** The programs running in the stub, as programs.running gives them: the user's by name, then the system's. */
+export const stubRunningPrograms = (): RunningProgram[] => [
+  { name: 'chrome.exe', path: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', system: false },
+  { name: 'Discord.exe', path: 'C:\\Users\\User\\AppData\\Local\\Discord\\app-1.0.9215\\Discord.exe', system: false },
+  { name: 'game.exe', path: 'D:\\Games\\Game\\game.exe', system: false },
+  { name: 'steam.exe', path: 'C:\\Program Files (x86)\\Steam\\steam.exe', system: false },
+  { name: 'Telegram.exe', path: 'C:\\Users\\User\\AppData\\Roaming\\Telegram Desktop\\Telegram.exe', system: false },
+  { name: 'csrss.exe', path: '', system: true },
+  { name: 'explorer.exe', path: 'C:\\Windows\\explorer.exe', system: true },
+  { name: 'svchost.exe', path: 'C:\\Windows\\System32\\svchost.exe', system: true },
+]

@@ -307,6 +307,14 @@ test('the routing of the advanced mode edits presets beside their list and waits
   await dialog.getByTestId('rule-condition').first().getByRole('combobox').click()
   await page.getByRole('option', { name: 'Программа', exact: true }).click()
   await dialog.getByTestId('rule-values').first().fill('game.exe\nlauncher')
+  // A running program comes as one more line, once.
+  const running = page.getByRole('dialog', { name: 'Запущенные программы' })
+  for (let i = 0; i < 2; i++) {
+    await dialog.getByTestId('rule-program').click()
+    await running.getByTestId('program').filter({ hasText: 'steam.exe' }).click()
+    await expect(running).toBeHidden()
+  }
+  await expect(dialog.getByTestId('rule-values').first()).toHaveValue('game.exe\nlauncher\nsteam.exe')
   await dialog.getByTestId('rule-add-condition').click()
   await page.getByRole('menuitem', { name: 'Сеть', exact: true }).click()
   await dialog.getByTestId('rule-add-condition').click()
@@ -321,7 +329,7 @@ test('the routing of the advanced mode edits presets beside their list and waits
   await dialog.getByTestId('rule-done').click()
   await expect(dialog).toBeHidden()
   await expect(page.getByTestId('rule-row').nth(1)).toContainText('Несколько условий')
-  await expect(page.getByTestId('rule-row').nth(1)).toContainText('Игры по UDP: программа game.exe, launcher.exe · сеть UDP')
+  await expect(page.getByTestId('rule-row').nth(1)).toContainText('Игры по UDP: программа game.exe, launcher.exe, steam.exe · сеть UDP')
   await expect(page.getByTestId('rule-rest')).toContainText('Через сервер')
   await shot(page, 'adv-routing-rules')
 

@@ -893,7 +893,19 @@
       "done": "Done"
     },
     "endpoints": "Endpoints",
-    "endpointsSimple": "{names} — set up in the advanced mode"
+    "endpointsSimple": "{names} — set up in the advanced mode",
+    "programs": {
+      "open": "Pick from running programs",
+      "title": "Running programs",
+      "search": "Search by name or path",
+      "refresh": "Refresh the list",
+      "hintName": "The rule gets the file name of the program.",
+      "hintPath": "The rule gets the full path to the program.",
+      "loading": "Reading the list of programs…",
+      "nothing": "Nothing found",
+      "own": "Programs",
+      "system": "System"
+    }
   },
   "endpoints": {
     "title": "Endpoints",

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Lock, MoreHorizontal, Pencil, Plus, Trash2, X } from '@lucide/vue'
+import { AppWindow, ArrowDown, ArrowUp, Lock, MoreHorizontal, Pencil, Plus, Trash2, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import RunningProgramsDialog from '@/components/presets/RunningProgramsDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Input, Menu, MenuItem, MenuSeparator, Select, Switch, vTooltip } from '@/components/ui'
 import { useRuleDraft } from '@/composables/usePresetDraft'
-import { advancedKinds, inRow, moved, newRule, ruleSummary, simpleKinds } from '@/lib/rules'
+import { advancedKinds, inRow, moved, newRule, programKinds, ruleSummary, simpleKinds } from '@/lib/rules'
 import type { InheritedRule, PresetRule } from '@/platform/core-types'
 import { ActionEndpoint, ActionProxy, CondPrivate, CondSuffix } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
@@ -40,6 +41,7 @@ watch(targets, (choices) => {
   if (!endpoint && !choices.some((c) => c.value === newAction.value)) newAction.value = ActionProxy
 })
 const adding = ref(false)
+const picking = ref(false)
 
 async function add(): Promise<void> {
   const value = newValue.value.trim()
@@ -115,16 +117,30 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
       ]"
     >
       <Select v-model="newKind" :options="kinds" :class="['h-8 w-full', endpoint && '@max-[42rem]:col-span-2']" :aria-label="t('rules.newKind')" data-testid="rule-new-kind" />
-      <Input
-        v-model="newValue"
-        mono
-        :class="['h-8', !endpoint && '@max-[42rem]:col-span-2 @max-[42rem]:row-start-2']"
-        :disabled="newKind === CondPrivate"
-        :placeholder="newKind === CondPrivate ? t('rules.privateValue') : t(`rules.placeholder.${newKind}`)"
-        :aria-label="t('rules.newValue')"
-        data-testid="rule-new-value"
-        @keydown.enter="add"
-      />
+      <div :class="['relative min-w-0', !endpoint && '@max-[42rem]:col-span-2 @max-[42rem]:row-start-2']">
+        <Input
+          v-model="newValue"
+          mono
+          :class="['h-8', programKinds.includes(newKind) && 'pr-9']"
+          :disabled="newKind === CondPrivate"
+          :placeholder="newKind === CondPrivate ? t('rules.privateValue') : t(`rules.placeholder.${newKind}`)"
+          :aria-label="t('rules.newValue')"
+          data-testid="rule-new-value"
+          @keydown.enter="add"
+        />
+        <Button
+          v-if="programKinds.includes(newKind)"
+          variant="ghost"
+          size="icon-sm"
+          class="absolute top-[3px] right-[3px] size-[26px]"
+          :aria-label="t('rules.programs.open')"
+          v-tooltip="t('rules.programs.open')"
+          data-testid="rule-new-program"
+          @click="picking = true"
+        >
+          <AppWindow />
+        </Button>
+      </div>
       <Select
         v-if="!endpoint"
         v-model="newAction"
@@ -232,5 +248,6 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
       <span class="pl-[11px] text-[12.5px]">{{ restAction }}</span>
       <span /><span /><span />
     </div>
+    <RunningProgramsDialog v-model:open="picking" :kind="newKind" @pick="(value: string) => (newValue = value)" />
   </SettingsCard>
 </template>

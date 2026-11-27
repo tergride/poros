@@ -1,4 +1,4 @@
-import type { PresetRule, RuleProblem } from '@/platform/core-types'
+import type { PresetRule, RuleProblem, RunningProgram } from '@/platform/core-types'
 import {
   ActionBlock,
   ActionDirect,
@@ -47,6 +47,28 @@ export const advancedActions: string[] = [...ruleActions, ActionWARP]
 
 /** The protocols sing-box recognizes, as the core checks them. */
 export const protocols = ['tls', 'http', 'quic', 'dns', 'stun', 'bittorrent', 'dtls', 'ssh', 'rdp', 'ntp']
+
+/** The kinds whose value is a program, which the running programs give: its file name or its whole path. */
+export const programKinds: string[] = [CondProcessName, CondProcessPath]
+
+/** The value a rule of the kind takes from a running program. */
+export const programValue = (kind: string, program: RunningProgram): string => (kind === CondProcessPath ? program.path : program.name)
+
+/** The running programs that fit what is searched, by name or path in any case; a path takes those that tell theirs. */
+export function programsFor(programs: RunningProgram[], kind: string, query: string): RunningProgram[] {
+  const q = query.trim().toLocaleLowerCase()
+  return programs.filter(
+    (p) => (kind !== CondProcessPath || p.path !== '') && (p.name.toLocaleLowerCase().includes(q) || p.path.toLocaleLowerCase().includes(q)),
+  )
+}
+
+/** The values of a condition, one per line, with one more at the end, unless they have it in any case. */
+export function withValue(text: string, value: string): string {
+  const lines = text.split('\n')
+  if (lines.some((line) => line.trim().toLocaleLowerCase() === value.toLocaleLowerCase())) return text
+  const kept = text.trimEnd()
+  return kept ? `${kept}\n${value}` : value
+}
 
 /** A rule of one condition. */
 export function newRule(kind: string, value: string, action: string): PresetRule {

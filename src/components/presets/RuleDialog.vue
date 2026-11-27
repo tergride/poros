@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { ChevronDown, Plus, TriangleAlert, X } from '@lucide/vue'
+import { AppWindow, ChevronDown, Plus, TriangleAlert, X } from '@lucide/vue'
 import { useDebounceFn } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Button, Checkbox, Dialog, Input, Menu, MenuItem, Segmented, Select, Switch, Textarea } from '@/components/ui'
+import RunningProgramsDialog from '@/components/presets/RunningProgramsDialog.vue'
+import { Button, Checkbox, Dialog, Input, Menu, MenuItem, Segmented, Select, Switch, Textarea, vTooltip } from '@/components/ui'
 import { useRuleDraft } from '@/composables/usePresetDraft'
 import { useFailure } from '@/composables/useReason'
-import { advancedKinds, problemText, protocols } from '@/lib/rules'
+import { advancedKinds, problemText, programKinds, protocols, withValue } from '@/lib/rules'
 import { isCoreError } from '@/platform'
 import type { PresetRule } from '@/platform/core-types'
 import { ActionDirect, ActionEndpoint, CondIPVersion, CondNetwork, CondPrivate, CondProtocol, MethodPresetsCheck } from '@/platform/core-types'
@@ -33,6 +34,14 @@ const invert = ref(false)
 const target = ref<string>(ActionDirect)
 const problem = ref('')
 const busy = ref(false)
+// The condition the running programs add a value to.
+const picking = ref<Condition | null>(null)
+const pickerOpen = computed({
+  get: () => picking.value !== null,
+  set: (shown: boolean) => {
+    if (!shown) picking.value = null
+  },
+})
 
 const open = computed({
   get: () => ruleOpen.value !== null,
@@ -70,6 +79,10 @@ function setKind(condition: Condition, kind: string): void {
 function toggle(condition: Condition, protocol: string, on: boolean): void {
   const chosen = condition.text.split('\n').filter((p) => p && p !== protocol)
   condition.text = (on ? [...chosen, protocol] : chosen).join('\n')
+}
+
+function addProgram(value: string): void {
+  if (picking.value) picking.value.text = withValue(picking.value.text, value)
 }
 
 function built(): PresetRule {
@@ -152,16 +165,29 @@ async function done(): Promise<void> {
               </label>
             </div>
             <span v-else-if="condition.kind === CondPrivate" class="pt-2 text-[12.5px] text-t3">{{ t('rules.privateValue') }}</span>
-            <Textarea
-              v-else
-              v-model="condition.text"
-              mono
-              rows="2"
-              class="min-h-0 resize-y"
-              :placeholder="t(`rules.placeholder.${condition.kind}`)"
-              :aria-label="kindLabel(condition.kind)"
-              data-testid="rule-values"
-            />
+            <div v-else class="relative">
+              <Textarea
+                v-model="condition.text"
+                mono
+                rows="2"
+                :class="['min-h-0 resize-y', programKinds.includes(condition.kind) && 'pr-9']"
+                :placeholder="t(`rules.placeholder.${condition.kind}`)"
+                :aria-label="kindLabel(condition.kind)"
+                data-testid="rule-values"
+              />
+              <Button
+                v-if="programKinds.includes(condition.kind)"
+                variant="ghost"
+                size="icon-sm"
+                class="absolute top-[3px] right-[3px] size-[26px]"
+                :aria-label="t('rules.programs.open')"
+                v-tooltip="t('rules.programs.open')"
+                data-testid="rule-program"
+                @click="picking = condition"
+              >
+                <AppWindow />
+              </Button>
+            </div>
             <Button variant="ghost" size="icon-sm" :aria-label="t('rules.dialog.remove')" @click="conditions.splice(i, 1)"><X /></Button>
           </div>
         </div>
@@ -193,4 +219,5 @@ async function done(): Promise<void> {
       <Button variant="primary" :disabled="busy || !!problem || conditions.length === 0" data-testid="rule-done" @click="done">{{ t('rules.dialog.done') }}</Button>
     </template>
   </Dialog>
+  <RunningProgramsDialog v-model:open="pickerOpen" :kind="picking?.kind ?? ''" @pick="addProgram" />
 </template>

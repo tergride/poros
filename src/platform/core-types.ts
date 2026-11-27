@@ -1305,6 +1305,15 @@ export interface PresetFile {
   text: string;
 }
 /**
+ * RunningProgram is a program running now, for a rule by program: the name of its file and its whole path, "" when
+ * the system does not tell it. System is a program of the system itself, from its folder or without a path.
+ */
+export interface RunningProgram {
+  name: string;
+  path: string;
+  system: boolean;
+}
+/**
  * OutsideLink is a link that came from outside Poros, such as a browser.
  */
 export interface OutsideLink {
@@ -2116,6 +2125,11 @@ export const MethodPresetsWriteLists = "presets.writeLists";
  * Methods the core answers.
  */
 export const MethodPresetsReadLists = "presets.readLists";
+/**
+ * MethodProgramsRunning gives the programs running now, each file once: those of the user by name, then those of
+ * the system.
+ */
+export const MethodProgramsRunning = "programs.running";
 /**
  * MethodLinksParse reads a poros:// link without adding anything.
  */

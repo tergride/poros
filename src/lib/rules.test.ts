@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { inRow, kindOfLine, listKinds, moved, newRule, prefixAt, prefixesFor, problemText, ruleSummary } from './rules'
+import type { RunningProgram } from '@/platform/core-types'
+
+import { inRow, kindOfLine, listKinds, moved, newRule, prefixAt, prefixesFor, problemText, programsFor, programValue, ruleSummary, withValue } from './rules'
 
 // The keys and values as the messages of the interface would put them together.
 const t = (key: string, values: Record<string, unknown> = {}) =>
@@ -67,5 +69,25 @@ describe('the rules of a preset in the interface', () => {
     expect(prefixesFor(listKinds(true), 'ip')).toEqual(['ip', 'ipVersion', 'sourceIP'])
     expect(prefixesFor(listKinds(true), 'regex')).toEqual(['regex', 'processPathRegex'])
     expect(prefixesFor(listKinds(true), 'example.com')).toEqual([])
+  })
+
+  it('finds running programs by name or path, a path only of those that tell it', () => {
+    const programs: RunningProgram[] = [
+      { name: 'Telegram.exe', path: 'C:\\Apps\\Telegram Desktop\\Telegram.exe', system: false },
+      { name: 'game.exe', path: 'D:\\Games\\game.exe', system: false },
+      { name: 'csrss.exe', path: '', system: true },
+    ]
+    const values = (kind: string, query: string) => programsFor(programs, kind, query).map((p) => programValue(kind, p))
+    expect(values('processName', '')).toEqual(['Telegram.exe', 'game.exe', 'csrss.exe'])
+    expect(values('processPath', '')).toEqual(['C:\\Apps\\Telegram Desktop\\Telegram.exe', 'D:\\Games\\game.exe'])
+    expect(values('processName', ' TELE ')).toEqual(['Telegram.exe'])
+    expect(values('processName', 'games\\')).toEqual(['game.exe'])
+    expect(values('processPath', 'csrss')).toEqual([])
+  })
+
+  it('adds a program to the values of a condition once, in any case', () => {
+    expect(withValue('', 'game.exe')).toBe('game.exe')
+    expect(withValue('launcher.exe\n\n', 'game.exe')).toBe('launcher.exe\ngame.exe')
+    expect(withValue('Game.exe\nlauncher.exe', 'game.exe')).toBe('Game.exe\nlauncher.exe')
   })
 })

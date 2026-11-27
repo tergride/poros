@@ -113,6 +113,7 @@ import {
   MethodPresetsReplace,
   MethodPresetsSave,
   MethodPresetsWriteLists,
+  MethodProgramsRunning,
   MethodServersAdd,
   MethodServersCheck,
   MethodServersClone,
@@ -183,7 +184,7 @@ import { checkDnsObject, checkDnsSettings } from './stubDns'
 import { createStubEndpoints, partKey, readOpenVPN } from './stubEndpoints'
 import { createStubOtp } from './stubOtp'
 import { stubQrEncode, stubQrRead, stubQrScan } from './stubQr'
-import { checkRules, readLists, writeLists } from './stubPresets'
+import { checkRules, readLists, stubRunningPrograms, writeLists } from './stubPresets'
 
 const noWarpDevice: WARPDevice = { endpoint: '', privateKey: '', peerKey: '', addresses: '', reserved: '', serverName: '', http: '', registeredAt: 0 }
 
@@ -1256,6 +1257,7 @@ export function createStubCore(): CoreClient {
     [MethodPresetsCheck]: (rules) => ({ advanced: rules.advanced, endpoint: rules.endpoint, rules: checkRules(rules) }),
     [MethodPresetsWriteLists]: (rules) => writeLists(rules),
     [MethodPresetsReadLists]: (input) => readLists(input),
+    [MethodProgramsRunning]: () => stubRunningPrograms(),
     [MethodLinksParse]: ({ link }) => parseOutsideLink(link),
     [MethodOTPList]: () => otp.list(),
     [MethodOTPGet]: ({ id }) => otp.get(id),
