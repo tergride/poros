@@ -22,9 +22,10 @@ on [sing-box](https://github.com/SagerNet/sing-box) and [Xray-core](https://gith
 
 ## Download
 
-1. Take `Poros-<version>-windows-amd64.zip` from the [latest release](https://github.com/tergride/poros/releases/latest).
-2. Unpack it into any folder you can write to.
-3. Run `Poros.exe`.
+Take one of two files from the [latest release](https://github.com/tergride/poros/releases/latest):
+
+- `Poros-<version>-windows-amd64.exe` is a self-extracting archive. It unpacks Poros into the folder you choose, `%LOCALAPPDATA%\Programs\Poros` by default, and, if their boxes are ticked, adds shortcuts on the desktop and in the Start menu and starts Poros. It writes nothing to the registry.
+- `Poros-<version>-windows-amd64.zip` holds the same files: unpack it into any folder you can write to and run `Poros.exe`.
 
 > [!NOTE]
 > - Poros needs 64-bit Windows 10 or 11 and is tested on Windows 11. It also needs the WebView2 Runtime, which Windows 11 has built in; without it Poros offers the download page.
@@ -55,13 +56,13 @@ on [sing-box](https://github.com/SagerNet/sing-box) and [Xray-core](https://gith
 
 ## Portable
 
-Poros has no installer. Its data, the WebView2 profile included, stays in `config` next to `Poros.exe`, so deleting the folder removes Poros. If the folder is read-only, Poros says so and exits. One Poros runs per Windows user.
+Poros has no installer. Its data, the WebView2 profile included, stays in `config` next to `Poros.exe`, so deleting the folder, and the shortcuts if the self-extracting archive added them, removes Poros. If the folder is read-only, Poros says so and exits. One Poros runs per Windows user.
 
 Passwords, keys, subscription links and OTP secrets in `config` are encrypted for this computer with Windows DPAPI. A copy of the folder on another computer opens without them: servers wait for their secrets until you enter them again. To move everything, make a backup in the settings; with a password it is encrypted whole.
 
 ## Updates
 
-Poros checks this repository's releases at start and every four hours, downloads a new version in the background and installs it when you press **Restart and update**. Help in the settings turns the automatic check off and turns on beta versions, which are pre-releases here. To update by hand, unpack the new archive over the folder: it has no `config`, so your data stays.
+Poros checks this repository's releases at start and every four hours, downloads a new version in the background and installs it when you press **Restart and update**. Help in the settings turns the automatic check off and turns on beta versions, which are pre-releases here. To update by hand, unpack the new archive over the folder, or run the new self-extracting archive with the same folder: neither has a `config`, so your data stays.
 
 ## For providers
 
@@ -106,7 +107,7 @@ The output goes to `deployment\windows-amd64`: `Poros.exe`, `PorosCore.exe`, `up
 |---|---|
 | `src` | The interface: Vue 3, TypeScript, Tailwind CSS, shadcn-vue components, fonts and images |
 | `src-tauri` | The Tauri 2 shell in Rust: the window, the tray, the data folder, the bridge to the core |
-| `core` | The Go core: subscriptions, links, the sing-box and Xray-core configurations, the connection, server tests, the kill switch guard, the updater |
+| `core` | The Go core: subscriptions, links, the sing-box and Xray-core configurations, the connection, server tests, the kill switch guard, the updater and the self-extracting archive |
 | `third_party` | Copies of Go modules with a change Poros needs, see its [README](third_party/README.md) |
 | `e2e` | Playwright checks of the interface |
 | `res` | Tray icons and the sing-box JSON schema |
@@ -118,7 +119,7 @@ The output goes to `deployment\windows-amd64`: `Poros.exe`, `PorosCore.exe`, `up
 
 ### Releases
 
-`script\release_windows.ps1 -Toolchain <folder>` publishes the newest version in `CHANGELOG.md`, whose section needs a `<!-- ru -->` and an `<!-- en -->` part, and the same version in `src-tauri/Cargo.toml`. It builds that version, writes `THIRD-PARTY-NOTICES.txt` with the Rust crates, npm packages and Go modules of the build, packs the archive and `latest.json`, the feed Poros reads, and publishes them as a GitHub release, a draft until both files are uploaded. A full release comes from a clean `main` that `origin/main` holds, and `-Beta` publishes a pre-release from a clean `dev` that `origin/dev` holds. A full release of a version that came out as a beta from the same commit makes that pre-release the latest release without a new build. `-DryRun` builds into `deployment\release` on any branch and publishes nothing.
+`script\release_windows.ps1 -Toolchain <folder>` publishes the newest version in `CHANGELOG.md`, whose section needs a `<!-- ru -->` and an `<!-- en -->` part, and the same version in `src-tauri/Cargo.toml`. It builds that version, writes `THIRD-PARTY-NOTICES.txt` with the Rust crates, npm packages and Go modules of the build, packs the archive, the self-extracting archive (`core/cmd/setup` with the archive appended; `windres` from `mingw64` in the tools folder compiles its resources) and `latest.json`, the feed Poros reads, and publishes them as a GitHub release, a draft until all three files are uploaded. A full release comes from a clean `main` that `origin/main` holds, and `-Beta` publishes a pre-release from a clean `dev` that `origin/dev` holds. A full release of a version that came out as a beta from the same commit makes that pre-release the latest release without a new build. `-DryRun` builds into `deployment\release` on any branch and publishes nothing.
 
 ## License
 

@@ -1,0 +1,67 @@
+// The resources of the self-extracting archive. The release build compiles them with windres into a .syso that go
+// build links in, with the icon folder of src-tauri as an include folder and the version as POROS_VERSION (X.Y.Z)
+// and POROS_VERSION_NUMBERS (X,Y,Z,0).
+#include <windows.h>
+
+#define TEXT_OF(x) #x
+#define STRING_OF(x) TEXT_OF(x)
+
+// The same IDs are in window.go.
+#define IDI_APP 1
+#define IDD_SETUP 100
+#define IDC_FOLDER_LABEL 101
+#define IDC_FOLDER 102
+#define IDC_BROWSE 103
+#define IDC_NOTE 104
+#define IDC_DESKTOP 105
+#define IDC_START_MENU 106
+#define IDC_STATUS 107
+#define IDC_LAUNCH 108
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+IDI_APP ICON "icon.ico"
+
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "setup.manifest"
+
+// The texts come from window.go in the language of Windows.
+IDD_SETUP DIALOGEX 0, 0, 280, 132
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+FONT 9, "Segoe UI", 400, 0, 1
+BEGIN
+    LTEXT           "", IDC_FOLDER_LABEL, 10, 10, 260, 9
+    EDITTEXT        IDC_FOLDER, 10, 22, 202, 14, ES_AUTOHSCROLL
+    PUSHBUTTON      "", IDC_BROWSE, 216, 22, 54, 14
+    LTEXT           "", IDC_NOTE, 10, 42, 260, 18
+    AUTOCHECKBOX    "", IDC_DESKTOP, 10, 64, 260, 10
+    AUTOCHECKBOX    "", IDC_START_MENU, 10, 78, 260, 10
+    AUTOCHECKBOX    "", IDC_LAUNCH, 10, 92, 260, 10
+    LTEXT           "", IDC_STATUS, 10, 113, 144, 9
+    DEFPUSHBUTTON   "", IDOK, 158, 111, 54, 14
+    PUSHBUTTON      "", IDCANCEL, 216, 111, 54, 14
+END
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION POROS_VERSION_NUMBERS
+PRODUCTVERSION POROS_VERSION_NUMBERS
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "CompanyName", "tergride"
+            VALUE "FileDescription", "Poros self-extracting archive"
+            VALUE "FileVersion", STRING_OF(POROS_VERSION)
+            VALUE "ProductName", "Poros"
+            VALUE "ProductVersion", STRING_OF(POROS_VERSION)
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0, 1200
+    END
+END

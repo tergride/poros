@@ -1,15 +1,17 @@
 #Requires -Version 7.0
 # Publishes the newest version in CHANGELOG.md as a release of tergride/poros: checks that it can be released, builds
-# it, and creates the GitHub release with the archive and latest.json, the feed Poros reads. The release stays a draft
-# until both files are uploaded, so no Poros ever sees a release it cannot install. A full release of a version that
-# came out as a beta from the same commit makes that pre-release the latest release, without a new build.
+# it, and creates the GitHub release with the archive, the self-extracting archive and latest.json, the feed Poros
+# reads. The release stays a draft until all three files are uploaded, so no Poros ever sees a release it cannot
+# install. A full release of a version that came out as a beta from the same commit makes that pre-release the latest
+# release, without a new build.
 #
 #   script\release_windows.ps1          a full release from a clean main that origin/main holds
 #   script\release_windows.ps1 -Beta    a pre-release from a clean dev that origin/dev holds; only Poros with beta
 #                                       versions on finds it
 #   script\release_windows.ps1 -DryRun  checks and builds on any branch, publishes nothing
 #
-# Each form takes -Toolchain <folder>, the folder of tools build_windows.ps1 builds with.
+# Each form takes -Toolchain <folder>, the folder of tools build_windows.ps1 builds with; the resources of the
+# self-extracting archive need windres from its mingw64 as well.
 param(
     [switch]$DryRun,
     [switch]$Beta,
@@ -86,14 +88,14 @@ function Get-NpmPackages {
     }
 }
 
-function Get-GoModules {
+function Get-GoModules([string[]]$Binaries) {
     $cache = go env GOMODCACHE
     # The module cache spells an upper-case letter as '!' and its lower case.
     $cached = { param($path, $version) Join-Path $cache ([regex]::Replace("$path@$version", '[A-Z]', { '!' + $args[0].Value.ToLowerInvariant() })) }
     $modules = [ordered]@{}
-    foreach ($binary in 'PorosCore.exe', 'updater.exe') {
+    foreach ($binary in $Binaries) {
         $required = $null
-        foreach ($entry in go version -m (Join-Path $deployment $binary)) {
+        foreach ($entry in go version -m $binary) {
             $fields = $entry.Trim() -split '\s+'
             if ($fields[0] -eq 'dep') {
                 $required = "$($fields[1]) $($fields[2])"
@@ -111,7 +113,7 @@ function Get-GoModules {
                 }
             }
         }
-        Assert-Exit "go version -m $binary"
+        Assert-Exit "go version -m $(Split-Path $binary -Leaf)"
     }
     foreach ($module in $modules.Values) { New-Package $module.Name $module.Folder '' }
 }
@@ -150,15 +152,53 @@ function Add-Packages([Text.StringBuilder]$Text, [string]$Title, [object[]]$Pack
     }
 }
 
-# THIRD-PARTY-NOTICES.txt with the Rust crates, npm packages and Go modules of this build appended. Uses the tools that
-# build_windows.ps1 put on PATH.
-function Write-Notices([string]$Path) {
+# THIRD-PARTY-NOTICES.txt with the Rust crates, npm packages and Go modules of this build appended, those of the
+# program of the self-extracting archive too. Uses the tools that build_windows.ps1 put on PATH.
+function Write-Notices([string]$Path, [string]$Setup) {
     $text = [Text.StringBuilder]::new()
     [void]$text.Append(((Get-Content (Join-Path $root 'THIRD-PARTY-NOTICES.txt') -Raw -Encoding utf8) -replace "`r`n", "`n").TrimEnd())
     Add-Packages $text 'Rust crates in Poros.exe' @(Get-RustCrates)
     Add-Packages $text 'npm packages of the interface in Poros.exe, with the dependencies of their build tools' @(Get-NpmPackages)
-    Add-Packages $text 'Go modules in PorosCore.exe and updater.exe' @(Get-GoModules)
+    $binaries = @('PorosCore.exe', 'updater.exe' | ForEach-Object { Join-Path $deployment $_ }) + $Setup
+    Add-Packages $text 'Go modules in PorosCore.exe, updater.exe and the self-extracting archive' @(Get-GoModules $binaries)
     Write-Utf8 $Path $text.ToString()
+}
+
+# The program of the self-extracting archive, core/cmd/setup, with the icon, the version and the manifest of its
+# setup.rc. The release archive goes after it later.
+function Build-Setup([string]$Path) {
+    $package = Join-Path $root 'core\cmd\setup'
+    $resources = Join-Path $package 'rsrc_windows_amd64.syso'
+    $numbers = (($version -split '\.') + '0') -join ','
+    Push-Location $package
+    try {
+        & (Join-Path $Toolchain 'mingw64\bin\windres.exe') '-O' 'coff' '-I' (Join-Path $root 'src-tauri\icons') `
+            "-DPOROS_VERSION=$version" "-DPOROS_VERSION_NUMBERS=$numbers" '-i' 'setup.rc' '-o' $resources
+        Assert-Exit 'windres'
+        go build -o $Path -trimpath -ldflags "-w -s -H=windowsgui -X main.version=$version" .
+        Assert-Exit 'go build of the self-extracting archive'
+    }
+    finally {
+        Remove-Item $resources -ErrorAction Ignore
+        Pop-Location
+    }
+}
+
+# The self-extracting archive: the program, the archive and a trailer that it reads at the end of its own file, the
+# size of the archive as eight bytes little-endian and the mark PorosSFX.
+function Join-Setup([string]$Program, [string]$Archive, [string]$Path) {
+    $target = [IO.File]::Create($Path)
+    try {
+        foreach ($part in $Program, $Archive) {
+            $source = [IO.File]::OpenRead($part)
+            try { $source.CopyTo($target) } finally { $source.Dispose() }
+        }
+        [byte[]]$trailer = [BitConverter]::GetBytes([long](Get-Item $Archive).Length) + [Text.Encoding]::ASCII.GetBytes('PorosSFX')
+        $target.Write($trailer, 0, $trailer.Length)
+    }
+    finally {
+        $target.Dispose()
+    }
 }
 
 Set-Location $root
@@ -229,12 +269,17 @@ if (((git status --porcelain) -join "`n") -ne ($status -join "`n")) {
 
 if (Test-Path $output) { Remove-Item -Recurse -Force $output }
 New-Item -ItemType Directory -Force $output | Out-Null
+$setupProgram = Join-Path $output 'setup-program.exe'
+Build-Setup $setupProgram
 $notices = Join-Path $output 'THIRD-PARTY-NOTICES.txt'
-Write-Notices $notices
+Write-Notices $notices $setupProgram
 $file = "Poros-$version-windows-amd64.zip"
 $archive = Join-Path $output $file
 $files = @($programFiles | ForEach-Object { Join-Path $deployment $_ }) + (Join-Path $root 'LICENSE') + $notices
 Compress-Archive -Path $files -DestinationPath $archive
+$setup = Join-Path $output "Poros-$version-windows-amd64.exe"
+Join-Setup $setupProgram $archive $setup
+Remove-Item $setupProgram
 
 $feed = [ordered]@{
     version = $version
@@ -246,7 +291,7 @@ $feedPath = Join-Path $output 'latest.json'
 Write-Utf8 $feedPath (($feed | ConvertTo-Json) + "`n")
 
 if ($DryRun) {
-    "$tag is built and not published (-DryRun):`n  $archive`n  $feedPath"
+    "$tag is built and not published (-DryRun):`n  $archive`n  $setup`n  $feedPath"
     return
 }
 
@@ -255,7 +300,7 @@ Write-Utf8 $notesPath "$notes`n"
 $create = 'release', 'create', $tag, '--repo', $repository, '--target', (git rev-parse HEAD), '--title', "Poros $version",
 '--notes-file', $notesPath, '--draft'
 if ($Beta) { $create += '--prerelease' }
-gh @create $archive $feedPath
+gh @create $archive $setup $feedPath
 if ($LASTEXITCODE) { throw "the release was not created; if a draft $tag is left on GitHub, delete it and run again." }
 $publish = 'release', 'edit', $tag, '--repo', $repository, '--draft=false'
 if (-not $Beta) { $publish += '--latest' }

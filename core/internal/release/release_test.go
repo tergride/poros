@@ -1,7 +1,8 @@
-package main
+package release
 
 import (
 	"archive/zip"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -51,7 +52,7 @@ func readFile(t *testing.T, path string) string {
 func programFolder(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, program), "old program")
+	writeFile(t, filepath.Join(dir, Program), "old program")
 	writeFile(t, filepath.Join(dir, "PorosCore.exe"), "old core")
 	writeFile(t, filepath.Join(dir, "config", "poros.db"), "the user's data")
 	return dir
@@ -59,7 +60,7 @@ func programFolder(t *testing.T) string {
 
 func assertUntouched(t *testing.T, dir string) {
 	t.Helper()
-	if got := readFile(t, filepath.Join(dir, program)); got != "old program" {
+	if got := readFile(t, filepath.Join(dir, Program)); got != "old program" {
 		t.Fatalf("program is %q", got)
 	}
 	if got := readFile(t, filepath.Join(dir, "PorosCore.exe")); got != "old core" {
@@ -73,13 +74,13 @@ func assertUntouched(t *testing.T, dir string) {
 func TestInstallReplacesTheProgramAndLeavesTheData(t *testing.T) {
 	dir := programFolder(t)
 	archive := filepath.Join(t.TempDir(), "release.zip")
-	writeArchive(t, archive, map[string]string{program: "new program", "PorosCore.exe": "new core", "updater.exe": "new updater"})
+	writeArchive(t, archive, map[string]string{Program: "new program", "PorosCore.exe": "new core", "updater.exe": "new updater"})
 
-	if err := install(archive, dir); err != nil {
+	if err := InstallFile(archive, dir, 0); err != nil {
 		t.Fatal(err)
 	}
 
-	for name, want := range map[string]string{program: "new program", "PorosCore.exe": "new core", "updater.exe": "new updater"} {
+	for name, want := range map[string]string{Program: "new program", "PorosCore.exe": "new core", "updater.exe": "new updater"} {
 		if got := readFile(t, filepath.Join(dir, name)); got != want {
 			t.Errorf("%s is %q", name, got)
 		}
@@ -95,14 +96,27 @@ func TestInstallReplacesTheProgramAndLeavesTheData(t *testing.T) {
 	}
 }
 
+func TestInstallCreatesAMissingFolder(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "Programs", "Poros")
+	archive := filepath.Join(t.TempDir(), "release.zip")
+	writeArchive(t, archive, map[string]string{Program: "new program"})
+
+	if err := InstallFile(archive, dir, 0); err != nil {
+		t.Fatal(err)
+	}
+	if got := readFile(t, filepath.Join(dir, Program)); got != "new program" {
+		t.Fatalf("program is %q", got)
+	}
+}
+
 func TestInstallRefusesAnArchiveThatLeavesTheFolder(t *testing.T) {
 	for _, name := range []string{"../outside.exe", `..\outside.exe`, "config/poros.db", `C:\outside.exe`, ".."} {
 		t.Run(name, func(t *testing.T) {
 			dir := programFolder(t)
 			archive := filepath.Join(t.TempDir(), "release.zip")
-			writeArchive(t, archive, map[string]string{program: "new program", name: "bad"})
+			writeArchive(t, archive, map[string]string{Program: "new program", name: "bad"})
 
-			if err := install(archive, dir); reasonOf(err) != reasonDamaged {
+			if err := InstallFile(archive, dir, 0); !errors.Is(err, ErrDamaged) {
 				t.Fatalf("the archive was accepted: %v", err)
 			}
 			assertUntouched(t, dir)
@@ -118,7 +132,7 @@ func TestInstallRefusesAnArchiveWithoutTheProgram(t *testing.T) {
 	archive := filepath.Join(t.TempDir(), "release.zip")
 	writeArchive(t, archive, map[string]string{"PorosCore.exe": "new core"})
 
-	if err := install(archive, dir); reasonOf(err) != reasonDamaged {
+	if err := InstallFile(archive, dir, 0); !errors.Is(err, ErrDamaged) {
 		t.Fatalf("the archive was accepted: %v", err)
 	}
 	assertUntouched(t, dir)
@@ -129,7 +143,7 @@ func TestInstallKeepsTheProgramWhenTheArchiveIsDamaged(t *testing.T) {
 	archive := filepath.Join(t.TempDir(), "release.zip")
 	writeFile(t, archive, "not a zip file")
 
-	if err := install(archive, dir); reasonOf(err) != reasonDamaged {
+	if err := InstallFile(archive, dir, 0); !errors.Is(err, ErrDamaged) {
 		t.Fatalf("the archive was accepted: %v", err)
 	}
 	assertUntouched(t, dir)
@@ -138,14 +152,14 @@ func TestInstallKeepsTheProgramWhenTheArchiveIsDamaged(t *testing.T) {
 func TestReplacePutsEverythingBackWhenOneFileFails(t *testing.T) {
 	dir := programFolder(t)
 	stage := t.TempDir()
-	writeFile(t, filepath.Join(stage, program), "new program")
+	writeFile(t, filepath.Join(stage, Program), "new program")
 
 	// The second file has nothing staged, so its swap fails after the first one went through.
-	err := replace(dir, stage, []string{program, "PorosCore.exe"}, 0)
+	err := replace(dir, stage, []string{Program, "PorosCore.exe"}, 0)
 	if err == nil {
 		t.Fatal("the swap succeeded")
 	}
-	if got := readFile(t, filepath.Join(dir, program)); got != "old program" {
+	if got := readFile(t, filepath.Join(dir, Program)); got != "old program" {
 		t.Fatalf("program is %q", got)
 	}
 	if got := readFile(t, filepath.Join(dir, "PorosCore.exe")); got != "old core" {
