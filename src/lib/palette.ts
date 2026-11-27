@@ -32,3 +32,12 @@ export function settingLabels(messages: unknown): string[] {
   walk(messages, '')
   return [...new Set(labels)]
 }
+
+/** The first element of a page that shows a label as its own text, not as a part of a longer one. */
+export function findLabel(root: Element, label: string): Element | null {
+  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.nodeValue?.trim() === label) return node.parentElement
+  }
+  return null
+}

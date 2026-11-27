@@ -3,7 +3,7 @@ import { Download, Gauge, Plus, Radar, RefreshCw, Route, Search, Server, Setting
 import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { type Component, computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { isNavigationFailure, NavigationFailureType, useRouter } from 'vue-router'
 
 import { useAppActions } from '@/composables/useAppActions'
 import { serverTitle } from '@/lib/format'
@@ -61,6 +61,13 @@ function go(path: string): void {
   void router.push(path)
 }
 
+// A setting opens its page and comes into sight there, unless the question about unsaved changes kept the page.
+async function find(page: string, label: string): Promise<void> {
+  open.value = false
+  const failure = await router.push(`/adv/settings/${page}`)
+  if (!failure || isNavigationFailure(failure, NavigationFailureType.duplicated)) ui.focusSetting = label
+}
+
 const settingItems = computed<Item[]>(() => {
   const messages: { settings?: Record<string, unknown> } = getLocaleMessage(locale.value)
   const items: Item[] = []
@@ -69,7 +76,7 @@ const settingItems = computed<Item[]>(() => {
       const title = t(`settings.nav.${page}`)
       items.push({ key: `page:${page}`, group: 'settings', icon: Settings, title, hint: t(`adv.settings.${group}`), run: () => go(`/adv/settings/${page}`) })
       for (const label of [...settingLabels(messages.settings?.[page]), ...(literals[page] ?? [])]) {
-        if (label !== title) items.push({ key: `setting:${page}:${label}`, group: 'settings', icon: Settings, title: label, hint: title, run: () => go(`/adv/settings/${page}`) })
+        if (label !== title) items.push({ key: `setting:${page}:${label}`, group: 'settings', icon: Settings, title: label, hint: title, run: () => find(page, label) })
       }
     }
   }

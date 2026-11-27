@@ -18,7 +18,7 @@ import {
   Shield,
   Signpost,
 } from '@lucide/vue'
-import { type Component, computed, ref } from 'vue'
+import { type Component, computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 
@@ -40,11 +40,14 @@ import TunPage from '@/components/settings/TunPage.vue'
 import { Button, Dialog, Input } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { provideSettingsDraft } from '@/composables/useSettingsDraft'
+import { findLabel } from '@/lib/palette'
 import { useCoreStore } from '@/stores/core'
+import { useUiStore } from '@/stores/ui'
 
 // The settings of the advanced mode: the pages of the simple mode first, as «Basic». A change waits for «Save»;
 // leaving the page with one asks first, and Escape stays.
 const core = useCoreStore()
+const ui = useUiStore()
 const route = useRoute()
 const attempt = useAttempt()
 const { t } = useI18n()
@@ -93,6 +96,19 @@ const shown = computed(() => {
     .map((g) => ({ ...g, pages: g.pages.filter((p) => !needle || t(`settings.nav.${p.id}`).toLowerCase().includes(needle)) }))
     .filter((g) => g.pages.length > 0)
 })
+
+// A setting the search picked: the page scrolls to its label.
+const body = ref<HTMLElement | null>(null)
+watch(
+  () => ui.focusSetting,
+  async (label) => {
+    if (!label) return
+    ui.focusSetting = ''
+    await nextTick()
+    if (body.value) findLabel(body.value, label)?.scrollIntoView({ block: 'center' })
+  },
+  { immediate: true },
+)
 
 const saving = ref(false)
 async function save(): Promise<boolean> {
@@ -153,7 +169,7 @@ onBeforeRouteUpdate(ask)
       <p v-if="shown.length === 0" class="px-2.5 py-2 text-xs text-t3">{{ t('adv.settings.nothingFound') }}</p>
     </nav>
     <div class="relative flex min-w-0 flex-1 flex-col">
-      <div class="min-h-0 flex-1 overflow-auto px-7 pt-[22px] pb-7">
+      <div ref="body" class="min-h-0 flex-1 overflow-auto px-7 pt-[22px] pb-7">
         <component :is="current.page" v-if="core.settings" />
       </div>
       <div

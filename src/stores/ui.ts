@@ -57,6 +57,8 @@ export const useUiStore = defineStore('ui', () => {
   const profileEdit = ref<ProfileEdit | null>(null)
   // A profile the search picked: «Profiles» shows its group and selects it.
   const focusServer = ref('')
+  // The label of a setting the search picked: its page of «Settings» brings it into sight.
+  const focusSetting = ref('')
   return {
     addSubscription,
     addPrefill,
@@ -72,5 +74,6 @@ export const useUiStore = defineStore('ui', () => {
     profilePicker,
     profileEdit,
     focusServer,
+    focusSetting,
   }
 })

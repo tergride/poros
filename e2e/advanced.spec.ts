@@ -1283,6 +1283,14 @@ test('the search, Ctrl+K, opens settings, profiles and presets', async ({ page }
   await expect(page).toHaveURL(/#\/adv\/settings\/tun$/)
   await expect(palette).toBeHidden()
 
+  // A setting low on its page: the page scrolls to it.
+  await page.keyboard.press('Control+KeyK')
+  await page.getByTestId('palette-input').fill('path mtu')
+  await expect(palette.getByTestId('palette-item').first()).toContainText('Disable Path MTU Discovery')
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/#\/adv\/settings\/protocols$/)
+  await expect(page.getByText('Disable Path MTU Discovery', { exact: true })).toBeInViewport()
+
   // A profile by its address: its row is selected in «Profiles».
   await page.getByTestId('rail-search').click()
   await page.getByTestId('palette-input').fill('nl.example')
