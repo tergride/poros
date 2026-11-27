@@ -254,6 +254,34 @@ test('a preset copy is made, saved and chosen', async ({ page }) => {
   await expect(page.getByText('Свой пресет: нет правил.')).toBeVisible()
   await expect(page.getByRole('radio', { name: 'Работа' })).toBeChecked()
 
+  // A copy of the user's preset takes its base, rules and default; a copy of an advanced one is advanced too.
+  const copyOf = async (name: string, menuShot = '') => {
+    await page.getByTestId('preset').filter({ has: page.getByRole('radio', { name, exact: true }) }).getByRole('button', { name: 'Ещё' }).click()
+    if (menuShot) await shot(page, menuShot)
+    await page.getByRole('menuitem', { name: 'Создать копию' }).click()
+    return page.getByRole('dialog', { name: `Копия пресета «${name}»` })
+  }
+  const home = await copyOf('Дом', 'preset-menu')
+  await expect(home.getByTestId('new-preset-simple')).toBeChecked()
+  await shot(page, 'preset-copy-simple')
+  await home.getByTestId('new-preset-create').click()
+  await expect(page.getByTestId('preset-name')).toHaveValue('Дом — копия')
+  await expect(page.getByTestId('preset-base')).toHaveText('Копия пресета «Весь трафик»')
+  await expect(page.getByTestId('rule-value')).toHaveCount(3)
+  await expect(page.getByTestId('preset-default').getByTestId('segment-direct')).toHaveAttribute('data-state', 'checked')
+  await page.getByTestId('preset-save').click()
+  await expect(page.getByText('На основе «Весь трафик»: 3 правила.')).toHaveCount(2)
+  const work = await copyOf('Работа')
+  await expect(work.getByTestId('new-preset-simple')).toBeDisabled()
+  await expect(work.getByTestId('new-preset-advanced')).toBeChecked()
+  await shot(page, 'preset-copy-advanced')
+  await work.getByTestId('new-preset-create').click()
+  await expect(page.getByTestId('preset-name')).toHaveValue('Работа — копия')
+  await expect(page.getByTestId('preset-advanced')).toBeVisible()
+  await expect(page.getByTestId('preset-base')).toHaveCount(0)
+  await page.getByTestId('preset-save').click()
+  await expect(page.getByText('Свой пресет: нет правил.')).toHaveCount(2)
+
   for (const [link, heading] of [
     ['Подключение', 'Подключение'],
     ['Подписки', 'Подписки'],

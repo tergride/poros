@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Copy, Import, Layers, Lock, Plus, Route, Share2, Trash2 } from '@lucide/vue'
+import { Check, Copy, Import, Layers, Lock, MoreHorizontal, Plus, Route, Share2, Trash2 } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -12,7 +12,7 @@ import RoutingCommon from '@/components/presets/RoutingCommon.vue'
 import RoutingDraftPage from '@/components/presets/RoutingDraftPage.vue'
 import RoutingWarp from '@/components/presets/RoutingWarp.vue'
 import SharePresetDialog from '@/components/presets/SharePresetDialog.vue'
-import { Banner, Button, Dialog, Input, Tabs, TabsList, TabsTrigger } from '@/components/ui'
+import { Banner, Button, Dialog, Input, Menu, MenuItem, MenuSeparator, Tabs, TabsList, TabsTrigger } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { providePresetDraft } from '@/composables/usePresetDraft'
 import { useRestartNeeded } from '@/composables/useRestartNeeded'
@@ -49,12 +49,18 @@ const builtins = computed(() => core.presets.filter((p) => p.builtin))
 const mine = computed(() => core.presets.filter((p) => !p.builtin))
 const current = computed(() => core.presets.find((p) => p.id === selected.value))
 const baseName = computed(() => editor.shownName(core.presets.find((p) => p.id === (draft.value?.basedOn || 'all'))))
+// The preset to copy: "" for one from scratch, null for no dialog.
 const making = ref<string | null>(null)
 const removing = ref<Preset | null>(null)
 
 async function open(id: string): Promise<void> {
   making.value = null
   await router.push(`/adv/routing/rules/${id}`)
+}
+
+// A copy takes the preset as saved, so the changes of the one open are saved or dropped first.
+async function copy(id: string): Promise<void> {
+  if (await ask()) making.value = id
 }
 
 const saving = ref(false)
@@ -149,26 +155,33 @@ onBeforeRouteUpdate(ask)
         </div>
       </aside>
       <div class="flex min-w-0 flex-1 flex-col">
-        <div v-if="draft" class="flex flex-none items-center gap-2 border-b border-line px-5 py-2.5">
+        <div v-if="draft" class="flex flex-none flex-wrap items-center gap-2 border-b border-line px-5 py-2.5">
           <template v-if="draft.builtin">
             <strong class="text-[14px]">{{ editor.shownName(draft) }}</strong>
             <span class="inline-flex h-[22px] items-center gap-[5px] rounded-md bg-s4 px-2 text-[11.5px] text-t2"><Lock class="size-3" />{{ t('presets.builtin') }}</span>
             <Button size="sm" class="ml-auto" data-testid="preset-copy" @click="making = draft.id"><Copy />{{ t('settings.presets.makeCopy') }}</Button>
           </template>
           <template v-else>
-            <Input v-model="draft.name" class="h-[30px] w-[200px]" :aria-label="t('presetEdit.name')" data-testid="preset-name" />
-            <span v-if="draft.basedOn" class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] text-t2" data-testid="preset-base">
+            <Input v-model="draft.name" class="h-[30px] w-[200px] shrink-0" :aria-label="t('presetEdit.name')" data-testid="preset-name" />
+            <span v-if="draft.basedOn" class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] whitespace-nowrap text-t2" data-testid="preset-base">
               {{ t('presetEdit.copyOf', { name: baseName }) }}
             </span>
-            <span v-if="draft.advanced" class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] text-t2" data-testid="preset-advanced">
+            <span v-if="draft.advanced" class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] whitespace-nowrap text-t2" data-testid="preset-advanced">
               {{ t('presets.advanced') }}
             </span>
-            <span class="flex-1" />
-            <Button v-if="!draft.advanced" size="sm" data-testid="preset-to-advanced" @click="toAdvancedOpen = true"><Layers />{{ t('toAdvanced.button') }}</Button>
-            <Button size="sm" data-testid="preset-share" @click="sharing = true"><Share2 />{{ t('settings.presets.share') }}</Button>
-            <Button variant="ghost" size="icon-sm" :aria-label="t('presetEdit.remove')" data-testid="preset-remove" @click="removing = current ?? null">
-              <Trash2 />
-            </Button>
+            <!-- The buttons go under the name as one group when the window is too narrow for both. -->
+            <div class="ml-auto flex items-center gap-2">
+              <Button v-if="!draft.advanced" size="sm" data-testid="preset-to-advanced" @click="toAdvancedOpen = true"><Layers />{{ t('toAdvanced.button') }}</Button>
+              <Button size="sm" data-testid="preset-share" @click="sharing = true"><Share2 />{{ t('settings.presets.share') }}</Button>
+              <Menu align="end" min-width="220px">
+                <template #trigger>
+                  <Button variant="ghost" size="icon-sm" :aria-label="t('common.more')" data-testid="preset-menu"><MoreHorizontal /></Button>
+                </template>
+                <MenuItem data-testid="preset-copy" @select="copy(draft.id)"><Copy />{{ t('settings.presets.makeCopy') }}</MenuItem>
+                <MenuSeparator />
+                <MenuItem danger data-testid="preset-remove" @select="removing = current ?? null"><Trash2 />{{ t('common.remove') }}</MenuItem>
+              </Menu>
+            </div>
           </template>
         </div>
         <div class="min-h-0 flex-1 overflow-auto px-7 pt-4 pb-7">
@@ -186,7 +199,7 @@ onBeforeRouteUpdate(ask)
     <RoutingDraftPage v-else-if="tab === 'common'"><RoutingCommon /></RoutingDraftPage>
     <RoutingDraftPage v-else><RoutingWarp /></RoutingDraftPage>
 
-    <NewPresetDialog :based-on="making" @close="making = null" @created="open" />
+    <NewPresetDialog :source="making" @close="making = null" @created="open" />
     <ImportPresetDialog v-model:open="importing" @added="imported" />
     <SharePresetDialog v-model:open="sharing" :preset="current ?? null" />
     <Dialog :open="removing !== null" :title="t('settings.presets.removeTitle')" @update:open="(o) => !o && (removing = null)">

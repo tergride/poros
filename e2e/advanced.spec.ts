@@ -344,6 +344,27 @@ test('the routing of the advanced mode edits presets beside their list and waits
   await page.getByTestId('preset-save').click()
   await expect(page.getByTestId('savebar')).toBeHidden()
 
+  // A copy of the user's preset takes it as saved: a change is saved or dropped first. An advanced one copies as advanced.
+  await page.getByTestId('preset-name').fill('Другое')
+  await page.getByTestId('preset-menu').click()
+  await shot(page, 'adv-routing-menu')
+  await page.getByRole('menuitem', { name: 'Создать копию' }).click()
+  await expect(page.getByRole('dialog', { name: 'Сохранить изменения?' })).toBeVisible()
+  await page.getByTestId('unsaved-leave').click()
+  await expect(page.getByTestId('preset-name')).toHaveValue('Весь трафик — копия')
+  const copying = page.getByRole('dialog', { name: 'Копия пресета «Весь трафик — копия»' })
+  await expect(copying.getByTestId('new-preset-simple')).toBeDisabled()
+  await expect(copying.getByTestId('new-preset-advanced')).toBeChecked()
+  await copying.getByTestId('new-preset-create').click()
+  await expect(page.getByTestId('preset-name')).toHaveValue('Весь трафик — копия — копия')
+  await expect(page.getByTestId('preset-advanced')).toBeVisible()
+  await expect(page.getByTestId('savebar')).toBeHidden()
+  await page.getByTestId('preset-tab-dns').click()
+  await expect(page.getByRole('combobox', { name: 'Для прямого трафика' })).toContainText('Системный')
+  await page.getByTestId('preset-tab-list').click()
+  await expect(page.getByTestId('rule-row')).toHaveCount(2)
+  await shot(page, 'adv-routing-copy')
+
   // The same preset in the simple mode opens in its editor, with the same tabs.
   await page.getByTestId('mode-chip').click()
   await page.getByTestId('mode-switch').click()

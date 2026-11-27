@@ -752,7 +752,6 @@
     "tabRules": "Rules",
     "tabDns": "DNS",
     "builtinNote": "A built-in preset does not change. To add rules of your own, make a copy.",
-    "remove": "Remove the preset",
     "unsaved": "The preset “{name}” has unsaved changes.",
     "dnsObject": "An own DNS object is set: the DNS of presets does not apply.",
     "warpOff": "WARP is off, so “Through WARP” goes through the server for now. It turns on in “Routing → WARP”.",

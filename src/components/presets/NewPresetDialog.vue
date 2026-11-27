@@ -5,12 +5,14 @@ import { useI18n } from 'vue-i18n'
 
 import { Button, Dialog, RadioGroup, RadioItem } from '@/components/ui'
 import { useFailure } from '@/composables/useReason'
-import { MethodPresetsSave } from '@/platform/core-types'
+import { MethodPresetsGet, MethodPresetsSave } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
-// A new preset, or a copy of a built-in one, asks its kind first and is made at once: «New preset» or «… — copy»,
-// with a free name. A simple preset can become advanced later, never back.
-const props = defineProps<{ basedOn: string | null }>()
+// A new preset, or a copy of any preset, asks its kind first and is made at once: «New preset» or «… — copy», with a
+// free name. A copy of the user's preset takes its base, rules, DNS and default as saved. A simple preset can become
+// advanced later, never back, so a copy of an advanced one is advanced too.
+// source is the preset to copy: "" for a new one from scratch, null for no dialog.
+const props = defineProps<{ source: string | null }>()
 const emit = defineEmits<{ close: []; created: [id: string] }>()
 const core = useCoreStore()
 const failureOf = useFailure()
@@ -19,23 +21,25 @@ const kind = ref<string>('simple')
 const busy = ref(false)
 const failure = ref('')
 
+const source = computed(() => core.presets.find((p) => p.id === props.source))
 const open = computed({
-  get: () => props.basedOn !== null,
+  get: () => props.source !== null,
   set: (shown: boolean) => {
     if (!shown) emit('close')
   },
 })
 watch(open, (shown) => {
   if (!shown) return
-  kind.value = 'simple'
+  kind.value = source.value?.advanced ? 'advanced' : 'simple'
   failure.value = ''
 })
 
 const baseName = computed(() => {
-  const id = props.basedOn ?? ''
-  return te(`presets.name.${id}`) ? t(`presets.name.${id}`) : (core.presets.find((p) => p.id === id)?.name ?? id)
+  const id = props.source ?? ''
+  return te(`presets.name.${id}`) ? t(`presets.name.${id}`) : (source.value?.name ?? id)
 })
-const title = computed(() => (props.basedOn ? t('newPreset.copyTitle', { name: baseName.value }) : t('newPreset.title')))
+const title = computed(() => (props.source ? t('newPreset.copyTitle', { name: baseName.value }) : t('newPreset.title')))
+const locked = (k: string) => k === 'simple' && !!source.value?.advanced
 
 // The names of the presets as the user sees them: the built-in ones in the interface's language.
 function freeName(name: string): string {
@@ -46,23 +50,19 @@ function freeName(name: string): string {
 }
 
 async function create(): Promise<void> {
-  if (busy.value || props.basedOn === null) return
+  if (busy.value || props.source === null) return
   busy.value = true
   failure.value = ''
   try {
-    const name = freeName(props.basedOn ? t('presetEdit.copyName', { name: baseName.value }) : t('newPreset.name'))
-    const preset = await core.core().call(MethodPresetsSave, {
-      id: '',
-      builtin: false,
-      basedOn: props.basedOn,
-      name,
-      advanced: kind.value === 'advanced',
-      rules: [],
-      dns: '',
-      directDns: '',
-      default: '',
-      inherited: [],
-    })
+    const name = freeName(props.source ? t('presetEdit.copyName', { name: baseName.value }) : t('newPreset.name'))
+    const advanced = kind.value === 'advanced'
+    const mine = source.value && !source.value.builtin ? await core.core().call(MethodPresetsGet, { id: source.value.id }) : null
+    const preset = await core.core().call(
+      MethodPresetsSave,
+      mine
+        ? { ...mine, id: '', name, advanced: advanced || mine.advanced }
+        : { id: '', builtin: false, basedOn: props.source, name, advanced, rules: [], dns: '', directDns: '', default: '', inherited: [] },
+    )
     emit('created', preset.id)
   } catch (error) {
     failure.value = failureOf(error)
@@ -79,8 +79,12 @@ async function create(): Promise<void> {
       <Button variant="ghost" size="icon-sm" :aria-label="t('common.close')" @click="open = false"><X /></Button>
     </template>
     <RadioGroup v-model="kind" class="grid gap-1">
-      <label v-for="k in ['simple', 'advanced'] as const" :key="k" class="grid cursor-pointer grid-cols-[20px_1fr] items-center gap-3 border-t border-line py-2.5 first:border-t-0">
-        <RadioItem :value="k" :aria-label="t(`newPreset.${k}`)" :data-testid="`new-preset-${k}`" />
+      <label
+        v-for="k in ['simple', 'advanced'] as const"
+        :key="k"
+        :class="['grid grid-cols-[20px_1fr] items-center gap-3 border-t border-line py-2.5 first:border-t-0', locked(k) ? 'opacity-50' : 'cursor-pointer']"
+      >
+        <RadioItem :value="k" :disabled="locked(k)" :aria-label="t(`newPreset.${k}`)" :data-testid="`new-preset-${k}`" />
         <span>
           <strong class="block font-medium">{{ t(`newPreset.${k}`) }}</strong>
           <span class="text-xs text-t3">{{ t(`newPreset.${k}Text`) }}</span>

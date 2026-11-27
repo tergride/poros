@@ -23,7 +23,7 @@ const importing = ref(false)
 const sharing = ref<Preset | null>(null)
 const { t, te } = useI18n()
 const removing = ref<Preset | null>(null)
-// The base of a preset to make: "" for one from scratch, null for no dialog.
+// The preset to copy: "" for one from scratch, null for no dialog.
 const making = ref<string | null>(null)
 
 const builtins = computed(() => core.presets.filter((p) => p.builtin))
@@ -106,6 +106,7 @@ function remove(): Promise<void> {
             <template #trigger>
               <Button variant="ghost" size="icon-sm" :aria-label="t('common.more')"><MoreHorizontal /></Button>
             </template>
+            <MenuItem data-testid="preset-copy" @select="making = preset.id"><Copy />{{ t('settings.presets.makeCopy') }}</MenuItem>
             <MenuItem data-testid="preset-share" @select="sharing = preset"><Share2 />{{ t('settings.presets.share') }}</MenuItem>
             <MenuSeparator />
             <MenuItem danger @select="removing = preset"><Trash2 />{{ t('common.remove') }}</MenuItem>
@@ -119,7 +120,7 @@ function remove(): Promise<void> {
     <Button data-testid="preset-import" @click="importing = true"><Import />{{ t('settings.presets.import') }}</Button>
   </div>
 
-  <NewPresetDialog :based-on="making" @close="making = null" @created="open" />
+  <NewPresetDialog :source="making" @close="making = null" @created="open" />
   <ImportPresetDialog v-model:open="importing" @added="imported" />
   <SharePresetDialog :open="sharing !== null" :preset="sharing" @update:open="(o: boolean) => !o && (sharing = null)" />
   <Dialog :open="removing !== null" :title="t('settings.presets.removeTitle')" @update:open="(o) => !o && (removing = null)">
