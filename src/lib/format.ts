@@ -10,7 +10,13 @@ export function formatBytes(bytes: number, locale: string, unit: (name: string) 
     value /= 1024
     index++
   }
-  const digits = index === 0 || value >= 100 ? 0 : 1
+  let digits = index === 0 || value >= 100 ? 0 : 1
+  // A value that rounds up to 1024 is one of the next unit: 1023,7 KB is 1 MB, not 1 024 KB.
+  if (index < units.length - 1 && Number(value.toFixed(digits)) >= 1024) {
+    value /= 1024
+    index++
+    digits = 1
+  }
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value)
   return `${number} ${unit(units[index]!)}`
 }

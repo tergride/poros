@@ -20,6 +20,14 @@ describe('the formats of the screens', () => {
     expect(formatBytes(150 * 1024 ** 2, 'en', unit)).toBe('150 MB')
   })
 
+  it('takes the next unit when the number rounds up to 1024', () => {
+    const unit = (name: string) => name
+    expect(formatBytes(1_048_300, 'en', unit)).toBe('1 MB')
+    expect(formatBytes(1_048_000, 'en', unit)).toBe('1,023 KB')
+    expect(formatBytes(1023, 'en', unit)).toBe('1,023 B')
+    expect(formatBytes(1023.9 * 1024 ** 4, 'en', unit)).toBe('1,024 TB')
+  })
+
   it('counts a connection in hours, minutes and seconds', () => {
     expect(formatDuration(768_000)).toBe('00:12:48')
     expect(formatDuration(-5)).toBe('00:00:00')
