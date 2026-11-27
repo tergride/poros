@@ -700,7 +700,7 @@ test('settings of a running connection offer a restart', async ({ page }) => {
   // The setting is saved, and the connection keeps running until the user restarts it from the chip.
   const chip = page.getByTestId('restart-chip')
   await expect(chip).toBeVisible()
-  await expect(chip).toHaveAttribute('title', /не применены/)
+  await expect(chip).toHaveAttribute('data-tooltip', /не применены/)
   await chip.click()
   const dialog = page.getByRole('dialog', { name: 'Настройки не применены' })
   await expect(dialog).toContainText('подключение нужно перезапустить')
@@ -731,6 +731,12 @@ test('the kill switch guards System without rights and asks for them only for TU
   await shot(page, 'settings-conn-note')
   await page.mouse.move(0, 0)
   await expect(page.getByTestId('tooltip')).toBeHidden()
+  // The keyboard shows it too, and it goes with the focus.
+  await page.keyboard.press('Shift')
+  await page.getByTestId('kill-switch').getByTestId('option-text').focus()
+  await expect(page.getByTestId('tooltip')).toContainText('Как работает Kill switch')
+  await page.keyboard.press('Tab')
+  await expect(page.getByTestId('tooltip')).toBeHidden()
   await expect(page.getByTestId('kill-switch')).toContainText('трафик VPN не пойдёт напрямую')
 
   await page.getByRole('link', { name: 'К серверам' }).click()
@@ -739,8 +745,10 @@ test('the kill switch guards System without rights and asks for them only for TU
   await expect(page.getByTestId('stop').getByTestId('kill-switch-lock')).toBeVisible()
   // The chip of the title bar shows the mode, guarding and not blocking yet.
   const chip = page.getByTestId('kill-switch-chip')
-  await expect(chip).toHaveAttribute('title', /^Kill switch при подключении/)
+  await expect(chip).toHaveAttribute('data-tooltip', /^Kill switch при подключении/)
   await expect(chip).not.toHaveAttribute('data-blocking')
+  await chip.hover()
+  await expect(page.getByTestId('tooltip')).toContainText('Kill switch при подключении')
   await shot(page, 'main-ks-on')
   await page.getByTestId('stop').click()
   await expect(page.getByTestId('portal-state')).toHaveText('Не подключено')
@@ -765,7 +773,7 @@ test('the kill switch guards System without rights and asks for them only for TU
   await expect(page.getByTestId('portal-state')).toHaveText('Трафик VPN закрыт до подключения')
   // Blocking, the chip is red and says so; it opens the setting.
   await expect(chip).toHaveAttribute('data-blocking', 'always')
-  await expect(chip).toHaveAttribute('title', /^Kill switch сейчас блокирует трафик VPN/)
+  await expect(chip).toHaveAttribute('data-tooltip', /^Kill switch сейчас блокирует трафик VPN/)
   await shot(page, 'main-ks-failed')
   await chip.click()
   await expect(page.getByTestId('kill-switch')).toBeVisible()
@@ -791,7 +799,7 @@ test('a mark next to the kill switch chip tells its compatible mode', async ({ p
   await expect(page.getByTestId('admin-chip')).toBeVisible()
   await expect(page.getByTestId('portal-state')).toContainText('Подключено')
   await expect(mark).toBeVisible()
-  await expect(mark).toHaveAttribute('title', /^Обнаружен конфликт: загружен драйвер WinDivert.*совместимом режиме/)
+  await expect(mark).toHaveAttribute('data-tooltip', /^Обнаружен конфликт: загружен драйвер WinDivert.*совместимом режиме/)
   await expect(page.getByTestId('kill-switch-chip')).not.toHaveAttribute('data-blocking')
   await shot(page, 'main-ks-compatible')
   await mark.click()

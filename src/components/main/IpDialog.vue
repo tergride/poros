@@ -4,7 +4,7 @@ import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { useClock } from '@/composables/useClock'
-import { Button, Dialog, Flag } from '@/components/ui'
+import { Button, Dialog, Flag, vTooltip } from '@/components/ui'
 import { countryName, formatAgo } from '@/lib/format'
 import type { IPInfo } from '@/platform/core-types'
 import { LeakFound, LeakNone, MethodNetworkCheck } from '@/platform/core-types'
@@ -98,7 +98,7 @@ async function copy(): Promise<void> {
           >
             <span class="font-mono text-[12.5px] [overflow-wrap:anywhere] select-text">{{ server.ip }}</span>
             <Flag :code="server.countryCode" class="text-[16px]" />
-            <span class="truncate" :title="server.isp">{{ server.isp }}</span>
+            <span class="truncate" v-tooltip.cut="server.isp">{{ server.isp }}</span>
             <span v-if="server.home" class="rounded-md bg-s4 px-2 text-[11.5px] leading-[22px] text-warn">{{ t('ip.home') }}</span>
             <span v-else />
           </div>

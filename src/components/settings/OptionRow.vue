@@ -2,8 +2,8 @@
 import { Info, ShieldAlert } from '@lucide/vue'
 import { provide, useId } from 'vue'
 
+import { vTooltip } from '@/components/ui'
 import { rowLabel } from '@/components/ui/switch'
-import { Tooltip } from '@/components/ui'
 
 // One line of a settings card: what it is, a hint, and its control on the right. A note on how it works shows while
 // the pointer rests on the line's text or the keyboard focuses it, so that a long explanation does not crowd the
@@ -16,14 +16,12 @@ provide(rowLabel, id)
 
 <template>
   <div class="flex flex-wrap items-center gap-3.5 border-t border-line py-2.5 first:border-t-0">
-    <Tooltip :text="note ?? ''">
-      <div class="min-w-[180px] flex-1" :class="note && 'cursor-help rounded-md'" :tabindex="note ? 0 : undefined" data-testid="option-text">
-        <strong :id="id" class="flex items-center gap-1.5 font-medium"
-          >{{ title }}<Info v-if="note" class="size-3.5 text-t3" /><ShieldAlert v-if="shield" class="size-3.5 text-warn"
-        /></strong>
-        <span v-if="hint" class="text-xs text-t3">{{ hint }}</span>
-      </div>
-    </Tooltip>
+    <div v-tooltip="note" class="min-w-[180px] flex-1" :class="note && 'cursor-help rounded-md'" :tabindex="note ? 0 : undefined" data-testid="option-text">
+      <strong :id="id" class="flex items-center gap-1.5 font-medium"
+        >{{ title }}<Info v-if="note" class="size-3.5 text-t3" /><ShieldAlert v-if="shield" class="size-3.5 text-warn"
+      /></strong>
+      <span v-if="hint" class="text-xs text-t3">{{ hint }}</span>
+    </div>
     <div class="flex flex-none items-center gap-1.5"><slot /></div>
   </div>
 </template>

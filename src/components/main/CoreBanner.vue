@@ -3,7 +3,7 @@ import { RefreshCw } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Banner, Button } from '@/components/ui'
+import { Banner, Button, vTooltip } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { StatusNotAnswering } from '@/platform'
 import { useCoreStore } from '@/stores/core'
@@ -30,7 +30,7 @@ async function restart(): Promise<void> {
 </script>
 
 <template>
-  <Banner v-if="text" data-testid="core-banner" :title="core.status.error">
+  <Banner v-if="text" data-testid="core-banner" v-tooltip="core.status.error">
     {{ text }}
     <template v-if="core.status.state === 'down'" #actions>
       <Button size="sm" :disabled="restarting" @click="restart()"><RefreshCw />{{ t('boot.restart') }}</Button>

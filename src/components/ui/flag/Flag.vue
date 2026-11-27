@@ -3,6 +3,7 @@ import { cn } from 'cn'
 import { type HTMLAttributes, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import { vTooltip } from '@/components/ui/tooltip'
 import { countryHint, flagOf } from '@/lib/format'
 
 // A country as its flag; the hint and screen readers name it: «DE — Германия». A code with no flag stays a code.
@@ -16,7 +17,7 @@ const hint = computed(() => countryHint(props.code, locale.value))
   <span
     v-if="code"
     role="img"
-    :title="hint"
+    v-tooltip="hint"
     :aria-label="hint"
     :class="cn('inline-block leading-none', !flag && 'font-mono text-[11px]', props.class)"
     data-testid="flag"

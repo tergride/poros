@@ -6,7 +6,7 @@ import { useRouter } from 'vue-router'
 
 import mark from '@/assets/img/mark.png'
 import wordmark from '@/assets/img/wordmark.png'
-import { Button, Menu, MenuItem, MenuSeparator, Segmented } from '@/components/ui'
+import { Button, Menu, MenuItem, MenuSeparator, Segmented, vTooltip } from '@/components/ui'
 import { appControls, windowControls } from '@/platform'
 import { KillSwitchAlways, KillSwitchConnected } from '@/platform/core-types'
 
@@ -91,7 +91,7 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
           v-if="restartNeeded"
           type="button"
           :class="[chip, 'cursor-pointer text-blue hover:bg-s4']"
-          :title="t('restart.chipHint')"
+          v-tooltip="t('restart.chipHint')"
           data-testid="restart-chip"
           @click="emit('restart')"
         >
@@ -101,7 +101,7 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
           v-if="killSwitchOn"
           type="button"
           :class="[chip, 'cursor-pointer', killSwitchBlocking ? 'bg-bad/15 text-bad hover:bg-bad/25' : 'text-t2 hover:bg-s4']"
-          :title="killSwitchHint"
+          v-tooltip="killSwitchHint"
           :data-blocking="killSwitchBlocking || undefined"
           data-testid="kill-switch-chip"
           @click="emit('killSwitch')"
@@ -112,21 +112,21 @@ const windowButton = 'h-11 w-[46px] rounded-none border-0 text-t2 hover:bg-s4 ho
           v-if="killSwitchOn && killSwitchCompatible"
           type="button"
           class="inline-flex size-6.5 flex-none cursor-pointer items-center justify-center rounded-full bg-warn/15 text-warn hover:bg-warn/25"
-          :title="t('window.killSwitchCompatibleHint')"
+          v-tooltip="t('window.killSwitchCompatibleHint')"
           :aria-label="t('window.killSwitchCompatible')"
           data-testid="kill-switch-compatible"
           @click="emit('killSwitch')"
         >
           <CircleAlert class="size-4" />
         </button>
-        <span v-if="elevated" :class="[chip, 'text-warn']" :title="t('window.administratorHint')" data-testid="admin-chip">
+        <span v-if="elevated" :class="[chip, 'text-warn']" v-tooltip="t('window.administratorHint')" data-testid="admin-chip">
           <ShieldCheck class="size-3.5" />{{ t('window.administrator') }}
         </span>
         <button
           v-if="menu"
           type="button"
           :class="[chip, 'cursor-pointer text-t2 hover:bg-s4']"
-          :title="t(mode === 'advanced' ? 'mode.advancedHint' : 'mode.simpleHint')"
+          v-tooltip="t(mode === 'advanced' ? 'mode.advancedHint' : 'mode.simpleHint')"
           data-testid="mode-chip"
           @click="emit('modeChip')"
         >

@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-import { Button, Flag, Select, Switch } from '@/components/ui'
+import { Button, Flag, Select, Switch, vTooltip } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useConnectionView } from '@/composables/useConnectionView'
@@ -50,7 +50,7 @@ const lockTitle = computed(() =>
 
 <template>
   <div class="flex flex-none items-center gap-3 border-b border-line bg-s0 px-3.5 py-2.5" data-testid="connbar" :data-state="state">
-    <div ref="actions" :title="lockTitle" class="flex-none">
+    <div ref="actions" v-tooltip="lockTitle" class="flex-none">
       <Button v-if="on || held" :disabled="!core.ready" data-testid="stop" @click="attempt(() => connect.stop())">
         <Square class="size-4 fill-current" />{{ t('portal.stop') }}
         <Lock v-if="blocked" class="size-3.5 opacity-75" data-testid="kill-switch-lock" />
@@ -77,7 +77,7 @@ const lockTitle = computed(() =>
         <span
           :class="['size-2 flex-none rounded-full', on ? 'bg-ok' : held || blockedIdle ? 'bg-warn' : busy ? 'bg-blue' : 'bg-t3']"
         />
-        <span class="truncate" :title="on ? serverName : stateText" data-testid="connbar-state">{{ on ? serverName : stateText }}</span>
+        <span class="truncate" v-tooltip.cut="on ? serverName : stateText" data-testid="connbar-state">{{ on ? serverName : stateText }}</span>
       </strong>
       <small class="truncate text-xs text-t3">
         <template v-if="!on">{{ core.server ? t('adv.selected', { name: serverName }) : serverName }}</template>

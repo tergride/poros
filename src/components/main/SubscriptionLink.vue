@@ -3,7 +3,7 @@ import { Check, ClipboardPaste, Info, LoaderCircle, QrCode } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Button, Input } from '@/components/ui'
+import { Button, Input, vTooltip } from '@/components/ui'
 import { useFailure } from '@/composables/useReason'
 import { useScanScreen } from '@/composables/useScanScreen'
 import { isCoreError } from '@/platform'
@@ -137,7 +137,7 @@ defineExpose({ add, fill, busy, added, addedServer })
         :class="large ? 'w-[46px] px-0' : 'w-9 px-0'"
         :disabled="busy || !core.ready"
         :aria-label="t('qr.scanScreen')"
-        :title="t('qr.scanScreen')"
+        v-tooltip="t('qr.scanScreen')"
         data-testid="link-scan"
         @click="fromScreen"
       >

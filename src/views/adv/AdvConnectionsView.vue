@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import SpeedChart from '@/components/adv/SpeedChart.vue'
-import { Button, ContextMenu, ContextMenuItem, Input, Segmented } from '@/components/ui'
+import { Button, ContextMenu, ContextMenuItem, Input, Segmented, vTooltip } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { type ConnectionRow, filterConnections, groupByProcess, withSpeeds } from '@/lib/connections'
 import { formatBytes, serverTitle } from '@/lib/format'
@@ -148,7 +148,7 @@ onBeforeUnmount(() => clearInterval(timer))
               <tbody v-if="view === 'process'">
                 <template v-for="group in groups" :key="group.process">
                   <tr class="border-t border-line hover:bg-s2" data-testid="conn-process" @contextmenu="target = { process: group.process }">
-                    <td class="px-3.5 py-2 font-semibold" :title="group.connections[0]?.processPath">{{ processName(group.process) }}</td>
+                    <td class="px-3.5 py-2 font-semibold" v-tooltip="group.connections[0]?.processPath">{{ processName(group.process) }}</td>
                     <td class="px-2.5 py-2" />
                     <td class="px-2.5 py-2 font-mono text-xs text-t2">{{ group.networks.join(', ') }}</td>
                     <td class="px-2.5 py-2 text-t2">{{ group.outbounds.map(outboundName).join(', ') }}</td>
@@ -162,7 +162,7 @@ onBeforeUnmount(() => clearInterval(timer))
                     data-testid="conn-row"
                     @contextmenu="target = { id: c.id }"
                   >
-                    <td class="truncate py-2 pr-2.5 pl-7 text-t1" :title="c.rule">{{ c.destination }}</td>
+                    <td class="truncate py-2 pr-2.5 pl-7 text-t1" v-tooltip="c.rule">{{ c.destination }}</td>
                     <td class="px-2.5 py-2 font-mono text-xs">{{ c.source }}</td>
                     <td class="px-2.5 py-2 font-mono text-xs">{{ protocolOf(c) }}</td>
                     <td class="px-2.5 py-2">{{ outboundName(c.outbound) }}</td>
@@ -180,8 +180,8 @@ onBeforeUnmount(() => clearInterval(timer))
                   @contextmenu="target = { id: c.id }"
                 >
                   <td class="px-3.5 py-2">
-                    <div class="truncate text-t1" :title="c.rule">{{ c.destination }}</div>
-                    <div class="truncate text-xs text-t3" :title="c.processPath">{{ processName(c.process) }}</div>
+                    <div class="truncate text-t1" v-tooltip="c.rule">{{ c.destination }}</div>
+                    <div class="truncate text-xs text-t3" v-tooltip="c.processPath">{{ processName(c.process) }}</div>
                   </td>
                   <td class="px-2.5 py-2 font-mono text-xs">{{ c.source }}</td>
                   <td class="px-2.5 py-2 font-mono text-xs">{{ protocolOf(c) }}</td>

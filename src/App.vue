@@ -12,6 +12,7 @@ import ModeDialog from '@/components/shell/ModeDialog.vue'
 import RestartDialog from '@/components/shell/RestartDialog.vue'
 import UpdateDialog from '@/components/shell/UpdateDialog.vue'
 import TitleBar from '@/components/shell/TitleBar.vue'
+import { TooltipHost } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useLinks } from '@/composables/useLinks'
@@ -124,5 +125,6 @@ async function addSubscription(): Promise<void> {
     <RestartDialog />
     <ModeDialog />
     <UpdateDialog />
+    <TooltipHost />
   </div>
 </template>

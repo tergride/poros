@@ -39,7 +39,7 @@ import GroupEditor from '@/components/adv/GroupEditor.vue'
 import NewGroupDialog from '@/components/adv/NewGroupDialog.vue'
 import QrDialog from '@/components/adv/QrDialog.vue'
 import SubscriptionQuota from '@/components/main/SubscriptionQuota.vue'
-import { Button, ContextMenu, ContextMenuItem, ContextMenuSeparator, Dialog, Flag, Input, Menu, MenuItem, MenuSeparator, Select, Textarea } from '@/components/ui'
+import { Button, ContextMenu, ContextMenuItem, ContextMenuSeparator, Dialog, Flag, Input, Menu, MenuItem, MenuSeparator, Select, Textarea, vTooltip } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useClock } from '@/composables/useClock'
 import { useConnect } from '@/composables/useConnect'
@@ -326,7 +326,7 @@ async function importEntered(): Promise<void> {
         >
           <Folder v-if="g.kind === GroupManual" class="size-4 flex-none" /><Link v-else class="size-4 flex-none" />
           <span class="min-w-0 flex-1 truncate">{{ g.name }}</span>
-          <span v-if="needsLink(g)" class="flex flex-none" :title="t('profiles.needsLink')">
+          <span v-if="needsLink(g)" class="flex flex-none" v-tooltip="t('profiles.needsLink')">
             <KeyRound class="size-3.5 text-warn" :aria-label="t('profiles.needsLink')" />
           </span>
           <span class="text-xs text-t3">{{ count(g.id) }}</span>
@@ -441,7 +441,7 @@ async function importEntered(): Promise<void> {
                   >
                     <td class="px-2.5 py-2 whitespace-nowrap">
                       {{ protocolName(s.protocol, t) }}
-                      <span v-if="s.security" class="ml-1 inline-flex items-center gap-1 text-xs text-warn" :title="t(`profiles.security.${s.security}`)">
+                      <span v-if="s.security" class="ml-1 inline-flex items-center gap-1 text-xs text-warn" v-tooltip="t(`profiles.security.${s.security}`)">
                         <ShieldAlert class="size-3.5" />{{ t(`profiles.securityShort.${s.security}`) }}
                       </span>
                     </td>
@@ -453,7 +453,7 @@ async function importEntered(): Promise<void> {
                         <Play v-if="running(s)" class="size-3.5 flex-none fill-current" />
                         <Flag v-if="s.country" :code="s.country" />
                         <span class="truncate">{{ serverTitle(s.name, s.country) }}</span>
-                        <span v-if="s.need?.length" class="flex flex-none" :title="t('servers.lost')" data-testid="server-lost">
+                        <span v-if="s.need?.length" class="flex flex-none" v-tooltip="t('servers.lost')" data-testid="server-lost">
                           <KeyRound class="size-3.5 text-warn" :aria-label="t('servers.lost')" />
                         </span>
                       </span>

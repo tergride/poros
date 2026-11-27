@@ -3,7 +3,7 @@ import { Check, Copy, Search, Trash2 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Button, Input, Select } from '@/components/ui'
+import { Button, Input, Select, vTooltip } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { filterLog, logLevel } from '@/lib/logs'
 import { MethodLogsGet } from '@/platform/core-types'
@@ -69,7 +69,7 @@ onBeforeUnmount(() => clearInterval(timer))
         size="sm"
         :class="matchCase && 'border-blue bg-s4'"
         :aria-pressed="matchCase"
-        :title="t('adv.logs.matchCase')"
+        v-tooltip="t('adv.logs.matchCase')"
         :aria-label="t('adv.logs.matchCase')"
         data-testid="log-case"
         @click="matchCase = !matchCase"
@@ -78,7 +78,7 @@ onBeforeUnmount(() => clearInterval(timer))
         size="sm"
         :class="['font-mono', regex && 'border-blue bg-s4']"
         :aria-pressed="regex"
-        :title="t('adv.logs.regex')"
+        v-tooltip="t('adv.logs.regex')"
         :aria-label="t('adv.logs.regex')"
         data-testid="log-regex"
         @click="regex = !regex"

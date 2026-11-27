@@ -36,9 +36,9 @@ describe('TitleBar', () => {
     expect(mountBar({ killSwitch: 'off' }).find('[data-testid="kill-switch-chip"]').exists()).toBe(false)
     const always = mountBar({ killSwitch: 'always', elevated: true })
     expect(always.get('[data-testid="kill-switch-chip"]').text()).toBe('Kill switch')
-    expect(always.get('[data-testid="kill-switch-chip"]').attributes('title')).toMatch(/^Kill switch всегда: /)
-    expect(always.get('[data-testid="admin-chip"]').attributes('title')).toMatch(/^Ядро Poros работает с правами администратора/)
-    expect(mountBar({ killSwitch: 'connected' }).get('[data-testid="kill-switch-chip"]').attributes('title')).toMatch(
+    expect(always.get('[data-testid="kill-switch-chip"]').attributes('data-tooltip')).toMatch(/^Kill switch всегда: /)
+    expect(always.get('[data-testid="admin-chip"]').attributes('data-tooltip')).toMatch(/^Ядро Poros работает с правами администратора/)
+    expect(mountBar({ killSwitch: 'connected' }).get('[data-testid="kill-switch-chip"]').attributes('data-tooltip')).toMatch(
       /^Kill switch при подключении: /,
     )
   })
@@ -53,9 +53,9 @@ describe('TitleBar', () => {
     const held = mount(TitleBar, { props: { killSwitch: 'connected', killSwitchBlocking: 'held' }, global: { plugins } })
     const chip = held.get('[data-testid="kill-switch-chip"]')
     expect(chip.classes()).toContain('text-bad')
-    expect(chip.attributes('title')).toMatch(/^Kill switch сейчас блокирует трафик VPN: соединение с сервером прервано/)
+    expect(chip.attributes('data-tooltip')).toMatch(/^Kill switch сейчас блокирует трафик VPN: соединение с сервером прервано/)
     const full = mount(TitleBar, { props: { killSwitch: 'always', killSwitchBlocking: 'always', killSwitchFull: true }, global: { plugins } })
-    expect(full.get('[data-testid="kill-switch-chip"]').attributes('title')).toMatch(/^Kill switch сейчас блокирует весь интернет/)
+    expect(full.get('[data-testid="kill-switch-chip"]').attributes('data-tooltip')).toMatch(/^Kill switch сейчас блокирует весь интернет/)
   })
 
   it('marks the compatible mode of the kill switch next to its chip', async () => {
@@ -65,7 +65,7 @@ describe('TitleBar', () => {
     expect(mountBar({ killSwitch: 'off', killSwitchCompatible: true }).find('[data-testid="kill-switch-compatible"]').exists()).toBe(false)
     const bar = mountBar({ killSwitch: 'connected', killSwitchCompatible: true })
     const mark = bar.get('[data-testid="kill-switch-compatible"]')
-    expect(mark.attributes('title')).toMatch(/^Обнаружен конфликт: загружен драйвер WinDivert.*совместимом режиме/)
+    expect(mark.attributes('data-tooltip')).toMatch(/^Обнаружен конфликт: загружен драйвер WinDivert.*совместимом режиме/)
     expect(mark.attributes('aria-label')).toBe('Kill switch в совместимом режиме')
     await mark.trigger('click')
     expect(bar.emitted('killSwitch')).toHaveLength(1)
@@ -77,7 +77,7 @@ describe('TitleBar', () => {
     const wrapper = mount(TitleBar, { props: { restartNeeded: true }, global: { plugins } })
     const chip = wrapper.get('[data-testid="restart-chip"]')
     expect(chip.text()).toBe('Нужен перезапуск')
-    expect(chip.attributes('title')).toMatch(/^Настройки сохранены, но не применены/)
+    expect(chip.attributes('data-tooltip')).toMatch(/^Настройки сохранены, но не применены/)
     await chip.trigger('click')
     expect(wrapper.emitted('restart')).toHaveLength(1)
   })

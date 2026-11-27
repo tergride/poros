@@ -79,7 +79,7 @@ describe('a group of servers', () => {
   it('shows the country of a server as a flag named in the hint', () => {
     const flags = mountGroup({}).findAll('[data-testid="flag"]')
     expect(flags.map((f) => f.text())).toEqual(['🇩🇪', '🇫🇮'])
-    expect(flags[0]!.attributes('title')).toBe('DE — Германия')
+    expect(flags[0]!.attributes('data-tooltip')).toBe('DE — Германия')
   })
 
   it('tells a group of the user apart and leaves out what only a subscription has', () => {
@@ -99,7 +99,7 @@ describe('a group of servers', () => {
     expect(wrapper.text()).toContain('2 сервера · ждёт ссылку')
     expect(wrapper.find('button[aria-label="Обновить подписку"]').exists()).toBe(false)
     expect(wrapper.findAll('[data-testid="server-lost"]')).toHaveLength(2)
-    expect(wrapper.find('[data-testid="server-lost"]').attributes('title')).toBe('Пароли и ключи сохранены на другом компьютере')
+    expect(wrapper.find('[data-testid="server-lost"]').attributes('data-tooltip')).toBe('Пароли и ключи сохранены на другом компьютере')
     await wrapper.find('[data-testid="group-link-again"]').trigger('click')
     expect(wrapper.emitted('linkAgain')).toHaveLength(1)
     expect(mountGroup({}).find('[data-testid="server-lost"]').exists()).toBe(false)

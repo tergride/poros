@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Tooltip } from '@/components/ui'
+import { vTooltip } from '@/components/ui'
 import { useClock } from '@/composables/useClock'
 import { formatAgo, formatBytes, formatDate } from '@/lib/format'
 import { quotaOf } from '@/lib/quota'
@@ -10,7 +10,6 @@ import type { Group } from '@/platform/core-types'
 
 // The traffic and the end date of a subscription in its header, the same in both modes. What runs out or ran out turns
 // red, and the hint on it says why. The width comes from the header.
-defineOptions({ inheritAttrs: false })
 const props = defineProps<{ group: Group }>()
 const { t, locale } = useI18n()
 const now = useClock(60_000)
@@ -40,26 +39,24 @@ const why = computed(() => {
 </script>
 
 <template>
-  <Tooltip :text="why" align="end">
+  <div
+    v-tooltip.end="why"
+    class="grid flex-none gap-1 text-[11.5px] text-t2"
+    :class="why && 'cursor-help rounded-md'"
+    :tabindex="why ? 0 : undefined"
+    :data-running-out="why ? '' : undefined"
+    data-testid="quota"
+  >
     <!-- A long line, as in English, moves the date below whole instead of breaking it inside. -->
-    <div
-      v-bind="$attrs"
-      class="grid flex-none gap-1 text-[11.5px] text-t2"
-      :class="why && 'cursor-help rounded-md'"
-      :tabindex="why ? 0 : undefined"
-      :data-running-out="why ? '' : undefined"
-      data-testid="quota"
-    >
-      <div class="flex flex-wrap justify-between gap-x-2 whitespace-nowrap">
-        <span :class="trafficRed && 'text-bad'" data-testid="quota-traffic">{{ trafficText }}</span>
-        <span v-if="group.expire > 0" :class="timeRed ? 'text-bad' : 'text-t3'" data-testid="quota-time">{{ timeText }}</span>
-      </div>
-      <div v-if="group.total > 0" class="h-[5px] overflow-hidden rounded-[3px] bg-s5">
-        <i
-          :class="['block h-full rounded-[3px]', trafficRed || quota.time === 'over' ? 'bg-bad' : 'bg-[image:var(--road)]']"
-          :style="{ width: `${quota.percent}%` }"
-        />
-      </div>
+    <div class="flex flex-wrap justify-between gap-x-2 whitespace-nowrap">
+      <span :class="trafficRed && 'text-bad'" data-testid="quota-traffic">{{ trafficText }}</span>
+      <span v-if="group.expire > 0" :class="timeRed ? 'text-bad' : 'text-t3'" data-testid="quota-time">{{ timeText }}</span>
     </div>
-  </Tooltip>
+    <div v-if="group.total > 0" class="h-[5px] overflow-hidden rounded-[3px] bg-s5">
+      <i
+        :class="['block h-full rounded-[3px]', trafficRed || quota.time === 'over' ? 'bg-bad' : 'bg-[image:var(--road)]']"
+        :style="{ width: `${quota.percent}%` }"
+      />
+    </div>
+  </div>
 </template>

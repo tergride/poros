@@ -4,7 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import SettingsCard from '@/components/settings/SettingsCard.vue'
-import { Button, Input, Menu, MenuItem, MenuSeparator, Select, Switch } from '@/components/ui'
+import { Button, Input, Menu, MenuItem, MenuSeparator, Select, Switch, vTooltip } from '@/components/ui'
 import { useRuleDraft } from '@/composables/usePresetDraft'
 import { advancedKinds, inRow, moved, newRule, ruleSummary, simpleKinds } from '@/lib/rules'
 import type { InheritedRule, PresetRule } from '@/platform/core-types'
@@ -146,14 +146,14 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
     <div v-if="endpointNames" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-endpoints">
       <span v-if="advanced" />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('rules.endpoints') }}</span>
-      <span :class="['truncate text-[12.5px]', valueCell]" :title="endpointsValue">{{ endpointsValue }}</span>
+      <span :class="['truncate text-[12.5px]', valueCell]" v-tooltip.cut="endpointsValue">{{ endpointsValue }}</span>
       <span class="truncate pl-[11px] text-[12.5px]">{{ t('action.endpoint') }}</span>
       <span /><span /><span />
     </div>
     <div v-if="endpoint" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-networks">
       <span />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('endpoints.networks') }}</span>
-      <span :class="['truncate text-[12.5px]', valueCell]" :title="t('endpoints.networksValue')">{{ t('endpoints.networksValue') }}</span>
+      <span :class="['truncate text-[12.5px]', valueCell]" v-tooltip.cut="t('endpoints.networksValue')">{{ t('endpoints.networksValue') }}</span>
       <span /><span /><span />
     </div>
 
@@ -190,7 +190,7 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
         <span class="inline-flex h-[22px] items-center justify-self-start rounded-md bg-s4 px-2 text-[11.5px] text-t2">
           {{ t(rule.conditions.length > 1 ? 'rules.several' : 'rules.inverted') }}
         </span>
-        <Button variant="ghost" size="sm" :class="['min-w-0 justify-start', valueCell]" :title="t('rules.editConditions')" @click="ruleOpen = i">
+        <Button variant="ghost" size="sm" :class="['min-w-0 justify-start', valueCell]" v-tooltip="t('rules.editConditions')" @click="ruleOpen = i">
           <span class="truncate">{{ ruleSummary(rule, t) }}</span>
         </Button>
       </template>

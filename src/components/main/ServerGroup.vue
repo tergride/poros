@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 
 import SubscriptionQuota from '@/components/main/SubscriptionQuota.vue'
 import { useClock } from '@/composables/useClock'
-import { Button, Flag, Menu, MenuItem, MenuSeparator } from '@/components/ui'
+import { Button, Flag, Menu, MenuItem, MenuSeparator, vTooltip } from '@/components/ui'
 import { formatAgo, latencyTone, serverTitle } from '@/lib/format'
 import type { Group, Server } from '@/platform/core-types'
 import { GroupManual } from '@/platform/core-types'
@@ -56,7 +56,7 @@ function latencyText(latency: number): string {
       >
         <ChevronDown v-if="open" class="size-4 flex-none text-t2" /><ChevronRight v-else class="size-4 flex-none text-t2" />
         <span class="min-w-0">
-          <strong class="block truncate font-semibold" :title="group.name">{{ group.name }}</strong>
+          <strong class="block truncate font-semibold" v-tooltip.cut="group.name">{{ group.name }}</strong>
           <small :class="['block truncate text-xs', lost ? 'text-warn' : 'text-t3']">{{ summary }}</small>
         </span>
       </button>
@@ -100,7 +100,7 @@ function latencyText(latency: number): string {
         </span>
         <span class="flex min-w-0 items-center gap-2">
           <span class="truncate">{{ serverTitle(server.name, server.country) }}</span>
-          <span v-if="server.need?.length" class="flex flex-none" :title="t('servers.lost')" data-testid="server-lost">
+          <span v-if="server.need?.length" class="flex flex-none" v-tooltip="t('servers.lost')" data-testid="server-lost">
             <KeyRound class="size-3.5 text-warn" :aria-label="t('servers.lost')" />
           </span>
         </span>

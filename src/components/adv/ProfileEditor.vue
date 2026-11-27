@@ -4,7 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import ProfileField from '@/components/adv/ProfileField.vue'
-import { Banner, Button, Dialog, Select, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/ui'
+import { Banner, Button, Dialog, Select, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, vTooltip } from '@/components/ui'
 import { useProfileActions } from '@/composables/useProfileActions'
 import { useProfileForms } from '@/composables/useProfileForms'
 import { useReason } from '@/composables/useReason'
@@ -218,7 +218,7 @@ async function save(): Promise<void> {
         <span
           v-if="coreName"
           class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] whitespace-nowrap text-t2"
-          :title="t('profileEditor.coreHint', { core: coreName })"
+          v-tooltip="t('profileEditor.coreHint', { core: coreName })"
           data-testid="profile-core"
         >
           {{ coreName }}

@@ -1,1 +1,2 @@
-export { default as Tooltip } from './Tooltip.vue'
+export { default as TooltipHost } from './TooltipHost.vue'
+export { vTooltip } from './tooltip'

@@ -4,7 +4,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import { I18nT, useI18n } from 'vue-i18n'
 
-import { Banner, Button, Dialog, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui'
+import { Banner, Button, Dialog, Tabs, TabsContent, TabsList, TabsTrigger, vTooltip } from '@/components/ui'
 import PresetListsHelp from '@/components/settings/PresetListsHelp.vue'
 import PresetListsText from '@/components/settings/PresetListsText.vue'
 import { useFailure } from '@/composables/useReason'
@@ -165,7 +165,7 @@ const title = computed(() => {
         <div class="flex min-h-8 items-center gap-3">
           <div v-if="problemText" class="flex min-w-0 flex-1 items-start gap-2 text-xs leading-4" role="alert">
             <TriangleAlert class="size-4 flex-none text-warn" />
-            <p class="line-clamp-2" :title="problemText">
+            <p class="line-clamp-2" v-tooltip.cut="problemText">
               <span v-if="invalidText" data-testid="lists-invalid">{{ invalidText }}</span>
               {{ ' ' }}
               <span v-if="duplicateText" data-testid="lists-duplicate">{{ duplicateText }}</span>

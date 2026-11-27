@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { I18nT, useI18n } from 'vue-i18n'
 
 import portalArt from '@/assets/img/portal.jpg'
-import { Button, Flag, Switch } from '@/components/ui'
+import { Button, Flag, Switch, vTooltip } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
 import { useConnectionView } from '@/composables/useConnectionView'
@@ -99,7 +99,7 @@ const wireGuard = computed(() => core.server?.protocol === TypeWireGuard)
 
     <div class="relative grid gap-1">
       <!-- Providers pack notes into names; three lines keep the buttons in place, the whole name is in the hint. -->
-      <h1 class="line-clamp-3 font-disp text-[19px] leading-snug font-normal" :title="serverName" data-testid="portal-server">
+      <h1 class="line-clamp-3 font-disp text-[19px] leading-snug font-normal" v-tooltip.cut="serverName" data-testid="portal-server">
         {{ serverName }}
       </h1>
       <span class="text-xs text-t3">
@@ -145,7 +145,7 @@ const wireGuard = computed(() => core.server?.protocol === TypeWireGuard)
     <div
       ref="actions"
       class="relative flex gap-2.5"
-      :title="held ? t(full ? 'portal.heldFullTitle' : 'portal.heldTitle') : blocked ? t('portal.lockTitle') : undefined"
+      v-tooltip="held ? t(full ? 'portal.heldFullTitle' : 'portal.heldTitle') : blocked ? t('portal.lockTitle') : undefined"
     >
       <Button
         v-if="on || held"
@@ -232,7 +232,7 @@ const wireGuard = computed(() => core.server?.protocol === TypeWireGuard)
       <RouterLink
         to="/settings/conn"
         class="grid size-[42px] flex-none place-items-center rounded-[10px] border border-line bg-s2 text-t2 hover:border-line2 hover:text-t1"
-        :title="t('portal.settings')"
+        v-tooltip="t('portal.settings')"
         :aria-label="t('portal.settings')"
         data-testid="portal-settings"
       >

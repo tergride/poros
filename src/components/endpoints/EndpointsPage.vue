@@ -12,7 +12,7 @@ import EndpointImportDialog from '@/components/endpoints/EndpointImportDialog.vu
 import RuleDialog from '@/components/presets/RuleDialog.vue'
 import RuleList from '@/components/presets/RuleList.vue'
 import PresetListsDialog from '@/components/settings/PresetListsDialog.vue'
-import { Banner, Button, Dialog, Input, Menu, MenuItem, MenuSeparator, Switch, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui'
+import { Banner, Button, Dialog, Input, Menu, MenuItem, MenuSeparator, Switch, Tabs, TabsContent, TabsList, TabsTrigger, vTooltip } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { provideEndpointDraft } from '@/composables/useEndpointDraft'
 import { useProfileForms } from '@/composables/useProfileForms'
@@ -204,7 +204,7 @@ onBeforeRouteUpdate(ask)
       <div class="flex flex-none flex-wrap items-center gap-2 border-b border-line px-5 py-2.5">
         <Input v-model="entry.profile.name" class="h-[30px] w-[220px] shrink-0" :aria-label="t('presetEdit.name')" data-testid="endpoint-name" />
         <span class="inline-flex h-[22px] items-center rounded-md bg-s4 px-2 text-[11.5px] text-t2">{{ protocolName(entry.profile.type, t) }}</span>
-        <label class="ml-1.5 flex items-center gap-2 text-[13px] text-t2" :title="entry.need.length > 0 ? t('endpoints.needShort') : undefined">
+        <label class="ml-1.5 flex items-center gap-2 text-[13px] text-t2" v-tooltip="entry.need.length > 0 ? t('endpoints.needShort') : undefined">
           <Switch v-model="on" :disabled="entry.need.length > 0" :aria-label="t('endpoints.on')" data-testid="endpoint-on" />{{ t('endpoints.on') }}
         </label>
         <span class="flex-1" />

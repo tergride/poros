@@ -3,7 +3,7 @@ import { Check, Copy, FileDown, ImageIcon, Share2, X } from '@lucide/vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Button, Dialog, Input } from '@/components/ui'
+import { Button, Dialog, Input, vTooltip } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { reasonOf } from '@/composables/useReason'
 import { qrPath, qrPng } from '@/lib/qr'
@@ -131,7 +131,7 @@ const exportJson = () =>
     </div>
     <template #footer>
       <p v-if="saved" class="sp flex min-w-0 items-center gap-1.5 text-xs text-ok" data-testid="share-saved">
-        <Check class="size-3.5 flex-none" /><span class="truncate" :title="saved">{{ t('settings.presets.savedFile', { path: saved }) }}</span>
+        <Check class="size-3.5 flex-none" /><span class="truncate" v-tooltip.cut="saved">{{ t('settings.presets.savedFile', { path: saved }) }}</span>
       </p>
       <p v-else class="sp min-w-0 text-xs text-t3">{{ t('settings.presets.shareFileHint') }}</p>
       <Button class="flex-none" :disabled="!link" data-testid="share-export" @click="exportJson"><FileDown />{{ t('settings.presets.exportJson') }}</Button>

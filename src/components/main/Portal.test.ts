@@ -103,6 +103,6 @@ describe('Portal while it connects', () => {
     const flags = wrapper.findAll('[data-testid="flag"]')
     expect(flags.length).toBe(2)
     expect(flags[0]!.text()).toBe('🇩🇪')
-    expect(flags[0]!.attributes('title')).toBe('DE — Германия')
+    expect(flags[0]!.attributes('data-tooltip')).toBe('DE — Германия')
   })
 })
