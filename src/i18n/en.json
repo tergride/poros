@@ -480,7 +480,7 @@
       "large": "Large"
     },
     "help": {
-      "lead": "The quick setup, the log, resetting the connection and updates.",
+      "lead": "The quick setup, the log, resetting the connection, updates and removing the traces of Poros.",
       "wizard": "Quick setup",
       "wizardHint": "Go through the first-start steps again.",
       "run": "Run",
@@ -516,7 +516,11 @@
       "updatesTitle": "Updates",
       "beta": "Get beta versions",
       "betaHint": "Beta versions come out earlier and may work worse.",
-      "poros": "Poros version"
+      "poros": "Poros version",
+      "cleanupTitle": "Removal",
+      "cleanup": "Remove Poros traces",
+      "cleanupHint": "Removes from Windows what Poros left outside its folder: the start with Windows, poros:// links, the Task Scheduler task, shortcuts, firewall rules, the TUN network. Then Poros exits, and the folder can be deleted.",
+      "cleanupButton": "Remove traces…"
     },
     "inbound": {
       "port": "Local port",
@@ -1873,6 +1877,33 @@
       "otp": "{'{otp}'} in the user name or password becomes the current code at every connection. The codes are in «Tools → OTP»."
     },
     "otpGone": "Code removed"
+  },
+  "cleanup": {
+    "title": "Remove Poros traces",
+    "lead": "Poros disconnects, turns off the start with Windows and rights at sign-in, removes from Windows what it left outside its folder, and exits. The folder with the program and its data stays; you can delete it yourself.",
+    "scanning": "Looking for traces of Poros…",
+    "found": "To be removed:",
+    "nothing": "Nothing of Poros was found outside its folder.",
+    "rights": "Needs administrator rights",
+    "rightsNote": "The marked ones need administrator rights: Windows will ask for them.",
+    "run": "Remove traces and exit",
+    "left": "Not everything could be removed. Left:",
+    "leftRights": "without administrator rights",
+    "leftError": "failed: {error}",
+    "exit": "Exit",
+    "kind": {
+      "autostart": "Start with Windows",
+      "urlScheme": "Opening poros:// links",
+      "systemProxy": "Windows proxy: the previous settings come back",
+      "proxyRecovery": "Windows proxy recovery at the next sign-in",
+      "shortcuts": "Shortcuts on the desktop and in the Start menu",
+      "tempFiles": "Temporary files",
+      "logonTask": "Task Scheduler task for rights at sign-in",
+      "tunDevice": "TUN adapter left after a crash",
+      "firewall": "Windows firewall rules for the Poros programs",
+      "networks": "The poros-net network in the Windows network list",
+      "profile": "Shortcuts, temporary files and the proxy in the user profile"
+    }
   },
   "qr": {
     "picture": "QR code",

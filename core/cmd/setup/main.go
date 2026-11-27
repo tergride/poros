@@ -2,7 +2,7 @@
 
 // The self-extracting archive of Poros: a window that unpacks the release archive at the end of this file into a
 // folder, then adds shortcuts on the desktop and in the Start menu and starts Poros if asked. It writes nothing to the
-// registry, so deleting the folder and the shortcuts removes Poros.
+// registry; the cleanup in Poros removes the shortcuts with the rest of what Poros added outside the folder.
 package main
 
 import (

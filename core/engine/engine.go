@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/bbolt"
@@ -43,8 +44,8 @@ type Config struct {
 	// the next core of the same window.
 	Window int
 	// UpdateFeed is latest.json of the releases, "" for those of tergride/poros, and UpdateReleases the Atom list
-	// of all of them, pre-releases too, that beta versions come from; ProgramDir is the folder with updater.exe, ""
-	// for the folder of this program.
+	// of all of them, pre-releases too, that beta versions come from; ProgramDir is the folder of the programs of
+	// Poros, with updater.exe, "" for the folder of this program.
 	UpdateFeed     string
 	UpdateReleases string
 	ProgramDir     string
@@ -85,6 +86,12 @@ type Engine struct {
 	mixedPort   uint16
 	sysProxy    *sysproxy.Proxy
 	foreignUser bool
+	// programDir is the folder of the programs; the cleanup leaves it and removes what points into it.
+	programDir string
+	// traces are the kinds of what Poros leaves outside its folder; tests put their own.
+	traces func() []trace
+	// tunNoted is the mark of a TUN that came up, written once.
+	tunNoted atomic.Bool
 	// netCallback follows the default interface for connections on Xray.
 	netCallback *list.Element[tun.DefaultInterfaceUpdateCallback]
 }
@@ -164,6 +171,13 @@ func Open(cfg Config) (*Engine, error) {
 	}
 	transport.DialContext = e.dialDirect
 	e.conn.state = ConnectionState{State: ConnectionIdle}
+	e.programDir = cfg.ProgramDir
+	if e.programDir == "" {
+		if self, err := os.Executable(); err == nil {
+			e.programDir = filepath.Dir(self)
+		}
+	}
+	e.traces = e.platformTraces
 	e.openUpdates(cfg)
 	e.latency.results = map[string]int{}
 	e.results.speed, e.results.ip = map[string]ServerSpeed{}, map[string]ServerIP{}

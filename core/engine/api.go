@@ -1300,6 +1300,47 @@ type BackupInfo struct {
 	Codes     int      `json:"codes"`
 }
 
+// CleanupItem is a trace this copy of Poros left in Windows outside its folder: cleanup.scan tells what there is,
+// cleanup.run what stays. The folder itself, the program and its data, is never one.
+type CleanupItem struct {
+	// Kind is one of the Cleanup kinds; the shell has kinds of its own, autostart and urlScheme.
+	Kind string `json:"kind"`
+	// Count is how many there are, as shortcuts or rules of the firewall.
+	Count int `json:"count"`
+	// Rights is a trace only a core with administrator rights removes.
+	Rights bool `json:"rights,omitempty"`
+	// Error tells in English why cleanup.run could not remove it; "" for one that waits for rights.
+	Error string `json:"error,omitempty"`
+}
+
+// CleanupReport is what cleanup.scan found or cleanup.run left.
+type CleanupReport struct {
+	Items []CleanupItem `json:"items"`
+}
+
+// Kinds of the traces of the core.
+const (
+	// CleanupSystemProxy is the proxy of Windows pointing at Poros; it gets the user's settings back.
+	CleanupSystemProxy = "systemProxy"
+	// CleanupProxyRecovery is the entry that gives the proxy of Windows back at the next sign-in after a crash.
+	CleanupProxyRecovery = "proxyRecovery"
+	// CleanupShortcuts are shortcuts that start this Poros, on the desktop and in the Start menu.
+	CleanupShortcuts = "shortcuts"
+	// CleanupTempFiles are files Poros left in the Temp folders.
+	CleanupTempFiles = "tempFiles"
+	// CleanupLogonTask is the task of the Task Scheduler for rights at sign-in.
+	CleanupLogonTask = "logonTask"
+	// CleanupTunDevice is the device of the TUN adapter a run left behind.
+	CleanupTunDevice = "tunDevice"
+	// CleanupFirewall are rules of the Windows firewall for the programs of the folder.
+	CleanupFirewall = "firewall"
+	// CleanupNetworks are the networks of the TUN adapter that Windows remembers.
+	CleanupNetworks = "networks"
+	// CleanupProfile stands for the traces in the user's profile, which a core with the rights of another account
+	// does not see: a core without rights finds them.
+	CleanupProfile = "profile"
+)
+
 // Methods the core answers.
 const (
 	MethodAppInfo = "app.info"
@@ -1449,6 +1490,11 @@ const (
 	// .ovpn file.
 	MethodEndpointsExport = "endpoints.export"
 	MethodEndpointsImport = "endpoints.import"
+	// MethodCleanupScan finds the traces of this copy outside its folder. MethodCleanupRun turns the start with
+	// Windows and rights at sign-in off, stops the connection and what the kill switch holds, removes the traces it
+	// may and gives back those that stay; the folder stays as it is.
+	MethodCleanupScan = "cleanup.scan"
+	MethodCleanupRun  = "cleanup.run"
 )
 
 // Events the core sends without a request.

@@ -12,11 +12,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"testing"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"PorosCore/internal/wincom"
 )
 
 // writeSetup writes a file as the release build does: the program, the archive and the trailer.
@@ -160,11 +160,6 @@ func TestRunningSeesAProgramFileInUse(t *testing.T) {
 	}
 }
 
-const (
-	linkGetPath             = 3
-	linkGetWorkingDirectory = 8
-)
-
 func TestCreateShortcutStartsTheProgramInItsFolder(t *testing.T) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -184,36 +179,19 @@ func TestCreateShortcutStartsTheProgramInItsFolder(t *testing.T) {
 	link := filepath.Join(t.TempDir(), shortcutName)
 	// A second shortcut replaces the first.
 	for range 2 {
-		if err := createShortcut(link, program, dir); err != nil {
+		if err := wincom.CreateShortcut(link, program, dir); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	shellLink, err := createObject(&clsidShellLink, &iidShellLink)
+	got, err := wincom.ReadShortcut(link)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer shellLink.release()
-	var file *comObject
-	if err := shellLink.call(unknownQueryInterface, uintptr(unsafe.Pointer(&iidPersistFile)), uintptr(unsafe.Pointer(&file))); err != nil {
-		t.Fatal(err)
+	if !strings.EqualFold(got.Target, program) {
+		t.Errorf("the shortcut starts %s", got.Target)
 	}
-	defer file.release()
-	const persistLoad = 5
-	if err := file.call(persistLoad, uintptr(unsafe.Pointer(wide(link))), 0); err != nil {
-		t.Fatal(err)
-	}
-	buffer := make([]uint16, windows.MAX_PATH)
-	if err := shellLink.call(linkGetPath, uintptr(unsafe.Pointer(&buffer[0])), uintptr(len(buffer)), 0, 0); err != nil {
-		t.Fatal(err)
-	}
-	if got := syscall.UTF16ToString(buffer); !strings.EqualFold(got, program) {
-		t.Errorf("the shortcut starts %s", got)
-	}
-	if err := shellLink.call(linkGetWorkingDirectory, uintptr(unsafe.Pointer(&buffer[0])), uintptr(len(buffer))); err != nil {
-		t.Fatal(err)
-	}
-	if got := syscall.UTF16ToString(buffer); !strings.EqualFold(got, dir) {
-		t.Errorf("the shortcut starts in %s", got)
+	if !strings.EqualFold(got.Dir, dir) {
+		t.Errorf("the shortcut starts in %s", got.Dir)
 	}
 }

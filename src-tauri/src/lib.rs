@@ -24,7 +24,7 @@ use crate::core_process::{
     CODE_UPDATE_FAILED, Core, CoreConfig, CoreError, CoreState, CoreStatus, Sink,
 };
 use crate::instance::Claim;
-use crate::system::{Integration, UrlScheme};
+use crate::system::{CleanupItem, Integration, UrlScheme};
 
 /// The version of a release build, from `POROS_VERSION` at build time; a local build has none.
 pub const VERSION: &str = match option_env!("POROS_VERSION") {
@@ -220,6 +220,32 @@ fn url_scheme_get() -> Result<UrlScheme, String> {
 fn url_scheme_set(on: bool) -> Result<UrlScheme, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     system::set_url_scheme(&exe, on).map_err(|e| e.to_string())
+}
+
+/// The traces of the shell outside the folder: the start with Windows and `poros://` links of this copy.
+#[tauri::command]
+fn cleanup_scan() -> Result<Vec<CleanupItem>, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    system::cleanup_scan(&exe).map_err(|e| e.to_string())
+}
+
+/// Removes the traces of the shell after the core turned the start with Windows off; the answer is what stays.
+#[tauri::command]
+fn cleanup_run() -> Result<Vec<CleanupItem>, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let left = system::cleanup_run(&exe);
+    applog::write(&format!(
+        "shell: cleanup: {} kinds of traces stay",
+        left.len()
+    ));
+    for item in &left {
+        applog::write(&format!(
+            "shell: cleanup: {}: {}",
+            item.kind,
+            item.error.as_deref().unwrap_or_default()
+        ));
+    }
+    Ok(left)
 }
 
 /// The links that came since the last call; `app-links` tells the interface that there are new ones.
@@ -514,6 +540,8 @@ pub fn run() {
             take_links,
             url_scheme_get,
             url_scheme_set,
+            cleanup_scan,
+            cleanup_run,
             core_call,
             core_status,
             core_elevate,

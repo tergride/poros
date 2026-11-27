@@ -73,6 +73,12 @@ func Remove(core, dataDir string) error {
 	return nil
 }
 
+// Exists tells whether the task of this copy is there. A user without rights may not see a task an administrator
+// made, so false is not sure without rights.
+func Exists(core string) bool {
+	return schtasks("/Query", "/TN", Name(core)) == nil
+}
+
 // AutostartWaits tells whether the autostart of this copy starts a shell that waits for the core of the task.
 func AutostartWaits(core string) bool {
 	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.QUERY_VALUE)

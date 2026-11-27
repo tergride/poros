@@ -18,6 +18,10 @@ func Remove(core, dataDir string) error {
 	return nil
 }
 
+func Exists(core string) bool {
+	return false
+}
+
 func AutostartWaits(core string) bool {
 	return false
 }

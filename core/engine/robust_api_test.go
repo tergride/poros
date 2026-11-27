@@ -382,6 +382,8 @@ func contractMethods() map[string]contractMethod {
 		MethodOTPLink:       {params: ByID{}, base: byID(codes)},
 		MethodQREncode:      {params: QRText{}, base: func(f *contractFuzz) any { return QRText{Text: f.pool.deepLink} }},
 		MethodQRScan:        {skip: "it takes a snapshot of the user's screens"},
+		MethodCleanupScan:   {skip: "it looks through Windows outside the data folder"},
+		MethodCleanupRun:    {skip: "it removes what Poros left in Windows, the user's Poros too"},
 		MethodQRRead:        {params: QRImage{}, base: func(*contractFuzz) any { return QRImage{Image: blankPNG()} }},
 		MethodBackupCreate:  {params: BackupParts{}, base: func(f *contractFuzz) any { return BackupParts{Parts: f.parts()} }},
 		MethodBackupInspect: {params: BackupText{}, base: backupText},

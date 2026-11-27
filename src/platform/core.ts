@@ -13,6 +13,7 @@ import type {
   BackupText,
   ByID,
   CleanServers,
+  CleanupReport,
   ConfigureGroup,
   ConnectionList,
   StatsNow,
@@ -101,6 +102,8 @@ import {
   MethodBackupCreate,
   MethodBackupInspect,
   MethodBackupRestore,
+  MethodCleanupRun,
+  MethodCleanupScan,
   MethodConnectionStart,
   MethodConnectionState,
   MethodConnectionStop,
@@ -266,6 +269,8 @@ export interface CoreMethods {
   [MethodEndpointsMove]: { params: EndpointMove; result: null }
   [MethodEndpointsExport]: { params: EndpointExport; result: EndpointFile }
   [MethodEndpointsImport]: { params: EndpointText; result: Endpoint }
+  [MethodCleanupScan]: { params: undefined; result: CleanupReport }
+  [MethodCleanupRun]: { params: undefined; result: CleanupReport }
 }
 
 export interface CoreEvents {

@@ -116,13 +116,7 @@ type updates struct {
 
 // openUpdates finds out whether this build updates itself and reads the install that failed before this start.
 func (e *Engine) openUpdates(cfg Config) {
-	programDir := cfg.ProgramDir
-	if programDir == "" {
-		if self, err := os.Executable(); err == nil {
-			programDir = filepath.Dir(self)
-		}
-	}
-	_, err := os.Stat(filepath.Join(programDir, updaterName))
+	_, err := os.Stat(filepath.Join(e.programDir, updaterName))
 	e.upd.state = UpdateState{
 		Available: versionPattern.MatchString(cfg.Version) && err == nil,
 		Current:   cfg.Version,

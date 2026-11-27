@@ -22,8 +22,7 @@ func ProxyRecovery(dataDir string) func(bool) {
 	if err != nil {
 		return nil
 	}
-	sum := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(dataDir))))
-	name := "Poros proxy " + hex.EncodeToString(sum[:4])
+	name := proxyRecoveryName(dataDir)
 	command := `"` + program + `" --restore-proxy --data-dir ` + syscall.EscapeArg(dataDir)
 	var written *bool
 	return func(pending bool) {
@@ -47,4 +46,10 @@ func ProxyRecovery(dataDir string) func(bool) {
 		}
 		written = &pending
 	}
+}
+
+// proxyRecoveryName is the RunOnce entry of a data folder: each copy of Poros has its own.
+func proxyRecoveryName(dataDir string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(dataDir))))
+	return "Poros proxy " + hex.EncodeToString(sum[:4])
 }

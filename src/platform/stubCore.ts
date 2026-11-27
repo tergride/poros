@@ -18,11 +18,15 @@ import type {
   UpdateState,
   WARPDevice,
   BackupInfo,
+  CleanupItem,
   EndpointEntry,
   OTPEntry,
 } from './core-types'
 import {
   ActionBlock,
+  CleanupNetworks,
+  CleanupShortcuts,
+  CleanupSystemProxy,
   ReasonBackupPassword,
   ReasonBackupPasswordWrong,
   ReasonInvalidBackup,
@@ -63,6 +67,8 @@ import {
   MethodBackupCreate,
   MethodBackupInspect,
   MethodBackupRestore,
+  MethodCleanupRun,
+  MethodCleanupScan,
   MethodEndpointsExport,
   MethodEndpointsGet,
   MethodEndpointsImport,
@@ -688,6 +694,11 @@ export function createStubCore(): CoreClient {
   // The block outlives a core, as the guard process does: a new core of the stub keeps it.
   let block = { ...noBlock }
   let updates = { ...stubUpdates }
+  // What a Poros leaves outside its folder: a shortcut of the archive and the network of a TUN that ran.
+  let traces: CleanupItem[] = [
+    { kind: CleanupShortcuts, count: 1 },
+    { kind: CleanupNetworks, count: 1, rights: true },
+  ]
   let status: CoreStatus = { state: 'ready', elevated: false }
   let traffic: ReturnType<typeof setInterval> | undefined
   let nextId = 1
@@ -1289,6 +1300,20 @@ export function createStubCore(): CoreClient {
       return { name: `poros-backup-${new Date().toISOString().slice(0, 10)}.json`, text: JSON.stringify(sealed ?? file, null, 2) }
     },
     [MethodBackupInspect]: ({ text, password }) => backupInfo(readBackup(text, password)),
+    [MethodCleanupScan]: () => ({
+      items: [...(connection.state === ConnectionRunning && connection.systemProxy ? [{ kind: CleanupSystemProxy, count: 1 }] : []), ...traces],
+    }),
+    // As core/engine/cleanup.go: the start with Windows goes off, everything stops, what takes rights waits for them.
+    [MethodCleanupRun]: () => {
+      if (settings.autostart || settings.adminAutostart) {
+        settings = { ...settings, autostart: false, adminAutostart: false }
+        emit(EventSettingsChanged, { ...settings })
+      }
+      if (connection.state !== ConnectionIdle) setConnection({ ...idle })
+      disarm()
+      traces = traces.filter((trace) => trace.rights && !status.elevated)
+      return { items: traces.map((trace) => ({ ...trace })) }
+    },
     [MethodEndpointsList]: () => endpoints.list(),
     [MethodEndpointsGet]: ({ id }) => endpoints.get(id),
     [MethodEndpointsSave]: (entry) => endpoints.save(entry),

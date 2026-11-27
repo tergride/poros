@@ -1892,6 +1892,71 @@ export interface BackupInfo {
   codes: number /* int */;
 }
 /**
+ * CleanupItem is a trace this copy of Poros left in Windows outside its folder: cleanup.scan tells what there is,
+ * cleanup.run what stays. The folder itself, the program and its data, is never one.
+ */
+export interface CleanupItem {
+  /**
+   * Kind is one of the Cleanup kinds; the shell has kinds of its own, autostart and urlScheme.
+   */
+  kind: string;
+  /**
+   * Count is how many there are, as shortcuts or rules of the firewall.
+   */
+  count: number /* int */;
+  /**
+   * Rights is a trace only a core with administrator rights removes.
+   */
+  rights?: boolean;
+  /**
+   * Error tells in English why cleanup.run could not remove it; "" for one that waits for rights.
+   */
+  error?: string;
+}
+/**
+ * CleanupReport is what cleanup.scan found or cleanup.run left.
+ */
+export interface CleanupReport {
+  items: CleanupItem[];
+}
+/**
+ * CleanupSystemProxy is the proxy of Windows pointing at Poros; it gets the user's settings back.
+ */
+export const CleanupSystemProxy = "systemProxy";
+/**
+ * CleanupProxyRecovery is the entry that gives the proxy of Windows back at the next sign-in after a crash.
+ */
+export const CleanupProxyRecovery = "proxyRecovery";
+/**
+ * CleanupShortcuts are shortcuts that start this Poros, on the desktop and in the Start menu.
+ */
+export const CleanupShortcuts = "shortcuts";
+/**
+ * CleanupTempFiles are files Poros left in the Temp folders.
+ */
+export const CleanupTempFiles = "tempFiles";
+/**
+ * CleanupLogonTask is the task of the Task Scheduler for rights at sign-in.
+ */
+export const CleanupLogonTask = "logonTask";
+/**
+ * CleanupTunDevice is the device of the TUN adapter a run left behind.
+ */
+export const CleanupTunDevice = "tunDevice";
+/**
+ * CleanupFirewall are rules of the Windows firewall for the programs of the folder.
+ */
+export const CleanupFirewall = "firewall";
+/**
+ * CleanupNetworks are the networks of the TUN adapter that Windows remembers.
+ */
+export const CleanupNetworks = "networks";
+/**
+ * CleanupProfile stands for the traces in the user's profile, which a core with the rights of another account
+ * does not see: a core without rights finds them.
+ */
+export const CleanupProfile = "profile";
+/**
  * Methods the core answers.
  */
 export const MethodAppInfo = "app.info";
@@ -2246,6 +2311,16 @@ export const MethodEndpointsExport = "endpoints.export";
  * Methods the core answers.
  */
 export const MethodEndpointsImport = "endpoints.import";
+/**
+ * MethodCleanupScan finds the traces of this copy outside its folder. MethodCleanupRun turns the start with
+ * Windows and rights at sign-in off, stops the connection and what the kill switch holds, removes the traces it
+ * may and gives back those that stay; the folder stays as it is.
+ */
+export const MethodCleanupScan = "cleanup.scan";
+/**
+ * Methods the core answers.
+ */
+export const MethodCleanupRun = "cleanup.run";
 /**
  * Events the core sends without a request.
  */

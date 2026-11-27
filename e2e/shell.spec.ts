@@ -180,6 +180,32 @@ test('rights at autostart come with autostart and ask for rights first', async (
   await shot(page, 'settings-start')
 })
 
+test('the cleanup lists what Poros left outside its folder and removes it with rights', async ({ page }) => {
+  await throughWizard(page)
+  await page.getByTestId('portal-settings').click()
+  await page.getByRole('link', { name: 'Запуск', exact: true }).click()
+  const autostart = page.getByTestId('autostart')
+  if ((await autostart.getAttribute('data-state')) !== 'checked') await autostart.click()
+  await page.getByRole('link', { name: 'Помощь', exact: true }).click()
+  await page.getByTestId('cleanup-open').click()
+  const dialog = page.getByRole('dialog', { name: 'Удаление следов Poros' })
+  await expect(dialog).toContainText('Папка с программой и данными останется')
+  await expect(dialog.getByTestId('cleanup-shortcuts')).toHaveText('Ярлыки на рабочем столе и в меню «Пуск»')
+  await expect(dialog.getByTestId('cleanup-networks')).toContainText('Сеть poros-net в списке сетей Windows')
+  await expect(dialog).toContainText('Для отмеченных нужны права администратора')
+  await shot(page, 'settings-cleanup')
+  // The core of the stub gets its rights without a prompt; Poros would exit at the end, the page stays.
+  await dialog.getByTestId('cleanup-run').click()
+  await expect(page.getByTestId('admin-chip')).toBeVisible()
+  await expect(dialog.getByTestId('cleanup-run')).toBeEnabled()
+  await dialog.getByRole('button', { name: 'Отмена' }).click()
+  await page.getByTestId('cleanup-open').click()
+  await expect(dialog.getByTestId('cleanup-nothing')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Отмена' }).click()
+  await page.getByRole('link', { name: 'Запуск', exact: true }).click()
+  await expect(autostart).toHaveAttribute('data-state', 'unchecked')
+})
+
 test('the first Start can connect without TUN and System', async ({ page }) => {
   await throughWizard(page)
   await page.getByTestId('start').click()

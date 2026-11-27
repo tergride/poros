@@ -5,6 +5,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import type { TrayItem } from '@/lib/trayMenu'
 
 import { type CoreClient, createTauriCore } from './core'
+import type { CleanupItem } from './core-types'
 import { createStubCore } from './stubCore'
 
 export type { CoreClient, CoreError, CoreEvent, CoreMethod, CoreStatus } from './core'
@@ -43,6 +44,23 @@ export const urlScheme = {
     if (inTauri) return invoke<UrlScheme>('url_scheme_set', { on })
     stubScheme = { owner: on ? 'this' : 'none', program: '' }
     return Promise.resolve({ ...stubScheme })
+  },
+}
+
+/**
+ * The traces of the shell outside the folder, in the shape of the core's: the start with Windows and `poros://` links.
+ * Outside Tauri only the links in memory are one.
+ */
+export const shellCleanup = {
+  scan: (): Promise<CleanupItem[]> =>
+    inTauri
+      ? invoke<CleanupItem[]>('cleanup_scan')
+      : Promise.resolve(stubScheme.owner === 'this' ? [{ kind: 'urlScheme', count: 1 }] : []),
+  /** Removes them after the core turned the start with Windows off; the answer is what stays. */
+  run: (): Promise<CleanupItem[]> => {
+    if (inTauri) return invoke<CleanupItem[]>('cleanup_run')
+    stubScheme = { owner: 'none', program: '' }
+    return Promise.resolve([])
   },
 }
 

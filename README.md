@@ -56,7 +56,7 @@ Take one of two files from the [latest release](https://github.com/tergride/poro
 
 ## Portable
 
-Poros has no installer. Its data, the WebView2 profile included, stays in `config` next to `Poros.exe`, so deleting the folder, and the shortcuts if the self-extracting archive added them, removes Poros. If the folder is read-only, Poros says so and exits. One Poros runs per Windows user.
+Poros has no installer. Its data, the WebView2 profile included, stays in `config` next to `Poros.exe`. To remove Poros, press **Remove traces** in the Help settings, then delete the folder. This removes what Poros added to Windows outside its folder: the start with Windows, `poros://` links, the Task Scheduler task for rights at sign-in, its shortcuts, Windows firewall rules for its programs, the network of its TUN in the network list. Administrator rights are asked for only when something needs them. The folder stays as it is, and Poros exits. If the folder is read-only, Poros says so and exits. One Poros runs per Windows user.
 
 Passwords, keys, subscription links and OTP secrets in `config` are encrypted for this computer with Windows DPAPI. A copy of the folder on another computer opens without them: servers wait for their secrets until you enter them again. To move everything, make a backup in the settings; with a password it is encrypted whole.
 

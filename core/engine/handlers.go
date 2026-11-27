@@ -78,6 +78,8 @@ func (e *Engine) Handlers() map[string]jsonrpc.Handler {
 		MethodNetworkCheck:        noParams(e.CheckNetwork),
 		MethodNetworkState:        noParams(func() (NetworkState, error) { return e.NetworkState(), nil }),
 		MethodKillSwitchState:     noParams(func() (KillSwitchState, error) { return e.KillSwitchState(), nil }),
+		MethodCleanupScan:         noParams(func() (CleanupReport, error) { return e.ScanCleanup(), nil }),
+		MethodCleanupRun:          noParams(e.RunCleanup),
 		MethodUpdatesState:        noParams(func() (UpdateState, error) { return e.UpdatesState(), nil }),
 		MethodUpdatesCheck:        noParams(e.CheckUpdates),
 		MethodUpdatesInstall:      noParams(e.InstallUpdate),

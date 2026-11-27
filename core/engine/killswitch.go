@@ -467,6 +467,9 @@ func (e *Engine) startRefusal(settings Settings) {
 	}
 	running.stopTraffic = func() {}
 	e.conn.running = running
+	if tun {
+		e.noteTun()
+	}
 	log.Printf("kill switch: refusing the traffic of the server, TUN %t, System %t", tun, settings.SystemProxy)
 	e.setGuarding(true, tun)
 	if !settings.Tun {

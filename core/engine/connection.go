@@ -501,6 +501,9 @@ func (e *Engine) startRunning(ctx context.Context) (ConnectionState, error) {
 		return ConnectionState{}, failure(ReasonStartFailed, "sing-box: %v", err)
 	}
 	e.conn.running = running
+	if running.tun {
+		e.noteTun()
+	}
 	e.conn.box.Store(running.box)
 	e.conn.tracker.Store(tracker)
 	e.conn.history.Store(history)

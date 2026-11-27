@@ -13,7 +13,7 @@ type texts struct {
 var russianTexts = texts{
 	folder:      "Папка для Poros:",
 	browse:      "Обзор…",
-	note:        "Poros хранит данные в этой же папке. Чтобы удалить его, удалите папку и ярлыки.",
+	note:        "Данные Poros хранятся в этой же папке. Перед её удалением нажмите «Удалить следы» в «Помощи» настроек Poros.",
 	desktop:     "Ярлык на рабочем столе",
 	startMenu:   "Ярлык в меню «Пуск»",
 	launch:      "Запустить Poros после распаковки",
@@ -34,7 +34,7 @@ var russianTexts = texts{
 var englishTexts = texts{
 	folder:      "Folder for Poros:",
 	browse:      "Browse…",
-	note:        "Poros keeps its data in this folder too. To remove it, delete the folder and the shortcuts.",
+	note:        "Poros keeps its data in this folder too. Before deleting it, press Remove traces in the Help settings of Poros.",
 	desktop:     "Shortcut on the desktop",
 	startMenu:   "Shortcut in the Start menu",
 	launch:      "Start Poros after unpacking",

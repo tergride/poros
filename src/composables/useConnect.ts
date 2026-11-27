@@ -344,6 +344,7 @@ export const useConnect = defineStore('connect', () => {
     setKillSwitch,
     setAdminAutostart,
     setSystemProxy,
+    gainRights,
     chooseServer,
     choosePreset,
     connect,

@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"PorosCore/internal/release"
+	"PorosCore/internal/wincom"
 )
 
 // The IDs of setup.rc.
@@ -202,7 +203,7 @@ func (w *window) finish(err error) {
 		}
 		folder, err := windows.KnownFolderPath(place, windows.KF_FLAG_DEFAULT)
 		if err == nil {
-			err = createShortcut(filepath.Join(folder, shortcutName), program, w.folder)
+			err = wincom.CreateShortcut(filepath.Join(folder, shortcutName), program, w.folder)
 		}
 		if err != nil {
 			w.show(fmt.Sprintf(w.text.noShortcut, err), windows.MB_ICONWARNING)

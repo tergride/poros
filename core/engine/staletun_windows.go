@@ -33,6 +33,15 @@ func tunGUID(name string) windows.GUID {
 // that worked. A device that is present belongs to a TUN that runs and stays. It needs administrator rights, as the
 // TUN does.
 func removeStaleTun() (bool, error) {
+	return staleTun(true)
+}
+
+// staleTunLeft tells whether such a device is there; looking takes no rights.
+func staleTunLeft() (bool, error) {
+	return staleTun(false)
+}
+
+func staleTun(remove bool) (bool, error) {
 	instance := `SWD\WINTUN\` + tunGUID(config.TunName).String()
 	// Without DIGCF_PRESENT the list holds the devices that are not present too.
 	devices, err := windows.SetupDiGetClassDevsEx(&netClass, "SWD", 0, 0, 0, "")
@@ -55,6 +64,9 @@ func removeStaleTun() (bool, error) {
 		var status, problem uint32
 		if windows.CM_Get_DevNode_Status(&status, &problem, device.DevInst, 0) == nil {
 			return false, nil
+		}
+		if !remove {
+			return true, nil
 		}
 		params := windows.RemoveDeviceParams{ClassInstallHeader: *windows.MakeClassInstallHeader(windows.DIF_REMOVE), Scope: windows.DI_REMOVEDEVICE_GLOBAL}
 		if err = devices.SetClassInstallParams(device, &params.ClassInstallHeader, uint32(unsafe.Sizeof(params))); err != nil {

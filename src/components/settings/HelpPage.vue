@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Check, Copy, FolderOpen, RefreshCw, ScrollText, Zap } from '@lucide/vue'
+import { Check, Copy, Eraser, FolderOpen, RefreshCw, ScrollText, Zap } from '@lucide/vue'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+import CleanupDialog from '@/components/settings/CleanupDialog.vue'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import UpdateRows from '@/components/settings/UpdateRows.vue'
@@ -17,8 +18,8 @@ import { MethodAppDebugInfo } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
-// «Help»: what to do when something does not work, and updates. The advanced mode splits them into two cards and
-// adds the debug information for a report, the data folder and beta versions.
+// «Help»: what to do when something does not work, updates, and the removal of what Poros left outside its folder before it is deleted. The
+// advanced mode gives each its card and adds the debug information for a report, the data folder and beta versions.
 const core = useCoreStore()
 const ui = useUiStore()
 const router = useRouter()
@@ -31,6 +32,7 @@ const attempt = useAttempt()
 const openLogs = () => attempt(() => appControls.openLogs())
 const openData = () => attempt(() => appControls.openData())
 const copied = ref(false)
+const cleaning = ref(false)
 
 async function copyDebugInfo(): Promise<void> {
   await navigator.clipboard.writeText(await core.core().call(MethodAppDebugInfo))
@@ -74,4 +76,10 @@ async function copyDebugInfo(): Promise<void> {
       <Switch v-model="beta" data-testid="update-beta" />
     </OptionRow>
   </SettingsCard>
+  <SettingsCard :title="advanced ? t('settings.help.cleanupTitle') : undefined">
+    <OptionRow :title="t('settings.help.cleanup')" :hint="t('settings.help.cleanupHint')">
+      <Button data-testid="cleanup-open" @click="cleaning = true"><Eraser />{{ t('settings.help.cleanupButton') }}</Button>
+    </OptionRow>
+  </SettingsCard>
+  <CleanupDialog v-model:open="cleaning" />
 </template>
