@@ -24,10 +24,14 @@ const { t, te } = useI18n()
 const locked = computed(() => draft.value?.builtin ?? true)
 const kinds = computed(() => (props.advanced ? advancedKinds : simpleKinds).map((value) => ({ value, label: t(`rules.kinds.${value}`) })))
 const targets = computed(() => targetsOf())
+// In a card narrower than 42rem a row takes two lines: the value goes under the kind and «Where», across the width.
 const columns = computed(() => {
-  if (endpoint) return 'grid-cols-[36px_160px_minmax(0,1fr)_30px_30px_30px]'
-  return props.advanced ? 'grid-cols-[36px_160px_minmax(0,1fr)_170px_30px_30px_30px]' : 'grid-cols-[160px_minmax(0,1fr)_170px_30px_30px_30px]'
+  if (endpoint) return 'grid-cols-[36px_160px_minmax(0,1fr)_30px_30px_30px] @max-[42rem]:grid-cols-[36px_minmax(0,1fr)_30px_30px_30px]'
+  return props.advanced
+    ? 'grid-cols-[36px_160px_minmax(0,1fr)_170px_30px_30px_30px] @max-[42rem]:grid-cols-[36px_minmax(0,1fr)_minmax(0,1fr)_30px_30px_30px]'
+    : 'grid-cols-[160px_minmax(0,1fr)_170px_30px_30px_30px] @max-[42rem]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_30px_30px_30px]'
 })
+const valueCell = computed(() => (props.advanced ? '@max-[42rem]:order-last @max-[42rem]:col-[2/-1]' : '@max-[42rem]:order-last @max-[42rem]:col-span-full'))
 
 const newKind = ref<string>(CondSuffix)
 const newValue = ref('')
@@ -98,42 +102,58 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
 </script>
 
 <template>
-  <SettingsCard v-if="draft" :title="t('rules.title')" data-testid="rules">
+  <SettingsCard v-if="draft" :title="t('rules.title')" class="@container" data-testid="rules">
     <p class="mt-1.5 mb-1 text-xs text-t3">{{ t(endpoint ? 'endpoints.rulesHint' : 'rules.hint') }}</p>
-    <div v-if="!locked" :class="['grid items-center gap-2 pt-1 pb-2.5', endpoint ? 'grid-cols-[160px_minmax(0,1fr)_auto]' : 'grid-cols-[160px_minmax(0,1fr)_170px_auto]']">
-      <Select v-model="newKind" :options="kinds" class="h-8 w-full" :aria-label="t('rules.newKind')" data-testid="rule-new-kind" />
+    <!-- Two lines in a narrow card too: the kind and «Where» first, the value and «Add» under them. -->
+    <div
+      v-if="!locked"
+      :class="[
+        'grid items-center gap-2 pt-1 pb-2.5',
+        endpoint
+          ? 'grid-cols-[160px_minmax(0,1fr)_auto] @max-[42rem]:grid-cols-[minmax(0,1fr)_auto]'
+          : 'grid-cols-[160px_minmax(0,1fr)_170px_auto] @max-[42rem]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]',
+      ]"
+    >
+      <Select v-model="newKind" :options="kinds" :class="['h-8 w-full', endpoint && '@max-[42rem]:col-span-2']" :aria-label="t('rules.newKind')" data-testid="rule-new-kind" />
       <Input
         v-model="newValue"
         mono
-        class="h-8"
+        :class="['h-8', !endpoint && '@max-[42rem]:col-span-2 @max-[42rem]:row-start-2']"
         :disabled="newKind === CondPrivate"
         :placeholder="newKind === CondPrivate ? t('rules.privateValue') : t(`rules.placeholder.${newKind}`)"
         :aria-label="t('rules.newValue')"
         data-testid="rule-new-value"
         @keydown.enter="add"
       />
-      <Select v-if="!endpoint" v-model="newAction" :options="targets" class="h-8 w-full" :aria-label="t('rules.newAction')" data-testid="rule-new-action" />
+      <Select
+        v-if="!endpoint"
+        v-model="newAction"
+        :options="targets"
+        class="h-8 w-full @max-[42rem]:col-span-2"
+        :aria-label="t('rules.newAction')"
+        data-testid="rule-new-action"
+      />
       <Button :disabled="adding" data-testid="rule-add" @click="add"><Plus />{{ t('common.add') }}</Button>
     </div>
 
     <div v-for="rule in head" :key="rule.name" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]">
       <span v-if="advanced" />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ label(rule) }}</span>
-      <span class="truncate text-[12.5px]">{{ value(rule) }}</span>
+      <span :class="['truncate text-[12.5px] @max-[42rem]:empty:hidden', valueCell]">{{ value(rule) }}</span>
       <span class="pl-[11px] text-[12.5px]">{{ t(`action.${rule.action}`) }}</span>
       <span /><span /><span />
     </div>
     <div v-if="endpointNames" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-endpoints">
       <span v-if="advanced" />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('rules.endpoints') }}</span>
-      <span class="truncate text-[12.5px]" :title="endpointsValue">{{ endpointsValue }}</span>
+      <span :class="['truncate text-[12.5px]', valueCell]" :title="endpointsValue">{{ endpointsValue }}</span>
       <span class="truncate pl-[11px] text-[12.5px]">{{ t('action.endpoint') }}</span>
       <span /><span /><span />
     </div>
     <div v-if="endpoint" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-networks">
       <span />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('endpoints.networks') }}</span>
-      <span class="truncate text-[12.5px]" :title="t('endpoints.networksValue')">{{ t('endpoints.networksValue') }}</span>
+      <span :class="['truncate text-[12.5px]', valueCell]" :title="t('endpoints.networksValue')">{{ t('endpoints.networksValue') }}</span>
       <span /><span /><span />
     </div>
 
@@ -154,12 +174,12 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
           :aria-label="t('rules.kind')"
           @update:model-value="(kind: string) => setKind(rule, i, kind)"
         />
-        <span v-if="rule.conditions[0]!.kind === CondPrivate" class="pl-[11px] text-[12.5px] text-t3">{{ t('rules.privateValue') }}</span>
+        <span v-if="rule.conditions[0]!.kind === CondPrivate" :class="['pl-[11px] text-[12.5px] text-t3', valueCell]">{{ t('rules.privateValue') }}</span>
         <Input
           v-else
           :model-value="rule.conditions[0]!.values[0] ?? ''"
           mono
-          class="h-8"
+          :class="['h-8', valueCell]"
           :aria-label="t('rules.value')"
           data-testid="rule-value"
           @change="(event: Event) => setValue(rule, i, event)"
@@ -170,7 +190,7 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
         <span class="inline-flex h-[22px] items-center justify-self-start rounded-md bg-s4 px-2 text-[11.5px] text-t2">
           {{ t(rule.conditions.length > 1 ? 'rules.several' : 'rules.inverted') }}
         </span>
-        <Button variant="ghost" size="sm" class="min-w-0 justify-start" :title="t('rules.editConditions')" @click="ruleOpen = i">
+        <Button variant="ghost" size="sm" :class="['min-w-0 justify-start', valueCell]" :title="t('rules.editConditions')" @click="ruleOpen = i">
           <span class="truncate">{{ ruleSummary(rule, t) }}</span>
         </Button>
       </template>
@@ -201,14 +221,14 @@ const blur = (event: KeyboardEvent) => (event.target as HTMLInputElement).blur()
     <div v-for="rule in endpoint ? [] : tail" :key="rule.name" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]">
       <span v-if="advanced" />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ label(rule) }}</span>
-      <span class="truncate text-[12.5px]">{{ value(rule) }}</span>
+      <span :class="['truncate text-[12.5px] @max-[42rem]:empty:hidden', valueCell]">{{ value(rule) }}</span>
       <span class="pl-[11px] text-[12.5px]">{{ t(`action.${rule.action}`) }}</span>
       <span /><span /><span />
     </div>
     <div v-if="advanced && !endpoint" :class="['grid items-center gap-2 border-t border-line py-1.5 text-t3', columns]" data-testid="rule-rest">
       <span />
       <span class="flex items-center gap-1.5"><Lock class="size-3.5" />{{ t('rules.rest') }}</span>
-      <span class="truncate text-[12.5px]">{{ t('rules.restValue') }}</span>
+      <span :class="['truncate text-[12.5px]', valueCell]">{{ t('rules.restValue') }}</span>
       <span class="pl-[11px] text-[12.5px]">{{ restAction }}</span>
       <span /><span /><span />
     </div>

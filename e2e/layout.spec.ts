@@ -289,6 +289,21 @@ for (const { lang, locale } of languages) {
         await expect(page.getByTestId('segment-advanced')).toBeHidden()
 
         for (const path of advancedScreens) await visit(page, path)
+        // A preset of the user in «Routing», simple and then advanced: the most buttons over the editor, and a rule of
+        // its own in the list.
+        await visit(page, '/adv/routing/rules/all', false)
+        await page.getByTestId('preset-copy').click()
+        await page.getByTestId('new-preset-create').click()
+        await page.getByTestId('rule-new-value').fill('example.com')
+        await page.getByTestId('rule-new-value').press('Enter')
+        await expect(page.getByTestId('rule-value')).toHaveValue('example.com')
+        await check(page, 'adv-routing-mine')
+        await page.getByTestId('preset-to-advanced').click()
+        await page.getByTestId('to-advanced-confirm').click()
+        await expect(page.getByTestId('preset-advanced')).toBeVisible()
+        await check(page, 'adv-routing-mine-advanced')
+        await page.getByTestId('preset-save').click()
+        await expect(page.getByTestId('savebar')).toBeHidden()
         await visit(page, '/adv/settings/conn')
         const settings = await pagesIn(page, '/adv/settings/')
         expect(settings).toContain('/adv/settings/hotkeys')
