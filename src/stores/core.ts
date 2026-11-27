@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 
+import { speedSeconds } from '@/lib/speedChart'
 import { type CoreClient, type CoreStatus, useCore } from '@/platform'
 import { localProxyPort } from '@/platform/core'
 import type {
@@ -188,7 +189,7 @@ export const useCoreStore = defineStore('core', () => {
       })
       c.on(EventConnectionTraffic, (next) => {
         traffic.value = next
-        speedHistory.value = [...speedHistory.value.slice(-59), next]
+        speedHistory.value = [...speedHistory.value.slice(-speedSeconds), next]
       })
       c.on(EventNetworkChanged, (next) => (network.value = next))
       c.on(EventKillSwitchChanged, (next) => (killSwitch.value = next))

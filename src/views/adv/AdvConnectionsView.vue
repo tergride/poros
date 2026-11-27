@@ -114,7 +114,7 @@ onBeforeUnmount(() => clearInterval(timer))
       </div>
     </div>
     <template v-else>
-      <div class="h-[132px] flex-none border-b border-line px-3.5 pt-3 pb-2" data-testid="speed-chart">
+      <div class="h-44 flex-none border-b border-line px-3.5 pt-3 pb-2.5" data-testid="speed-chart">
         <SpeedChart :samples="core.speedHistory" />
       </div>
       <div v-if="tracked" class="flex flex-none items-center gap-2 border-b border-line px-3.5 py-2.5">

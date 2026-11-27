@@ -1100,6 +1100,22 @@ test('«Connections» lists the connections by process or in a list, filters and
   // A few seconds of speed for the chart.
   await page.waitForTimeout(2500)
   await shot(page, 'adv-connections')
+  // The legend names the lines; the pointer or the arrow keys show both speeds of one second.
+  await expect(page.getByTestId('speed-legend-download')).toContainText(/Загрузка.*\/с/)
+  await expect(page.getByTestId('speed-legend-upload')).toContainText(/Отдача.*\/с/)
+  const plot = page.getByTestId('speed-plot')
+  const box = (await plot.boundingBox())!
+  await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2)
+  const tip = page.getByTestId('speed-tip')
+  await expect(tip).toContainText(/^Сейчас.*\/с.*Загрузка.*\/с.*Отдача$/)
+  await shot(page, 'adv-connections-chart')
+  await page.mouse.move(box.x - 40, box.y - 40)
+  await expect(tip).toBeHidden()
+  await plot.focus()
+  await page.keyboard.press('ArrowLeft')
+  await expect(tip).toContainText(/^1 с назад/)
+  await plot.blur()
+  await expect(tip).toBeHidden()
   await page.getByTestId('conn-row').filter({ hasText: 'www.example.com' }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Закрыть соединение' }).click()
   await expect(page.getByTestId('conn-active')).toHaveText('Активно: 4')

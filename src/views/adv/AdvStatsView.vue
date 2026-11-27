@@ -102,9 +102,10 @@ onBeforeUnmount(() => clearInterval(timer))
           </div>
         </section>
       </div>
-      <section class="mt-2.5 rounded-xl border border-line bg-s2 px-4 py-3">
-        <h3 class="mb-1.5 text-[13px] font-semibold">{{ t('adv.stats.speed') }}</h3>
-        <div class="h-[132px]"><SpeedChart :samples="core.speedHistory" /></div>
+      <section class="mt-2.5 h-51 rounded-xl border border-line bg-s2 px-4 py-3" data-testid="stats-speed">
+        <SpeedChart :samples="core.speedHistory">
+          <h3 class="text-[13px] font-semibold">{{ t('adv.stats.speed') }}</h3>
+        </SpeedChart>
       </section>
       <section class="mt-2.5 flex items-baseline justify-between rounded-xl border border-line bg-s2 px-4 py-3 text-[13px]">
         <span class="text-t2">{{ t('adv.stats.nextUpdate') }}</span>

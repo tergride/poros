@@ -1242,6 +1242,14 @@
       "soon": "any moment",
       "ms": "{n} ms"
     },
+    "speed": {
+      "label": "Speed over the last minute",
+      "now": "now",
+      "tick": "−{n} s",
+      "current": "Now",
+      "ago": "{n} s ago",
+      "empty": "The speed shows while connected"
+    },
     "traffic": {
       "period": "Period",
       "day": "The last 24 hours",
