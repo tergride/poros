@@ -322,7 +322,7 @@ func (e *Engine) InspectBackup(p BackupText) (BackupInfo, error) {
 
 // RestoreBackup puts the chosen parts of a backup in place of the current ones, each whole, and leaves the rest. The
 // connection stops first: its server and preset may go. The chosen server and preset that are gone afterwards give
-// way to none and to the standard preset; the rights at sign-in stay as they are, being of this computer.
+// way to none and to the standard preset. Rights at sign-in in a backup of an earlier version are left out.
 func (e *Engine) RestoreBackup(p BackupRestore) (BackupInfo, error) {
 	file, err := e.readBackup(p.Text, p.Password)
 	if err != nil {
@@ -387,9 +387,7 @@ func (e *Engine) RestoreBackup(p BackupRestore) (BackupInfo, error) {
 		return BackupInfo{}, err
 	}
 	if has(BackupSettings) {
-		restored := *file.Settings
-		restored.AdminAutostart = settings.AdminAutostart
-		settings = restored
+		settings = *file.Settings
 	}
 	if _, found, err := e.preset(settings.Preset); err != nil || !found {
 		settings.Preset = standardPreset

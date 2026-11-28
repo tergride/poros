@@ -32,8 +32,7 @@ func (e *Engine) ScanCleanup() CleanupReport {
 	return CleanupReport{Items: scanTraces(e.traces(), e.foreignUser)}
 }
 
-// RunCleanup turns off what would bring the traces back at the next start, the start with Windows and rights at
-// sign-in, stops the connection and what the kill switch holds, removes the traces it may and tells what stays.
+// RunCleanup turns off what would bring the traces back at the next start, the start with Windows, stops the connection and what the kill switch holds, removes the traces it may and tells what stays.
 func (e *Engine) RunCleanup() (CleanupReport, error) {
 	if err := e.turnOffStart(); err != nil {
 		return CleanupReport{}, err
@@ -56,16 +55,15 @@ func (e *Engine) RunCleanup() (CleanupReport, error) {
 	return CleanupReport{Items: items}, nil
 }
 
-// turnOffStart turns the start with Windows and rights at sign-in off; without rights the task of the sign-in is
-// marked for removal, as when the user turns it off.
+// turnOffStart turns the start with Windows off.
 func (e *Engine) turnOffStart() error {
 	e.writeMu.Lock()
 	defer e.writeMu.Unlock()
 	settings, err := e.Settings()
-	if err != nil || (!settings.Autostart && !settings.AdminAutostart) {
+	if err != nil || !settings.Autostart {
 		return err
 	}
-	settings.Autostart, settings.AdminAutostart = false, false
+	settings.Autostart = false
 	_, err = e.setSettings(settings)
 	return err
 }

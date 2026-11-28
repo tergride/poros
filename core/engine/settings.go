@@ -1,8 +1,7 @@
 package engine
 
 import (
-	"log"
-	"os"
+	"encoding/json"
 	"slices"
 	"strings"
 	"time"
@@ -88,11 +87,6 @@ func (e *Engine) setSettings(settings Settings) (Settings, error) {
 	if err != nil {
 		return Settings{}, err
 	}
-	if settings.AdminAutostart != previous.AdminAutostart {
-		if err = e.syncLogonTask(settings.AdminAutostart); err != nil {
-			return Settings{}, err
-		}
-	}
 	if err := e.db.Update(func(tx *bbolt.Tx) error {
 		return putJSON(tx, bucketSettings, keySettings, settings)
 	}); err != nil {
@@ -115,36 +109,37 @@ func (e *Engine) setSettings(settings Settings) (Settings, error) {
 	return settings, nil
 }
 
-// syncLogonTask creates the sign-in task when rights at sign-in come on, which takes administrator rights, and
-// removes it when they go off: at once in a core with rights, else the task removes itself at the next sign-in.
-func (e *Engine) syncLogonTask(on bool) error {
-	program, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	if on {
-		if !elevated() {
-			return jsonrpc.Failed(ReasonLogonTaskNeedsElevation, "the sign-in task takes administrator rights")
-		}
-		// The task would start the core for the other account.
-		if e.foreignUser {
-			return jsonrpc.Failed(ReasonLogonTaskFailed, "the core has the rights of another account")
-		}
-		if err = logontask.Register(program, e.dataDir); err != nil {
-			log.Printf("sign-in task: %v", err)
-			return jsonrpc.Failed(ReasonLogonTaskFailed, "%v", err)
-		}
-		log.Print("sign-in task: created")
-		return nil
-	}
-	if elevated() && !e.foreignUser {
-		if err = logontask.Remove(program, e.dataDir); err == nil {
-			log.Print("sign-in task: removed")
+// dropAdminAutostart takes rights at sign-in out of the stored settings: earlier versions had that setting and made a
+// task of the Task Scheduler for it. A task that may be there is marked for removal, which the core it starts at the
+// next sign-in does, or the cleanup. The other settings stay as they were stored, secrets sealed.
+func dropAdminAutostart(db *bbolt.DB, dataDir string) error {
+	return db.Update(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket(bucketSettings)
+		data := bucket.Get(keySettings)
+		if data == nil {
 			return nil
 		}
-		log.Printf("sign-in task: %v", err)
-	}
-	return logontask.MarkRemoval(e.dataDir)
+		var fields map[string]json.RawMessage
+		// Settings that do not decode are told by Settings.
+		if json.Unmarshal(data, &fields) != nil {
+			return nil
+		}
+		on, found := fields["adminAutostart"]
+		if !found {
+			return nil
+		}
+		if string(on) == "true" {
+			if err := logontask.MarkRemoval(dataDir); err != nil {
+				return err
+			}
+		}
+		delete(fields, "adminAutostart")
+		data, err := json.Marshal(fields)
+		if err != nil {
+			return err
+		}
+		return bucket.Put(keySettings, data)
+	})
 }
 
 func (e *Engine) validateSettings(settings Settings) error {

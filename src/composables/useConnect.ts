@@ -240,19 +240,6 @@ export const useConnect = defineStore('connect', () => {
     await elevate(core.running, 'killSwitch')
   }
 
-  /**
-   * Rights at sign-in: the sign-in task is made by a core with rights, so turning them on asks for rights first,
-   * unless the core has them. A refusal leaves the switch off; a running connection starts again in the new core.
-   */
-  async function setAdminAutostart(on: boolean): Promise<void> {
-    if (on && !core.status.elevated) {
-      const running = core.running
-      if (!(await gainRights())) return
-      if (running) await connect()
-    }
-    await core.updateSettings({ adminAutostart: on })
-  }
-
   async function tryWithoutRights(): Promise<void> {
     killSwitchBefore.value = null
     adminOpen.value = false
@@ -342,7 +329,6 @@ export const useConnect = defineStore('connect', () => {
     useSystemInstead,
     setTun,
     setKillSwitch,
-    setAdminAutostart,
     setSystemProxy,
     gainRights,
     chooseServer,

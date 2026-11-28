@@ -464,8 +464,6 @@
       "closeToTrayHint": "Off, the close button quits Poros.",
       "urlSchemeOther": "Another copy of Poros opens them now: {program}. Turn on to let this one open them.",
       "autostartOnly": "Works when Poros starts with Windows.",
-      "adminAutostart": "Give administrator rights at autostart",
-      "adminAutostartHint": "At sign-in, TUN and the kill switch come on without asking for rights. Poros creates a Task Scheduler task for this, and Windows asks for permission once.",
       "runAsAdmin": "Run with administrator rights",
       "runAsAdminHint": "Windows asks for permission at every start, and then TUN and the kill switch ask nothing. The Poros window runs without rights.",
       "urlSchemeTitle": "poros:// links",
@@ -523,7 +521,7 @@
       "poros": "Poros version",
       "cleanupTitle": "Removal",
       "cleanup": "Remove Poros traces",
-      "cleanupHint": "Removes from Windows what Poros left outside its folder: the start with Windows, poros:// links, the Task Scheduler task, shortcuts, firewall rules, the TUN network. Then Poros exits, and the folder can be deleted.",
+      "cleanupHint": "Removes from Windows what Poros left outside its folder: the start with Windows, poros:// links, shortcuts, firewall rules, the TUN network. Then Poros exits, and the folder can be deleted.",
       "cleanupButton": "Remove traces…"
     },
     "inbound": {
@@ -1078,8 +1076,6 @@
     "needs_elevation": "TUN needs administrator rights",
     "spoof_needs_elevation": "TLS spoofing needs administrator rights",
     "kill_switch_needs_elevation": "the kill switch needs administrator rights",
-    "logon_task_needs_elevation": "rights at autostart need administrator rights",
-    "logon_task_failed": "Windows did not create the Task Scheduler task",
     "kill_switch_failed": "the kill switch did not turn on",
     "stop_timeout": "the connection did not close in time; reset it in Help",
     "fetch_failed": "the subscription did not download",

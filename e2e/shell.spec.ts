@@ -161,21 +161,16 @@ test('the DNS page saves the default servers and the way of names at once', asyn
   await expect(page.getByTestId('fake-ip')).toHaveAttribute('data-state', 'checked')
 })
 
-test('rights at autostart come with autostart and ask for rights first', async ({ page }) => {
+test('starting minimized comes with autostart', async ({ page }) => {
   await throughWizard(page)
   await page.getByTestId('portal-settings').click()
   await page.getByRole('link', { name: 'Запуск', exact: true }).click()
   const autostart = page.getByTestId('autostart')
-  const adminAutostart = page.getByTestId('admin-autostart')
+  const minimized = page.getByTestId('start-minimized')
   if ((await autostart.getAttribute('data-state')) === 'checked') await autostart.click()
-  await expect(adminAutostart).toBeDisabled()
+  await expect(minimized).toBeDisabled()
   await autostart.click()
-  await expect(adminAutostart).toBeEnabled()
-  await expect(page.getByTestId('admin-chip')).toBeHidden()
-  // The sign-in task is made by a core with rights: the core restarts with them first.
-  await adminAutostart.click()
-  await expect(page.getByTestId('admin-chip')).toBeVisible()
-  await expect(adminAutostart).toHaveAttribute('data-state', 'checked')
+  await expect(minimized).toBeEnabled()
   await expect(page.getByTestId('run-as-admin')).toHaveAttribute('data-state', 'unchecked')
   await shot(page, 'settings-start')
 })

@@ -1,4 +1,4 @@
-import { type ComputedRef, type WritableComputedRef, computed } from 'vue'
+import { type WritableComputedRef, computed } from 'vue'
 
 import { useAttempt } from '@/composables/useAttempt'
 import type { Settings } from '@/platform/core-types'
@@ -47,10 +47,4 @@ export function useTypedSetting<K extends keyof Settings>(key: K): WritableCompu
     get: () => core.settings![key],
     set: (value) => void attempt(() => core.updateSettings({ [key]: value })),
   })
-}
-
-/** The core is applying the setting now: for a control whose change takes long, such as one behind a UAC prompt. */
-export function useApplying(key: keyof Settings): ComputedRef<boolean> {
-  const ui = useUiStore()
-  return computed(() => key in ui.applying)
 }

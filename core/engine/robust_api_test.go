@@ -121,17 +121,14 @@ type contractMethod struct {
 	sanitize func(raw []byte) []byte
 }
 
-// safeSettings turns off the kill switch and the task of the sign-in in settings that turn them on: the kill switch
-// would run a refusal with what else the settings say, the network included, and the task is the system's.
+// safeSettings turns off the kill switch in settings that turn it on: it would run a refusal with what else the
+// settings say, the network included.
 func safeSettings(s *Settings) bool {
-	changed := false
 	if s.KillSwitch == KillSwitchConnected || s.KillSwitch == KillSwitchAlways {
-		s.KillSwitch, changed = KillSwitchOff, true
+		s.KillSwitch = KillSwitchOff
+		return true
 	}
-	if s.AdminAutostart {
-		s.AdminAutostart, changed = false, true
-	}
-	return changed
+	return false
 }
 
 // sanitizeSettings decodes the params as settings.set does and makes them safe when they would decode.

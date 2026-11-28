@@ -1,6 +1,5 @@
-//! Starting the core process: as a child of the shell, or with administrator rights through UAC, which TUN needs,
-//! or taking the one the sign-in task started with rights. The window always runs without rights; only the core is
-//! elevated.
+//! Starting the core process: as a child of the shell, or with administrator rights through UAC, which TUN needs. The
+//! window always runs without rights; only the core is elevated.
 
 use std::path::Path;
 
@@ -56,9 +55,6 @@ pub enum Process {
     /// A core elevated through UAC is no child of the shell: there is a handle, its exit code, and no stderr.
     #[cfg(windows)]
     Elevated(elevated::Process),
-    /// The core of the sign-in task before it connects: it starts on its own, with rights, and is no process here
-    /// until then.
-    Awaited,
 }
 
 impl Process {
@@ -67,11 +63,10 @@ impl Process {
             Process::Child(child) => child.id(),
             #[cfg(windows)]
             Process::Elevated(process) => Some(process.pid),
-            Process::Awaited => None,
         }
     }
 
-    /// Whether it has rights; the core of the sign-in task counts once it came.
+    /// Whether it has rights.
     pub fn elevated(&self) -> bool {
         #[cfg(windows)]
         if let Process::Elevated(_) = self {
@@ -101,7 +96,6 @@ impl Process {
                     code: Some(i64::from(code)),
                 }
             }
-            Process::Awaited => std::future::pending().await,
         }
     }
 
@@ -114,7 +108,6 @@ impl Process {
             }
             #[cfg(windows)]
             Process::Elevated(process) => process.terminate(),
-            Process::Awaited => {}
         }
     }
 }
@@ -166,17 +159,6 @@ pub fn spawn_elevated(
     ))
 }
 
-/// Takes the core of the sign-in task that connected from `pid`, once its program is this copy's core.
-#[cfg(windows)]
-pub fn adopt(pid: u32, program: &Path) -> Result<Process, String> {
-    elevated::adopt(pid, program).map(Process::Elevated)
-}
-
-#[cfg(not(windows))]
-pub fn adopt(_pid: u32, _program: &Path) -> Result<Process, String> {
-    Err("the sign-in task is for Windows".to_string())
-}
-
 /// The process on the other end of the core channel, to make sure it is the core that was started.
 #[cfg(windows)]
 pub fn client_pid(pipe: &impl std::os::windows::io::AsRawHandle) -> Option<u32> {
@@ -197,9 +179,7 @@ mod elevated {
         CloseHandle, ERROR_ACCESS_DISABLED_BY_POLICY, ERROR_CANCELLED, GetLastError, HANDLE,
     };
     use windows_sys::Win32::System::Threading::{
-        GetExitCodeProcess, GetProcessId, INFINITE, OpenProcess, PROCESS_NAME_WIN32,
-        PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE,
-        QueryFullProcessImageNameW, TerminateProcess, WaitForSingleObject,
+        GetExitCodeProcess, GetProcessId, INFINITE, TerminateProcess, WaitForSingleObject,
     };
     use windows_sys::Win32::UI::Shell::{
         SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
@@ -332,43 +312,6 @@ mod elevated {
         let handle = Handle(info.hProcess);
         // SAFETY: the handle is a live process handle.
         let pid = unsafe { GetProcessId(handle.0) };
-        Ok(watched(pid, handle))
-    }
-
-    /// Opens the process of a core that started on its own and checks that it runs `program`.
-    pub fn adopt(pid: u32, program: &Path) -> Result<Process, String> {
-        // SAFETY: plain calls; a handle that opens is owned by Handle from here on. A core with rights may refuse
-        // the right to end it to a shell without them: it then exits on its own once the channel closes.
-        let raw = unsafe {
-            let wanted = PROCESS_SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION;
-            match OpenProcess(wanted | PROCESS_TERMINATE, 0, pid) {
-                raw if raw.is_null() => OpenProcess(wanted, 0, pid),
-                raw => raw,
-            }
-        };
-        if raw.is_null() {
-            return Err(format!(
-                "cannot open process {pid}: {}",
-                std::io::Error::last_os_error()
-            ));
-        }
-        let handle = Handle(raw);
-        let mut buffer = vec![0u16; 32768];
-        let mut size = buffer.len() as u32;
-        // SAFETY: the buffer holds `size` characters, and the call writes at most that many.
-        if unsafe {
-            QueryFullProcessImageNameW(handle.0, PROCESS_NAME_WIN32, buffer.as_mut_ptr(), &mut size)
-        } == 0
-        {
-            return Err(format!(
-                "the program of process {pid}: {}",
-                std::io::Error::last_os_error()
-            ));
-        }
-        let image = String::from_utf16_lossy(&buffer[..size as usize]);
-        if !image.eq_ignore_ascii_case(&program.display().to_string()) {
-            return Err(format!("{image} connected to the core channel"));
-        }
         Ok(watched(pid, handle))
     }
 

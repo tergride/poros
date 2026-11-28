@@ -222,21 +222,24 @@ func systemTempTrace() trace {
 	}
 }
 
-// logonTaskTrace is the task of rights at sign-in. A user without rights may not see it: the setting, or the mark
-// for its removal that turning the setting off without rights leaves, tells of it then.
+// logonTaskTrace is the task of rights at sign-in that earlier versions made. A user without rights may not see it:
+// the mark for its removal tells of it then. A core with rights sees every task, so a mark without its task is left
+// from a task that removed itself at sign-in, and goes.
 func (e *Engine) logonTaskTrace(core string) trace {
 	return trace{
 		kind:   CleanupLogonTask,
 		rights: true,
 		find: func() (int, error) {
-			settings, err := e.Settings()
-			if err != nil {
-				return 0, err
-			}
-			if settings.AdminAutostart || logontask.RemovalMarked(e.dataDir) || logontask.Exists(core) {
+			if logontask.Exists(core) {
 				return 1, nil
 			}
-			return 0, nil
+			if !logontask.RemovalMarked(e.dataDir) {
+				return 0, nil
+			}
+			if elevated() {
+				return 0, logontask.Remove(core, e.dataDir)
+			}
+			return 1, nil
 		},
 		remove: func() error { return logontask.Remove(core, e.dataDir) },
 	}

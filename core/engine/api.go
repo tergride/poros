@@ -163,10 +163,6 @@ type Settings struct {
 	Autostart      bool `json:"autostart"`
 	StartMinimized bool `json:"startMinimized"`
 	CloseToTray    bool `json:"closeToTray"`
-	// AdminAutostart gives the core administrator rights at sign-in without a UAC prompt: a task of the Task
-	// Scheduler starts it, and the shell of the autostart waits for it. Turning it on takes rights; turning it off
-	// without them leaves the task to remove itself at the next sign-in.
-	AdminAutostart bool `json:"adminAutostart"`
 	// RunAsAdmin asks for rights through UAC as Poros starts, so TUN and the kill switch ask nothing later. Only the
 	// core gets them, as always.
 	RunAsAdmin bool `json:"runAsAdmin"`
@@ -1328,7 +1324,7 @@ const (
 	CleanupShortcuts = "shortcuts"
 	// CleanupTempFiles are files Poros left in the Temp folders.
 	CleanupTempFiles = "tempFiles"
-	// CleanupLogonTask is the task of the Task Scheduler for rights at sign-in.
+	// CleanupLogonTask is the task of the Task Scheduler that earlier versions made for rights at sign-in.
 	CleanupLogonTask = "logonTask"
 	// CleanupTunDevice is the device of the TUN adapter a run left behind.
 	CleanupTunDevice = "tunDevice"
@@ -1551,10 +1547,6 @@ const (
 	ReasonSpoofNeedsElevation = "spoof_needs_elevation"
 	// ReasonKillSwitchNeedsElevation is the kill switch in a core without administrator rights.
 	ReasonKillSwitchNeedsElevation = "kill_switch_needs_elevation"
-	// ReasonLogonTaskNeedsElevation is rights at sign-in asked of a core without administrator rights.
-	ReasonLogonTaskNeedsElevation = "logon_task_needs_elevation"
-	// ReasonLogonTaskFailed is a sign-in task Windows did not create.
-	ReasonLogonTaskFailed = "logon_task_failed"
 	// ReasonKillSwitchFailed is a block of the kill switch that did not turn on or went away.
 	ReasonKillSwitchFailed = "kill_switch_failed"
 	// ReasonPortBusy is the port of the mixed inbound held by another program.

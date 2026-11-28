@@ -159,7 +159,6 @@ import {
   KillSwitchConnected,
   KillSwitchOff,
   ReasonKillSwitchNeedsElevation,
-  ReasonLogonTaskNeedsElevation,
   ReasonNeedsElevation,
   ReasonSpoofNeedsElevation,
   ReasonNoServer,
@@ -282,7 +281,6 @@ const defaultSettings: Settings = {
   autostart: false,
   startMinimized: false,
   closeToTray: true,
-  adminAutostart: false,
   runAsAdmin: false,
   killSwitch: KillSwitchConnected,
   textSize: 'normal',
@@ -958,10 +956,6 @@ export function createStubCore(): CoreClient {
       if (![KillSwitchOff, KillSwitchConnected, KillSwitchAlways].includes(next.killSwitch)) {
         throw failed(ReasonInvalidValue, `killSwitch must be off, connected or always, not "${next.killSwitch}"`)
       }
-      // As core/engine/settings.go: the sign-in task is made by a core with rights.
-      if (next.adminAutostart && !settings.adminAutostart && !status.elevated) {
-        throw failed(ReasonLogonTaskNeedsElevation, 'the sign-in task takes administrator rights')
-      }
       checkDnsSettings(next)
       const previous = settings.killSwitch
       settings = { ...next }
@@ -1305,8 +1299,8 @@ export function createStubCore(): CoreClient {
     }),
     // As core/engine/cleanup.go: the start with Windows goes off, everything stops, what takes rights waits for them.
     [MethodCleanupRun]: () => {
-      if (settings.autostart || settings.adminAutostart) {
-        settings = { ...settings, autostart: false, adminAutostart: false }
+      if (settings.autostart) {
+        settings = { ...settings, autostart: false }
         emit(EventSettingsChanged, { ...settings })
       }
       if (connection.state !== ConnectionIdle) setConnection({ ...idle })

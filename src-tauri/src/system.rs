@@ -15,8 +15,6 @@ use serde::Serialize;
 pub struct Integration {
     pub autostart: bool,
     pub start_minimized: bool,
-    /// The autostart waits for the core of the sign-in task, which has rights, instead of starting a core.
-    pub logon_core: bool,
 }
 
 /// Who opens `poros://` links now.
@@ -64,14 +62,12 @@ impl CleanupItem {
 pub const CLEANUP_AUTOSTART: &str = "autostart";
 pub const CLEANUP_URL_SCHEME: &str = "urlScheme";
 
-/// The command line Windows runs at sign-in.
+/// The command line Windows runs at sign-in. One that earlier versions wrote, with --logon-core, differs from it and
+/// is written over at the first start.
 pub fn autostart_command(exe: &Path, integration: &Integration) -> String {
     let mut command = format!("\"{}\" --autostart", exe.display());
     if integration.start_minimized {
         command.push_str(" --minimized");
-    }
-    if integration.logon_core {
-        command.push_str(" --logon-core");
     }
     command
 }
@@ -359,7 +355,6 @@ mod windows {
             let autostart = Integration {
                 autostart: true,
                 start_minimized: true,
-                logon_core: false,
             };
 
             apply(&exe, autostart).unwrap();
@@ -484,10 +479,9 @@ mod tests {
             r#""D:\Apps\Poros\Poros.exe" --autostart"#
         );
         integration.start_minimized = true;
-        integration.logon_core = true;
         assert_eq!(
             autostart_command(&exe, &integration),
-            r#""D:\Apps\Poros\Poros.exe" --autostart --minimized --logon-core"#
+            r#""D:\Apps\Poros\Poros.exe" --autostart --minimized"#
         );
         assert!(points_at(&autostart_command(&exe, &integration), &exe));
         assert!(points_at(&url_command(&exe).to_uppercase(), &exe));

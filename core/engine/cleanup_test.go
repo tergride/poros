@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/sagernet/bbolt"
-
-	"PorosCore/internal/logontask"
 )
 
 // fakeTrace is a trace of a test: count of it are there until remove takes them, or fails with err.
@@ -123,8 +121,7 @@ func TestCleanupTurnsOffTheStartAndStopsTheKillSwitch(t *testing.T) {
 	shortcuts := &fakeTrace{kind: CleanupShortcuts, profile: true, count: 1}
 	k.traces = tracesOf(shortcuts)
 	settings, _ := k.Settings()
-	// Rights at sign-in come on only in a core with rights; the test writes them as such a core would have.
-	settings.Autostart, settings.AdminAutostart = true, true
+	settings.Autostart = true
 	if err := k.db.Update(func(tx *bbolt.Tx) error { return putJSON(tx, bucketSettings, keySettings, settings) }); err != nil {
 		t.Fatal(err)
 	}
@@ -148,14 +145,11 @@ func TestCleanupTurnsOffTheStartAndStopsTheKillSwitch(t *testing.T) {
 		t.Errorf("the cleanup stops the refusal: %+v, %+v", k.KillSwitchState(), k.ConnectionState())
 	}
 	got, _ := k.Settings()
-	if got.Autostart || got.AdminAutostart {
+	if got.Autostart {
 		t.Errorf("the start with Windows stays on: %+v", got)
 	}
 	if got.KillSwitch != KillSwitchAlways {
 		t.Error("the cleanup changes only the start with Windows")
-	}
-	if !elevated() && !logontask.RemovalMarked(dir) {
-		t.Error("without rights the sign-in task is marked for removal")
 	}
 }
 

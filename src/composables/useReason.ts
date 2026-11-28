@@ -24,7 +24,6 @@ const detailed = new Set([
   'warp_failed',
   'system_proxy_failed',
   'kill_switch_failed',
-  'logon_task_failed',
   'update_failed',
   'check_failed',
   'invalid_backup',

@@ -174,13 +174,9 @@ func runCore() {
 	serve(opts, conn)
 }
 
-// waitShell is how long the core of the sign-in task waits for the shell that autostart starts: Windows may hold
-// autostart back on a slow sign-in.
-const waitShell = 5 * time.Minute
-
-// runLogonCore is the core the sign-in task starts with administrator rights. It joins the shell that autostart
-// starts in the same sign-in, when that shell waits for it, and serves it as the core the shell would start.
-func runLogonCore(args []string) {
+// runLogonTask is the core that the task of rights at sign-in, which earlier versions made, starts with the highest
+// rights of its account: it removes the task and exits.
+func runLogonTask(args []string) {
 	var dataDir string
 	flags := flag.NewFlagSet("PorosCore", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -193,36 +189,11 @@ func runLogonCore(args []string) {
 	if err != nil {
 		log.Fatalf("sign-in task: %v", err)
 	}
-	if logontask.RemovalMarked(dataDir) {
-		if err = logontask.Remove(program, dataDir); err != nil {
-			log.Fatalf("sign-in task: remove the task: %v", err)
-		}
-		log.Print("sign-in task: removed, its setting went off")
-		os.Exit(0)
+	if err = logontask.Remove(program, dataDir); err != nil {
+		log.Fatalf("sign-in task: remove the task: %v", err)
 	}
-	if !host.Elevated() {
-		log.Fatal("sign-in task: the core has no administrator rights")
-	}
-	if !logontask.AutostartWaits(program) {
-		log.Print("sign-in task: autostart does not wait for this core")
-		os.Exit(0)
-	}
-	launch, err := logontask.WaitLaunch(dataDir, waitShell)
-	if err != nil {
-		log.Printf("sign-in task: %v", err)
-		os.Exit(0)
-	}
-	opts := options{pipe: launch.Pipe, token: launch.Token, dataDir: dataDir, version: launch.Version, hostPID: launch.HostPID}
-	logBanner(opts)
-	conn, err := ipc.Dial(opts.pipe)
-	if err != nil {
-		log.Fatalf("connect to the shell: %v", err)
-	}
-	if err = logontask.VerifyShell(conn, opts.hostPID, program); err != nil {
-		log.Fatalf("sign-in task: %v", err)
-	}
-	log.Print("sign-in task: the core joined the shell with administrator rights")
-	serve(opts, conn)
+	log.Print("sign-in task: removed, Poros gives no rights at sign-in any more")
+	os.Exit(0)
 }
 
 // runRestoreProxy is the core Windows runs once at sign-in after a run that left the proxy of Windows at Poros: it
@@ -317,7 +288,7 @@ func main() {
 	go watchMemory()
 
 	if len(os.Args) > 1 && os.Args[1] == "--logon" {
-		runLogonCore(os.Args[2:])
+		runLogonTask(os.Args[2:])
 	}
 	if len(os.Args) > 1 && os.Args[1] == "--restore-proxy" {
 		runRestoreProxy(os.Args[2:])

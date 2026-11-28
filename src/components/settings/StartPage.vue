@@ -6,24 +6,17 @@ import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
-import { useConnect } from '@/composables/useConnect'
-import { useApplying, useSetting, useSettingAction } from '@/composables/useSetting'
+import { useSetting } from '@/composables/useSetting'
 import { useSettingsPage } from '@/composables/useSettingsBlock'
 import { type UrlScheme, urlScheme } from '@/platform'
 
 const { t } = useI18n()
 const attempt = useAttempt()
-const connect = useConnect()
 const autostart = useSetting('autostart')
 const autoConnect = useSetting('autoConnect')
 const startMinimized = useSetting('startMinimized')
 const closeToTray = useSetting('closeToTray')
 const runAsAdmin = useSetting('runAsAdmin')
-
-// Turning it on asks for rights first: the sign-in task is made by a core that has them. The switch waits for the
-// answer to the UAC prompt and for the task.
-const adminAutostart = useSettingAction('adminAutostart', (on) => connect.setAdminAutostart(on))
-const adminApplying = useApplying('adminAutostart')
 
 // The switch shows what Windows holds and changes it at once.
 const scheme = ref<UrlScheme | null>(null)
@@ -52,20 +45,14 @@ const schemeHint = computed(() =>
   <h2 class="mb-1 font-disp text-[19px] font-normal">{{ t('settings.nav.start') }}</h2>
   <p class="mb-4 max-w-[640px] text-t2">{{ t('settings.start.lead') }}</p>
   <SettingsCard>
-    <!-- What happens at launch stays together: the start with Windows, its rights, how it shows, the connection. -->
+    <!-- What happens at launch stays together: the start with Windows, how it shows, the rights, the connection. -->
     <OptionRow :title="t('wizard.start.autostart')"><Switch v-model="autostart" data-testid="autostart" /></OptionRow>
-    <OptionRow
-      :title="t('settings.start.adminAutostart')"
-      :hint="autostart ? t('settings.start.adminAutostartHint') : t('settings.start.autostartOnly')"
-    >
-      <Switch v-model="adminAutostart" :disabled="!autostart || adminApplying" data-testid="admin-autostart" />
-    </OptionRow>
     <!-- Only the start with Windows comes minimized: a start by hand always shows the window. -->
     <OptionRow
       :title="t('settings.start.startMinimized')"
       :hint="autostart ? t('settings.start.startMinimizedHint') : t('settings.start.autostartOnly')"
     >
-      <Switch v-model="startMinimized" :disabled="!autostart" />
+      <Switch v-model="startMinimized" :disabled="!autostart" data-testid="start-minimized" />
     </OptionRow>
     <OptionRow :title="t('settings.start.runAsAdmin')" :hint="t('settings.start.runAsAdminHint')">
       <Switch v-model="runAsAdmin" data-testid="run-as-admin" />

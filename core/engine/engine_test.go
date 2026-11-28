@@ -1,10 +1,12 @@
 package engine
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -162,27 +164,50 @@ func TestHandlersDecodeParamsStrictly(t *testing.T) {
 	}
 }
 
-// Rights at sign-in take rights to turn on; off, a core without rights leaves the task a note to remove itself.
-func TestRightsAtSignInTakeRights(t *testing.T) {
-	if elevated() {
-		t.Skip("the core runs with administrator rights here")
-	}
-	dir := tempDir(t)
-	e, _ := openTest(t, dir)
-	settings := DefaultSettings()
-	settings.AdminAutostart = true
-	if _, err := e.SetSettings(settings); reason(err) != ReasonLogonTaskNeedsElevation {
-		t.Fatalf("on without rights: %v", err)
-	}
-	if got, _ := e.Settings(); got.AdminAutostart {
-		t.Fatal("the setting was saved without its task")
-	}
-	e.db.Update(func(tx *bbolt.Tx) error { return putJSON(tx, bucketSettings, keySettings, settings) })
-	settings.AdminAutostart = false
-	if _, err := e.SetSettings(settings); err != nil {
-		t.Fatalf("off without rights: %v", err)
-	}
-	if !logontask.RemovalMarked(dir) {
-		t.Error("the task was not asked to remove itself")
+// Earlier versions stored rights at sign-in: the setting goes from the data, the other settings stay with their
+// secrets sealed, and a task of the setting that may be there is marked for removal.
+func TestRightsAtSignInGoFromStoredSettings(t *testing.T) {
+	for _, on := range []bool{true, false} {
+		dir := tempDir(t)
+		e, _ := openTest(t, dir)
+		want := DefaultSettings()
+		want.ProxyAuth, want.ProxyUsername, want.ProxyPassword, want.TextSize = true, "user", "secret-of-proxy", "large"
+		if _, err := e.SetSettings(want); err != nil {
+			t.Fatal(err)
+		}
+		err := e.db.Update(func(tx *bbolt.Tx) error {
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(tx.Bucket(bucketSettings).Get(keySettings), &fields); err != nil {
+				return err
+			}
+			fields["adminAutostart"] = json.RawMessage(strconv.FormatBool(on))
+			data, err := json.Marshal(fields)
+			if err != nil {
+				return err
+			}
+			return tx.Bucket(bucketSettings).Put(keySettings, data)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.Close()
+
+		reopened, _ := openTest(t, dir)
+		if got, err := reopened.Settings(); err != nil || got != want {
+			t.Fatalf("adminAutostart %t: the settings after the migration %+v, %v", on, got, err)
+		}
+		err = reopened.db.View(func(tx *bbolt.Tx) error {
+			data := tx.Bucket(bucketSettings).Get(keySettings)
+			if bytes.Contains(data, []byte("adminAutostart")) || bytes.Contains(data, []byte("secret-of-proxy")) {
+				t.Errorf("adminAutostart %t: stored %s", on, data)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if logontask.RemovalMarked(dir) != on {
+			t.Errorf("adminAutostart %t: the task of the setting is marked for removal: %t", on, !on)
+		}
 	}
 }

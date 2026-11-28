@@ -136,6 +136,10 @@ func Open(cfg Config) (*Engine, error) {
 		db.Close()
 		return nil, err
 	}
+	if err = dropAdminAutostart(db, cfg.DataDir); err != nil {
+		db.Close()
+		return nil, err
+	}
 	box, err := openDataKey(db)
 	if err != nil {
 		db.Close()

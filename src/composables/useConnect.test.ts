@@ -27,7 +27,6 @@ async function prepare(settings: Parameters<ReturnType<typeof useCoreStore>['upd
     killSwitch: KillSwitchOff,
     autoConnect: true,
     runAsAdmin: false,
-    adminAutostart: false,
     spoofDefault: false,
     ...settings,
   })
@@ -89,16 +88,5 @@ describe('rights at launch', () => {
     expect(core.status.elevated).toBe(false)
     expect(core.connection.state).not.toBe(ConnectionIdle)
     expect(connect.tunFailed).toBe(false)
-  })
-
-  it('asks for rights before the sign-in task and leaves it off when declined', async () => {
-    const core = await prepare({})
-    const connect = useConnect()
-    await declining(core, () => connect.setAdminAutostart(true))
-    expect(core.settings?.adminAutostart).toBe(false)
-
-    await connect.setAdminAutostart(true)
-    expect(core.status.elevated).toBe(true)
-    expect(core.settings?.adminAutostart).toBe(true)
   })
 })

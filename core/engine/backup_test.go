@@ -111,6 +111,29 @@ func TestBackupRestoresOnlyTheChosenParts(t *testing.T) {
 	}
 }
 
+// A backup that an earlier version made holds rights at sign-in: they are left out, and the rest comes back.
+func TestBackupOfAnEarlierVersionWithRightsAtSignIn(t *testing.T) {
+	source, serverID, _, _ := backupSource(t)
+	file, err := source.CreateBackup(BackupParts{Parts: []string{BackupProfiles, BackupRouting, BackupSettings}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw map[string]any
+	if err = json.Unmarshal([]byte(file.Text), &raw); err != nil {
+		t.Fatal(err)
+	}
+	raw["settings"].(map[string]any)["adminAutostart"] = true
+	earlier, _ := json.Marshal(raw)
+
+	target, _ := openTest(t, tempDir(t))
+	if _, err = target.RestoreBackup(BackupRestore{Text: string(earlier)}); err != nil {
+		t.Fatal(err)
+	}
+	if settings, _ := target.Settings(); settings.Server != serverID || settings.LogLines != 700 {
+		t.Errorf("settings: %s %d", settings.Server, settings.LogLines)
+	}
+}
+
 func TestBackupWithAWrongPartChangesNothing(t *testing.T) {
 	source, _, _, _ := backupSource(t)
 	file, err := source.CreateBackup(BackupParts{Parts: []string{BackupProfiles, BackupOTP}})

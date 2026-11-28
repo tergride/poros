@@ -7,10 +7,6 @@
 //! running one, which keeps working if the user says no. The new core waits for the old one to exit, so the data
 //! folder, the port and the TUN are free when it takes them.
 //!
-//! With rights at sign-in, the task of the Task Scheduler starts a core with rights as the user signs in, and the
-//! shell that autostart starts leaves it its channel in `logon-core.json` of the data folder instead of starting a
-//! core. A core that does not come in time is replaced by one without rights.
-//!
 //! A ready core is asked every few seconds whether it answers: one that stops answering is said to, and after a few
 //! checks it is killed and started again, so that the interface never waits on a core that hangs.
 
@@ -31,10 +27,6 @@ const CALL_TIMEOUT: Duration = Duration::from_secs(30);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 /// A core that replaces another first waits up to 20 seconds for it to exit.
 const HANDOVER_TIMEOUT: Duration = Duration::from_secs(45);
-/// The sign-in task starts its core as the user signs in, usually before autostart.
-const LOGON_TIMEOUT: Duration = Duration::from_secs(30);
-/// Where the shell of the autostart leaves its channel for the core of the sign-in task (core/internal/logontask).
-const LOGON_FILE: &str = "logon-core.json";
 /// A core that ran this long before failing gets its restarts counted from zero again.
 const STABLE_RUN: Duration = Duration::from_secs(30);
 const MAX_RESTARTS: u32 = 5;
@@ -54,8 +46,6 @@ const DATA_FILE: &str = "poros.db";
 /// Why the core is not working, beyond its state: its data file is damaged, or it stopped answering.
 pub const REASON_DATA_DAMAGED: &str = "data_damaged";
 pub const REASON_NOT_ANSWERING: &str = "not_answering";
-/// The core of the sign-in task did not come; never shown, a core without rights starts instead.
-const REASON_NO_LOGON_CORE: &str = "no_logon_core";
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -114,8 +104,6 @@ pub trait Sink: Send + Sync + 'static {
 pub struct CoreConfig {
     pub program: PathBuf,
     pub data_dir: PathBuf,
-    /// The first core is the one of the sign-in task: autostart with rights at sign-in.
-    pub logon: bool,
 }
 
 type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, CoreError>>>>>;
@@ -364,11 +352,10 @@ async fn supervise(
     let mut stop = shared.stop.subscribe();
     let mut restarts = 0;
     let mut next: Option<Prepared> = None;
-    let mut logon = config.logon;
     loop {
         let prepared = match next.take() {
             Some(prepared) => prepared,
-            None => match start_core(&config, &mut logon).await {
+            None => match prepare(&config, false, None, None).await {
                 Ok(prepared) => prepared,
                 Err(err) => {
                     shared.set_status(CoreState::Down, false, Some(err.message));
@@ -382,18 +369,10 @@ async fn supervise(
         shared.set_status(CoreState::Starting, prepared.process.elevated(), None);
         let started = Instant::now();
         let outcome = run_once(&config, &shared, &mut stop, &mut requests, prepared).await;
-        // The status of its last moment: the core of the sign-in task has rights only once it came.
         let elevated = shared.status.lock().unwrap().elevated;
         if *stop.borrow() {
             shared.set_status(CoreState::Down, false, None);
             return;
-        }
-        if outcome.kind == Some(REASON_NO_LOGON_CORE) {
-            crate::applog::write(&format!(
-                "shell: {}, starting the core without rights",
-                outcome.reason
-            ));
-            continue;
         }
         if let Some(prepared) = outcome.next {
             next = Some(prepared);
@@ -499,48 +478,6 @@ async fn stopped(stop: &mut watch::Receiver<bool>) {
     let _ = stop.wait_for(|stopped| *stopped).await;
 }
 
-/// The core to start when none waits: the one of the sign-in task the first time, when autostart asked for it.
-async fn start_core(config: &CoreConfig, logon: &mut bool) -> Result<Prepared, CoreError> {
-    if std::mem::take(logon) {
-        match prepare_logon(config) {
-            Ok(prepared) => return Ok(prepared),
-            Err(err) => crate::applog::write(&format!(
-                "shell: no channel for the core of the sign-in task, starting one without rights: {}",
-                err.message
-            )),
-        }
-    }
-    prepare(config, false, None, None).await
-}
-
-/// Creates a channel and leaves it for the core of the sign-in task, which comes with rights on its own.
-fn prepare_logon(config: &CoreConfig) -> Result<Prepared, CoreError> {
-    let failed = |message: String| CoreError::local(CODE_START_FAILED, message);
-    let name = channel_name().map_err(|err| failed(format!("no random source: {err}")))?;
-    let token = random_hex(16).map_err(|err| failed(format!("no random source: {err}")))?;
-    let listener = channel::Listener::bind(&name)
-        .map_err(|err| failed(format!("cannot create the core channel: {err}")))?;
-    let launch = json!({
-        "pipe": name,
-        "token": token,
-        "hostPid": std::process::id(),
-        "version": crate::VERSION,
-    });
-    // Whole or not at all: the core reads the file as soon as it is there.
-    let file = config.data_dir.join(LOGON_FILE);
-    let partial = file.with_extension("json.tmp");
-    std::fs::write(&partial, launch.to_string())
-        .and_then(|()| std::fs::rename(&partial, &file))
-        .map_err(|err| failed(format!("cannot write {}: {err}", file.display())))?;
-    Ok(Prepared {
-        listener,
-        token,
-        process: Process::Awaited,
-        stderr: Arc::default(),
-        handover: false,
-    })
-}
-
 /// Creates a channel and starts a core for it; `replaces` is the core that must exit first.
 async fn prepare(
     config: &CoreConfig,
@@ -628,10 +565,7 @@ async fn run_once(
         stderr,
         handover,
     } = prepared;
-    let awaited = matches!(process, Process::Awaited);
-    let connect_timeout = if awaited {
-        LOGON_TIMEOUT
-    } else if handover {
+    let connect_timeout = if handover {
         HANDOVER_TIMEOUT
     } else {
         CONNECT_TIMEOUT
@@ -652,43 +586,12 @@ async fn run_once(
             Err("stopped".to_string().into())
         }
     };
-    if awaited {
-        // The core takes the file as it starts; one that never came must not find it later.
-        let _ = std::fs::remove_file(config.data_dir.join(LOGON_FILE));
-    }
     let stream = match accepted {
         Ok(stream) => stream,
-        Err(outcome) if awaited && !*stop.borrow() => {
-            return Outcome {
-                reason: format!(
-                    "the core of the sign-in task did not come: {}",
-                    outcome.reason
-                ),
-                kind: Some(REASON_NO_LOGON_CORE),
-                next: None,
-            };
-        }
         Err(outcome) => return outcome,
     };
     #[cfg(windows)]
-    if awaited {
-        let adopted = core_launch::client_pid(&stream)
-            .ok_or_else(|| "the process of the core channel is unknown".to_string())
-            .and_then(|pid| core_launch::adopt(pid, &config.program));
-        match adopted {
-            Ok(core) => {
-                crate::applog::write("shell: the core with rights came from the sign-in task");
-                process = core;
-            }
-            Err(reason) => {
-                return Outcome {
-                    reason: format!("the core of the sign-in task did not come: {reason}"),
-                    kind: Some(REASON_NO_LOGON_CORE),
-                    next: None,
-                };
-            }
-        }
-    } else if core_launch::client_pid(&stream) != process.pid() {
+    if core_launch::client_pid(&stream) != process.pid() {
         process.kill().await;
         return "an unexpected process connected to the core channel"
             .to_string()
@@ -1050,7 +953,6 @@ mod tests {
             CoreConfig {
                 program: program.into(),
                 data_dir,
-                logon: false,
             },
             Channel(tx),
         );
