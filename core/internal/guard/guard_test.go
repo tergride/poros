@@ -11,7 +11,7 @@ import (
 )
 
 func TestOptions(t *testing.T) {
-	want := options{hostPID: 42, logPath: `C:\Poros Data\logs\guard.log`, config: Config{AllowLAN: true, TunName: "poros-net"}}
+	want := options{hostPID: 42, hostUser: "S-1-5-21-1-2-3-1001", logPath: `C:\Poros Data\logs\guard.log`, config: Config{AllowLAN: true, TunName: "poros-net"}}
 	args := want.args()
 	if args[0] != "--guard" {
 		t.Fatalf("args: %q", args)

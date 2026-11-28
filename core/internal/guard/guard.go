@@ -118,11 +118,13 @@ func newConfig(c Config) (*config, error) {
 	return &config{AllowLAN: c.AllowLAN, TunName: c.TunName}, nil
 }
 
-// options are the guard's arguments: the window it serves and the log it writes.
+// options are the guard's arguments: the window it serves and the window's account, "" for the guard's own, and the
+// log it writes.
 type options struct {
-	hostPID int
-	logPath string
-	config  Config
+	hostPID  int
+	hostUser string
+	logPath  string
+	config   Config
 }
 
 func parseOptions(args []string) (options, error) {
@@ -130,6 +132,7 @@ func parseOptions(args []string) (options, error) {
 	flags := flag.NewFlagSet("guard", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.IntVar(&opts.hostPID, "host-pid", 0, "")
+	flags.StringVar(&opts.hostUser, "host-user", "", "")
 	flags.StringVar(&opts.logPath, "log", "", "")
 	flags.BoolVar(&opts.config.AllowLAN, "allow-lan", false, "")
 	flags.StringVar(&opts.config.TunName, "tun-name", "", "")
@@ -144,6 +147,9 @@ func parseOptions(args []string) (options, error) {
 
 func (o options) args() []string {
 	args := []string{"--guard", "--host-pid", fmt.Sprint(o.hostPID)}
+	if o.hostUser != "" {
+		args = append(args, "--host-user", o.hostUser)
+	}
 	if o.logPath != "" {
 		args = append(args, "--log", o.logPath)
 	}
@@ -208,9 +214,13 @@ func Run(args []string) {
 	if err != nil {
 		fail(err)
 	}
-	host, err := openHost(opts.hostPID)
+	host, err := openHost(opts.hostPID, opts.hostUser)
 	if err != nil {
 		fail(err)
+	}
+	// The window's cores without rights check the guard's program before they trust its pipe.
+	if err = corehost.OpenTo(host.userSID); err != nil {
+		log.Printf("guard: open the guard to the account of its window: %v", err)
 	}
 
 	// The marker stays held until this process exits, and the process lives exactly as long as its block.

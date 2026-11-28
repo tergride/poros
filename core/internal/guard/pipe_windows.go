@@ -52,15 +52,19 @@ type host struct {
 	userSID string
 }
 
-func openHost(pid int) (*host, error) {
+// openHost opens the Poros window pid of the account userSID. Without it the account is read from the window, which
+// works when the window's account is the guard's own: Windows keeps the token of another account's process closed.
+func openHost(pid int, userSID string) (*host, error) {
 	process, err := windows.OpenProcess(windows.SYNCHRONIZE|windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
 	if err != nil {
 		return nil, newError(CodeConfig, "the Poros window %d is not running: %v", pid, err)
 	}
-	sid, err := processUser(process)
-	if err != nil {
-		windows.CloseHandle(process)
-		return nil, newError(CodeInternal, "the account of the Poros window: %v", err)
+	sid := userSID
+	if sid == "" {
+		if sid, err = processUser(process); err != nil {
+			windows.CloseHandle(process)
+			return nil, newError(CodeInternal, "the account of the Poros window: %v", err)
+		}
 	}
 	h := &host{gone: make(chan struct{}), userSID: sid}
 	go func() {
@@ -246,9 +250,10 @@ func (l *Link) Close() error {
 	return l.conn.Close()
 }
 
-// Start starts a guard for the Poros window hostPID and joins it once its block is on; a guard already there is
-// joined instead. It needs administrator rights, and the guard writes its log to logPath.
-func Start(hostPID int, logPath string, cfg Config) (*Link, error) {
+// Start starts a guard for the Poros window hostPID of the account hostUser, "" when that is this core's, and joins it
+// once its block is on; a guard already there is joined instead. It needs administrator rights, and the guard writes
+// its log to logPath.
+func Start(hostPID int, hostUser, logPath string, cfg Config) (*Link, error) {
 	if link, err := Find(hostPID); link != nil || err != nil {
 		return link, err
 	}
@@ -259,7 +264,7 @@ func Start(hostPID int, logPath string, cfg Config) (*Link, error) {
 	if err != nil {
 		return nil, newError(CodeInternal, "locate PorosCore: %v", err)
 	}
-	cmd := exec.Command(self, options{hostPID: hostPID, logPath: logPath, config: cfg}.args()...)
+	cmd := exec.Command(self, options{hostPID: hostPID, hostUser: hostUser, logPath: logPath, config: cfg}.args()...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NO_WINDOW}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

@@ -1,5 +1,6 @@
 // Package host follows the processes around the core: the shell that started it, and a previous core that must
-// let go of the data folder, the port and the TUN first.
+// let go of the data folder, the port and the TUN first. Their accounts may differ: UAC elevates a core under the
+// account of the administrator who gave the rights.
 package host
 
 import (
@@ -44,28 +45,58 @@ func Watch(pid int) <-chan struct{} {
 	return gone
 }
 
-// SameUser tells whether a process runs as the same account as this one. A core elevated under another
-// administrator's account would otherwise set that account's system proxy.
-func SameUser(pid int) (bool, error) {
-	process, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+// administrators is the group of the administrators of the computer.
+const administrators = "S-1-5-32-544"
+
+// User is the account of this process, as the SID.
+func User() (string, error) {
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
-		return false, err
+		return "", err
 	}
-	defer windows.CloseHandle(process)
-	var token windows.Token
-	if err = windows.OpenProcessToken(process, windows.TOKEN_QUERY, &token); err != nil {
-		return false, err
+	return user.User.Sid.String(), nil
+}
+
+// OpenTo lets the administrators and the account user, "" for none, wait for this process and read which program it
+// runs. The access list Windows gives a process lets in only its own account: a core that UAC elevated under another
+// account than its window's could otherwise neither watch the window nor wait for the core it replaces, and the
+// window's next core could not wait for it or check its guard.
+func OpenTo(user string) error {
+	sids := []string{administrators}
+	if user != "" {
+		sids = append(sids, user)
 	}
-	defer token.Close()
-	theirs, err := token.GetTokenUser()
+	entries := make([]windows.EXPLICIT_ACCESS, 0, len(sids))
+	for _, text := range sids {
+		sid, err := windows.StringToSid(text)
+		if err != nil {
+			return fmt.Errorf("the account %s: %w", text, err)
+		}
+		entries = append(entries, windows.EXPLICIT_ACCESS{
+			AccessPermissions: windows.SYNCHRONIZE | windows.PROCESS_QUERY_LIMITED_INFORMATION,
+			AccessMode:        windows.GRANT_ACCESS,
+			Inheritance:       windows.NO_INHERITANCE,
+			Trustee: windows.TRUSTEE{
+				TrusteeForm:  windows.TRUSTEE_IS_SID,
+				TrusteeType:  windows.TRUSTEE_IS_UNKNOWN,
+				TrusteeValue: windows.TrusteeValueFromSID(sid),
+			},
+		})
+	}
+	process := windows.CurrentProcess()
+	descriptor, err := windows.GetSecurityInfo(process, windows.SE_KERNEL_OBJECT, windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
-		return false, err
+		return err
 	}
-	ours, err := windows.GetCurrentProcessToken().GetTokenUser()
+	current, _, err := descriptor.DACL()
 	if err != nil {
-		return false, err
+		return err
 	}
-	return windows.EqualSid(theirs.User.Sid, ours.User.Sid), nil
+	dacl, err := windows.ACLFromEntries(entries, current)
+	if err != nil {
+		return err
+	}
+	return windows.SetSecurityInfo(process, windows.SE_KERNEL_OBJECT, windows.DACL_SECURITY_INFORMATION, nil, nil, dacl, nil)
 }
 
 // RedirectOutput sends this process's standard output and error to f: an elevated core has no pipe to its shell,

@@ -41,14 +41,14 @@ func Watch(pid int) <-chan struct{} {
 	return gone
 }
 
-// SameUser tells whether a process runs as the same account as this one.
-func SameUser(pid int) (bool, error) {
-	info, err := os.Stat("/proc/" + strconv.Itoa(pid))
-	if err != nil {
-		return false, err
-	}
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	return ok && int(stat.Uid) == os.Getuid(), nil
+// User is the account of this process, as its uid.
+func User() (string, error) {
+	return strconv.Itoa(os.Getuid()), nil
+}
+
+// OpenTo has nothing to open: any process may wait for another here.
+func OpenTo(string) error {
+	return nil
 }
 
 // RedirectOutput sends this process's standard output and error to f.

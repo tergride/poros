@@ -15,6 +15,7 @@ import (
 	runtimeDebug "runtime/debug"
 	"runtime/metrics"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	"github.com/xtls/xray-core/core"
@@ -88,14 +89,15 @@ func writeHeapProfile() (string, error) {
 }
 
 // options are what the shell passes: its channel and the token it will greet the core with, the data folder, the
-// app's version, its own process, the core this one replaces, and another release feed for tests. An elevated
-// core gets no environment from its shell, so all of it comes as arguments.
+// app's version, its own process and account, the core this one replaces, and another release feed for tests. An
+// elevated core gets no environment from its shell, so all of it comes as arguments.
 type options struct {
 	pipe       string
 	token      string
 	dataDir    string
 	version    string
 	hostPID    int
+	hostUser   string
 	waitPID    int
 	updateFeed string
 }
@@ -109,6 +111,7 @@ func parseOptions(args []string) (options, error) {
 	flags.StringVar(&opts.dataDir, "data-dir", "", "")
 	flags.StringVar(&opts.version, "version", "", "")
 	flags.IntVar(&opts.hostPID, "host-pid", 0, "")
+	flags.StringVar(&opts.hostUser, "host-user", "", "")
 	flags.IntVar(&opts.waitPID, "wait-pid", 0, "")
 	flags.StringVar(&opts.updateFeed, "update-feed", "", "")
 	if err := flags.Parse(args); err != nil {
@@ -160,6 +163,8 @@ func runCore() {
 	if err != nil {
 		log.Fatalf("arguments: %v", err)
 	}
+	// Before anything else: a core of the other account that replaces this one waits for its process.
+	openErr := host.OpenTo(opts.hostUser)
 	if opts.waitPID != 0 {
 		if err = host.WaitExit(opts.waitPID, waitPrevious); err != nil {
 			log.Fatalf("%v", err)
@@ -167,6 +172,9 @@ func runCore() {
 	}
 	startLog(opts.dataDir)
 	logBanner(opts)
+	if openErr != nil {
+		log.Printf("open the core to the administrators and its window's account: %v", openErr)
+	}
 	conn, err := ipc.Dial(opts.pipe)
 	if err != nil {
 		log.Fatalf("connect to the shell: %v", err)
@@ -227,15 +235,19 @@ func runRestoreProxy(args []string) {
 // serve serves the shell over its channel and exits when the shell goes away: the channel is the core's lifetime.
 func serve(opts options, conn net.Conn) {
 	boxmain.DisableColor()
+	// UAC elevates a core under the account of the administrator who gave the rights, which may not be the window's.
 	foreignUser := false
-	if opts.hostPID != 0 {
-		same, err := host.SameUser(opts.hostPID)
-		foreignUser = err == nil && !same
+	if opts.hostUser != "" {
+		own, err := host.User()
+		foreignUser = err != nil || !strings.EqualFold(own, opts.hostUser)
+		if foreignUser {
+			log.Printf("the core runs as another account than its window, %s", opts.hostUser)
+		}
 	}
 	peer := jsonrpc.NewConn(conn)
 	eng, err := engine.Open(engine.Config{
 		DataDir: opts.dataDir, Version: opts.version, Notify: peer.Notify, ForeignUser: foreignUser,
-		Guard: engine.NewGuard(opts.hostPID, opts.dataDir), Window: opts.hostPID, UpdateFeed: opts.updateFeed,
+		Guard: engine.NewGuard(opts.hostPID, opts.hostUser, opts.dataDir), Window: opts.hostPID, UpdateFeed: opts.updateFeed,
 	})
 	if err != nil {
 		log.Printf("open the data folder: %v", err)

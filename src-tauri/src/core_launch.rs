@@ -1,12 +1,14 @@
 //! Starting the core process: as a child of the shell, or with administrator rights through UAC, which TUN needs. The
-//! window always runs without rights; only the core is elevated.
+//! window always runs without rights; only the core is elevated. UAC elevates it under the account of the
+//! administrator who gave the rights, which on a standard account is not the window's own: the core gets the
+//! window's account in its arguments, and the window lets administrators watch its process.
 
 use std::path::Path;
 
 use tokio::process::{Child, Command};
 
 /// The arguments of the core: its channel, the token the shell greets it with, the data folder, the app's version,
-/// the shell's process, the core it replaces, which it waits for, and a test's release feed.
+/// the shell's process and account, the core it replaces, which it waits for, and a test's release feed.
 pub struct Arguments<'a> {
     pub channel: &'a str,
     pub token: &'a str,
@@ -26,6 +28,11 @@ impl Arguments<'_> {
             "--host-pid".to_string(),
             std::process::id().to_string(),
         ];
+        #[cfg(windows)]
+        if let Ok(sid) = pipe_security::user_sid() {
+            args.push("--host-user".to_string());
+            args.push(sid);
+        }
         if !crate::VERSION.is_empty() {
             args.push("--version".to_string());
             args.push(crate::VERSION.to_string());
@@ -347,6 +354,85 @@ mod elevated {
     }
 }
 
+/// Lets administrators wait for the window's process and read its program. The access list Windows gives a process lets
+/// in only its own account, so a core that UAC elevated under another administrator's account, and its guard of the
+/// kill switch, could not watch the window and would take it for gone.
+#[cfg(windows)]
+pub fn open_to_administrators() -> std::io::Result<()> {
+    use std::ptr::{null, null_mut};
+
+    use windows_sys::Win32::Foundation::{ERROR_SUCCESS, LocalFree};
+    use windows_sys::Win32::Security::Authorization::{
+        ConvertStringSidToSidW, EXPLICIT_ACCESS_W, GRANT_ACCESS, GetSecurityInfo,
+        NO_MULTIPLE_TRUSTEE, SE_KERNEL_OBJECT, SetEntriesInAclW, SetSecurityInfo, TRUSTEE_IS_SID,
+        TRUSTEE_IS_UNKNOWN, TRUSTEE_W,
+    };
+    use windows_sys::Win32::Security::{
+        ACL, DACL_SECURITY_INFORMATION, NO_INHERITANCE, PSECURITY_DESCRIPTOR, PSID,
+    };
+    use windows_sys::Win32::System::Threading::{
+        GetCurrentProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+    };
+
+    let administrators_name: Vec<u16> = "S-1-5-32-544\0".encode_utf16().collect();
+    // SAFETY: plain Win32 calls; the SID, the descriptor and the new list are freed before returning, and the current
+    // list lives in the descriptor until then.
+    unsafe {
+        let mut administrators: PSID = null_mut();
+        if ConvertStringSidToSidW(administrators_name.as_ptr(), &mut administrators) == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        let process = GetCurrentProcess();
+        let mut current: *mut ACL = null_mut();
+        let mut descriptor: PSECURITY_DESCRIPTOR = null_mut();
+        let mut status = GetSecurityInfo(
+            process,
+            SE_KERNEL_OBJECT,
+            DACL_SECURITY_INFORMATION,
+            null_mut(),
+            null_mut(),
+            &mut current,
+            null_mut(),
+            &mut descriptor,
+        );
+        if status == ERROR_SUCCESS {
+            let entry = EXPLICIT_ACCESS_W {
+                grfAccessPermissions: PROCESS_SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION,
+                grfAccessMode: GRANT_ACCESS,
+                grfInheritance: NO_INHERITANCE,
+                Trustee: TRUSTEE_W {
+                    pMultipleTrustee: null_mut(),
+                    MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
+                    TrusteeForm: TRUSTEE_IS_SID,
+                    TrusteeType: TRUSTEE_IS_UNKNOWN,
+                    ptstrName: administrators.cast(),
+                },
+            };
+            let mut updated: *mut ACL = null_mut();
+            status = SetEntriesInAclW(1, &entry, current, &mut updated);
+            if status == ERROR_SUCCESS {
+                status = SetSecurityInfo(
+                    process,
+                    SE_KERNEL_OBJECT,
+                    DACL_SECURITY_INFORMATION,
+                    null_mut(),
+                    null_mut(),
+                    updated,
+                    null(),
+                );
+                LocalFree(updated.cast());
+            }
+            LocalFree(descriptor);
+        }
+        LocalFree(administrators);
+        if status == ERROR_SUCCESS {
+            Ok(())
+        } else {
+            Err(std::io::Error::from_raw_os_error(status as i32))
+        }
+    }
+}
+
 /// The explicit access list of the core channel: only this account, and administrators for a core elevated under
 /// another one. Without it the default list lets everyone read.
 #[cfg(windows)]
@@ -438,5 +524,70 @@ pub mod pipe_security {
             },
             descriptor,
         })
+    }
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use std::ptr::null_mut;
+
+    use windows_sys::Win32::Foundation::LocalFree;
+    use windows_sys::Win32::Security::Authorization::{
+        ConvertSecurityDescriptorToStringSecurityDescriptorW, GetSecurityInfo, SDDL_REVISION_1,
+        SE_KERNEL_OBJECT,
+    };
+    use windows_sys::Win32::Security::{DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR};
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+    /// The access list of this process as SDDL.
+    fn process_dacl() -> String {
+        // SAFETY: plain Win32 calls; the descriptor and the text are freed before returning.
+        unsafe {
+            let mut descriptor: PSECURITY_DESCRIPTOR = null_mut();
+            let status = GetSecurityInfo(
+                GetCurrentProcess(),
+                SE_KERNEL_OBJECT,
+                DACL_SECURITY_INFORMATION,
+                null_mut(),
+                null_mut(),
+                null_mut(),
+                null_mut(),
+                &mut descriptor,
+            );
+            assert_eq!(status, 0, "GetSecurityInfo");
+            let mut text: *mut u16 = null_mut();
+            let ok = ConvertSecurityDescriptorToStringSecurityDescriptorW(
+                descriptor,
+                SDDL_REVISION_1,
+                DACL_SECURITY_INFORMATION,
+                &mut text,
+                null_mut(),
+            );
+            assert_ne!(
+                ok, 0,
+                "ConvertSecurityDescriptorToStringSecurityDescriptorW"
+            );
+            let length = (0..).take_while(|&i| *text.add(i) != 0).count();
+            let sddl = String::from_utf16_lossy(std::slice::from_raw_parts(text, length));
+            LocalFree(text.cast());
+            LocalFree(descriptor);
+            sddl
+        }
+    }
+
+    /// Administrators may wait for the window and read its program, and nothing more; what was there stays.
+    #[test]
+    fn opens_the_window_to_administrators() {
+        let before = process_dacl();
+        // An elevated process lets the administrators in already.
+        if before.contains(";;;BA)") {
+            return;
+        }
+        super::open_to_administrators().unwrap();
+        let after = process_dacl();
+        assert!(after.contains("(A;;0x101000;;;BA)"), "{after}");
+        for entry in before.split('(').skip(1) {
+            assert!(after.contains(&format!("({entry}")), "{before} -> {after}");
+        }
     }
 }

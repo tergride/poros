@@ -17,17 +17,18 @@ const (
 )
 
 type windowsGuard struct {
-	hostPID int
-	logPath string
+	hostPID  int
+	hostUser string
+	logPath  string
 }
 
-// NewGuard is the kill switch of the Poros window hostPID, whose guard writes its log next to the core's; it is
-// nil without a window.
-func NewGuard(hostPID int, dataDir string) Guard {
+// NewGuard is the kill switch of the Poros window hostPID of the account hostUser, "" when that is this core's, whose
+// guard writes its log next to the core's; it is nil without a window.
+func NewGuard(hostPID int, hostUser, dataDir string) Guard {
 	if hostPID <= 0 {
 		return nil
 	}
-	return windowsGuard{hostPID: hostPID, logPath: filepath.Join(dataDir, "logs", "guard.log")}
+	return windowsGuard{hostPID: hostPID, hostUser: hostUser, logPath: filepath.Join(dataDir, "logs", "guard.log")}
 }
 
 func (g windowsGuard) Find() (GuardLink, error) {
@@ -55,7 +56,7 @@ func (g windowsGuard) Arm() (GuardLink, error) {
 	if !elevated() {
 		return nil, errGuardRights
 	}
-	link, err := guard.Start(g.hostPID, g.logPath, guard.Config{AllowLAN: true, TunName: config.TunName})
+	link, err := guard.Start(g.hostPID, g.hostUser, g.logPath, guard.Config{AllowLAN: true, TunName: config.TunName})
 	switch guard.ErrorCode(err) {
 	case guard.CodePrivilege:
 		return nil, fmt.Errorf("%w: %v", errGuardRights, err)

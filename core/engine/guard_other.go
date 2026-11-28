@@ -3,4 +3,4 @@
 package engine
 
 // NewGuard is nil: the kill switch is there on Windows only.
-func NewGuard(int, string) Guard { return nil }
+func NewGuard(int, string, string) Guard { return nil }

@@ -572,6 +572,12 @@ pub fn run() {
                 },
                 if minimized { ", minimized" } else { "" },
             ));
+            #[cfg(windows)]
+            if let Err(error) = core_launch::open_to_administrators() {
+                applog::write(&format!(
+                    "shell: a core with another administrator's rights cannot watch the window: {error}"
+                ));
+            }
             // «Show the window» is the shell's own; the other actions are the interface's, as the items of the tray.
             let on_action = app.handle().clone();
             let on_failed = app.handle().clone();
