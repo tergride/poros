@@ -38,20 +38,18 @@ import SubsPage from '@/components/settings/SubsPage.vue'
 import TestsPage from '@/components/settings/TestsPage.vue'
 import TunPage from '@/components/settings/TunPage.vue'
 import { Button, Dialog, Input } from '@/components/ui'
-import { useAttempt } from '@/composables/useAttempt'
-import { provideSettingsDraft } from '@/composables/useSettingsDraft'
+import { provideSettingsPage } from '@/composables/useSettingsBlock'
 import { findLabel } from '@/lib/palette'
 import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
-// The settings of the advanced mode: the pages of the simple mode first, as «Basic». A change waits for «Save»;
-// leaving the page with one asks first, and Escape stays.
+// The settings of the advanced mode: the pages of the simple mode first, as «Basic». A switch or a list applies at
+// once, a card of typed values on its «Apply»; leaving the page with one not applied asks first, and Escape stays.
 const core = useCoreStore()
 const ui = useUiStore()
 const route = useRoute()
-const attempt = useAttempt()
 const { t } = useI18n()
-const draft = provideSettingsDraft()
+const settingsPage = provideSettingsPage()
 
 interface Page {
   id: string
@@ -110,35 +108,22 @@ watch(
   { immediate: true },
 )
 
-const saving = ref(false)
-async function save(): Promise<boolean> {
-  saving.value = true
-  try {
-    await draft.save()
-    return true
-  } catch (error) {
-    await attempt(() => Promise.reject(error))
-    return false
-  } finally {
-    saving.value = false
-  }
-}
-
-// The question before leaving with changes: the answer resolves the navigation it holds.
+// The question before leaving with changes not applied: the answer resolves the navigation it holds. A refused card
+// keeps the page, with the reason in the card.
 const asking = ref<((go: boolean) => void) | null>(null)
 function ask(): Promise<boolean> | boolean {
-  if (!draft.dirty.value) return true
+  if (!settingsPage.dirty) return true
   return new Promise((resolve) => (asking.value = resolve))
 }
-function answer(choice: 'save' | 'leave' | 'stay'): void {
+function answer(choice: 'apply' | 'leave' | 'stay'): void {
   const resolve = asking.value
   asking.value = null
   if (!resolve) return
   if (choice === 'leave') {
-    draft.discard()
+    settingsPage.discard()
     resolve(true)
-  } else if (choice === 'save') {
-    void save().then(resolve)
+  } else if (choice === 'apply') {
+    void settingsPage.apply().then(resolve)
   } else resolve(false)
 }
 onBeforeRouteLeave(ask)
@@ -172,24 +157,13 @@ onBeforeRouteUpdate(ask)
       <div ref="body" class="min-h-0 flex-1 overflow-auto px-7 pt-[22px] pb-7">
         <component :is="current.page" v-if="core.settings" />
       </div>
-      <div
-        v-if="draft.dirty.value"
-        class="flex flex-none items-center gap-3 border-t border-line bg-s2 px-7 py-2.5"
-        role="status"
-        data-testid="savebar"
-      >
-        <span class="flex-1 text-t2">{{ t('adv.settings.unsaved') }}</span>
-        <Button variant="primary" size="sm" :disabled="saving" data-testid="settings-save" @click="save()">
-          <Check />{{ t('common.save') }}
-        </Button>
-      </div>
     </div>
 
-    <Dialog :open="asking !== null" :title="t('adv.unsaved.title')" @update:open="(open) => !open && answer('stay')">
-      <p class="text-t2">{{ t('adv.unsaved.text') }}</p>
+    <Dialog :open="asking !== null" :title="t('adv.unapplied.title')" @update:open="(open) => !open && answer('stay')">
+      <p class="text-t2">{{ t('adv.unapplied.text') }}</p>
       <template #footer>
         <Button variant="ghost" class="sp" data-testid="unsaved-leave" @click="answer('leave')">{{ t('adv.unsaved.leave') }}</Button>
-        <Button variant="primary" data-testid="unsaved-save" @click="answer('save')"><Check />{{ t('common.save') }}</Button>
+        <Button variant="primary" data-testid="unsaved-apply" @click="answer('apply')"><Check />{{ t('settings.block.apply') }}</Button>
       </template>
     </Dialog>
   </div>

@@ -324,6 +324,10 @@
   },
   "settings": {
     "back": "To the servers",
+    "block": {
+      "apply": "Apply",
+      "discard": "Discard"
+    },
     "nav": {
       "presets": "Presets",
       "conn": "Connection",
@@ -1167,13 +1171,16 @@
       "basic": "Basic",
       "search": "Search settings",
       "nothingFound": "Nothing found",
-      "unsaved": "There are unsaved changes.",
       "more": "More"
     },
     "unsaved": {
       "title": "Save the changes?",
       "text": "The page has unsaved changes.",
       "leave": "Leave without saving"
+    },
+    "unapplied": {
+      "title": "Apply the changes?",
+      "text": "The page has changes that are not applied."
     },
     "logs": {
       "filter": "Filter the log",

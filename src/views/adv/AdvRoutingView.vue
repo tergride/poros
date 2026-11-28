@@ -22,9 +22,9 @@ import { useCoreStore } from '@/stores/core'
 import { useUiStore } from '@/stores/ui'
 
 // «Routing» of the advanced mode. «Presets and rules» lists the presets and edits the chosen one beside the list:
-// a change waits for «Save», and leaving with one asks first, as on the settings pages. «Endpoints» are connections of
-// their own beside the server, with any preset. WARP and «General» are settings: WARP after the server, and the family
-// of addresses first and the preset in use.
+// a change waits for «Save», and leaving with one asks first. «Endpoints» are connections of their own beside the
+// server, with any preset. WARP and «General» are settings: WARP after the server, and the family of addresses first
+// and the preset in use.
 const core = useCoreStore()
 const ui = useUiStore()
 const restart = useRestartNeeded()

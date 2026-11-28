@@ -10,7 +10,7 @@ import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Banner, Button, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { reasonOf, useFailure } from '@/composables/useReason'
-import { useSettingsDraft } from '@/composables/useSettingsDraft'
+import { useSettingsPage } from '@/composables/useSettingsBlock'
 import { backupHasSecrets } from '@/lib/backup'
 import { appControls } from '@/platform'
 import {
@@ -33,7 +33,7 @@ const ui = useUiStore()
 const attempt = useAttempt()
 const failure = useFailure()
 const { t, locale } = useI18n()
-const advanced = useSettingsDraft() !== null
+const advanced = useSettingsPage() !== null
 
 const parts = [BackupProfiles, BackupRouting, BackupSettings, BackupOTP]
 const chosen = ref<string[]>([...parts])

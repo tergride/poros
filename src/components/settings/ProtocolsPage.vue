@@ -6,27 +6,32 @@ import NoteText from '@/components/settings/NoteText.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Input, Select, Switch } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
+import { useSettingsBlock } from '@/composables/useSettingsBlock'
 
 // «Protocols and bypass»: what profiles that leave a choice «As by default» take — the multiplex, split and forged
-// TLS handshakes, the uTLS fingerprint — and the QUIC of the servers that run on it. Changes wait for «Save».
+// TLS handshakes, the uTLS fingerprint — and the QUIC of the servers that run on it. A card with fields applies on
+// its «Apply», the rest at once.
 const { t } = useI18n()
-const mux = useSetting('muxDefault')
-const muxProtocol = useSetting('muxProtocol')
-const muxConcurrency = useSetting('muxConcurrency')
+const muxBlock = useSettingsBlock()
+const mux = muxBlock.setting('muxDefault')
+const muxProtocol = muxBlock.setting('muxProtocol')
+const muxConcurrency = muxBlock.setting('muxConcurrency')
 const fragment = useSetting('fragmentDefault')
 const fingerprint = useSetting('fingerprintDefault')
-const spoof = useSetting('spoofDefault')
-const spoofSni = useSetting('spoofSni')
-const spoofMethod = useSetting('spoofMethod')
-const idleTimeout = useSetting('quicIdleTimeout')
-const keepAlive = useSetting('quicKeepAlive')
-const streamWindow = useSetting('quicStreamWindow')
-const connectionWindow = useSetting('quicConnectionWindow')
-const maxStreams = useSetting('quicMaxStreams')
-const packetSize = useSetting('quicInitialPacketSize')
-const noPathMtu = useSetting('quicDisablePmtud')
+const spoofBlock = useSettingsBlock()
+const spoof = spoofBlock.setting('spoofDefault')
+const spoofSni = spoofBlock.setting('spoofSni')
+const spoofMethod = spoofBlock.setting('spoofMethod')
+const quic = useSettingsBlock()
+const idleTimeout = quic.setting('quicIdleTimeout')
+const keepAlive = quic.setting('quicKeepAlive')
+const streamWindow = quic.setting('quicStreamWindow')
+const connectionWindow = quic.setting('quicConnectionWindow')
+const maxStreams = quic.setting('quicMaxStreams')
+const packetSize = quic.setting('quicInitialPacketSize')
+const noPathMtu = quic.setting('quicDisablePmtud')
 
-// A number as typed: empty is 0, the core's own; the core refuses what is out of range at «Save».
+// A number as typed: empty is 0, the core's own; the core refuses what is out of range at «Apply».
 function whole(model: { value: number }) {
   return computed({
     get: () => (model.value ? String(model.value) : ''),
@@ -53,7 +58,7 @@ const methods = computed(() => [
 
 <template>
   <h2 class="mb-4 font-disp text-[19px] font-normal">{{ t('settings.nav.protocols') }}</h2>
-  <SettingsCard :title="t('settings.protocols.mux')">
+  <SettingsCard :title="t('settings.protocols.mux')" :block="muxBlock">
     <div class="grid grid-cols-2 items-end gap-x-4 gap-y-3 pt-2.5 pb-1">
       <label class="flex h-9 items-center gap-3"><Switch v-model="mux" :aria-label="t('settings.protocols.muxOn')" data-testid="mux-default" />{{ t('settings.protocols.muxOn') }}</label>
       <div class="grid gap-[5px]">
@@ -80,7 +85,7 @@ const methods = computed(() => [
       </div>
     </div>
   </SettingsCard>
-  <SettingsCard :title="t('settings.protocols.spoof')">
+  <SettingsCard :title="t('settings.protocols.spoof')" :block="spoofBlock">
     <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-2.5">
       <label class="grid gap-[5px]">
         <span class="text-[12.5px] text-t2">Spoof SNI</span>
@@ -96,7 +101,7 @@ const methods = computed(() => [
       <span>{{ t('settings.protocols.byDefault') }}<br /><span class="text-xs text-t3">{{ t('settings.protocols.spoofHint') }}</span></span>
     </label>
   </SettingsCard>
-  <SettingsCard :title="t('settings.protocols.quic')">
+  <SettingsCard :title="t('settings.protocols.quic')" :block="quic">
     <p class="mt-1.5 text-xs text-t3">{{ t('settings.protocols.quicHint') }}</p>
     <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-2.5 pb-1">
       <label class="grid gap-[5px]"><span class="text-[12.5px] text-t2">Idle Timeout</span><Input v-model="idleTimeout" mono placeholder="30s" /></label>

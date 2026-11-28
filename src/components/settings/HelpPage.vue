@@ -12,7 +12,7 @@ import { Button, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useResetConnection } from '@/composables/useResetConnection'
 import { useSetting } from '@/composables/useSetting'
-import { useSettingsDraft } from '@/composables/useSettingsDraft'
+import { useSettingsPage } from '@/composables/useSettingsBlock'
 import { appControls } from '@/platform'
 import { MethodAppDebugInfo } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
@@ -24,7 +24,7 @@ const core = useCoreStore()
 const ui = useUiStore()
 const router = useRouter()
 const { t } = useI18n()
-const advanced = useSettingsDraft() !== null
+const advanced = useSettingsPage() !== null
 const { reset, resetting } = useResetConnection()
 const debugLog = useSetting('debugLog')
 const beta = useSetting('updateBeta')

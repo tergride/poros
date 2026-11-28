@@ -6,18 +6,20 @@ import NoteText from '@/components/settings/NoteText.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Input, Select, Switch } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
+import { useSettingsBlock } from '@/composables/useSettingsBlock'
 
-// «Network» of the advanced mode: the certificate check of Poros's own requests, and a clock of the core's own from
-// an NTP server for when the system's is wrong. Changes wait for «Save».
+// «Network» of the advanced mode: the certificate check of Poros's own requests, applied at once, and a clock of the
+// core's own from an NTP server for when the system's is wrong, applied with its server on «Apply».
 const { t } = useI18n()
 const ignoreTls = useSetting('ignoreTlsErrors')
-const ntp = useSetting('ntp')
-const server = useSetting('ntpServer')
-const port = useSetting('ntpPort')
-const interval = useSetting('ntpInterval')
-const outbound = useSetting('ntpOutbound')
+const clock = useSettingsBlock()
+const ntp = clock.setting('ntp')
+const server = clock.setting('ntpServer')
+const port = clock.setting('ntpPort')
+const interval = clock.setting('ntpInterval')
+const outbound = clock.setting('ntpOutbound')
 
-// A number as typed; the core refuses what is out of range at «Save».
+// A number as typed; the core refuses what is out of range at «Apply».
 function whole(model: { value: number }) {
   return computed({
     get: () => (model.value ? String(model.value) : ''),
@@ -44,7 +46,7 @@ const outbounds = computed(() => [
       <span>{{ t('settings.net.ignoreTls') }}<br /><span class="text-xs text-t3">{{ t('settings.net.ignoreTlsHint') }}</span></span>
     </label>
   </SettingsCard>
-  <SettingsCard title="NTP">
+  <SettingsCard title="NTP" :block="clock">
     <label class="flex items-start gap-3 pt-2.5">
       <Switch v-model="ntp" :aria-label="t('settings.net.ntpOn')" data-testid="ntp" />
       <NoteText :title="t('settings.net.ntpOn')" :hint="t('settings.net.ntpHint')" :note="t('settings.net.ntpNote')" />

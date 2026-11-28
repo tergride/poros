@@ -5,17 +5,20 @@ import { useI18n } from 'vue-i18n'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Input, Select, Switch, Textarea } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
+import { useSettingsBlock } from '@/composables/useSettingsBlock'
 import { TunBypassDefault, TunIPv4Default, TunIPv6Default } from '@/platform/core-types'
 
-// The TUN of the advanced mode: the adapter, its addresses and the ranges it keeps out. Changes wait for «Save» and
-// come with the next connection.
+// The TUN of the advanced mode: the adapter, its addresses and the ranges it keeps out. The adapter applies at once,
+// the addresses and the ranges on «Apply» of their cards; all of it comes with the next connection.
 const { t } = useI18n()
 const mtu = useSetting('tunMtu')
 const strictRoute = useSetting('tunStrictRoute')
 const routing = useSetting('tunRouting')
-const ipv4 = useSetting('tunIpv4')
-const ipv6 = useSetting('tunIpv6')
-const bypass = useSetting('tunBypass')
+const addresses = useSettingsBlock()
+const ipv4 = addresses.setting('tunIpv4')
+const ipv6 = addresses.setting('tunIpv6')
+const ranges = useSettingsBlock()
+const bypass = ranges.setting('tunBypass')
 
 const mtus = computed(() => {
   const known = [9000, 1500, 1420]
@@ -46,7 +49,7 @@ function defaultAddresses(): void {
       <span>TUN Routing<br /><span class="text-xs text-t3">{{ t('settings.tun.routingHint') }}</span></span>
     </label>
   </SettingsCard>
-  <SettingsCard :title="t('settings.tun.addresses')">
+  <SettingsCard :title="t('settings.tun.addresses')" :block="addresses">
     <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-2.5">
       <label class="grid gap-[5px]">
         <span class="text-[12.5px] text-t2">IPv4 CIDR</span>
@@ -59,7 +62,7 @@ function defaultAddresses(): void {
     </div>
     <div class="pt-2.5 pb-1"><Button size="sm" data-testid="tun-addresses-default" @click="defaultAddresses">{{ t('settings.tun.addressesDefault') }}</Button></div>
   </SettingsCard>
-  <SettingsCard :title="t('settings.tun.bypass')">
+  <SettingsCard :title="t('settings.tun.bypass')" :block="ranges">
     <label class="grid gap-[5px] pt-2.5">
       <span class="text-[12.5px] text-t2">{{ t('settings.tun.ranges') }}</span>
       <Textarea v-model="bypass" mono class="h-[120px] resize-y" :aria-label="t('settings.tun.ranges')" data-testid="tun-bypass" />

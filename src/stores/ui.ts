@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import type { IncomingPreset } from '@/composables/usePresetImport'
-import type { Server } from '@/platform/core-types'
+import type { Server, Settings } from '@/platform/core-types'
 import type { Profile } from '@/platform/profile-types'
 
 /** A link for the add dialog; check tries it at once, to say why it is no subscription. */
@@ -59,6 +59,8 @@ export const useUiStore = defineStore('ui', () => {
   const focusServer = ref('')
   // The label of a setting the search picked: its page of «Settings» brings it into sight.
   const focusSetting = ref('')
+  // The settings the core is applying now, with the values they get: their controls show these until it answers.
+  const applying = ref<Partial<Settings>>({})
   return {
     addSubscription,
     addPrefill,
@@ -75,5 +77,6 @@ export const useUiStore = defineStore('ui', () => {
     profileEdit,
     focusServer,
     focusSetting,
+    applying,
   }
 })

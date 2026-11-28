@@ -9,21 +9,23 @@ import DnsObjectDialog from '@/components/settings/DnsObjectDialog.vue'
 import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Segmented, Switch, Textarea } from '@/components/ui'
-import { useSetting } from '@/composables/useSetting'
-import { useSettingsDraft } from '@/composables/useSettingsDraft'
+import { useSetting, useTypedSetting } from '@/composables/useSetting'
+import { useSettingsBlock, useSettingsPage } from '@/composables/useSettingsBlock'
 import { DNSRoutingAuto, DNSRoutingDirect, DNSRoutingProxy } from '@/platform/core-types'
 
 // The DNS of every preset with «By default», and which way names go: as their traffic, all through the server or all
 // past it. The advanced mode adds the hosts file, ready answers, the cache and an own dns object of sing-box, which
-// replaces the rest of the page and the DNS of presets. Long explanations show on hover.
+// replaces the rest of the page and the DNS of presets. Long explanations show on hover. An own server is taken on
+// Enter, and a refused address stays in its field.
 const { t } = useI18n()
-const advanced = useSettingsDraft() !== null
-const remote = useSetting('dnsRemote')
-const direct = useSetting('dnsDirect')
+const advanced = useSettingsPage() !== null
+const remote = useTypedSetting('dnsRemote')
+const direct = useTypedSetting('dnsDirect')
 const routing = useSetting('dnsRouting')
 const fakeIp = useSetting('fakeIp')
 const hosts = useSetting('dnsHosts')
-const answers = useSetting('dnsAnswers')
+const answersBlock = useSettingsBlock()
+const answers = answersBlock.setting('dnsAnswers')
 const object = useSetting('dnsObject')
 const cacheOpen = ref(false)
 const objectOpen = ref(false)
@@ -68,7 +70,7 @@ const ways = computed(() => [
     <SettingsCard :title="t('settings.dns.hostsTitle')">
       <OptionRow :title="t('settings.dns.hosts')" :hint="t('settings.dns.hostsHint')"><Switch v-model="hosts" /></OptionRow>
     </SettingsCard>
-    <SettingsCard :title="t('settings.dns.answers')">
+    <SettingsCard :title="t('settings.dns.answers')" :block="answersBlock">
       <div class="grid gap-1 pt-2 pb-2.5">
         <Textarea v-model="answers" mono class="h-[84px] resize-y" placeholder="nas.home 192.168.1.20" :aria-label="t('settings.dns.answers')" data-testid="dns-answers" />
         <span class="text-xs text-t3">{{ t('settings.dns.answersHint') }}</span>

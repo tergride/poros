@@ -9,6 +9,7 @@ import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Dialog, Input, Segmented, Select, Switch, Textarea } from '@/components/ui'
 import { useFailure } from '@/composables/useReason'
 import { useSetting } from '@/composables/useSetting'
+import { useSettingsBlock } from '@/composables/useSettingsBlock'
 import type { WARPDevice } from '@/platform/core-types'
 import { MethodWARPRegister, WARPHTTP2, WARPHTTP3, WARPModeMASQUE, WARPModeWireGuard } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
@@ -16,14 +17,16 @@ import { useCoreStore } from '@/stores/core'
 // WARP of the routing, in a RoutingDraftPage: the exit of what rules send «Through WARP», behind the server, so that
 // sites see an address of Cloudflare. Its keys are data rather than a behavior, so they stay editable while it is off;
 // each mode keeps a device of its own. A device comes from Cloudflare after its terms are accepted, or is typed in.
+// The switch applies at once and is refused without a device; the configuration waits for «Apply» of its card.
 const core = useCoreStore()
 const failureOf = useFailure()
 const { t, locale } = useI18n()
 const on = useSetting('warp')
-const mode = useSetting('warpMode')
-const wireGuard = useSetting('warpWireGuard')
-const masque = useSetting('warpMasque')
-const hosts = useSetting('warpHosts')
+const config = useSettingsBlock()
+const mode = config.setting('warpMode')
+const wireGuard = config.setting('warpWireGuard')
+const masque = config.setting('warpMasque')
+const hosts = config.setting('warpHosts')
 
 const isMasque = computed(() => mode.value === WARPModeMASQUE)
 const device = computed(() => (isMasque.value ? masque.value : wireGuard.value))
@@ -91,7 +94,7 @@ function saveHosts(): void {
   <SettingsCard :title="t('routing.warp.title')">
     <OptionRow :title="t('routing.warp.use')" :hint="t('routing.warp.useHint')" :note="t('routing.warp.useNote')"><Switch v-model="on" data-testid="warp-on" /></OptionRow>
   </SettingsCard>
-  <SettingsCard :title="t('routing.warp.config')">
+  <SettingsCard :title="t('routing.warp.config')" :block="config">
     <div class="pt-2.5">
       <div v-if="registered" class="flex items-center gap-2.5 rounded-[10px] border border-line bg-s2 px-3.5 py-2.5" data-testid="warp-state">
         <Check class="size-4 flex-none text-ok" />{{ t('routing.warp.registered', { date: registered }) }}

@@ -8,15 +8,18 @@ import MenuKeysDialog from '@/components/settings/MenuKeysDialog.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
+import { useSettingsBlock } from '@/composables/useSettingsBlock'
 import { hotkeys as shell } from '@/platform'
 import type { Hotkeys } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 // «Hotkeys» of the advanced mode: the shortcuts of Windows, which act in both modes with the window hidden too, and
-// the dialog of the window's own. Changes wait for «Save»; a shortcut another program holds is named after it.
+// the dialog of the window's own. The shortcuts of Windows wait for «Apply» of their card, so that a wrong one stays
+// named until it is fixed; the dialog applies on «Done». A shortcut another program holds is named after it.
 const core = useCoreStore()
 const { t } = useI18n()
-const hotkeys = useSetting('hotkeys')
+const shortcuts = useSettingsBlock()
+const hotkeys = shortcuts.setting('hotkeys')
 const menuKeys = useSetting('menuKeys')
 const dialog = ref(false)
 
@@ -51,7 +54,7 @@ const hints = computed(() => Object.fromEntries(actions.map((a) => [a, problem(a
 
 <template>
   <h2 class="mb-4 font-disp text-[19px] font-normal">{{ t('settings.nav.hotkeys') }}</h2>
-  <SettingsCard :title="t('settings.hotkeys.global')">
+  <SettingsCard :title="t('settings.hotkeys.global')" :block="shortcuts">
     <p class="pt-2 pb-1 text-xs text-t3">{{ t('settings.hotkeys.globalHint') }}</p>
     <div v-for="action in actions" :key="action" class="flex items-center gap-3.5 border-t border-line py-2.5 first-of-type:border-t-0" :data-testid="`hotkey-${action}`">
       <div class="min-w-0 flex-1">

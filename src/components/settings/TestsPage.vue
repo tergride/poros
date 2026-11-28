@@ -4,17 +4,19 @@ import { useI18n } from 'vue-i18n'
 
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Input, Select } from '@/components/ui'
-import { useSetting } from '@/composables/useSetting'
+import { useSettingsBlock } from '@/composables/useSettingsBlock'
 import { SpeedTestCountry, SpeedTestDownload, SpeedTestFull, SpeedTestSimple, SpeedTestUpload } from '@/platform/core-types'
 
 // The tests of servers: what the delay test asks for, how long it waits and how many servers it tests at once, and
-// what a speed test measures. The core checks the values on «Save».
+// what a speed test measures. The core checks the values of a card on its «Apply».
 const { t } = useI18n()
-const latencyUrl = useSetting('latencyUrl')
-const timeout = useSetting('latencyTimeout')
-const concurrency = useSetting('latencyConcurrency')
-const speedMode = useSetting('speedTestMode')
-const speedUrl = useSetting('speedTestUrl')
+const latency = useSettingsBlock()
+const latencyUrl = latency.setting('latencyUrl')
+const timeout = latency.setting('latencyTimeout')
+const concurrency = latency.setting('latencyConcurrency')
+const speed = useSettingsBlock()
+const speedMode = speed.setting('speedTestMode')
+const speedUrl = speed.setting('speedTestUrl')
 
 // A number as typed: what is no whole number keeps the value there was.
 function whole(model: { value: number }) {
@@ -35,7 +37,7 @@ const modes = computed(() =>
 
 <template>
   <h2 class="mb-4 font-disp text-[19px] font-normal">{{ t('settings.nav.tests') }}</h2>
-  <SettingsCard :title="t('settings.tests.latency')">
+  <SettingsCard :title="t('settings.tests.latency')" :block="latency">
     <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-2.5 pb-1">
       <label class="col-span-2 grid gap-[5px]">
         <span class="text-[12.5px] text-t2">{{ t('settings.tests.url') }}</span>
@@ -51,7 +53,7 @@ const modes = computed(() =>
       </label>
     </div>
   </SettingsCard>
-  <SettingsCard :title="t('settings.tests.speed')">
+  <SettingsCard :title="t('settings.tests.speed')" :block="speed">
     <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-2.5 pb-1">
       <div class="grid gap-[5px]">
         <span class="text-[12.5px] text-t2">{{ t('settings.tests.mode') }}</span>

@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
 
 // «Security» of the advanced mode: which certificates Xray trusts, and the certificate check of servers that do not
-// skip it themselves. Changes wait for «Save».
+// skip it themselves. Both apply at once.
 const { t } = useI18n()
 const systemCerts = useSetting('xraySystemCerts')
 const insecure = useSetting('insecureDefault')

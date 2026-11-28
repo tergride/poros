@@ -9,7 +9,7 @@ import { AddressFirstIPv4, AddressFirstIPv6 } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
 // «General» of the routing: which address of a site with both to take first, and the preset in use, the same choice
-// as in the connection bar. It lives in a RoutingDraftPage, whose «Save» keeps it.
+// as in the connection bar. Both apply at once.
 const core = useCoreStore()
 const { t, te } = useI18n()
 const addressFirst = useSetting('addressFirst')

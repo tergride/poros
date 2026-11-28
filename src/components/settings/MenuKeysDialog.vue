@@ -9,7 +9,7 @@ import { windowShortcut } from '@/lib/shortcuts'
 import type { Hotkeys, MenuKeys } from '@/platform/core-types'
 
 // The shortcuts of the window's own actions: they act while it has the focus and the cursor is in no field, and the
-// menus show them. «Done» gives them to the page, which waits for «Save».
+// menus show them. «Done» applies them.
 const open = defineModel<boolean>('open', { default: false })
 const keys = defineModel<MenuKeys>('keys', { required: true })
 const props = defineProps<{ hotkeys: Hotkeys }>()

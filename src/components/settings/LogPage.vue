@@ -5,15 +5,17 @@ import { useI18n } from 'vue-i18n'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Input, Switch } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
+import { useSettingsBlock } from '@/composables/useSettingsBlock'
 
-// «Log» of the advanced mode: how many of the last lines the log screen shows, and the statistics of connections.
-// Changes wait for «Save».
+// «Log» of the advanced mode: how many of the last lines the log screen shows, on «Apply», and the statistics of
+// connections, at once.
 const { t } = useI18n()
-const lines = useSetting('logLines')
+const screen = useSettingsBlock()
+const lines = screen.setting('logLines')
 const stats = useSetting('stats')
 const history = useSetting('trafficHistory')
 
-// A number as typed; the core refuses what is out of range at «Save».
+// A number as typed; the core refuses what is out of range at «Apply».
 const linesText = computed({
   get: () => (lines.value ? String(lines.value) : ''),
   set: (text: string) => {
@@ -25,7 +27,7 @@ const linesText = computed({
 
 <template>
   <h2 class="mb-4 font-disp text-[19px] font-normal">{{ t('settings.nav.logging') }}</h2>
-  <SettingsCard :title="t('settings.logging.screen')">
+  <SettingsCard :title="t('settings.logging.screen')" :block="screen">
     <label class="grid max-w-[346px] gap-[5px] pt-2.5 pb-1">
       <span class="text-[12.5px] text-t2">{{ t('settings.logging.lines') }}</span>
       <Input v-model="linesText" mono inputmode="numeric" data-testid="log-lines" />

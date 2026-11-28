@@ -6,23 +6,24 @@ import OptionRow from '@/components/settings/OptionRow.vue'
 import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Input, Select, Switch } from '@/components/ui'
 import { useSetting } from '@/composables/useSetting'
-import { useSettingsDraft } from '@/composables/useSettingsDraft'
+import { useSettingsBlock, useSettingsPage } from '@/composables/useSettingsBlock'
 import { useCoreStore } from '@/stores/core'
 
 // «Subscriptions»: how they update. The advanced mode adds how they are asked for: the User-Agent, the versions of
-// TLS and HTTP, and what providers are told about the device.
+// TLS and HTTP, and what providers are told about the device, applied together.
 const { t } = useI18n()
 const core = useCoreStore()
-const advanced = useSettingsDraft() !== null
+const advanced = useSettingsPage() !== null
 const autoUpdate = useSetting('subscriptionAutoUpdate')
 const hours = useSetting('subscriptionUpdateHours')
 const viaProxy = useSetting('subscriptionViaProxy')
 const showChanges = useSetting('showChanges')
 const deviceInfo = useSetting('sendDeviceInfo')
-const userAgent = useSetting('subscriptionUserAgent')
-const tls = useSetting('subscriptionTls')
-const http = useSetting('subscriptionHttp')
-const deviceData = useSetting('deviceData')
+const request = useSettingsBlock()
+const userAgent = request.setting('subscriptionUserAgent')
+const tls = request.setting('subscriptionTls')
+const http = request.setting('subscriptionHttp')
+const deviceData = request.setting('deviceData')
 
 const intervals = computed(() => [
   { value: 0, label: t('settings.subs.provider') },
@@ -54,7 +55,7 @@ const ownAgent = computed(() => (core.updates.current ? `Poros/${core.updates.cu
     <OptionRow :title="t('settings.subs.showChanges')" :hint="t('settings.subs.showChangesHint')"><Switch v-model="showChanges" /></OptionRow>
     <OptionRow :title="t('settings.subs.deviceInfo')" :hint="t('settings.subs.deviceInfoHint')" :note="t('settings.subs.deviceInfoNote')"><Switch v-model="deviceInfo" /></OptionRow>
   </SettingsCard>
-  <SettingsCard v-if="advanced" :title="t('settings.subs.request')">
+  <SettingsCard v-if="advanced" :title="t('settings.subs.request')" :block="request">
     <div class="grid grid-cols-2 gap-x-4 gap-y-3 pt-2.5 pb-1">
       <label class="grid gap-[5px]">
         <span class="text-[12.5px] text-t2">User Agent</span>

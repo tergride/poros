@@ -5,19 +5,21 @@ import { useI18n } from 'vue-i18n'
 
 import OptionRow from '@/components/settings/OptionRow.vue'
 import { Button, Dialog, Input, Switch } from '@/components/ui'
-import { useSetting } from '@/composables/useSetting'
+import { useSettingsBlock } from '@/composables/useSettingsBlock'
 
-// The cache of DNS answers and how long a query waits, for the draft of the settings page. What works only with the
-// cache is inactive without it; an optimistic cache needs answers that get outdated, so not with ignored lifetimes.
+// The cache of DNS answers and how long a query waits, applied together on «Done»; a refusal keeps the dialog with
+// the reason. What works only with the cache is inactive without it; an optimistic cache needs answers that get
+// outdated, so not with ignored lifetimes.
 const open = defineModel<boolean>('open', { default: false })
 const { t } = useI18n()
+const block = useSettingsBlock()
 const settings = {
-  cache: useSetting('dnsCache'),
-  size: useSetting('dnsCacheSize'),
-  ignoreTtl: useSetting('dnsIgnoreTtl'),
-  optimistic: useSetting('dnsOptimistic'),
-  timeout: useSetting('dnsTimeout'),
-  subnet: useSetting('dnsClientSubnet'),
+  cache: block.setting('dnsCache'),
+  size: block.setting('dnsCacheSize'),
+  ignoreTtl: block.setting('dnsIgnoreTtl'),
+  optimistic: block.setting('dnsOptimistic'),
+  timeout: block.setting('dnsTimeout'),
+  subnet: block.setting('dnsClientSubnet'),
 }
 
 const cache = ref(true)
@@ -27,6 +29,7 @@ const optimistic = ref(false)
 const timeout = ref('')
 const subnet = ref('')
 watch(open, (shown) => {
+  block.discard()
   if (!shown) return
   cache.value = settings.cache.value
   size.value = String(settings.size.value)
@@ -46,7 +49,7 @@ const problem = computed(() => {
   return ''
 })
 
-function done(): void {
+async function done(): Promise<void> {
   if (problem.value) return
   settings.cache.value = cache.value
   settings.size.value = whole(size.value, 1 << 20)!
@@ -54,7 +57,7 @@ function done(): void {
   settings.optimistic.value = optimistic.value
   settings.timeout.value = whole(timeout.value, 60)!
   settings.subnet.value = subnet.value.trim()
-  open.value = false
+  if (await block.apply()) open.value = false
 }
 </script>
 
@@ -77,10 +80,10 @@ function done(): void {
     <OptionRow :title="t('dnsCache.subnet')" :hint="t('dnsCache.subnetHint')">
       <Input v-model="subnet" mono class="w-[130px]" placeholder="203.0.113.0/24" :aria-label="t('dnsCache.subnet')" />
     </OptionRow>
-    <p v-if="problem" class="mt-2 text-xs text-warn" data-testid="dns-cache-problem">{{ problem }}</p>
+    <p v-if="problem || block.problem" class="mt-2 text-xs text-warn" data-testid="dns-cache-problem">{{ problem || block.problem }}</p>
     <template #footer>
       <Button variant="ghost" class="sp" @click="open = false">{{ t('common.cancel') }}</Button>
-      <Button variant="primary" :disabled="!!problem" data-testid="dns-cache-done" @click="done">{{ t('common.done') }}</Button>
+      <Button variant="primary" :disabled="!!problem || block.applying" data-testid="dns-cache-done" @click="done">{{ t('common.done') }}</Button>
     </template>
   </Dialog>
 </template>

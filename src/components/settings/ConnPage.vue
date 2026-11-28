@@ -8,7 +8,7 @@ import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Segmented, Switch } from '@/components/ui'
 import { useConnect } from '@/composables/useConnect'
 import { useSetting, useSettingAction } from '@/composables/useSetting'
-import { useSettingsDraft } from '@/composables/useSettingsDraft'
+import { useSettingsPage } from '@/composables/useSettingsBlock'
 import { KillSwitchAlways, KillSwitchConnected, KillSwitchOff } from '@/platform/core-types'
 import { useCoreStore } from '@/stores/core'
 
@@ -19,7 +19,7 @@ const allowLan = useSetting('allowLan')
 const checkIp = useSetting('checkIp')
 const ipv6 = useSetting('ipv6')
 // The advanced mode keeps the dialog of rights in its shell, for every section.
-const inShell = useSettingsDraft() !== null
+const inShell = useSettingsPage() !== null
 const reality = useSetting('realityOnXray')
 
 const modes = computed(() => [
@@ -27,7 +27,7 @@ const modes = computed(() => [
   { value: KillSwitchConnected, label: t('settings.conn.killSwitchConnected') },
   { value: KillSwitchAlways, label: t('settings.conn.killSwitchAlways') },
 ])
-// Turning it on may ask for rights first, at once or on «Save» of the advanced mode.
+// Turning it on may ask for rights.
 const killSwitch = useSettingAction('killSwitch', (mode) => connect.setKillSwitch(mode))
 </script>
 

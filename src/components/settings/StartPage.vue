@@ -7,8 +7,8 @@ import SettingsCard from '@/components/settings/SettingsCard.vue'
 import { Button, Switch } from '@/components/ui'
 import { useAttempt } from '@/composables/useAttempt'
 import { useConnect } from '@/composables/useConnect'
-import { useSetting, useSettingAction } from '@/composables/useSetting'
-import { useSettingsDraft } from '@/composables/useSettingsDraft'
+import { useApplying, useSetting, useSettingAction } from '@/composables/useSetting'
+import { useSettingsPage } from '@/composables/useSettingsBlock'
 import { type UrlScheme, urlScheme } from '@/platform'
 
 const { t } = useI18n()
@@ -20,8 +20,10 @@ const startMinimized = useSetting('startMinimized')
 const closeToTray = useSetting('closeToTray')
 const runAsAdmin = useSetting('runAsAdmin')
 
-// Turning it on asks for rights first: the sign-in task is made by a core that has them.
+// Turning it on asks for rights first: the sign-in task is made by a core that has them. The switch waits for the
+// answer to the UAC prompt and for the task.
 const adminAutostart = useSettingAction('adminAutostart', (on) => connect.setAdminAutostart(on))
+const adminApplying = useApplying('adminAutostart')
 
 // The switch shows what Windows holds and changes it at once.
 const scheme = ref<UrlScheme | null>(null)
@@ -31,7 +33,7 @@ const schemeOn = computed({
   set: (on: boolean) => void attempt(async () => (scheme.value = await urlScheme.set(on))),
 })
 // The advanced mode tells what Windows holds and offers the one action that changes it.
-const advanced = useSettingsDraft() !== null
+const advanced = useSettingsPage() !== null
 const schemeState = computed(() =>
   !scheme.value
     ? ''
@@ -56,7 +58,7 @@ const schemeHint = computed(() =>
       :title="t('settings.start.adminAutostart')"
       :hint="autostart ? t('settings.start.adminAutostartHint') : t('settings.start.autostartOnly')"
     >
-      <Switch v-model="adminAutostart" :disabled="!autostart" data-testid="admin-autostart" />
+      <Switch v-model="adminAutostart" :disabled="!autostart || adminApplying" data-testid="admin-autostart" />
     </OptionRow>
     <!-- Only the start with Windows comes minimized: a start by hand always shows the window. -->
     <OptionRow

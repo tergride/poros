@@ -55,42 +55,65 @@ test('the mode chip moves to the advanced mode on the same screen and back', asy
   await expect(page.getByTestId('portal')).toHaveAttribute('data-state', 'running')
 })
 
-test('settings of the advanced mode wait for Save and ask before leaving with changes', async ({ page }) => {
+test('settings of the advanced mode apply a switch at once, a card of fields on its Apply, and ask before leaving one', async ({ page }) => {
   await throughWizard(page)
   await page.getByRole('button', { name: 'Меню' }).click()
   await page.getByTestId('segment-advanced').click()
   await expect(page).toHaveURL(/#\/adv\/profiles$/)
 
+  // A switch applies at once: leaving asks nothing.
   await page.getByTestId('rail-settings').click()
   await expect(page).toHaveURL(/#\/adv\/settings\/conn$/)
   const lan = page.getByTestId('allow-lan')
   await lan.click()
   await expect(lan).toHaveAttribute('data-state', 'checked')
-  await expect(page.getByTestId('savebar')).toBeVisible()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
+  await page.getByRole('link', { name: 'Подписки' }).click()
+  await expect(page).toHaveURL(/#\/adv\/settings\/subs$/)
+  await page.getByRole('link', { name: 'Подключение' }).click()
+  await expect(page.getByTestId('allow-lan')).toHaveAttribute('data-state', 'checked')
+
+  // A typed value waits for the Apply of its card.
+  await page.locator('a[href="#/adv/settings/logging"]').click()
+  await page.getByTestId('log-lines').fill('900')
+  await expect(page.getByTestId('block-bar')).toBeVisible()
   await shot(page, 'adv-settings-dirty')
 
   // Leaving asks; Escape stays on the page with the change.
   await page.getByRole('link', { name: 'Подписки' }).click()
-  await expect(page.getByRole('dialog', { name: 'Сохранить изменения?' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Применить изменения?' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page).toHaveURL(/#\/adv\/settings\/conn$/)
-  await expect(lan).toHaveAttribute('data-state', 'checked')
+  await expect(page).toHaveURL(/#\/adv\/settings\/logging$/)
+  await expect(page.getByTestId('log-lines')).toHaveValue('900')
 
   // Leaving without saving drops the change.
   await page.getByRole('link', { name: 'Подписки' }).click()
   await page.getByTestId('unsaved-leave').click()
   await expect(page).toHaveURL(/#\/adv\/settings\/subs$/)
-  await page.getByRole('link', { name: 'Подключение' }).click()
-  await expect(page.getByTestId('allow-lan')).toHaveAttribute('data-state', 'unchecked')
+  await page.locator('a[href="#/adv/settings/logging"]').click()
+  await expect(page.getByTestId('log-lines')).toHaveValue('500')
 
-  // Save keeps it.
-  await page.getByTestId('allow-lan').click()
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  // Discard brings back what is saved, Apply keeps the change.
+  await page.getByTestId('log-lines').fill('900')
+  await page.getByTestId('block-discard').click()
+  await expect(page.getByTestId('log-lines')).toHaveValue('500')
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
+  await page.getByTestId('log-lines').fill('900')
+  await page.getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
+
+  // Apply in the question: a refused value keeps the page with the reason, a good one leaves.
+  await page.getByTestId('log-lines').fill('50')
   await page.getByRole('link', { name: 'Подписки' }).click()
+  await page.getByTestId('unsaved-apply').click()
+  await expect(page.getByTestId('block-problem')).toContainText('Неверное значение')
+  await expect(page).toHaveURL(/#\/adv\/settings\/logging$/)
+  await page.getByTestId('log-lines').fill('1000')
+  await page.getByRole('link', { name: 'Подписки' }).click()
+  await page.getByTestId('unsaved-apply').click()
   await expect(page).toHaveURL(/#\/adv\/settings\/subs$/)
-  await page.getByRole('link', { name: 'Подключение' }).click()
-  await expect(page.getByTestId('allow-lan')).toHaveAttribute('data-state', 'checked')
+  await page.locator('a[href="#/adv/settings/logging"]').click()
+  await expect(page.getByTestId('log-lines')).toHaveValue('1000')
 })
 
 async function toAdvanced(page: Page): Promise<void> {
@@ -760,13 +783,15 @@ test('OpenVPN|BY comes from «New profile» and from an .ovpn whose keys are fil
   await expect(page.getByTestId('routing-endpoint')).toContainText('by.example.com')
 })
 
-test('the DNS settings of the advanced mode take answers, the cache and an own dns object, and wait for Save', async ({ page }) => {
+test('the DNS settings of the advanced mode take answers on Apply, and the cache and an own dns object on Done', async ({ page }) => {
   await toAdvanced(page)
   await page.getByTestId('rail-settings').click()
   await page.getByRole('link', { name: 'DNS', exact: true }).click()
   await expect(page).toHaveURL(/#\/adv\/settings\/dns$/)
   await page.getByTestId('dns-answers').fill('nas.home 192.168.1.20\nprinter.lan 192.168.1.30')
-  await expect(page.getByTestId('savebar')).toBeVisible()
+  const answers = page.locator('section', { has: page.getByTestId('dns-answers') })
+  await answers.getByTestId('block-apply').click()
+  await expect(answers.getByTestId('block-bar')).toHaveCount(0)
 
   // The cache: what needs it is inactive without it, an optimistic cache not with lifetimes ignored.
   await page.getByTestId('dns-cache').click()
@@ -779,6 +804,9 @@ test('the DNS settings of the advanced mode take answers, the cache and an own d
   await shot(page, 'adv-settings-dns-cache')
   await cache.getByTestId('dns-cache-done').click()
   await expect(cache).toBeHidden()
+  await page.getByTestId('dns-cache').click()
+  await expect(cache.getByTestId('dns-timeout')).toHaveValue('5')
+  await cache.getByRole('button', { name: 'Отмена' }).click()
 
   // An own dns object: the core reads it as it is typed, and it replaces the rest of the page.
   await page.getByTestId('dns-object').click()
@@ -796,8 +824,6 @@ test('the DNS settings of the advanced mode take answers, the cache and an own d
   await object.getByTestId('dns-object-done').click()
   await expect(page.getByTestId('dns-object-set')).toContainText('Задан свой объект DNS')
   await expect(page.getByRole('combobox', { name: 'Для трафика через сервер' })).toBeDisabled()
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
   await shot(page, 'adv-settings-dns')
 
   // The DNS of presets does not apply under it.
@@ -810,7 +836,7 @@ test('the DNS settings of the advanced mode take answers, the cache and an own d
   await expect(page.getByRole('combobox', { name: 'Для прямого трафика' })).toBeDisabled()
 })
 
-test('«General» of the routing puts a family of addresses first and picks the preset, after Save', async ({ page }) => {
+test('«General» of the routing puts a family of addresses first and picks the preset, both at once', async ({ page }) => {
   await toAdvanced(page)
   await page.getByTestId('rail-routing').click()
   await page.getByRole('tab', { name: 'Общее' }).click()
@@ -819,21 +845,18 @@ test('«General» of the routing puts a family of addresses first and picks the 
   await expect(page.getByTestId('address-first')).toBeDisabled()
   await page.getByTestId('rail-settings').click()
   await page.getByRole('switch', { name: 'IPv6', exact: true }).click()
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  await expect(page.getByRole('switch', { name: 'IPv6', exact: true })).toHaveAttribute('data-state', 'checked')
   await page.getByTestId('rail-routing').click()
   await page.getByRole('tab', { name: 'Общее' }).click()
   await page.getByTestId('address-first').click()
   await page.getByRole('option', { name: 'IPv6' }).click()
   await page.getByTestId('common-preset').click()
   await page.getByRole('option', { name: 'Усиленный обход' }).click()
-  await expect(page.getByTestId('savebar')).toBeVisible()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
   await shot(page, 'adv-routing-common')
 
-  // Leaving asks; Save keeps both.
+  // Leaving asks nothing: both are applied.
   await page.getByRole('tab', { name: 'Пресеты и правила' }).click()
-  await expect(page.getByRole('dialog', { name: 'Сохранить изменения?' })).toBeVisible()
-  await page.getByTestId('unsaved-save').click()
   await expect(page).toHaveURL(/#\/adv\/routing\/rules$/)
   await expect(page.getByRole('combobox', { name: 'Пресет:' })).toHaveText('Усиленный обход')
   await page.getByRole('tab', { name: 'Общее' }).click()
@@ -863,10 +886,10 @@ test('WARP takes a device from Cloudflare after its terms, and rules send traffi
   await expect(page).toHaveURL(/#\/adv\/routing\/warp$/)
   await expect(page.getByTestId('warp-state')).toHaveText('Конфигурации нет: получите её у Cloudflare или впишите свою.')
   await shot(page, 'adv-routing-warp-empty')
-  // On without a device is refused at Save.
+  // On without a device is refused, and the switch goes back.
   await page.getByTestId('warp-on').click()
-  await page.getByTestId('routing-save').click()
   await expect(page.getByTestId('notice')).toContainText('Неверное значение')
+  await expect(page.getByTestId('warp-on')).toHaveAttribute('data-state', 'unchecked')
 
   await page.getByTestId('warp-register').click()
   const terms = page.getByRole('dialog', { name: 'Получить конфигурацию WARP?' })
@@ -876,18 +899,20 @@ test('WARP takes a device from Cloudflare after its terms, and rules send traffi
   await expect(terms).toBeHidden()
   await expect(page.getByTestId('warp-state')).toContainText('Конфигурация получена')
   await expect(page.getByTestId('warp-endpoint')).toHaveValue('162.159.192.1:2408')
-  await page.getByTestId('routing-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  // The core keeps the device at once; with it, the switch stays on.
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
+  await page.getByTestId('warp-on').click()
+  await expect(page.getByTestId('warp-on')).toHaveAttribute('data-state', 'checked')
   await shot(page, 'adv-routing-warp')
 
-  // MASQUE keeps a device of its own; the registration domains wait for Save as the rest.
+  // MASQUE keeps a device of its own; the registration domains wait for Apply as the rest of the configuration.
   await page.getByTestId('warp-mode').getByTestId('segment-masque').click()
   await expect(page.getByTestId('warp-endpoint')).toHaveValue('')
   await expect(page.getByRole('combobox', { name: 'Версия HTTP' })).toHaveText('HTTP/3, запасной HTTP/2')
   await page.getByTestId('warp-hosts').click()
   await page.getByTestId('warp-hosts-text').fill('api.cloudflareclient.com\nzero-trust-client.cloudflareclient.com')
   await page.getByTestId('warp-hosts-done').click()
-  await expect(page.getByTestId('savebar')).toBeVisible()
+  await expect(page.getByTestId('block-bar')).toBeVisible()
   await shot(page, 'adv-routing-warp-masque')
   await page.getByRole('tab', { name: 'Общее' }).click()
   await page.getByTestId('unsaved-leave').click()
@@ -901,7 +926,7 @@ test('WARP takes a device from Cloudflare after its terms, and rules send traffi
   await expect(page.getByTestId('warp-off')).toHaveCount(0)
 })
 
-test('«Inbound» sets the port and a password of the local proxy, «Tests» the delay test, both after Save', async ({ page }) => {
+test('«Inbound» sets the port and a password of the local proxy, «Tests» the delay test, each card on its Apply', async ({ page }) => {
   await toAdvanced(page)
   await page.getByTestId('rail-settings').click()
   await page.getByRole('link', { name: 'Входящие', exact: true }).click()
@@ -909,15 +934,23 @@ test('«Inbound» sets the port and a password of the local proxy, «Tests» the
   await expect(page.getByTestId('proxy-port')).toHaveAttribute('placeholder', '2090')
   await expect(page.getByTestId('proxy-username')).toBeDisabled()
   await page.getByTestId('proxy-port').fill('2095')
+  const port = page.locator('section', { has: page.getByTestId('proxy-port') })
+  await port.getByTestId('block-apply').click()
+  await expect(port.getByTestId('block-bar')).toHaveCount(0)
   await page.getByTestId('proxy-auth').click()
   await page.getByTestId('proxy-username').fill('me')
-  // Without a password the core refuses it.
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('notice')).toContainText('Неверное значение')
+  // Without a password the core refuses it, and the card keeps what was typed.
+  const auth = page.locator('section', { has: page.getByTestId('proxy-auth') })
+  await auth.getByTestId('block-apply').click()
+  await expect(auth.getByTestId('block-problem')).toContainText('Неверное значение')
+  await expect(page.getByTestId('proxy-auth')).toHaveAttribute('data-state', 'checked')
+  await expect(page.getByTestId('proxy-username')).toHaveValue('me')
+  await shot(page, 'adv-settings-inbound-refused')
   await page.getByTestId('proxy-password').fill('secret')
+  await expect(auth.getByTestId('block-problem')).toHaveCount(0)
   await shot(page, 'adv-settings-inbound')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  await auth.getByTestId('block-apply').click()
+  await expect(auth.getByTestId('block-bar')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Тесты', exact: true }).click()
   await expect(page.getByTestId('latency-url')).toHaveAttribute('placeholder', 'http://cp.cloudflare.com/')
@@ -928,8 +961,9 @@ test('«Inbound» sets the port and a password of the local proxy, «Tests» the
   await expect(page.getByTestId('speed-url')).toBeEnabled()
   await page.getByTestId('latency-timeout').fill('5000')
   await shot(page, 'adv-settings-tests')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  await page.locator('section', { has: page.getByTestId('speed-mode') }).getByTestId('block-apply').click()
+  await page.locator('section', { has: page.getByTestId('latency-timeout') }).getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
 
   // The local proxy is shown with its port and the password in its links.
   await page.getByTestId('mode-chip').click()
@@ -948,21 +982,27 @@ test('«TUN» sets the adapter, its addresses and the ranges it keeps out, with 
   await expect(page).toHaveURL(/#\/adv\/settings\/tun$/)
   await expect(page.getByTestId('tun-mtu')).toHaveText('1500')
   await expect(page.getByTestId('tun-bypass')).toHaveValue(/^10\.0\.0\.0\/8\n172\.16\.0\.0\/12/)
+  // The adapter applies at once.
   await page.getByTestId('tun-mtu').click()
   await page.getByRole('option', { name: '9000' }).click()
   await page.getByTestId('tun-routing').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
   await page.getByTestId('tun-ipv4').fill('172.20.1.1/24')
   await page.getByTestId('tun-bypass').fill('10.0.0.0/8\n0.0.0.0/0')
   // A range of every address would leave the TUN with nothing: the core refuses it.
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('notice')).toContainText('Неверное значение')
+  const ranges = page.locator('section', { has: page.getByTestId('tun-bypass') })
+  await ranges.getByTestId('block-apply').click()
+  await expect(ranges.getByTestId('block-problem')).toContainText('Неверное значение')
+  // The default is what is saved: no change is left.
   await page.getByTestId('tun-bypass-default').click()
+  await expect(ranges.getByTestId('block-bar')).toHaveCount(0)
   await shot(page, 'adv-settings-tun')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  const addresses = page.locator('section', { has: page.getByTestId('tun-ipv4') })
+  await addresses.getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
   await page.getByTestId('tun-addresses-default').click()
   await expect(page.getByTestId('tun-ipv4')).toHaveValue('172.19.1.1/24')
-  await expect(page.getByTestId('savebar')).toBeVisible()
+  await expect(addresses.getByTestId('block-bar')).toBeVisible()
 })
 
 test('«Protocols and bypass» sets what profiles «as by default» take', async ({ page }) => {
@@ -977,15 +1017,18 @@ test('«Protocols and bypass» sets what profiles «as by default» take', async
   await page.getByRole('option', { name: 'chrome', exact: true }).click()
   // A forged handshake by default needs the name it forges: the core refuses it without one.
   await page.getByTestId('spoof-default').click()
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('notice')).toContainText('Неверное значение')
+  const spoof = page.locator('section', { has: page.getByTestId('spoof-default') })
+  await spoof.getByTestId('block-apply').click()
+  await expect(spoof.getByTestId('block-problem')).toContainText('Неверное значение')
   await page.getByTestId('spoof-sni').fill('www.example.com')
   await shot(page, 'adv-settings-protocols')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  await spoof.getByTestId('block-apply').click()
+  await page.locator('section', { has: page.getByTestId('mux-default') }).getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
+  await expect(page.getByTestId('fragment-default')).toHaveAttribute('data-state', 'checked')
 })
 
-test('«Network» sets the clock of the core and «Security» the certificate checks, both after Save', async ({ page }) => {
+test('«Network» sets the clock of the core on Apply and «Security» the certificate checks at once', async ({ page }) => {
   await toAdvanced(page)
   await page.getByTestId('rail-settings').click()
   await page.getByRole('link', { name: 'Сеть', exact: true }).click()
@@ -994,22 +1037,24 @@ test('«Network» sets the clock of the core and «Security» the certificate ch
   await page.getByTestId('ntp').click()
   // A clock without a server to ask: the core refuses it.
   await page.getByTestId('ntp-server').fill('')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('notice')).toContainText('Неверное значение')
+  const clock = page.locator('section', { has: page.getByTestId('ntp') })
+  await clock.getByTestId('block-apply').click()
+  await expect(clock.getByTestId('block-problem')).toContainText('Неверное значение')
   await page.getByTestId('ntp-server').fill('time.example.com')
   await page.getByTestId('ntp-interval').fill('15')
   await page.getByTestId('ignore-tls').click()
   await shot(page, 'adv-settings-net')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  await clock.getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Безопасность', exact: true }).click()
   await expect(page).toHaveURL(/#\/adv\/settings\/security$/)
   await page.getByTestId('xray-system-certs').click()
   await page.getByTestId('insecure-default').click()
   await shot(page, 'adv-settings-security')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  await page.getByRole('link', { name: 'Сеть', exact: true }).click()
+  await page.getByRole('link', { name: 'Безопасность', exact: true }).click()
+  await expect(page.getByTestId('insecure-default')).toHaveAttribute('data-state', 'checked')
 })
 
 test('«Subscriptions» asks with a request of its own, «Help» copies the debug information, «Log» keeps more lines', async ({ page }) => {
@@ -1019,32 +1064,32 @@ test('«Subscriptions» asks with a request of its own, «Help» copies the debu
   await page.locator('a[href="#/adv/settings/subs"]').click()
   // The device data take hwid, os, osVersion and model alone.
   await page.getByTestId('sub-device-data').fill('serial=1')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('notice')).toContainText('Неверное значение')
+  const request = page.locator('section', { has: page.getByTestId('sub-device-data') })
+  await request.getByTestId('block-apply').click()
+  await expect(request.getByTestId('block-problem')).toContainText('Неверное значение')
   await page.getByTestId('sub-device-data').fill('hwid=abc, model=Pixel 8')
   await page.getByTestId('sub-user-agent').fill('v2rayN/7.0')
   await shot(page, 'adv-settings-subs')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  await request.getByTestId('block-apply').click()
+  await expect(request.getByTestId('block-bar')).toHaveCount(0)
 
   await page.locator('a[href="#/adv/settings/help"]').click()
   await page.getByTestId('debug-info').click()
   await expect(page.getByTestId('debug-info')).toContainText('Скопировано')
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Poros stub')
   await page.getByTestId('update-beta').click()
+  await expect(page.getByTestId('update-beta')).toHaveAttribute('data-state', 'checked')
   await shot(page, 'adv-settings-help')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
 
   await page.locator('a[href="#/adv/settings/logging"]').click()
   await expect(page.getByTestId('log-lines')).toHaveValue('500')
   await page.getByTestId('log-lines').fill('50')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('notice')).toContainText('Неверное значение')
+  await page.getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-problem')).toContainText('Неверное значение')
   await page.getByTestId('log-lines').fill('5000')
   await shot(page, 'adv-settings-logging')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('savebar')).toBeHidden()
+  await page.getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
 })
 
 test('«Log» shows the end of the log and filters it by text, case, a regular expression and level', async ({ page }) => {
@@ -1161,7 +1206,6 @@ test('«Statistics → Traffic» sums the history by profile and by application 
   await page.locator('a[href="#/adv/settings/logging"]').click()
   await page.getByTestId('stats').click()
   await expect(page.getByTestId('traffic-history')).toBeDisabled()
-  await page.getByTestId('settings-save').click()
   await page.getByTestId('rail-stats').click()
   await page.getByRole('tab', { name: 'Трафик' }).click()
   await expect(page.getByTestId('traffic-off')).toBeVisible()
@@ -1390,8 +1434,9 @@ test('«Hotkeys» records shortcuts, names the wrong ones, and the window and Wi
   await startStop.getByTestId('key-clear').click()
   await page.getByTestId('menu-keys-done').click()
   await shot(page, 'adv-hotkeys')
-  await page.getByTestId('settings-save').click()
-  await expect(page.getByTestId('settings-save')).toHaveCount(0)
+  // The window's own apply on Done, the shortcuts of Windows on Apply of their card.
+  await page.getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
 
   await page.getByTestId('rail-profiles').click()
   await page.getByTestId('profiles-table').click()
@@ -1425,7 +1470,8 @@ test('«Backup» saves the chosen parts in a file and restores them after showin
   // A setting changed since, put back by the backup.
   await page.locator('a[href="#/adv/settings/logging"]').click()
   await page.getByTestId('log-lines').fill('900')
-  await page.getByTestId('settings-save').click()
+  await page.getByTestId('block-apply').click()
+  await expect(page.getByTestId('block-bar')).toHaveCount(0)
   await page.locator('a[href="#/adv/settings/backup"]').click()
   await page.getByTestId('backup-file').setInputFiles(file)
   const dialog = page.getByTestId('restore-dialog')
